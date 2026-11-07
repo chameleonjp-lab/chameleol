@@ -1,0 +1,15 @@
+{
+  "generatedFrom": "src/rules/v1 + src/shared/name.js",
+  "fingerprint": "a9d1758cb12880d55b2cf51acb07e0b263ba2b681a7cf14e1becc17344ae7eab",
+  "files": {
+    "rules/v1/config.js": "cce402ead97963bb823bbec7c550f5bc60c24a97ceb1a83a4101afcdde3318f9",
+    "rules/v1/detmath.js": "5971c5ca276db89a077653d074436830278f00e3cc4f259050ca79371b225d7d",
+    "rules/v1/color.js": "15a005e6e35c185de7ebb77ce6845655c489d7455efbecc2f06c451c4e0d02b6",
+    "rules/v1/course.js": "39cb2396066489a9cc9abdf018109f1b1389b4b8362e31f10112ad9debd18659",
+    "rules/v1/engine.js": "0a4e5d89727b39d7d662f97d68f128cfe5437b47077877042040936fedef2c65",
+    "rules/v1/history.js": "14b780845c2218568b16003c0f64ad30f7fd6f454284efa8c47bcb6976d3f819",
+    "rules/v1/manifest.js": "bafe0c77ffa6bf6f8b830ca9177fc3c3dc916fdd04c2f02061f895062abb978d",
+    "rules/v1/index.js": "4b58a36da6eee6abe8b415979e0ebb1d1fa5e80c1de9de84a7b65b3de0258574",
+    "shared/name.js": "2cfdfe3b3194a7c7148a17cf06af15ac5cd4f58b96c9c6891b5c71ebf8979654"
+  }
+}
