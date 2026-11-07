@@ -601,17 +601,17 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     lampBase = k0;
     const dark = 0x3a3f4c;
     for (let j = 0; j < 4; j += 1) {
-      const kx = (k0 - 1 + j) * W - 0.5; // 境目の路地の左寄り（建物の開始位置に立つ主人公の胴の手前を避ける）
-      const poleZ = SIDEWALK_D - 0.25;
-      put(cyls, LAMP_CYL0 + j, kx, SIDEWALK_Y + 2.6, poleZ, 0.09, 5.2, 0.09, dark);
+      // 街灯は歩道の奥（路地の中央 x=k*W、主人公の後ろ）に立て、腕を通りへ伸ばして頭より高い所に灯りを置く
+      const kx = (k0 - 1 + j) * W;
+      const poleZ = 0.45;
+      const armLen = 2.4;
+      put(cyls, LAMP_CYL0 + j, kx, SIDEWALK_Y + 2.7, poleZ, 0.09, 5.4, 0.09, dark);
       put(boxes, LAMP_BOX0 + j * 4, kx, SIDEWALK_Y + 0.15, poleZ, 0.4, 0.3, 0.4, dark);
-      put(boxes, LAMP_BOX0 + j * 4 + 1, kx, SIDEWALK_Y + 5.2, poleZ + 0.65, 0.1, 0.1, 1.4, dark);
-      put(boxes, LAMP_BOX0 + j * 4 + 2, kx, SIDEWALK_Y + 5.2, poleZ + 1.35, 0.6, 0.18, 0.7, dark);
-      put(bulbs, j, kx, SIDEWALK_Y + 5.05, poleZ + 1.35, 0.24, 0.17, 0.24);
-      put(pools, j, kx, SIDEWALK_Y + 0.012, poleZ - 0.6, 7, 4.6, 1, undefined, -Math.PI / 2);
-      haloGeo.attributes.position.setXYZ(j, kx, SIDEWALK_Y + 5.05, poleZ + 1.35);
-      // 車止め（境目の左側）
-      put(cyls, LAMP_CYL0 + 4 + j, kx + 1.0, SIDEWALK_Y + 0.33, SIDEWALK_D - 0.5, 0.11, 0.66, 0.11, 0xb9bec8);
+      put(boxes, LAMP_BOX0 + j * 4 + 1, kx, SIDEWALK_Y + 5.4, poleZ + armLen / 2, 0.1, 0.1, armLen, dark);
+      put(boxes, LAMP_BOX0 + j * 4 + 2, kx, SIDEWALK_Y + 5.4, poleZ + armLen, 0.6, 0.18, 0.7, dark);
+      put(bulbs, j, kx, SIDEWALK_Y + 5.25, poleZ + armLen, 0.24, 0.17, 0.24);
+      put(pools, j, kx, SIDEWALK_Y + 0.012, poleZ + armLen - 0.2, 7, 4.6, 1, undefined, -Math.PI / 2);
+      haloGeo.attributes.position.setXYZ(j, kx, SIDEWALK_Y + 5.25, poleZ + armLen);
     }
     haloGeo.attributes.position.needsUpdate = true;
     flag(boxes);
@@ -689,8 +689,6 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       f.beam.rotation.x = -Math.PI / 2;
       f.beam.scale.set(1.5, 0.7, 1);
     }
-    f.beam.material.blending = THREE.AdditiveBlending;
-    f.beam.material.opacity = 0.5;
     return root;
   });
   const ferretShadows = ferrets.map(() => makeBlob(2.2, 1.4));
@@ -726,6 +724,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   let camQuat = new THREE.Quaternion();
   let heroNdc = { x: 0, y: 0 };
   const v3 = new THREE.Vector3();
+  const sampleRay = new THREE.Raycaster();
 
   function ndcToCam(nx, ny, depth, out) {
     out.set(nx, ny, 0.5).applyMatrix4(camera.projectionMatrixInverse);
@@ -1061,16 +1060,34 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         if (r.visible) blockers.push(toScreen(new THREE.Vector3(r.position.x, SIDEWALK_Y + 1.5, r.position.z)));
       });
       const k0 = Math.floor(refX / W);
-      for (let j = -1; j <= 3; j += 1) blockers.push(toScreen(new THREE.Vector3((k0 + j) * W - 0.5, 2.5, SIDEWALK_D - 0.25)));
-      const WALL_Y = 2.3;
+      for (let j = -1; j <= 3; j += 1) blockers.push(toScreen(new THREE.Vector3((k0 + j) * W, 2.5, 0.45)));
+      // 候補点ごとに、カメラからの視線の最初の不透明な物体が正面の面かを確かめる（手前に人・街灯などが入る点は使わない）
+      const slotFacade = slot ? slot.facade : null;
+      const isClear = (p) => {
+        sampleRay.set(camera.position, p.clone().sub(camera.position).normalize());
+        const hits = sampleRay.intersectObjects(scene.children, true);
+        for (const h of hits) {
+          const o = h.object;
+          let hidden = false;
+          for (let q = o; q; q = q.parent) if (!q.visible) hidden = true;
+          if (hidden || o.material?.transparent || o.material?.depthWrite === false || o.isPoints) continue;
+          return o === slotFacade;
+        }
+        return false;
+      };
       let best = null;
-      for (let lx = -width / 2 + 1.0; lx <= width / 2 - 2.6; lx += 0.5) {
-        const [px, py] = toScreen(new THREE.Vector3(cx + lx, WALL_Y, 0));
-        if (px < canvasW * 0.04 || px > canvasW * 0.96 || py < renderer.domElement.height * 0.1 || py > renderer.domElement.height * 0.95) continue;
-        const score = Math.min(...blockers.map(([bx]) => Math.abs(bx - px)));
-        if (!best || score > best.score) best = { score, lx };
+      for (const wy of [2.3, 3.4, 1.5]) {
+        for (let lx = -width / 2 + 1.0; lx <= width / 2 - 2.6; lx += 0.5) {
+          const p = new THREE.Vector3(cx + lx, wy, 0);
+          const [px, py] = toScreen(p);
+          if (px < canvasW * 0.04 || px > canvasW * 0.96 || py < renderer.domElement.height * 0.1 || py > renderer.domElement.height * 0.95) continue;
+          if (!isClear(p)) continue;
+          const score = Math.min(...blockers.map(([bx]) => Math.abs(bx - px)));
+          if (!best || score > best.score) best = { score, lx, wy };
+        }
       }
       const lx = best ? best.lx : -width / 2 + 1.0;
+      const WALL_Y = best ? best.wy : 2.3;
       return { wall: api.pixelAt(cx + lx, WALL_Y, 0), hero: api.pixelAt(heroP.x, heroP.y, heroP.z) };
     },
     /** 描画物体の数（連戦での増加の確認用、SCOPE-03）。 */
