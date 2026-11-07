@@ -126,8 +126,10 @@ export async function flushOutbox({ api, store, onUpdate = () => {} }) {
       const state = e.retryable ? 'retryable_failed' : 'permanent_failed';
       if (e.retryable) summary.retryable += 1;
       else summary.permanent += 1;
+      // サーバーに片がそろっていない：送ったつもりの片を数え直し、次の再送で全片を送る（同じ内容なら受理される）
+      const acked = e.code === 'incomplete' ? [] : item.acked;
       await store
-        .put('outbox', { ...item, state: e.retryable ? 'pending' : 'permanent_failed', lastError: e.code, attempts: (item.attempts ?? 0) + 1, lastTriedAt: Date.now() })
+        .put('outbox', { ...item, acked, state: e.retryable ? 'pending' : 'permanent_failed', lastError: e.code, attempts: (item.attempts ?? 0) + 1, lastTriedAt: Date.now() })
         .catch(() => {});
       onUpdate({ playId: item.playId, state, error: e.code });
     }

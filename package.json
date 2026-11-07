@@ -9,14 +9,15 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test tests/**/*.test.mjs",
+    "test": "node scripts/sync-shared.mjs --check && node --test tests/**/*.test.mjs",
     "test:rules": "node --test tests/rules/*.test.mjs",
     "test:sql": "node scripts/run-sql-tests.mjs",
     "test:e2e": "node --test tests/e2e/*.e2e.mjs",
     "build": "node scripts/build.mjs",
     "serve": "node scripts/serve.mjs",
     "report:course": "node scripts/course-report.mjs",
-    "report:color": "node scripts/color-table.mjs"
+    "report:color": "node scripts/color-table.mjs",
+    "sync": "node scripts/sync-shared.mjs"
   },
   "dependencies": {
     "three": "0.170.0"
