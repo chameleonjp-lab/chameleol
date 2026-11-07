@@ -13,7 +13,7 @@ import {
 } from '../../src/rules/v1/index.js';
 import { U, stubGame, run, setColor, evalStart, evalEnd, exitAt } from './helpers.mjs';
 
-const INIT_H = RULES_V1.initialColor.h; // 11000
+const INIT_H = RULES_V1.initialColor.h; // 10765
 const PERFECT = 100 * U;
 
 test('GAME-01: 停止なしで50棟を通過すると250秒でクリアし、51棟目を出題しない', () => {

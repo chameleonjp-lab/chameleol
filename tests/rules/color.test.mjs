@@ -92,7 +92,9 @@ test('HSV→8ビットsRGBは整数だけで計算し、代表色が期待どお
       }
     }
   }
-  assert.equal(hsvToHex(RULES_V1.initialColor), '#6aff4d');
+  assert.equal(hsvToHex(RULES_V1.initialColor), '#72ff4e');
+  // 提供資料の緑そのものも、整数の操作値で再現できる
+  assert.equal(hsvToHex({ h: 10765, s: 6939, v: 7686 }), '#58c43c');
 });
 
 test('白は L=100・a=0・b=0、黒は L=0', () => {
