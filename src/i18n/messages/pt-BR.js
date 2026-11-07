@@ -259,4 +259,14 @@ export default {
   "share.result.cleared": "Escapei dos 50 prédios!",
   "share.result.values": "{buildings} prédios, combinação média {average}",
   "share.result.rank": "{rank}º lugar",
+
+  "notice.openSavedVersion": "Continuar na versão salva",
+  "start.foreignRun.title": "Há um jogo pausado de outra versão",
+  "start.foreignRun.body": "O jogo pausado foi salvo por outra versão. Você pode continuar na página dessa versão ou guardá-lo e começar outro. Guardar não apaga o jogo.",
+  "start.foreignRun.shelve": "Guardar e começar outro",
+  "verify.title": "Menu de teste (não aparece na versão pública)",
+  "verify.note": "Inícios para testar limites rapidamente. Sempre fora do ranking e sem envio.",
+  "verify.before20": "Logo antes do prédio 19→20",
+  "verify.beforeExit": "Logo antes da saída final",
+  "verify.night": "Na cidade à noite",
 };

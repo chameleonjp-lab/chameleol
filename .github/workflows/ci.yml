@@ -1,0 +1,53 @@
+# PR とメインブランチで、判定・保存・通信・データベース・画面の試験を流す。
+# 本番の Supabase には接続しない（使い捨ての PostgreSQL サービスを使う）。配備は行わない。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      KAMEREORU_TEST_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: 単体試験（判定・保存・通信・翻訳・共有コードの一致）
+        run: npm test
+      - name: データベースとサーバー処理の試験
+        run: npm run test:sql
+      - name: 別の JavaScript エンジン（QuickJS）での照合
+        run: npm run check:engines
+      - name: 自動ブラウザの準備
+        run: |
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: 自動ブラウザの通し試験
+        run: npm run test:e2e

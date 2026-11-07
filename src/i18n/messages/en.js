@@ -259,4 +259,14 @@ export default {
   'share.result.cleared': 'Escaped all 50 buildings!',
   'share.result.values': '{buildings} buildings, average match {average}',
   'share.result.rank': 'Rank #{rank}',
+
+  "notice.openSavedVersion": "Continue in the saved version",
+  "start.foreignRun.title": "A game from another version is paused",
+  "start.foreignRun.body": "The paused game was saved by another version. You can continue it on that version's page, or keep it aside and start a new game. Keeping it aside does not delete it.",
+  "start.foreignRun.shelve": "Keep it aside and start new",
+  "verify.title": "Test menu (not shown in the public version)",
+  "verify.note": "Starts for quickly testing boundaries. Always unranked and never sent.",
+  "verify.before20": "From just before building 19→20",
+  "verify.beforeExit": "From just before the final exit",
+  "verify.night": "From the night city",
 };

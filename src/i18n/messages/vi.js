@@ -259,4 +259,14 @@ export default {
   "share.result.cleared": "Đã trốn qua cả 50 tòa nhà!",
   "share.result.values": "{buildings} tòa nhà, độ khớp trung bình {average}",
   "share.result.rank": "Hạng {rank}",
+
+  "notice.openSavedVersion": "Tiếp tục ở phiên bản đã lưu",
+  "start.foreignRun.title": "Có một ván của phiên bản khác đang tạm dừng",
+  "start.foreignRun.body": "Ván đang tạm dừng được lưu bởi phiên bản khác. Bạn có thể chơi tiếp ở trang của phiên bản đó, hoặc cất ván này và bắt đầu ván mới. Cất đi không xóa ván.",
+  "start.foreignRun.shelve": "Cất đi và bắt đầu ván mới",
+  "verify.title": "Menu thử nghiệm (không có ở phiên bản công khai)",
+  "verify.note": "Cách bắt đầu để thử nhanh các mốc. Luôn không tính bảng xếp hạng và không gửi đi.",
+  "verify.before20": "Ngay trước tòa nhà 19→20",
+  "verify.beforeExit": "Ngay trước lối ra cuối cùng",
+  "verify.night": "Từ thành phố về đêm",
 };

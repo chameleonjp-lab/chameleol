@@ -259,4 +259,14 @@ export default {
   "share.result.cleared": "50 binanın hepsinden kaçtım!",
   "share.result.values": "{buildings} bina, ortalama uyum {average}",
   "share.result.rank": "Sıralamada {rank}.",
+
+  "notice.openSavedVersion": "Kaydedilen sürümde devam et",
+  "start.foreignRun.title": "Başka bir sürümden duraklatılmış bir oyun var",
+  "start.foreignRun.body": "Duraklatılan oyun başka bir sürümle kaydedildi. O sürümün sayfasında devam edebilir ya da kenara ayırıp yeni oyuna başlayabilirsin. Kenara ayırmak oyunu silmez.",
+  "start.foreignRun.shelve": "Kenara ayır ve yeni başla",
+  "verify.title": "Deneme menüsü (herkese açık sürümde görünmez)",
+  "verify.note": "Sınırları hızlıca denemek için başlangıçlar. Her zaman sıralama dışıdır ve gönderilmez.",
+  "verify.before20": "19→20. binanın hemen öncesinden",
+  "verify.beforeExit": "Son çıkışın hemen öncesinden",
+  "verify.night": "Gece şehrinden",
 };

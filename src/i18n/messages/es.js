@@ -259,4 +259,14 @@ export default {
   "share.result.cleared": "¡Escapé de los 50 edificios!",
   "share.result.values": "{buildings} edificios, coincidencia media {average}",
   "share.result.rank": "Puesto {rank}",
+
+  "notice.openSavedVersion": "Continuar en la versión guardada",
+  "start.foreignRun.title": "Hay una partida pausada de otra versión",
+  "start.foreignRun.body": "La partida pausada se guardó con otra versión. Puedes continuarla en la página de esa versión o apartarla y empezar otra. Apartarla no la borra.",
+  "start.foreignRun.shelve": "Apartarla y empezar otra",
+  "verify.title": "Menú de prueba (no aparece en la versión pública)",
+  "verify.note": "Inicios para probar los límites rápidamente. Siempre fuera de la clasificación y sin envío.",
+  "verify.before20": "Justo antes del edificio 19→20",
+  "verify.beforeExit": "Justo antes de la salida final",
+  "verify.night": "Desde la ciudad de noche",
 };

@@ -8,11 +8,11 @@ const require = createRequire(import.meta.url);
 export const { chromium } = require('playwright');
 export const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
-export async function launch({ width = 402, height = 874, locale = 'ja-JP', languages = null, root = ROOT } = {}) {
+export async function launch({ width = 402, height = 874, locale = 'ja-JP', languages = null, root = ROOT, scale = 1 } = {}) {
   const server = await startServer({ rootDir: root, listenPort: 0 });
   const port = server.address().port;
   const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, hasTouch: true, isMobile: true, locale });
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scale, hasTouch: true, isMobile: true, locale });
   if (languages) {
     await context.addInitScript((langs) => {
       Object.defineProperty(navigator, 'languages', { get: () => langs, configurable: true });

@@ -113,8 +113,10 @@ test('R1: 別のタブが同じプレイを引き継ぐと、元のタブの保�
     await second.waitForSelector('[data-testid=home-continue]', { state: 'visible' });
     await second.click('[data-testid=home-continue]');
     await second.waitForSelector('[data-testid=pause-resume]');
-    // 元のタブで一時停止（保存を試みる）→ 古い書込担当として拒否される
-    await page.click('[data-testid=pause]');
+    // 元のタブへ戻って保存を試みる（2つ目のタブを開いた時点で、元のタブは画面離脱として停止している）
+    // → 古い書込担当として拒否され、「別の画面で続いています」と知らせる
+    await page.bringToFront();
+    await page.evaluate(() => globalThis.__kamereoru.saveNow('test'));
     await page.waitForSelector('.dialog-title');
     const title = await page.textContent('.dialog-title');
     assert.match(title, /別の画面/);
@@ -126,7 +128,7 @@ test('R1: 別のタブが同じプレイを引き継ぐと、元のタブの保�
   }
 });
 
-test('SCOPE-03: 建物は4つの枠を使い回し、進んでも連戦しても描画物体が増え続けない', async () => {
+test('SCOPE-03: 建物は5つの枠を使い回し、進んでも連戦しても描画物体が増え続けない', async () => {
   const env = await launch();
   const { page } = env;
   try {
