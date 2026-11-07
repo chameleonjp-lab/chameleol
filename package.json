@@ -17,7 +17,10 @@
     "serve": "node scripts/serve.mjs",
     "report:course": "node scripts/course-report.mjs",
     "report:color": "node scripts/color-table.mjs",
-    "sync": "node scripts/sync-shared.mjs"
+    "sync": "node scripts/sync-shared.mjs",
+    "check:engines": "node scripts/cross-engine-check.mjs",
+    "fixtures:replay": "node scripts/make-replay-fixtures.mjs",
+    "smoke:edge": "node scripts/deno-edge-smoke.mjs"
   },
   "dependencies": {
     "three": "0.170.0"

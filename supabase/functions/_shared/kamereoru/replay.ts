@@ -29,6 +29,16 @@ export interface Verdict {
 
 const REAL_TIME_TOLERANCE_MS = 5000;
 
+/** キーの順番に左右されない比較（データベースの jsonb はキーを並べ替えて保存する）。 */
+function canonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  if (v && typeof v === 'object') {
+    return `{${Object.keys(v as Record<string, unknown>).sort().map((k) => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(v ?? null);
+}
+export const sameJson = (a: unknown, b: unknown) => canonical(a) === canonical(b);
+
 const reject = (reason: string, notes: string[] = []): Verdict => ({ status: 'rejected', values: {}, verdict: { reason, notes } });
 
 export function verifyResult(input: JobInput): Verdict {
@@ -82,9 +92,9 @@ export function verifyResult(input: JobInput): Verdict {
     claimed.endReason === computed.endReason &&
     claimed.endT === computed.endT;
   const notes: string[] = [];
-  if (JSON.stringify(claimed.score) !== JSON.stringify(computed.score)) notes.push('aux_score');
+  if (!sameJson(claimed.score, computed.score)) notes.push('aux_score');
   if (claimed.maxCombo !== computed.maxCombo) notes.push('aux_combo');
-  if (JSON.stringify(claimed.perBuilding) !== JSON.stringify(computed.perBuilding)) notes.push('aux_per_building');
+  if (!sameJson(claimed.perBuilding, computed.perBuilding)) notes.push('aux_per_building');
   if (rankMatches) {
     // 順位用の値が正しい。補助の違いは内部に記録するだけで、本人へ警告しない
     return { status: 'official', values, verdict: { reason: notes.length ? 'verified_aux_mismatch' : 'verified', notes } };
