@@ -17,5 +17,14 @@
     "serve": "node scripts/serve.mjs",
     "report:course": "node scripts/course-report.mjs",
     "report:color": "node scripts/color-table.mjs"
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "fake-indexeddb": "6.2.7",
+    "pg": "8.23.1",
+    "quickjs-emscripten": "0.32.0"
   }
 }
