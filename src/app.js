@@ -524,16 +524,17 @@ class App {
             break;
           case 'enterBuilding':
             if (ev.building === rules.brightnessUnlockBuilding - 1) toast(banner, t('game.unlockSoon'), { duration: 2200 });
-            if (ev.building === 25) {
-              toast(banner, t('game.milestone.half'), { duration: 1600 });
-              this.audio.play('milestone');
-            }
             if (ev.building === 40) {
               toast(banner, t('game.milestone.final'), { duration: 1600 });
               this.audio.play('milestone');
             }
             break;
           case 'pass':
+            if (ev.building === 25) {
+              // 25棟目の通過＝中間地点（仕様 FX-03）
+              toast(banner, t('game.milestone.half'), { duration: 1600 });
+              this.audio.play('milestone');
+            }
             if (ev.success && [3, 5, 10].includes(ev.combo)) {
               this.audio.play('combo');
               toast(banner, t('game.comboMilestone', { n: ev.combo }), { duration: 1400, kind: 'combo' });
