@@ -37,4 +37,4 @@ npm run build            # 公開用の一式を dist/ に作る
 - [調整表](docs/tuning/adjustment-table.md)：採点・時間・出題・保存・通信の試作値と、正式値を決めるための測定。
 - [iPhone での確認手順](docs/device-test-procedure.md)：実機で試すことと記録表。
 - [公開と切り戻しの手順（案）](docs/release/release-and-rollback.md)：データベース・サーバー・画面を切り替える順番と、戻し方。
-- [素材の出典](assets/credits.md)：主人公は、提供されたカメレオン No.28 エディター（[docs/design/chameleon-no28-editor.html](docs/design/chameleon-no28-editor.html)）の書き出し値で作っています。
+- [素材の出典](assets/credits.md)：主人公は、提供されたカメレオン No.28 エディター（[docs/design/chameleon-no28-editor.html](docs/design/chameleon-no28-editor.html)）の書き出し値から作っています。

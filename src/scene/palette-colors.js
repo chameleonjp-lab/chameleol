@@ -1,5 +1,4 @@
-// 描画用の色。比較面（壁・体）は判定と同じ8ビット値をそのまま使い、照明・霧・色調整を一切かけない。
-// ここにあるのは比較面以外（空・遠景・道路・照明）の色だけ。
+// 描画用の色。比較面（壁・体）は判定と同じ8ビット値をそのまま使い、照明・色調整を一切かけない。
 import { hsvToRgb8 } from '../rules/v1/index.js';
 
 export function rgbFloat(hsv) {
@@ -7,28 +6,21 @@ export function rgbFloat(hsv) {
   return [r / 255, g / 255, b / 255];
 }
 
-// 時間帯ごとの空・霧・光・遠景・道路（比較面には使わない）
+// 時間帯ごとの空・遠景（比較面には使わない）
 export const SKY = Object.freeze({
-  day: {
-    top: 0x5fb0ff, bottom: 0xdcefff, fog: 0xcfe6f7, far: 0x9fb8cc, far2: 0xb9cddc,
-    road: 0x5d636e, sidewalk: 0xc9c4bb, curb: 0x9b968d,
-    hemiSky: 0xe8f4ff, hemiGround: 0x9a8f80, hemi: 0.95, sun: 0xfff2d8, sunI: 0.9, lamps: 0, windows: 0,
-  },
-  evening: {
-    top: 0xf08a5d, bottom: 0xffd9a8, fog: 0xf3c9a2, far: 0xb88d7c, far2: 0xd0a891,
-    road: 0x585560, sidewalk: 0xbfb2a6, curb: 0x938479,
-    hemiSky: 0xffe0c4, hemiGround: 0x8a7468, hemi: 0.85, sun: 0xffc48a, sunI: 0.75, lamps: 0.3, windows: 0.25,
-  },
-  dusk: {
-    top: 0x3f4f9c, bottom: 0xe48aa6, fog: 0x8f7aa6, far: 0x5f5f8a, far2: 0x7a6f99,
-    road: 0x44475a, sidewalk: 0x8f8a99, curb: 0x6d6879,
-    hemiSky: 0xb8b4f0, hemiGround: 0x5a5068, hemi: 0.7, sun: 0xd9a0c8, sunI: 0.45, lamps: 0.7, windows: 0.6,
-  },
-  night: {
-    top: 0x070b24, bottom: 0x24305e, fog: 0x1a2245, far: 0x222a4a, far2: 0x2c3558,
-    road: 0x2a2d3a, sidewalk: 0x4b4d5a, curb: 0x3a3c48,
-    hemiSky: 0x7c8cd6, hemiGround: 0x2a2838, hemi: 0.55, sun: 0x9fb4ff, sunI: 0.25, lamps: 1, windows: 1,
-  },
+  day: { top: 0x8fd3ff, bottom: 0xdff4ff, far: 0xa9c4d8, road: 0x8a8f99, ground: 0x6f747c },
+  evening: { top: 0xf6a96b, bottom: 0xffe0b0, far: 0xc79a86, road: 0x7d7a80, ground: 0x66626a },
+  dusk: { top: 0x5a5fa8, bottom: 0xe79bb0, far: 0x6d6a91, road: 0x5e5e6e, ground: 0x4c4c5a },
+  night: { top: 0x0f1633, bottom: 0x2b3466, far: 0x2a3150, road: 0x3a3d4d, ground: 0x2c2f3b },
 });
 
-export const POLICE = Object.freeze({ uniform: 0x2f4a8a, cap: 0x22356b, fur: 0xe8d7b9, mask: 0x6b4f3a, light: 0xfff3b0, badge: 0xf2c94c });
+// 時間帯ごとの光・街の色（比較面には使わない）。glow は街灯・窓の灯り、stars は星の見え方（0〜1）。
+// walk=歩道、curb=縁石、glass=窓ガラス（消灯時）、hemiSky/hemiGround/dir=照明の色。
+export const TOD = Object.freeze({
+  day: { hemiSky: 0xffffff, hemiGround: 0xa89f94, dir: 0xfff2d8, glass: 0x8cc0e6, walk: 0xcfcfd0, curb: 0xe6e5e1, hemi: 0.72, dirI: 0.55, glow: 0, stars: 0 },
+  evening: { hemiSky: 0xffe6c8, hemiGround: 0x9a7f70, dir: 0xffb878, glass: 0xd9b48c, walk: 0xc6ae9c, curb: 0xdcc4ac, hemi: 0.66, dirI: 0.6, glow: 0.15, stars: 0 },
+  dusk: { hemiSky: 0xb9a4d8, hemiGround: 0x6c5a78, dir: 0xff9a8a, glass: 0x7088b8, walk: 0x9a93a8, curb: 0xa89ead, hemi: 0.58, dirI: 0.4, glow: 0.7, stars: 0.25 },
+  night: { hemiSky: 0x7d8fd2, hemiGround: 0x303456, dir: 0x9fb0ff, glass: 0x25304a, walk: 0x6a7290, curb: 0x7a839c, hemi: 0.55, dirI: 0.3, glow: 1, stars: 1 },
+});
+
+export const POLICE = Object.freeze({ uniform: 0x1f2f5c, cap: 0x17244a, fur: 0xe8d7b9, mask: 0x6b4f3a, light: 0xfff3b0, badge: 0xf2c94c });

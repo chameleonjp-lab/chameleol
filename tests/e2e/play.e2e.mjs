@@ -128,7 +128,7 @@ test('R1: 別のタブが同じプレイを引き継ぐと、元のタブの保�
   }
 });
 
-test('SCOPE-03: 建物は5つの枠を使い回し、進んでも連戦しても描画物体が増え続けない', async () => {
+test('SCOPE-03: 建物は4つの枠を使い回し、進んでも連戦しても描画物体が増え続けない', async () => {
   const env = await launch();
   const { page } = env;
   try {

@@ -1306,7 +1306,7 @@ class App {
     try {
       const probe = document.createElement('canvas');
       if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return;
-      const { createShowcase } = await import('./scene/street.js');
+      const { createShowcase } = await import('./scene/showcase.js');
       if (this.showcaseToken !== token || !host.isConnected) return;
       clear(host);
       host.classList.add('home-art-3d');
