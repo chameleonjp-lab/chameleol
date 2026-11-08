@@ -161,3 +161,26 @@ test('GAME-07: 昼・夜・警察接近中でも、壁・体・プレビュー�
     await env.close();
   }
 });
+
+test('GAME-07b: 警察の光・街灯が近くても、見えている壁の全体が判定と同じ色', async () => {
+  const env = await launch();
+  const { page } = env;
+  try {
+    await openHome(page, env.url);
+    for (const atMs of [3000, 120000, 226000]) {
+      await page.evaluate((t) => globalThis.__kamereoru.debugStart({ atMs: t }), atMs);
+      await page.evaluate(() => {
+        globalThis.__kamereoru.session.state.alert = 80000;
+      });
+      await page.waitForTimeout(1500);
+      const r = await page.evaluate(() => globalThis.__kamereoru.stage.checkComparisonSurfaces());
+      assert.ok(r.wallPixels > 2000, `壁の画素が十分に見えている (${r.wallPixels}) at ${atMs}`);
+      assert.equal(r.wallMismatches, 0, `壁の不一致 ${JSON.stringify(r)} at ${atMs}`);
+      assert.equal(r.bodyMismatches, 0, `体の不一致 ${JSON.stringify(r)} at ${atMs}`);
+      await page.evaluate(() => globalThis.__kamereoru.leaveGame());
+    }
+    assert.deepEqual(env.errors, []);
+  } finally {
+    await env.close();
+  }
+});
