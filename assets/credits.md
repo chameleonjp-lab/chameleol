@@ -11,6 +11,7 @@
 | 警察官・宝石店・建物・街の形 | このリポジトリのコード（`src/scene/characters.js`、`src/scene/street.js`。PR #4 で作成） | このリポジトリと同じ | 箱・円柱・管などの単純な図形を組み合わせて作った立体。警察官は仮モデル |
 | 音楽・効果音・環境音 | このリポジトリのコード（`src/audio/mixer.js`） | このリポジトリと同じ | Web Audio でその場で合成する。音声ファイルは含まない |
 | 渦巻きの目の模様 | このリポジトリのコード（`src/scene/chameleon28.js` が Canvas で描画） | このリポジトリと同じ | 渦の巻き数・線の太さ・色は `CHAMELEON28` の値を使う。画像ファイルは含まない |
+| 窓の灯り・光の輪・足元の影などの小さな画像 | このリポジトリのコード（`src/scene/street.js`・`src/scene/characters.js` が Canvas で描画） | このリポジトリと同じ | 画像ファイルは含まない |
 
 試験だけに使い、配布物には含まないもの：CIEDE2000 の試験値（`tests/rules/fixtures/ciede2000_sharma.tsv`）。Sharma・Wu・Dalal（2005）の実装ノートの表1を、scikit-image 0.26.0 の試験データ（BSD-3-Clause）から写しています。
 

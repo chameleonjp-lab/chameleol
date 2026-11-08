@@ -19,7 +19,8 @@ import { SKY, TOD, rgbFloat } from './palette-colors.js';
 
 const W = 10; // 1棟の幅（ワールド座標）
 const GAP = 1.3; // 建物の間の路地の幅
-const SLOTS = 4;
+const SLOTS = 7; // 今の棟の前2・後4まで。横長の舞台でも棟の抜けが出ないようにする
+const NL = 8; // 街灯の数
 const SIDEWALK_Y = 0.22; // 歩道の上面
 const SIDEWALK_D = 4.45; // 歩道の奥行き（z=0 から縁石まで）
 const HERO_Z = 2.5; // 主人公が歩く位置
@@ -60,7 +61,7 @@ function canvasOf(w, h, draw) {
 }
 
 export function createThreeStage(container, { course, decorations, rules = RULES_V1, showOpeningShop = false } = {}) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true, stencil: true });
   // 色をそのまま出す：色管理・トーンマッピングを使わない。
   THREE.ColorManagement.enabled = false;
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
@@ -74,6 +75,29 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   scene.fog = new THREE.Fog(0xdff4ff, 28, 200);
   const camera = new THREE.PerspectiveCamera(CAM.fov, 0.78, 0.5, 700);
   scene.add(camera); // 空・星・暗幕をカメラに付けるため
+
+  // ---- 比較面の保護（ステンシル） ----
+  // 比較面（壁の正面・体の比較用の材質）は描いた画素にステンシル 1 を書き、
+  // 光・影・にじみなど重ね描きの材質は、その画素には描かない（比較面の色を絶対に変えない）。
+  const maskWrite = (m) => {
+    m.stencilWrite = true;
+    m.stencilRef = 1;
+    m.stencilWriteMask = 0xff;
+    m.stencilFunc = THREE.AlwaysStencilFunc;
+    m.stencilFail = THREE.KeepStencilOp;
+    m.stencilZFail = THREE.KeepStencilOp;
+    m.stencilZPass = THREE.ReplaceStencilOp;
+  };
+  const maskAvoid = (m) => {
+    m.stencilWrite = true;
+    m.stencilRef = 1;
+    m.stencilFuncMask = 0xff;
+    m.stencilWriteMask = 0;
+    m.stencilFunc = THREE.NotEqualStencilFunc;
+    m.stencilFail = THREE.KeepStencilOp;
+    m.stencilZFail = THREE.KeepStencilOp;
+    m.stencilZPass = THREE.KeepStencilOp;
+  };
 
   const textures = [];
   const makeTexture = (canvas, { repeat = false, aniso = false } = {}) => {
@@ -365,10 +389,10 @@ export function createThreeStage(container, { course, decorations, rules = RULES
 
   const boxGeo = new THREE.BoxGeometry(1, 1, 1);
   const LAMP_BOX0 = SLOTS * CAP_BOX;
-  const boxes = makePool(boxGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), LAMP_BOX0 + 16);
+  const boxes = makePool(boxGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), LAMP_BOX0 + NL * 4);
   const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 12);
   const LAMP_CYL0 = SLOTS * CAP_CYL;
-  const cyls = makePool(cylGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), LAMP_CYL0 + 4 + 8);
+  const cyls = makePool(cylGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), LAMP_CYL0 + NL);
   const glassMat = new THREE.MeshBasicMaterial({ map: glassTex, color: 0xffffff });
   const glass = makePool(new THREE.PlaneGeometry(1, 1), glassMat, SLOTS * CAP_GLASS);
   const rails = makePool(new THREE.PlaneGeometry(1, 1), new THREE.MeshLambertMaterial({ map: railTex, alphaTest: 0.5, side: THREE.DoubleSide }), SLOTS * CAP_RAIL);
@@ -376,12 +400,14 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   const signs = makePool(boxGeo, new THREE.MeshBasicMaterial({ map: signTex }), SLOTS);
   // 街灯の電球・光だまり・にじみ
   const bulbMat = new THREE.MeshBasicMaterial({ color: 0x777777, fog: false });
-  const bulbs = makePool(new THREE.SphereGeometry(1, 10, 8), bulbMat, 4, false);
+  const bulbs = makePool(new THREE.SphereGeometry(1, 10, 8), bulbMat, NL, false);
   const poolMat = new THREE.MeshBasicMaterial({ map: glowTex, color: 0xffc870, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-  const pools = makePool(new THREE.PlaneGeometry(1, 1), poolMat, 4, false);
+  const pools = makePool(new THREE.PlaneGeometry(1, 1), poolMat, NL, false);
   const haloGeo = new THREE.BufferGeometry();
-  haloGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(4 * 3), 3));
+  haloGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NL * 3), 3));
   const haloMat = new THREE.PointsMaterial({ map: glowTex, color: 0xffc870, size: 4.2, sizeAttenuation: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  maskAvoid(poolMat);
+  maskAvoid(haloMat);
   const halos = new THREE.Points(haloGeo, haloMat);
   halos.frustumCulled = false;
   scene.add(halos);
@@ -404,6 +430,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   const farMat = new THREE.MeshBasicMaterial({ map: farTex, color: 0xa9c4d8 });
   const farMesh = makePool(boxGeo, farMat, farTotal);
   const farGlowMat = new THREE.MeshBasicMaterial({ map: farLitTex, color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  maskAvoid(farGlowMat);
   const farGlow = makePool(boxGeo, farGlowMat, farTotal, false);
   {
     let id = 0;
@@ -438,6 +465,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
 
   function makeSlot(s) {
     const facadeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, toneMapped: false });
+    maskWrite(facadeMat);
     const facade = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), facadeMat);
     facade.name = 'wall';
     const bodyMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
@@ -600,9 +628,9 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     if (k0 === lampBase) return;
     lampBase = k0;
     const dark = 0x3a3f4c;
-    for (let j = 0; j < 4; j += 1) {
+    for (let j = 0; j < NL; j += 1) {
       // 街灯は歩道の奥（路地の中央 x=k*W、主人公の後ろ）に立て、腕を通りへ伸ばして頭より高い所に灯りを置く
-      const kx = (k0 - 1 + j) * W;
+      const kx = (k0 - 2 + j) * W;
       const poleZ = 0.45;
       const armLen = 2.4;
       put(cyls, LAMP_CYL0 + j, kx, SIDEWALK_Y + 2.7, poleZ, 0.09, 5.4, 0.09, dark);
@@ -675,6 +703,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     scene.add(m);
     return m;
   };
+  maskAvoid(blobMat);
   const heroShadow = makeBlob(2.8, 1.7);
   const ferrets = [createFerret(), createFerret()];
   const ferretRoots = ferrets.map((f, i) => {
@@ -690,6 +719,17 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       f.beam.scale.set(1.5, 0.7, 1);
     }
     return root;
+  });
+  // 警察の光（透明・加算の材質）は比較面にかけない。キャラクター側が glowMaterials を公開していればそれを使う
+  ferrets.forEach((f) => {
+    const glows = f.glowMaterials ?? [];
+    if (!glows.length) {
+      f.beam.traverse((o) => {
+        const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+        ms.forEach((m) => m.transparent && glows.push(m));
+      });
+    }
+    glows.forEach(maskAvoid);
   });
   const ferretShadows = ferrets.map(() => makeBlob(2.2, 1.4));
 
@@ -731,7 +771,10 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     return out.multiplyScalar(depth / -out.z);
   }
 
+  let disposed = false; // dispose 後は描画・読み取りをしない（失われた文脈への描画を防ぐ）
+
   function resize() {
+    if (disposed) return;
     const rect = container.getBoundingClientRect();
     viewW = Math.max(1, rect.width);
     viewH = Math.max(1, rect.height);
@@ -789,7 +832,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   }
 
   function assignSlots(current) {
-    const wanted = [current - 1, current, current + 1, current + 2].filter((i) => i >= 1 && i <= rules.buildingCount);
+    const wanted = [current - 2, current - 1, current, current + 1, current + 2, current + 3, current + 4].filter((i) => i >= 1 && i <= rules.buildingCount);
     slots.forEach((s, si) => {
       if (s.index !== -1 && !wanted.includes(s.index)) hideSlot(s, si);
     });
@@ -829,10 +872,15 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     sun.intensity = cur.dirI;
     bulbMat.color.setRGB(0.5, 0.5, 0.52).lerp(tmpColor.set(0xffe9b0), Math.min(1, cur.glow * 1.1));
     poolMat.opacity = cur.glow * 0.55;
+    pools.visible = poolMat.opacity > 0.001;
     haloMat.opacity = cur.glow * 0.85;
+    halos.visible = haloMat.opacity > 0.001;
     farGlowMat.opacity = Math.min(1, cur.glow * 1.05);
+    farGlow.visible = farGlowMat.opacity > 0.001;
     starMat.opacity = cur.stars;
+    stars.visible = starMat.opacity > 0.001;
     moonMat.opacity = Math.min(1, cur.stars * 1.1);
+    moon.visible = moonMat.opacity > 0.001;
     refreshGlass();
   }
 
@@ -867,8 +915,27 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   globalThis.addEventListener('resize', onResize);
 
   function drawFrame() {
+    if (disposed) return;
     renderer.render(scene, camera);
   }
+
+  /** 体の比較用の材質（キャラクター側が公開していればそれを使い、なければトゥーンの材質を探す）。 */
+  let cmpMats = null;
+  function comparisonMats() {
+    if (cmpMats) return cmpMats;
+    if (hero.comparisonMaterials?.length) cmpMats = [...hero.comparisonMaterials];
+    else {
+      let best = null;
+      hero.group.traverse((o) => {
+        const m = o.material;
+        if (m?.isShaderMaterial && m.uniforms?.uColor && m.uniforms?.uGloss && (!best || m.uniforms.uGloss.value > best.uniforms.uGloss.value)) best = m;
+      });
+      cmpMats = best ? [best] : [];
+    }
+    return cmpMats;
+  }
+
+  comparisonMats().forEach(maskWrite);
 
   const heroWorldPoint = (out) => {
     heroRoot.updateMatrixWorld(true);
@@ -876,11 +943,36 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     return out.set(-0.05, 1.15, 0.3).applyMatrix4(hero.group.matrixWorld);
   };
 
+  // 初めて警察や演出が出るときの描画の引っかかりを避けるため、最初に一度だけ全部の材質を準備する
+  {
+    const restore = [];
+    const show = (o) => {
+      restore.push([o, o.visible]);
+      o.visible = true;
+    };
+    ferretRoots.forEach((r) => {
+      show(r);
+      r.traverse((o) => o !== r && show(o));
+    });
+    ferrets.forEach((f) => f.beam.traverse(show));
+    beams.forEach(show);
+    show(darkPlane);
+    show(hero.jewel);
+    show(halos);
+    show(pools);
+    show(farGlow);
+    show(stars);
+    show(moon);
+    renderer.compile(scene, camera);
+    restore.reverse().forEach(([o, v]) => (o.visible = v));
+  }
+
   const api = {
     kind: 'three',
     renderer,
     /** 毎フレーム。t はゲーム内時刻、color は体色（HSV整数）、policeStage は警察の人数。 */
     update({ t, color, policeStage = 0, searching = false, nervous = 0, walking = true }) {
+      if (disposed) return;
       const now = performance.now();
       const dt = Math.min(0.1, (now - lastFrame) / 1000);
       lastFrame = now;
@@ -913,6 +1005,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     },
     /** 練習用：目標の壁だけを見せる。 */
     showPractice(target) {
+      if (disposed) return;
       slots.forEach((s, i) => hideSlot(s, i));
       layoutSlot(0, 1, target, { heightScale: 100, kind: 'house', windows: 2, roof: 0, trimTone: 0, sign: -1 });
       ferretRoots.forEach((r, i) => {
@@ -925,6 +1018,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       }
     },
     renderPractice(color, target) {
+      if (disposed) return;
       const s = slots[0];
       const [r, g, b] = rgbFloat(target);
       s.facadeMat.color.setRGB(r, g, b);
@@ -943,7 +1037,8 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const start = performance.now();
       const duration = kind === 'detected' ? 2600 : kind === 'cleared' ? 2400 : 600;
       ferrets.forEach((f) => (f.beam.visible = false));
-      const home = hero.jewel.position.clone();
+      const home = jewelHome; // 宝石は常に尻尾の元の位置から出す（開始演出を飛ばしても胸からは出さない）
+      hero.jewel.position.copy(home);
       const dir = new THREE.Vector3();
       const src = new THREE.Vector3();
       const target = new THREE.Vector3();
@@ -977,7 +1072,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
             hero.tail.scale.set(1 + k * 0.25, 1 - k * 0.2, 1);
           }
           drawFrame();
-          if (k >= 1 || signal?.aborted) {
+          if (k >= 1 || signal?.aborted || disposed) {
             resolve();
             return;
           }
@@ -1007,9 +1102,10 @@ export function createThreeStage(container, { course, decorations, rules = RULES
             shopExtras.visible = true;
           }
           drawFrame();
-          if (k >= 1 || signal?.aborted) {
+          if (k >= 1 || signal?.aborted || disposed) {
             heroRoot.position.y = SIDEWALK_Y;
             hero.jewel.visible = false;
+            hero.jewel.position.copy(jewelHome);
             resolve();
             return;
           }
@@ -1029,8 +1125,10 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     },
     /** 検証用：ワールド座標の1点（x,y,z）を、描画済みの画面から読む（8ビットのRGB）。 */
     pixelAt(worldX, worldY, worldZ = 0) {
+      if (disposed) return null;
       camera.updateMatrixWorld(true);
       const v = new THREE.Vector3(worldX, worldY, worldZ).project(camera);
+      if (v.z < -1 || v.z > 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) return null; // 画面の外
       const canvas = renderer.domElement;
       const px = Math.min(canvas.width - 1, Math.max(0, Math.floor(((v.x + 1) / 2) * canvas.width)));
       const py = Math.min(canvas.height - 1, Math.max(0, Math.floor(((v.y + 1) / 2) * canvas.height)));
@@ -1044,6 +1142,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
      * 壁は、主人公・警察・街灯から画面上で最も離れた位置の点を選び、手前に何も入らないようにする。
      */
     sampleComparison(index) {
+      if (disposed) return null;
       drawFrame();
       camera.updateMatrixWorld(true);
       const heroP = heroWorldPoint(new THREE.Vector3());
@@ -1060,7 +1159,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         if (r.visible) blockers.push(toScreen(new THREE.Vector3(r.position.x, SIDEWALK_Y + 1.5, r.position.z)));
       });
       const k0 = Math.floor(refX / W);
-      for (let j = -1; j <= 3; j += 1) blockers.push(toScreen(new THREE.Vector3((k0 + j) * W, 2.5, 0.45)));
+      for (let j = -2; j <= 5; j += 1) blockers.push(toScreen(new THREE.Vector3((k0 + j) * W, 2.5, 0.45)));
       // 候補点ごとに、カメラからの視線の最初の不透明な物体が正面の面かを確かめる（手前に人・街灯などが入る点は使わない）
       const slotFacade = slot ? slot.facade : null;
       const isClear = (p) => {
@@ -1086,9 +1185,104 @@ export function createThreeStage(container, { course, decorations, rules = RULES
           if (!best || score > best.score) best = { score, lx, wy };
         }
       }
-      const lx = best ? best.lx : -width / 2 + 1.0;
-      const WALL_Y = best ? best.wy : 2.3;
-      return { wall: api.pixelAt(cx + lx, WALL_Y, 0), hero: api.pixelAt(heroP.x, heroP.y, heroP.z) };
+      if (!best) return null; // 手前に何も入らない壁の点が見つからない
+      const lx = best.lx;
+      const WALL_Y = best.wy;
+      const wall = api.pixelAt(cx + lx, WALL_Y, 0);
+      const heroPx = api.pixelAt(heroP.x, heroP.y, heroP.z);
+      if (!wall || !heroPx) return null;
+      return { wall, hero: heroPx };
+    },
+    /**
+     * 検証用：見えている壁の正面（全面）と体の中央の色が、判定と同じ値かを全画素で調べる。
+     * 比較面だけを区別できる色で塗った版を描き、その画素が通常の描画でも同じ値かを読み比べる。
+     * 光・影・霧のような重ね描きが比較面にかかっていれば、不一致として数える。
+     */
+    checkComparisonSurfaces() {
+      if (disposed) return null;
+      drawFrame();
+      const gl = renderer.getContext();
+      const cw = renderer.domElement.width;
+      const ch = renderer.domElement.height;
+      const readAll = () => {
+        const b = new Uint8Array(cw * ch * 4);
+        gl.readPixels(0, 0, cw, ch, gl.RGBA, gl.UNSIGNED_BYTE, b);
+        return b;
+      };
+      const normal = readAll();
+      const mats = new Map();
+      scene.traverse((o) => {
+        if (!o.material) return;
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => mats.set(m, m.colorWrite));
+      });
+      // 不透明な物（手前の人・手足の輪郭・街灯など）はそのまま描いて、比較面を隠す所を除く。重ね描きの光（透明）だけ消す
+      for (const m of mats.keys()) if (m.transparent) m.colorWrite = false;
+      const live = slots.filter((sl) => sl.index > 0 && sl.group.visible);
+      const saved = live.map((sl) => sl.facadeMat.color.clone());
+      live.forEach((sl, i) => {
+        sl.facadeMat.colorWrite = true;
+        sl.facadeMat.color.setRGB(((i + 1) * 40) / 255, 0, 0);
+      });
+      const bodyMats = comparisonMats().filter((m) => m.uniforms?.uColor);
+      const bodySaved = bodyMats.map((m) => m.uniforms.uColor.value.clone());
+      const bodyTarget = bodyMats.length ? bodyMats[0].uniforms.uColor.value.toArray().map((x) => Math.round(x * 255)) : null;
+      bodyMats.forEach((m) => {
+        m.colorWrite = true;
+        m.uniforms.uColor.value.setRGB(0, 128 / 255, 0);
+      });
+      const clearSaved = renderer.getClearColor(new THREE.Color());
+      renderer.setClearColor(0x000000, 1);
+      const bgFog = scene.fog;
+      scene.fog = null;
+      renderer.render(scene, camera);
+      const mask = readAll();
+      scene.fog = bgFog;
+      renderer.setClearColor(clearSaved, 1);
+      for (const [m, c] of mats) m.colorWrite = c;
+      live.forEach((sl, i) => sl.facadeMat.color.copy(saved[i]));
+      bodyMats.forEach((m, i) => m.uniforms.uColor.value.copy(bodySaved[i]));
+      drawFrame();
+      const key = (i) => mask[i] * 65536 + mask[i + 1] * 256 + mask[i + 2];
+      const res = { wallPixels: 0, wallMismatches: 0, bodyPixels: 0, bodyMismatches: 0, maxDev: 0, perSlot: live.map((sl) => ({ index: sl.index, pixels: 0, mismatches: 0 })) };
+      const targets = live.map((sl) => saved[live.indexOf(sl)].toArray().map((x) => Math.round(x * 255)));
+      for (let y = 2; y < ch - 2; y += 1) {
+        for (let x = 2; x < cw - 2; x += 1) {
+          const i = (y * cw + x) * 4;
+          let kind = 0;
+          let tgt = null;
+          let slotNo = -1;
+          if (mask[i + 1] === 0 && mask[i + 2] === 0 && mask[i] > 0 && mask[i] % 40 === 0 && mask[i] / 40 <= live.length) {
+            kind = 1;
+            slotNo = mask[i] / 40 - 1;
+            tgt = targets[slotNo];
+          } else if (bodyTarget && mask[i] === 0 && mask[i + 1] === 128 && mask[i + 2] === 0) {
+            kind = 2;
+            tgt = bodyTarget;
+          }
+          if (!kind) continue;
+          const k = key(i);
+          let same = true;
+          for (let dy = -2; dy <= 2 && same; dy += 1) for (let dx = -2; dx <= 2; dx += 1) if (key(((y + dy) * cw + x + dx) * 4) !== k) { same = false; break; }
+          if (!same) continue;
+          const dev = Math.max(Math.abs(normal[i] - tgt[0]), Math.abs(normal[i + 1] - tgt[1]), Math.abs(normal[i + 2] - tgt[2]));
+          if (kind === 1) {
+            res.wallPixels += 1;
+            res.perSlot[slotNo].pixels += 1;
+            if (dev > 0) {
+              res.wallMismatches += 1;
+              res.perSlot[slotNo].mismatches += 1;
+            }
+          } else {
+            res.bodyPixels += 1;
+            if (dev > 0) {
+              res.bodyMismatches += 1;
+              res.bodyBad = res.bodyBad ?? { x, y: ch - 1 - y, got: [normal[i], normal[i + 1], normal[i + 2]], want: tgt, maskPx: [mask[i], mask[i + 1], mask[i + 2]], right: [normal[i + 4], normal[i + 5], normal[i + 6]], left: [normal[i - 4], normal[i - 3], normal[i - 2]] };
+            }
+          }
+          if (dev > res.maxDev) res.maxDev = dev;
+        }
+      }
+      return res;
     },
     /** 描画物体の数（連戦での増加の確認用、SCOPE-03）。 */
     stats() {
@@ -1098,6 +1292,8 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     },
     resize,
     dispose() {
+      if (disposed) return;
+      disposed = true;
       globalThis.removeEventListener('resize', onResize);
       hero.dispose?.();
       ferrets.forEach((f) => f.dispose?.());
@@ -1107,7 +1303,9 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         if (o.isInstancedMesh) o.dispose();
       });
       textures.forEach((t) => t.dispose());
+      shop?.userData?.dispose?.();
       renderer.dispose();
+      renderer.forceContextLoss?.();
       renderer.domElement.remove();
     },
   };
