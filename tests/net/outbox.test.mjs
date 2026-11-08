@@ -146,3 +146,26 @@ test('受付後は状況照会へ切り替え、訂正や状態の変化を記�
   assert.equal(rec.unseenChange, true);
   store.close();
 });
+
+test('受付済みの記録が51件あっても、すべての状況を照会できる', async () => {
+  const store = await fresh();
+  try {
+    const playIds = Array.from({ length: 51 }, () => uuid());
+    const credentials = new Map(playIds.map((playId) => [playId, randomSecret()]));
+    for (const [playId, secret] of credentials) {
+      await store.put('records', { playId, secret, status: 'verifying', corrections: [] });
+    }
+    const api = fakeServer((path, body) => {
+      if (path !== 'status') return null;
+      if (body.items.length > 50) return new ApiError('bad_items', { status: 400 });
+      if (body.items.some(({ playId, secret }) => credentials.get(playId) !== secret)) return new ApiError('not_found', { status: 404 });
+      return null;
+    });
+    const updated = await refreshRecords({ api, store });
+    assert.deepEqual(new Set(updated.map((r) => r.playId)), new Set(playIds));
+    assert.equal(updated.length, 51);
+    assert.ok((await store.getAll('records')).every((r) => r.status === 'official' && r.unseenChange));
+  } finally {
+    store.close();
+  }
+});

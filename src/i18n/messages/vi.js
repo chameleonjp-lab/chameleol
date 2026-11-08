@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "Độ khớp trung bình được làm tròn đến hai chữ số thập phân. Chuỗi được xét theo giá trị trước khi làm tròn (từ 85% trở lên).",
   "result.nameLabel": "Tên:",
   "result.localBest": "Tốt nhất trên thiết bị này: {buildings} tòa, {average}",
-  "result.rank": "Hạng chính thức: {rank}",
+  "result.rank": "Thứ hạng của thành tích tốt nhất của bạn: {rank}",
   "result.rankError": "Không tải được thứ hạng. Kỷ lục của bạn đã được nhận.",
   "result.again": "Chơi lại",
   "result.status.anonymous": "Ván này không có tên nên không được gửi lên bảng xếp hạng.",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "Tên của bạn",
   "ranking.mineValue": ": hạng {rank} ({buildings} tòa, {average})",
 
+  "records.localTitle": "Lịch sử trên thiết bị",
   "records.title": "Trạng thái kỷ lục",
   "records.intro": "Các ván chơi trên thiết bị này, mới nhất trước.",
   "records.empty": "Chưa có kỷ lục.",

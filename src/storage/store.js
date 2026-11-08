@@ -162,11 +162,11 @@ export class Store {
   }
 
   /** 別のタブ（または再読込後のこのタブ）が進行中のプレイを引き継ぐ。世代を進め、古い担当の書込を止める。 */
-  async claimRun(tabId) {
+  async claimRun(tabId, expectedPlayId) {
     const tx = this.tx(['runs'], 'readwrite');
     const runs = tx.objectStore('runs');
     const current = await req(runs.get(RUN_SLOT));
-    if (!current || current.status !== 'active') {
+    if (!current || current.status !== 'active' || (expectedPlayId !== undefined && current.playId !== expectedPlayId)) {
       tx.abort();
       await done(tx).catch(() => {});
       return null;
@@ -225,11 +225,11 @@ export class Store {
   }
 
   /** 読めない・対応しない版の保存を、消さずに隔離する。欄は空ける。 */
-  async quarantineRun(reason) {
+  async quarantineRun(reason, expectedPlayId) {
     const tx = this.tx(['runs', 'quarantine'], 'readwrite');
     const runs = tx.objectStore('runs');
     const current = await req(runs.get(RUN_SLOT));
-    if (!current) {
+    if (!current || current.status !== 'active' || (expectedPlayId !== undefined && current.playId !== expectedPlayId)) {
       tx.abort();
       await done(tx).catch(() => {});
       return false;

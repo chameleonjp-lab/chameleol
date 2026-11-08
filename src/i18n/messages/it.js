@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "La corrispondenza media è arrotondata a due decimali. Le serie sono valutate prima dell’arrotondamento (85% o più).",
   "result.nameLabel": "Nome:",
   "result.localBest": "Migliore su questo dispositivo: {buildings} palazzi, {average}",
-  "result.rank": "Posizione ufficiale: {rank}ª",
+  "result.rank": "Posizione del tuo miglior risultato: {rank}ª",
   "result.rankError": "Impossibile caricare la posizione. Il tuo risultato è stato ricevuto.",
   "result.again": "Gioca ancora",
   "result.status.anonymous": "Questa partita non aveva un nome, quindi non viene inviata alla classifica.",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "Il tuo nome",
   "ranking.mineValue": ": {rank}° ({buildings} pal., {average})",
 
+  "records.localTitle": "Cronologia locale",
   "records.title": "Stato dei risultati",
   "records.intro": "Partite giocate su questo dispositivo, dalla più recente.",
   "records.empty": "Ancora nessun risultato.",

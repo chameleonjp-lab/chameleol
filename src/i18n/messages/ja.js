@@ -127,7 +127,7 @@ export default {
   'result.roundingNote': '平均一致度は小数2桁に四捨五入して表示します。連続成功は四捨五入する前の値（85%以上）で判定しています。',
   'result.nameLabel': '名前：',
   'result.localBest': 'この端末でのベスト：{buildings}棟・{average}',
-  'result.rank': '正式な順位：{rank}位',
+  'result.rank': 'ベスト記録の順位：{rank}位',
   'result.rankError': '順位を読み込めませんでした。記録は受け付けられています。',
   'result.again': 'もう一度',
   'result.status.anonymous': '名前なしのプレイのため、ランキングには送りません。',
@@ -195,6 +195,7 @@ export default {
   'ranking.mine': 'あなたの名前',
   'ranking.mineValue': '：{rank}位（{buildings}棟・{average}）',
 
+  'records.localTitle': '端末内の記録',
   'records.title': '記録の送信・確認状況',
   'records.intro': 'この端末から遊んだ記録を、新しい順に表示します。',
   'records.empty': 'まだ記録はありません。',

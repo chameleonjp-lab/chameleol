@@ -53,3 +53,46 @@ test('VERSION-01: 別の版の中断プレイは消さずに残し、その版�
     await env.close();
   }
 });
+
+test('単独公開版はランキング登録を表示せず、保存済みの名前があってもそのまま遊べる', async () => {
+  execFileSync(process.execPath, [join(ROOT, 'scripts', 'build.mjs')], {
+    cwd: ROOT,
+    stdio: 'ignore',
+    env: {
+      ...process.env,
+      KAMEREORU_ENV: 'production',
+      KAMEREORU_STANDALONE: '1',
+      KAMEREORU_API: '',
+      KAMEREORU_PUBLIC_URL: 'https://example.invalid/kamereoru/',
+    },
+  });
+  const env = await launch({ root: join(ROOT, 'dist') });
+  const { page } = env;
+  try {
+    await page.goto(env.url);
+    await page.waitForSelector('[data-testid=home-start]');
+    await page.evaluate(async () => globalThis.__kamereoru.store.set('nameRaw', '前の名前'));
+    await page.reload();
+    await page.waitForSelector('[data-testid=home-start]');
+    assert.equal(await page.locator('.name-help').count(), 0);
+    assert.equal(await page.locator('[data-testid=home-ranking]').count(), 0);
+    assert.equal(await page.locator('.notice-dev').count(), 0);
+    await page.evaluate(async () => globalThis.__kamereoru.store.put('localResults', {
+      playId: 'saved-offline', ranked: false, name: '', summary: { buildings: 4, rankAverage: 9123 }, endedAt: Date.now(),
+    }));
+    await page.click('[data-testid=home-records]', { timeout: 3000 });
+    await page.waitForSelector('.records-list li');
+    assert.match(await page.textContent('.records-list li'), /91[.,]23/);
+    assert.equal(await page.locator('.records-screen button', { hasText: '状況を更新する' }).count(), 0);
+    await page.click('.btn-back');
+    await page.click('[data-testid=home-start]');
+    const skip = await page.waitForSelector('[data-testid=skip-opening]', { timeout: 5000 }).catch(() => null);
+    if (skip) await skip.click().catch(() => {});
+    await page.click('[data-testid=guide-go]');
+    await page.waitForFunction(() => globalThis.__kamereoru.session?.running === true);
+    assert.equal(await page.evaluate(() => globalThis.__kamereoru.session.meta.ranked), false);
+    assert.deepEqual(env.errors, []);
+  } finally {
+    await env.close();
+  }
+});

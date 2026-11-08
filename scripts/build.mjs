@@ -26,8 +26,13 @@ const keepFrom = keepIdx >= 0 ? args[keepIdx + 1] : null;
 const env = process.env.KAMEREORU_ENV ?? 'verification';
 const api = process.env.KAMEREORU_API ?? '';
 const publicUrl = process.env.KAMEREORU_PUBLIC_URL ?? '';
-if (env === 'production' && (!api || !publicUrl)) {
-  console.error('production build needs KAMEREORU_API and KAMEREORU_PUBLIC_URL');
+const standalone = process.env.KAMEREORU_STANDALONE === '1';
+if (standalone && api) {
+  console.error('KAMEREORU_STANDALONE cannot be combined with KAMEREORU_API');
+  process.exit(1);
+}
+if (env === 'production' && (!publicUrl || (!standalone && !api))) {
+  console.error('production build needs KAMEREORU_PUBLIC_URL and either KAMEREORU_API or KAMEREORU_STANDALONE=1');
   process.exit(1);
 }
 const shared = checkShared();
@@ -45,7 +50,14 @@ function* walk(dir) {
   }
 }
 
-// 資源の指紋から版名を決める（同じ中身なら同じ版名）
+let commit = 'unknown';
+try {
+  commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+} catch {
+  /* git がない環境 */
+}
+
+// 配布内容の指紋から版名を決める。接続先や公開設定の異なる版も分ける。
 const sources = ['src', 'vendor'];
 const contentHash = createHash('sha256');
 for (const dir of sources) {
@@ -54,7 +66,11 @@ for (const dir of sources) {
     contentHash.update(readFileSync(f));
   }
 }
-contentHash.update(readFileSync(join(ROOT, 'index.html')));
+for (const file of ['index.html', 'assets/credits.md', 'scripts/build.mjs']) {
+  contentHash.update(file);
+  contentHash.update(readFileSync(join(ROOT, file)));
+}
+contentHash.update(JSON.stringify({ env, api, publicUrl, commit }));
 const assetVersion = `${GAME_VERSION}-${contentHash.digest('hex').slice(0, 10)}`;
 
 // 以前の版のフォルダを残す（切り戻し・旧版の保存の再開のため）
@@ -78,13 +94,6 @@ for (const name of kept) cpSync(join(preserved, name), join(DIST, 'v', name), { 
 const vroot = join(DIST, 'v', assetVersion);
 for (const dir of sources) cpSync(join(ROOT, dir), join(vroot, dir), { recursive: true });
 cpSync(join(ROOT, 'assets', 'credits.md'), join(vroot, 'credits.md'));
-
-let commit = 'unknown';
-try {
-  commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT }).toString().trim();
-} catch {
-  /* git がない環境 */
-}
 
 function entryHtml(prefix) {
   let html = readFileSync(join(ROOT, 'index.html'), 'utf8');

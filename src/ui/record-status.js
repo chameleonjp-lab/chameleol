@@ -60,7 +60,7 @@ function values(item) {
   return t('records.values', { buildings: formatNumber(v.buildings ?? 0), average: formatPercent2(v.rankAverage ?? v.average ?? null) });
 }
 
-export function createRecordsView({ store, onResend, onReview, pageSize = 20 }) {
+export function createRecordsView({ store, onResend, onReview, localOnly = false, pageSize = 20 }) {
   const list = h('ul', { class: 'records-list' });
   const more = button('records.more', () => {
     shown += pageSize;
@@ -79,10 +79,10 @@ export function createRecordsView({ store, onResend, onReview, pageSize = 20 }) 
       const date = new Date(item.at ?? Date.now());
       const row = h('li', { class: `record record-${state}`, 'data-state': state }, [
         h('div', { class: 'record-head' }, [
-          h('span', { class: 'record-state' }, t(STATE_KEYS[state])),
+          !localOnly && h('span', { class: 'record-state' }, t(STATE_KEYS[state])),
           h('time', { datetime: date.toISOString() }, date.toLocaleString()),
         ]),
-        h('div', { class: 'record-body' }, [item.name ? isolatedText(item.name) : t('records.noName'), ' ', values(item)]),
+        h('div', { class: 'record-body' }, localOnly ? values(item) : [item.name ? isolatedText(item.name) : t('records.noName'), ' ', values(item)]),
       ]);
       if (state === 'retryable_failed' || state === 'pending') row.append(button('records.resend', () => onResend?.(item), { className: 'btn-small' }));
       if (state === 'rejected' && !item.reviewRequested) row.append(button('records.requestReview', () => onReview?.(item), { className: 'btn-small' }));
@@ -106,7 +106,9 @@ export function createRecordsView({ store, onResend, onReview, pageSize = 20 }) 
   }
 
   async function load() {
-    items = await collectRecords(store);
+    items = localOnly
+      ? (await store.getAll('localResults')).map((item) => ({ ...item, source: 'local', at: item.endedAt })).sort((a, b) => (b.at ?? 0) - (a.at ?? 0))
+      : await collectRecords(store);
     render();
     return items;
   }

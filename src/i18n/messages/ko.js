@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "평균 일치도는 소수점 둘째 자리까지 반올림해 표시합니다. 연속 성공은 반올림하기 전의 값(85% 이상)으로 판정합니다.",
   "result.nameLabel": "이름:",
   "result.localBest": "이 기기의 최고 기록: {buildings}개・{average}",
-  "result.rank": "공식 순위: {rank}위",
+  "result.rank": "최고 기록 순위: {rank}위",
   "result.rankError": "순위를 불러오지 못했습니다. 기록은 접수되었습니다.",
   "result.again": "한 번 더",
   "result.status.anonymous": "이름이 없는 게임이라 랭킹에 보내지 않습니다.",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "내 이름",
   "ranking.mineValue": ": {rank}위 ({buildings}개・{average})",
 
+  "records.localTitle": "기기 내 기록",
   "records.title": "기록 전송·확인 상태",
   "records.intro": "이 기기에서 플레이한 기록을 최신순으로 보여 줍니다.",
   "records.empty": "아직 기록이 없습니다.",

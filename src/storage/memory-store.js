@@ -54,9 +54,9 @@ export class MemoryStore {
     return generation;
   }
 
-  async claimRun(tabId) {
+  async claimRun(tabId, expectedPlayId) {
     const current = await this.loadRun();
-    if (!current || current.status !== 'active') return null;
+    if (!current || current.status !== 'active' || (expectedPlayId !== undefined && current.playId !== expectedPlayId)) return null;
     const generation = current.generation + 1;
     await this.put('runs', { ...current, owner: tabId, generation });
     return { generation, snapshot: current.snapshot, playId: current.playId };
@@ -80,9 +80,9 @@ export class MemoryStore {
     await this.put('runs', { slot: RUN_SLOT, status: 'ended', playId: current.playId, owner: tabId, generation: generation + 1 });
   }
 
-  async quarantineRun(reason) {
+  async quarantineRun(reason, expectedPlayId) {
     const current = await this.loadRun();
-    if (!current) return false;
+    if (!current || current.status !== 'active' || (expectedPlayId !== undefined && current.playId !== expectedPlayId)) return false;
     await this.put('quarantine', { id: Date.now(), kind: 'run', reason, record: current });
     await this.put('runs', { slot: RUN_SLOT, status: 'quarantined', playId: current.playId, generation: (current.generation ?? 0) + 1 });
     return true;

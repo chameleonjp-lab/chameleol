@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "平均吻合度四舍五入到小数点后两位显示。连续成功按四舍五入前的数值（85% 以上）判定。",
   "result.nameLabel": "名字：",
   "result.localBest": "这台设备上的最好成绩：{buildings} 栋・{average}",
-  "result.rank": "正式名次：第 {rank} 名",
+  "result.rank": "最佳纪录的排名：第 {rank} 名",
   "result.rankError": "无法读取名次。你的记录已被接收。",
   "result.again": "再玩一次",
   "result.status.anonymous": "这局游戏没有名字，因此不会发送到排行榜。",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "你的名字",
   "ranking.mineValue": "：第 {rank} 名（{buildings} 栋・{average}）",
 
+  "records.localTitle": "本机记录",
   "records.title": "记录的发送与确认状态",
   "records.intro": "按从新到旧显示在这台设备上玩过的记录。",
   "records.empty": "还没有记录。",

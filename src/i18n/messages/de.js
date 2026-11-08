@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "Die durchschnittliche Übereinstimmung wird auf zwei Nachkommastellen gerundet angezeigt. Serien werden vor dem Runden bewertet (85 % oder mehr).",
   "result.nameLabel": "Name:",
   "result.localBest": "Bestes Ergebnis auf diesem Gerät: {buildings} Gebäude, {average}",
-  "result.rank": "Offizieller Rang: {rank}",
+  "result.rank": "Rang deiner Bestleistung: {rank}",
   "result.rankError": "Der Rang konnte nicht geladen werden. Dein Ergebnis ist angekommen.",
   "result.again": "Nochmal spielen",
   "result.status.anonymous": "Dieses Spiel hatte keinen Namen und wird daher nicht an die Rangliste gesendet.",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "Dein Name",
   "ranking.mineValue": ": Platz {rank} ({buildings} Geb., {average})",
 
+  "records.localTitle": "Lokale Spielverläufe",
   "records.title": "Status der Ergebnisse",
   "records.intro": "Auf diesem Gerät gespielte Partien, die neuesten zuerst.",
   "records.empty": "Noch keine Ergebnisse.",

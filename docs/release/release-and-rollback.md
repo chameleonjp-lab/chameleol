@@ -10,6 +10,19 @@
 
 `dist/release.json` には、ゲームの版、判定規則の版、出題の版、保存形式、結果の形式、共有コードの指紋、各ファイルの SHA-256 を記録します。公開した時は、このファイルを公開記録として残します。
 
+## オンラインランキングを使わない単独公開
+
+本編・練習・端末内の記録・Xでの共有を使える本番版を作ります。実験場への掲載や Supabase への接続は、この手順では行いません。
+
+```sh
+KAMEREORU_ENV=production \
+KAMEREORU_STANDALONE=1 \
+KAMEREORU_PUBLIC_URL=https://chameleonjp-kamereoru.chameleonjp.chatgpt.site/ \
+npm run build
+```
+
+2回目以降の配布では、直前に配布したフォルダを `npm run build -- --keep <前回の dist>` で引き継ぎます。保存時の版を開けるよう、以前の `v/` 以下も一緒に配布します。
+
 ## 1. 検証環境で通す
 
 本番の前に、検証用の Supabase（本番とは別の場所）で一度通します。次の順に進めます。
