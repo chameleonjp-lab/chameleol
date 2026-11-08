@@ -120,12 +120,30 @@ class App {
     }
     if (!run || run.status !== 'active') return;
     const r = GameSession.fromSnapshot(run.snapshot);
+    if (r.error === 'unknown_rules_version' || r.error === 'unknown_format') {
+      // 別の版で保存したプレイ：消さずに残し、保存した版の資源で続けられるよう案内する（切り戻し・更新の両方向）
+      this.foreignRun = { reason: r.error, assetVersion: run.snapshot?.meta?.assetVersion ?? null, rulesVersion: run.snapshot?.meta?.rulesVersion ?? null };
+      return;
+    }
     if (r.error) {
       await this.store.quarantineRun(r.error).catch(() => {});
-      this.notices.push(r.error === 'unknown_rules_version' ? 'notice.savedRunOtherVersion' : 'notice.savedRunBroken');
+      this.notices.push('notice.savedRunBroken');
       return;
     }
     this.savedRun = run;
+  }
+
+  /** 別の版のプレイの案内（保存した版のページ）。 */
+  foreignRunLink() {
+    const v = this.foreignRun?.assetVersion;
+    if (!v || v === this.runtime.assetVersion || !/^[0-9A-Za-z._-]{1,64}$/.test(v)) return null;
+    return new URL(`v/${v}/`, document.baseURI.replace(/v\/[^/]+\/$/, '')).href;
+  }
+
+  /** 別の版のプレイを、確認してから保管庫へ移す（削除しない）。 */
+  async shelveForeignRun() {
+    await this.store.quarantineRun(this.foreignRun?.reason ?? 'unknown_rules_version').catch(() => {});
+    this.foreignRun = null;
   }
 
   async flushNetwork() {
@@ -181,13 +199,24 @@ class App {
     const pendingBadge = h('span', { class: 'badge', hidden: true });
     const recordsBtn = button('home.records', () => this.showRecords(), { testid: 'home-records' });
     recordsBtn.append(pendingBadge);
+    const homeArt = h('div', { class: 'home-art', 'aria-hidden': 'true' }, [h('div', { class: 'home-chameleon' }), h('div', { class: 'home-jewel' })]);
     const notices = h('div', { class: 'notices' });
     for (const key of this.notices.splice(0)) notices.append(h('p', { class: 'notice' }, t(key)));
     if (this.flags.recordsChanged) notices.append(h('p', { class: 'notice notice-update' }, [t('notice.recordsUpdated'), ' ', button('home.records', () => this.showRecords(), { className: 'btn-small' })]));
+    if (this.foreignRun) {
+      const link = this.foreignRunLink();
+      notices.append(
+        h('p', { class: 'notice notice-update', 'data-testid': 'foreign-run' }, [
+          t('notice.savedRunOtherVersion'),
+          link ? ' ' : '',
+          link ? h('a', { href: link, class: 'btn btn-small', 'data-testid': 'foreign-run-open' }, t('notice.openSavedVersion')) : '',
+        ]),
+      );
+    }
     if (this.runtime.isVerification) notices.append(h('p', { class: 'notice notice-dev' }, t(this.api.configured ? 'notice.verification' : 'notice.notConnected')));
     const el = h('main', { class: 'screen home' }, [
       h('header', { class: 'home-header' }, [
-        h('div', { class: 'home-art', 'aria-hidden': 'true' }, [h('div', { class: 'home-chameleon' }), h('div', { class: 'home-jewel' })]),
+        homeArt,
         h('h1', { class: 'title' }, t('app.title')),
         h('p', { class: 'subtitle' }, t('app.tagline')),
       ]),
@@ -203,9 +232,11 @@ class App {
         recordsBtn,
         button('share.button', () => this.shareHome(), { className: 'btn-x', testid: 'home-share' }),
       ]),
+      this.runtime.isVerification ? this.verificationMenu() : null,
       h('footer', { class: 'footer' }, [t('app.version', { v: this.runtime.gameVersion, rules: RULES_V1.rulesVersion })]),
     ]);
     this.mount(el, () => this.showHome());
+    this.mountShowcase(homeArt);
     this.store
       .getAll('outbox')
       .then((items) => {
@@ -235,6 +266,22 @@ class App {
     const name = normalizeName(rawName);
     if (!name.ok) {
       toast(this.layer, t('name.fixBeforeStart'), { kind: 'warn' });
+      return;
+    }
+    if (this.foreignRun) {
+      const link = this.foreignRunLink();
+      dialog(this.layer, {
+        titleKey: 'start.foreignRun.title',
+        bodyKey: 'start.foreignRun.body',
+        actions: [
+          ...(link ? [{ key: 'notice.openSavedVersion', primary: true, onClick: () => globalThis.location.assign(link) }] : []),
+          { key: 'start.foreignRun.shelve', danger: true, testid: 'foreign-shelve', onClick: async () => {
+            await this.shelveForeignRun();
+            this.startFlow(rawName);
+          } },
+          { key: 'common.cancel' },
+        ],
+      });
       return;
     }
     if (this.savedRun) {
@@ -358,15 +405,26 @@ class App {
     await this.persistEnd(r.session, claimed.generation);
   }
 
+  /** 検証版だけに出すメニュー（実機担当が境界を短時間で試す）。正式版では出さない。 */
+  verificationMenu() {
+    const go = (atMs) => () => this.debugStart({ atMs }).catch((e) => toast(this.layer, String(e.message), { kind: 'warn' }));
+    return h('details', { class: 'panel verify-menu' }, [
+      h('summary', {}, t('verify.title')),
+      h('p', { class: 'note' }, t('verify.note')),
+      button('verify.before20', go(92500), { className: 'btn-small', testid: 'verify-before20' }),
+      button('verify.beforeExit', go(246000), { className: 'btn-small', testid: 'verify-before-exit' }),
+      button('verify.night', go(200000), { className: 'btn-small', testid: 'verify-night' }),
+    ]);
+  }
+
   // ---------- 検証用：境界を短時間で試す ----------
   /**
    * 検証版（localhost）だけで使える。目標色どおりに atMs まで自動で進めてから時計を渡す。
    * 必ずランキング対象外として始め、開始受付・順位登録・送信待ちへは入れない。
    */
   async debugStart({ atMs = 93000 } = {}) {
-    const local = ['localhost', '127.0.0.1'].includes(globalThis.location?.hostname);
-    if (!this.runtime.isVerification || !local) throw new Error('debugStart is only for local verification');
-    const session = new GameSession({ playId: uuid(), launchId: uuid(), ranked: false, name: '', seed: randomSeed(), gameVersion: this.runtime.gameVersion, startedAt: Date.now(), debug: true });
+    if (!this.runtime.isVerification) throw new Error('debugStart is only for verification builds');
+    const session = new GameSession({ playId: uuid(), launchId: uuid(), ranked: false, name: '', seed: randomSeed(), gameVersion: this.runtime.gameVersion, assetVersion: this.runtime.assetVersion, startedAt: Date.now(), debug: true });
     const rules = RULES_V1;
     for (let i = 1; i <= rules.buildingCount; i += 1) {
       const tEval = (i - 1) * rules.buildingMs + rules.evalStartMs - 100;
@@ -396,6 +454,7 @@ class App {
       requestId,
       seed: ranked ? seed : randomSeed(),
       gameVersion: this.runtime.gameVersion,
+      assetVersion: this.runtime.assetVersion,
       startedAt: Date.now(),
     };
     const session = new GameSession(meta);
@@ -584,7 +643,8 @@ class App {
       this.audio.setPoliceStage(session.running ? stage : 0);
       if (instant.update(s)) this.audio.play('success');
       refreshHud();
-      this.stage?.update({ t: s.t, color: s.color, policeStage: stage, searching: s.matchUnits != null && classifyMatch(s.matchUnits) === 'success' && stage > 0, nervous: stage / 2, walking: session.running });
+      const matchState = s.matchUnits == null ? null : classifyMatch(s.matchUnits);
+      this.stage?.update({ t: s.t, color: s.color, policeStage: stage, searching: matchState === 'success' && stage > 0, nervous: stage / 2, walking: session.running, matchState });
       this.raf = requestAnimationFrame(loop);
     };
 
@@ -1240,7 +1300,26 @@ class App {
     this.showHowTo();
   }
 
+  /** ホームの立体のカメレオン（WebGL が使えない時は CSS の絵のまま）。 */
+  async mountShowcase(host) {
+    const token = (this.showcaseToken = {});
+    try {
+      const probe = document.createElement('canvas');
+      if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return;
+      const { createShowcase } = await import('./scene/showcase.js');
+      if (this.showcaseToken !== token || !host.isConnected) return;
+      clear(host);
+      host.classList.add('home-art-3d');
+      this.showcase = createShowcase(host);
+    } catch {
+      /* 絵のまま */
+    }
+  }
+
   disposeStage() {
+    this.showcaseToken = null;
+    this.showcase?.dispose();
+    this.showcase = null;
     cancelAnimationFrame(this.raf);
     this.stage?.dispose();
     this.stage = null;

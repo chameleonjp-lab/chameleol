@@ -1,8 +1,8 @@
 {
   "generatedFrom": "src/rules/v1 + src/shared/name.js",
-  "fingerprint": "a9d1758cb12880d55b2cf51acb07e0b263ba2b681a7cf14e1becc17344ae7eab",
+  "fingerprint": "378174120dfc48341b60d3b8cc20e1b9e518e4b40af96f5dba10f3d219fa42fc",
   "files": {
-    "rules/v1/config.js": "cce402ead97963bb823bbec7c550f5bc60c24a97ceb1a83a4101afcdde3318f9",
+    "rules/v1/config.js": "a8455377d640c1fbeb33ee2157e976d89b392b432987ea4e488a4be79b0e6bea",
     "rules/v1/detmath.js": "5971c5ca276db89a077653d074436830278f00e3cc4f259050ca79371b225d7d",
     "rules/v1/color.js": "15a005e6e35c185de7ebb77ce6845655c489d7455efbecc2f06c451c4e0d02b6",
     "rules/v1/course.js": "39cb2396066489a9cc9abdf018109f1b1389b4b8362e31f10112ad9debd18659",

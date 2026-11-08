@@ -259,4 +259,14 @@ export default {
   "share.result.cleared": "Sono scappato da tutti i 50 palazzi!",
   "share.result.values": "{buildings} palazzi, corrispondenza media {average}",
   "share.result.rank": "{rank}° in classifica",
+
+  "notice.openSavedVersion": "Continua nella versione salvata",
+  "start.foreignRun.title": "C’è una partita in pausa di un’altra versione",
+  "start.foreignRun.body": "La partita in pausa è stata salvata da un’altra versione. Puoi continuarla nella pagina di quella versione oppure metterla da parte e iniziarne una nuova. Metterla da parte non la cancella.",
+  "start.foreignRun.shelve": "Mettila da parte e ricomincia",
+  "verify.title": "Menu di prova (non presente nella versione pubblica)",
+  "verify.note": "Partenze per provare rapidamente i limiti. Sempre fuori classifica e mai inviate.",
+  "verify.before20": "Poco prima del palazzo 19→20",
+  "verify.beforeExit": "Poco prima dell’uscita finale",
+  "verify.night": "Dalla città di notte",
 };

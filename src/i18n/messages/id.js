@@ -259,4 +259,14 @@ export default {
   "share.result.cleared": "Berhasil kabur dari 50 gedung!",
   "share.result.values": "{buildings} gedung, rata-rata kecocokan {average}",
   "share.result.rank": "Peringkat {rank}",
+
+  "notice.openSavedVersion": "Lanjutkan di versi yang disimpan",
+  "start.foreignRun.title": "Ada permainan dari versi lain yang dijeda",
+  "start.foreignRun.body": "Permainan yang dijeda disimpan oleh versi lain. Kamu bisa melanjutkannya di halaman versi itu, atau menyimpannya dulu lalu mulai baru. Menyimpan tidak menghapusnya.",
+  "start.foreignRun.shelve": "Simpan dulu dan mulai baru",
+  "verify.title": "Menu uji coba (tidak tampil di versi publik)",
+  "verify.note": "Mulai untuk menguji batas dengan cepat. Selalu tanpa peringkat dan tidak dikirim.",
+  "verify.before20": "Tepat sebelum gedung 19→20",
+  "verify.beforeExit": "Tepat sebelum pintu keluar terakhir",
+  "verify.night": "Dari kota di malam hari",
 };

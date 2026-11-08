@@ -8,6 +8,8 @@ export function loadRuntimeConfig(doc = globalThis.document, loc = globalThis.lo
   const publicUrl = meta('kamereoru-public-url');
   const env = meta('kamereoru-env') ?? 'development';
   const gameVersion = meta('kamereoru-version') ?? GAME_VERSION;
+  // 版別の静的資源の名前（ビルドで決まる。例: 0.1.0-a1b2c3d4）。手元の開発では 'dev'。
+  const assetVersion = meta('kamereoru-asset-version') ?? 'dev';
   const local = loc && ['localhost', '127.0.0.1'].includes(loc.hostname);
   if (local) {
     try {
@@ -17,5 +19,5 @@ export function loadRuntimeConfig(doc = globalThis.document, loc = globalThis.lo
       /* 保存できない環境 */
     }
   }
-  return Object.freeze({ apiBase, publicUrl, env, gameVersion, isVerification: env !== 'production' });
+  return Object.freeze({ apiBase, publicUrl, env, gameVersion, assetVersion, isVerification: env !== 'production' });
 }

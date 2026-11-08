@@ -259,4 +259,14 @@ export default {
   "share.result.cleared": "Échappé des 50 immeubles !",
   "share.result.values": "{buildings} immeubles, correspondance moyenne {average}",
   "share.result.rank": "{rank}e du classement",
+
+  "notice.openSavedVersion": "Reprendre dans la version enregistrée",
+  "start.foreignRun.title": "Une partie d’une autre version est en pause",
+  "start.foreignRun.body": "La partie en pause a été enregistrée par une autre version. Tu peux la reprendre sur la page de cette version, ou la mettre de côté et en commencer une nouvelle. La mettre de côté ne la supprime pas.",
+  "start.foreignRun.shelve": "La mettre de côté et recommencer",
+  "verify.title": "Menu de test (absent de la version publique)",
+  "verify.note": "Départs pour tester rapidement les limites. Toujours hors classement, jamais envoyés.",
+  "verify.before20": "Juste avant l’immeuble 19→20",
+  "verify.beforeExit": "Juste avant la sortie finale",
+  "verify.night": "Depuis la ville de nuit",
 };
