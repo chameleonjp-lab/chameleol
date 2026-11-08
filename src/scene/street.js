@@ -771,7 +771,10 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     return out.multiplyScalar(depth / -out.z);
   }
 
+  let disposed = false; // dispose 後は描画・読み取りをしない（失われた文脈への描画を防ぐ）
+
   function resize() {
+    if (disposed) return;
     const rect = container.getBoundingClientRect();
     viewW = Math.max(1, rect.width);
     viewH = Math.max(1, rect.height);
@@ -912,6 +915,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   globalThis.addEventListener('resize', onResize);
 
   function drawFrame() {
+    if (disposed) return;
     renderer.render(scene, camera);
   }
 
@@ -968,6 +972,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     renderer,
     /** 毎フレーム。t はゲーム内時刻、color は体色（HSV整数）、policeStage は警察の人数。 */
     update({ t, color, policeStage = 0, searching = false, nervous = 0, walking = true }) {
+      if (disposed) return;
       const now = performance.now();
       const dt = Math.min(0.1, (now - lastFrame) / 1000);
       lastFrame = now;
@@ -1000,6 +1005,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     },
     /** 練習用：目標の壁だけを見せる。 */
     showPractice(target) {
+      if (disposed) return;
       slots.forEach((s, i) => hideSlot(s, i));
       layoutSlot(0, 1, target, { heightScale: 100, kind: 'house', windows: 2, roof: 0, trimTone: 0, sign: -1 });
       ferretRoots.forEach((r, i) => {
@@ -1012,6 +1018,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       }
     },
     renderPractice(color, target) {
+      if (disposed) return;
       const s = slots[0];
       const [r, g, b] = rgbFloat(target);
       s.facadeMat.color.setRGB(r, g, b);
@@ -1065,7 +1072,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
             hero.tail.scale.set(1 + k * 0.25, 1 - k * 0.2, 1);
           }
           drawFrame();
-          if (k >= 1 || signal?.aborted) {
+          if (k >= 1 || signal?.aborted || disposed) {
             resolve();
             return;
           }
@@ -1095,7 +1102,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
             shopExtras.visible = true;
           }
           drawFrame();
-          if (k >= 1 || signal?.aborted) {
+          if (k >= 1 || signal?.aborted || disposed) {
             heroRoot.position.y = SIDEWALK_Y;
             hero.jewel.visible = false;
             hero.jewel.position.copy(jewelHome);
@@ -1118,6 +1125,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     },
     /** 検証用：ワールド座標の1点（x,y,z）を、描画済みの画面から読む（8ビットのRGB）。 */
     pixelAt(worldX, worldY, worldZ = 0) {
+      if (disposed) return null;
       camera.updateMatrixWorld(true);
       const v = new THREE.Vector3(worldX, worldY, worldZ).project(camera);
       if (v.z < -1 || v.z > 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) return null; // 画面の外
@@ -1134,6 +1142,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
      * 壁は、主人公・警察・街灯から画面上で最も離れた位置の点を選び、手前に何も入らないようにする。
      */
     sampleComparison(index) {
+      if (disposed) return null;
       drawFrame();
       camera.updateMatrixWorld(true);
       const heroP = heroWorldPoint(new THREE.Vector3());
@@ -1190,6 +1199,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
      * 光・影・霧のような重ね描きが比較面にかかっていれば、不一致として数える。
      */
     checkComparisonSurfaces() {
+      if (disposed) return null;
       drawFrame();
       const gl = renderer.getContext();
       const cw = renderer.domElement.width;
@@ -1282,6 +1292,8 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     },
     resize,
     dispose() {
+      if (disposed) return;
+      disposed = true;
       globalThis.removeEventListener('resize', onResize);
       hero.dispose?.();
       ferrets.forEach((f) => f.dispose?.());
