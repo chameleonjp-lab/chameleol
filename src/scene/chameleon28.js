@@ -282,7 +282,7 @@ export function createChameleon(design = CHAMELEON28) {
   const jewelMat = new THREE.MeshBasicMaterial({ color: 0x9ff3ff });
   const shineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const eyeTex = eyeTexture(P, C);
-  const decalMat = new THREE.MeshBasicMaterial({ map: eyeTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const decalMat = new THREE.MeshBasicMaterial({ map: eyeTex, alphaTest: 0.45 });
   mats.push(bodyMat, eyeMat, outMat, darkMat, tongueMat, jewelMat, shineMat, decalMat);
 
   const unitSphere = track(new THREE.SphereGeometry(1, 28, 20));
@@ -412,7 +412,7 @@ export function createChameleon(design = CHAMELEON28) {
   // ---- 目：飛び出した筒と渦 ----
   const eyeR = K.eyeR * P.es;
   const capTheta = K.eyeCap;
-  const capGeo = track(eyeCapGeometry(eyeR * 1.012, capTheta));
+  const capGeo = track(eyeCapGeometry(eyeR * 1.015, capTheta));
   const eyes = [];
   for (const side of [1, -1]) {
     const pivot = new THREE.Group();
@@ -535,6 +535,8 @@ export function createChameleon(design = CHAMELEON28) {
     tail,
     tongue,
     comparePoint,
+    /** 街の覆い（ステンシル）用：比較する面の材質（体色のトゥーンだけ） */
+    comparisonMaterials: [bodyMat],
     setColor(rgb) {
       bodyMat.uniforms.uColor.value.setRGB(rgb[0], rgb[1], rgb[2]);
       eyeMat.uniforms.uColor.value.setRGB(rgb[0] + (1 - rgb[0]) * tint, rgb[1] + (1 - rgb[1]) * tint, rgb[2] + (1 - rgb[2]) * tint);
