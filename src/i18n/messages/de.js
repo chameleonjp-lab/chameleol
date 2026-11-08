@@ -259,4 +259,14 @@ export default {
   "share.result.cleared": "Allen 50 Gebäuden entkommen!",
   "share.result.values": "{buildings} Gebäude, durchschnittliche Übereinstimmung {average}",
   "share.result.rank": "Platz {rank}",
+
+  "notice.openSavedVersion": "In der gespeicherten Version fortsetzen",
+  "start.foreignRun.title": "Ein Spiel einer anderen Version ist pausiert",
+  "start.foreignRun.body": "Das pausierte Spiel wurde mit einer anderen Version gespeichert. Du kannst es auf der Seite dieser Version fortsetzen oder beiseitelegen und neu starten. Beiseitelegen löscht es nicht.",
+  "start.foreignRun.shelve": "Beiseitelegen und neu starten",
+  "verify.title": "Testmenü (in der öffentlichen Version nicht sichtbar)",
+  "verify.note": "Starts zum schnellen Testen von Grenzen. Immer ohne Rangliste und ohne Senden.",
+  "verify.before20": "Kurz vor Gebäude 19→20",
+  "verify.beforeExit": "Kurz vor dem letzten Ausgang",
+  "verify.night": "In der nächtlichen Stadt",
 };

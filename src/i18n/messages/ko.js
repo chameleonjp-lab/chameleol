@@ -259,4 +259,14 @@ export default {
   "share.result.cleared": "50개 건물에서 도망쳤다!",
   "share.result.values": "{buildings}개 건물・평균 일치도 {average}",
   "share.result.rank": "랭킹 {rank}위",
+
+  "notice.openSavedVersion": "저장한 버전에서 이어하기",
+  "start.foreignRun.title": "다른 버전의 게임이 중단되어 있습니다",
+  "start.foreignRun.body": "중단한 게임은 다른 버전으로 저장되었습니다. 그 버전의 페이지에서 이어하거나, 보관한 뒤 새로 시작할 수 있습니다. 보관해도 삭제하지 않습니다.",
+  "start.foreignRun.shelve": "보관하고 새로 시작하기",
+  "verify.title": "검증 메뉴 (공개 버전에는 나오지 않습니다)",
+  "verify.note": "경계를 빠르게 시험하기 위한 시작입니다. 항상 랭킹 미반영이며 전송하지 않습니다.",
+  "verify.before20": "19→20번째 건물 직전부터",
+  "verify.beforeExit": "마지막 출구 직전부터",
+  "verify.night": "밤거리부터",
 };

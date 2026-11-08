@@ -259,4 +259,14 @@ export default {
   'share.result.cleared': '50棟を逃げきった！',
   'share.result.values': '{buildings}棟・平均一致度{average}',
   'share.result.rank': 'ランキング{rank}位',
+
+  "notice.openSavedVersion": "保存した版で続ける",
+  "start.foreignRun.title": "別の版のプレイが中断中です",
+  "start.foreignRun.body": "中断中のプレイは別の版で保存されています。その版のページで続けるか、保管して新しく始められます。保管しても削除はしません。",
+  "start.foreignRun.shelve": "保管して新しく始める",
+  "verify.title": "検証メニュー（公開版には出ません）",
+  "verify.note": "境界を短く試すための開始です。必ずランキング対象外になり、送信しません。",
+  "verify.before20": "19→20棟の手前から",
+  "verify.beforeExit": "最終出口の手前から",
+  "verify.night": "夜の街から",
 };

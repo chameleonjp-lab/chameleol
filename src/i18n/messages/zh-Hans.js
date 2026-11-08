@@ -259,4 +259,14 @@ export default {
   "share.result.cleared": "成功逃过了 50 栋建筑！",
   "share.result.values": "{buildings} 栋・平均吻合度 {average}",
   "share.result.rank": "排行榜第 {rank} 名",
+
+  "notice.openSavedVersion": "在保存的版本中继续",
+  "start.foreignRun.title": "有一局其他版本的暂停游戏",
+  "start.foreignRun.body": "暂停中的游戏是用其他版本保存的。可以在该版本的页面继续，或先保管起来再开始新游戏。保管不会删除它。",
+  "start.foreignRun.shelve": "保管并开始新游戏",
+  "verify.title": "测试菜单（公开版本中不显示）",
+  "verify.note": "用于快速测试边界的开始方式。一定不计入排行榜，也不会发送。",
+  "verify.before20": "从第 19→20 栋前开始",
+  "verify.beforeExit": "从最终出口前开始",
+  "verify.night": "从夜晚的街道开始",
 };
