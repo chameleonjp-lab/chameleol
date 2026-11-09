@@ -1,6 +1,7 @@
 // キャラクターと宝石店の立体モデル。
 // - 主人公カメレオンは chameleon28.js（持ち主の設定値）から作る。体色の面は照明なしの「比較用トゥーン」。
-// - 警察官（フェレット）と宝石店は比較面ではないので、照明を受ける3段階のトゥーン材質で立体感を出す。
+// - 警察官（フェレット）は主人公と同じ並びの登場人物。主人公と同じ太さの輪郭線と、照明を受けないトゥーンで描く。
+// - 宝石店は比較面ではないので、照明を受ける3段階のトゥーン材質で立体感を出す。
 //   街が HemisphereLight と DirectionalLight を置く前提（体色・壁の比較面には影響しない）。
 // - 警察官は体色の変更対象外。紺の制服・帽子・懐中電灯。光は地面だけを照らし、壁（比較面）には当てない。
 // - 描画の数を抑えるため、動かない部品は頂点色つきで1つの形にまとめる（three の本体だけで足りる小さな結合）。
@@ -101,7 +102,49 @@ function limbMatrix(from, to) {
   return { m, len };
 }
 
-/** フェレットの警察官。紺の制服・帽子・懐中電灯。描画はおよそ14個。 */
+// ---------- 警察官の材質：主人公と同じ「照明を受けないトゥーン」 ----------
+// 主人公と同じ見え方（太い輪郭線・輪郭ぎわの陰・時間帯で暗くならない色）にして、背景ではなく同じ並びの登場人物として見せる。
+// 色は頂点色（制服・毛・帽子）。比較面ではないので、下向きの面を少し暗くする簡単な陰と、時間帯の色味（uTint）を使う。
+const FERRET_VERT = /* glsl */ `
+attribute vec3 color;
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vC;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vN = normalize(normalMatrix * normal);
+  vV = -mv.xyz;
+  vC = color;
+  gl_Position = projectionMatrix * mv;
+}`;
+const FERRET_FRAG = /* glsl */ `
+uniform vec3 uTint;
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vC;
+void main() {
+  vec3 N = normalize(vN);
+  vec3 V = normalize(vV);
+  float rim = 1.0 - smoothstep(0.18, 0.45, dot(N, V));
+  float under = 1.0 - step(-0.35, N.y); // 下を向いた面だけ一段暗く
+  vec3 c = vC * (1.0 - 0.28 * rim) * (1.0 - 0.16 * under) * uTint;
+  gl_FragColor = vec4(c, 1.0);
+}`;
+
+function makeFerretMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: { uTint: { value: new THREE.Color(1, 1, 1) } },
+    vertexShader: FERRET_VERT,
+    fragmentShader: FERRET_FRAG,
+  });
+}
+
+const ease = (cur, target, dt, rate) => cur + (target - cur) * Math.min(1, dt * rate);
+
+/**
+ * フェレットの警察官。紺の制服・帽子・懐中電灯。主人公と同じ太さの輪郭線と、照明を受けないトゥーンで描く。
+ * 動き：走る（run）・見失って探す（search）・見つけて追う（chase）。気づいた時は跳ねる（react）。描画はおよそ20個。
+ */
 export function createFerret() {
   const group = new THREE.Group();
   const geos = [];
@@ -110,8 +153,8 @@ export function createFerret() {
     geos.push(g);
     return g;
   };
-  const outMat = createOutlineMaterial(0.05);
-  const litMat = makeLitMaterial();
+  const outMat = createOutlineMaterial(); // 主人公と同じ太さ
+  const litMat = makeFerretMaterial();
   mats.push(outMat, litMat);
 
   const sphere = new THREE.SphereGeometry(1, 20, 14);
@@ -127,15 +170,21 @@ export function createFerret() {
   const NAVY = POLICE.uniform;
   const FUR = POLICE.fur;
   const DARK = 0x1b1b1b;
+  const lean = new THREE.Group(); // 走る時の前かがみ（腰が軸）
+  lean.position.set(0, 0.95, 0);
+  group.add(lean);
   const body = new THREE.Group(); // 歩行の上下
-  group.add(body);
-  const meshOf = (m, parent) => {
+  body.position.set(0, -0.95, 0);
+  lean.add(body);
+  const meshOf = (m, parent, withOutline = true) => {
     const g = trackG(m.geometry());
     const mesh = new THREE.Mesh(g, litMat);
-    const og = trackG(m.outlineGeometry());
-    const o = new THREE.Mesh(og, outMat);
-    o.renderOrder = -1;
-    mesh.add(o);
+    if (withOutline) {
+      const og = trackG(m.outlineGeometry());
+      const o = new THREE.Mesh(og, outMat);
+      o.renderOrder = -1;
+      mesh.add(o);
+    }
     parent.add(mesh);
     return mesh;
   };
@@ -148,6 +197,9 @@ export function createFerret() {
   const badgeGeo = tmp(new THREE.CylinderGeometry(0.1, 0.1, 0.03, 6));
   st.add(badgeGeo, T([0.13, 1.92, 0.34], [Math.PI / 2, 0, 0]), POLICE.badge);
   for (let i = 0; i < 3; i += 1) ell(st, 0, 0.035, 0.035, 0.035, POLICE.badge, false, [0.37 - i * 0.012, 1.7 - i * 0.2, 0]);
+  // 襟と肩章（制服らしさ）
+  st.add(tmp(new THREE.TorusGeometry(0.3, 0.06, 8, 20)), T([0.06, 2.3, 0], [Math.PI / 2, 0, 0], [1, 0.9, 1]), 0xf4f1e8);
+  for (const side of [1, -1]) st.add(tmp(new THREE.BoxGeometry(0.2, 0.05, 0.14)), T([0.03, 2.2, side * 0.33], [0, 0, 0]), POLICE.badge);
   const shoulderF = new THREE.Vector3(0.08, 2.05, 0.42);
   const handF = new THREE.Vector3(0.95, 1.55, 0.42);
   const arm = limbMatrix(shoulderF, handF);
@@ -173,8 +225,6 @@ export function createFerret() {
   const bandGeo = tmp(new THREE.SphereGeometry(1, 24, 6, Math.PI - 1.35, 2.7, 1.12, 0.62));
   hd.add(bandGeo, T([0, 0, 0], [0, 0, 0], [0.528, 0.418, 0.418]), POLICE.mask);
   for (const side of [1, -1]) {
-    ell(hd, 0, 0.075, 0.085, 0.06, DARK, false, [0.3, 0.09, side * 0.33]);
-    ell(hd, 0, 0.022, 0.022, 0.022, 0xffffff, false, [0.34, 0.12, side * 0.38]);
     ell(hd, 0, 0.12, 0.13, 0.07, FUR, true, [-0.12, 0.2, side * 0.36]);
     ell(hd, 0, 0.07, 0.08, 0.03, 0xd98a8a, false, [-0.1, 0.2, side * 0.41]);
   }
@@ -186,7 +236,33 @@ export function createFerret() {
   hd.add(badgeGeo, T([0.37, 0.41, 0], [0, 0, Math.PI / 2], [0.8, 1, 0.8]), POLICE.badge);
   meshOf(hd, head);
 
-  // ---- 後ろの腕（振る）----
+  // 目（まばたきで縦につぶす）・眉（追う時に前下がり）・口（追う時に開く）
+  const eyes = new THREE.Group();
+  eyes.position.set(0.3, 0.09, 0);
+  const ey = new Merge();
+  for (const side of [1, -1]) {
+    ell(ey, 0, 0.085, 0.1, 0.06, DARK, false, [0, 0, side * 0.33]);
+    ell(ey, 0, 0.028, 0.028, 0.022, 0xffffff, false, [0.04, 0.035, side * 0.385]);
+  }
+  meshOf(ey, eyes, false);
+  head.add(eyes);
+  const brows = new THREE.Group();
+  brows.position.set(0.36, 0.215, 0);
+  const br = new Merge();
+  const browGeo = tmp(new THREE.BoxGeometry(0.24, 0.05, 0.05));
+  for (const side of [1, -1]) br.add(browGeo, T([-0.03, 0, side * 0.365], [0, side * -0.35, 0]), 0x4a3526);
+  meshOf(br, brows, false);
+  head.add(brows);
+  const mouth = new THREE.Group();
+  mouth.position.set(0.52, -0.27, 0);
+  const mo = new Merge();
+  ell(mo, 0, 0.13, 0.09, 0.13, 0x5a1f24, false, [0, 0, 0]);
+  ell(mo, 0, 0.07, 0.035, 0.08, 0xee8a9e, false, [0.01, -0.05, 0]);
+  meshOf(mo, mouth, false);
+  mouth.scale.set(1, 0.001, 1);
+  head.add(mouth);
+
+  // ---- 後ろの腕（振る。追う時は前へ伸ばして指さす）----
   const backArm = new THREE.Group();
   backArm.position.set(0.05, 2.05, -0.4);
   const ba = new Merge();
@@ -267,21 +343,82 @@ export function createFerret() {
   tmpGeos.forEach((g) => g.dispose());
 
   let phase = Math.random() * 6;
+  let clock = Math.random() * 10;
+  let blinkAt = 1 + Math.random() * 3;
+  let hopT = -1; // 跳ねている間の経過（秒）。-1 は跳ねていない
+  // なめらかに切り替える値
+  const k = { lean: 0, point: 0, angry: 0, mouth: 0, look: 0, swing: 1 };
+  const HOP_S = 0.38;
   return {
     group,
     beam,
     head,
     /** 街の覆い（ステンシル）用：光の演出の透明な材質 */
     glowMaterials: [coneMat, poolMat],
-    animate(dt, { walking = true, searching = false } = {}) {
-      if (walking) phase += dt * 9;
-      const swing = Math.sin(phase) * 0.55;
+    /** 時間帯の色味（夜は少し青く暗く）。 */
+    setTint(r, g, b) {
+      litMat.uniforms.uTint.value.setRGB(r, g, b);
+    },
+    /** 気づいた時などに一度跳ねる。 */
+    react() {
+      if (hopT < 0) hopT = 0;
+    },
+    /** 今の跳ねの高さ（影を小さくするため）。 */
+    get hop() {
+      return group.position.y;
+    },
+    /**
+     * mode: 'run'（近づく）・'search'（見失って探す）・'chase'（見つけて追う）。
+     * 以前の呼び方（walking・searching）もそのまま使える。
+     */
+    animate(dt, { walking = true, searching = false, mode = null } = {}) {
+      const m = mode ?? (searching ? 'search' : 'run');
+      const chase = m === 'chase';
+      const search = m === 'search';
+      clock += dt;
+      const speed = !walking ? 0 : chase ? 12.5 : search ? 5.5 : 9.5;
+      phase += dt * speed;
+      k.lean = ease(k.lean, !walking ? 0 : chase ? -0.24 : search ? 0.04 : -0.12, dt, 6);
+      k.point = ease(k.point, chase ? 1 : 0, dt, 7);
+      k.angry = ease(k.angry, chase ? 1 : search ? -0.5 : 0.25, dt, 8);
+      k.mouth = ease(k.mouth, chase ? 0.75 + Math.sin(clock * 16) * 0.25 : 0, dt, 14);
+      k.look = ease(k.look, search ? 1 : 0, dt, 5);
+      k.swing = ease(k.swing, !walking ? 0 : search ? 0.6 : chase ? 1.25 : 1, dt, 6);
+      const swing = Math.sin(phase) * 0.55 * k.swing;
       for (const l of legs) l.pivot.rotation.z = swing * -l.side;
-      backArm.rotation.z = swing * 0.5 + 0.1;
-      body.position.y = Math.abs(Math.sin(phase)) * 0.05;
-      head.rotation.y = searching ? Math.sin(phase * 0.25) * 0.9 : 0;
-      beam.rotation.y = searching ? Math.sin(phase * 0.25) * 0.35 : Math.sin(phase * 0.5) * 0.04;
-      tail.rotation.z = Math.sin(phase * 0.5) * 0.1;
+      // 後ろの腕：ふだんは振り、追う時は前へ伸ばして指さす
+      backArm.rotation.z = (swing * 0.6 + 0.1) * (1 - k.point) + (1.75 + Math.sin(clock * 14) * 0.08) * k.point;
+      body.position.y = -0.95 + Math.abs(Math.sin(phase)) * 0.07 * k.swing;
+      lean.rotation.z = k.lean;
+      // 探す時は首と光を左右に振る
+      const sweep = Math.sin(clock * 2.4);
+      head.rotation.y = sweep * 0.95 * k.look;
+      head.rotation.z = -k.lean * 0.7 + (search ? Math.sin(clock * 1.2) * 0.06 : 0);
+      beam.rotation.y = sweep * 0.4 * k.look + Math.sin(phase * 0.5) * 0.04 * (1 - k.look);
+      tail.rotation.z = Math.sin(phase * 0.5) * 0.12 + k.point * 0.25;
+      tail.rotation.y = Math.sin(phase * 0.5 + 1) * 0.1;
+      brows.rotation.z = -0.5 * Math.max(0, k.angry) + 0.25 * Math.max(0, -k.angry);
+      brows.position.y = 0.215 + 0.04 * Math.max(0, -k.angry);
+      mouth.scale.y = Math.max(0.001, k.mouth);
+      mouth.visible = k.mouth > 0.05;
+      // まばたき
+      blinkAt -= dt;
+      if (blinkAt < -0.12) blinkAt = 1.6 + Math.random() * 3.2;
+      eyes.scale.y = blinkAt < 0 ? 0.12 : 1 + 0.12 * k.point;
+      // 跳ねる
+      if (hopT >= 0) {
+        hopT += dt;
+        const h = Math.min(1, hopT / HOP_S);
+        group.position.y = Math.sin(h * Math.PI) * 0.55;
+        // 伸び縮み：踏み切りと着地で少しつぶれる
+        const sq = 1 + Math.sin(h * Math.PI * 2) * 0.08;
+        group.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+        if (h >= 1) {
+          hopT = -1;
+          group.position.y = 0;
+          group.scale.set(1, 1, 1);
+        }
+      }
     },
     dispose() {
       geos.forEach((g) => g.dispose());
