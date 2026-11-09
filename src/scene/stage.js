@@ -49,6 +49,7 @@ export function createDomStage(container, { course, rules = RULES_V1 } = {}) {
       });
       hero.style.background = hsvToHex(color);
     },
+    fx() {},
     async playEnding() {},
     async playOpening() {},
     resetEnding() {},

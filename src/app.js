@@ -10,6 +10,7 @@ import {
   classifyMatch,
   isEvalTime,
 } from './rules/v1/index.js';
+import { areaOf } from './rules/v1/course.js';
 import { GameSession } from './game/session.js';
 import { alertWordKey, createAlertStageTracker, createInstantSuccessTracker, matchWordKey } from './game/feedback.js';
 import { createControls } from './ui/controls.js';
@@ -84,8 +85,27 @@ class App {
     document.addEventListener('visibilitychange', () => this.onVisibility());
     globalThis.addEventListener('pagehide', () => this.saveNow('pagehide'));
     globalThis.addEventListener('online', () => this.flushNetwork());
+    // 画面に触れた時に音を準備する（本編の外だけ。停止中は「再開」を押すまで音を出さない）
+    document.addEventListener('pointerdown', () => this.wakeMenuAudio(), { passive: true });
+    // ボタンの音：決定・戻る・そのほか。個別に鳴らしている所とは同じ音なので重ならない
+    document.addEventListener('click', (e) => {
+      const b = e.target?.closest?.('.btn, .btn-pause');
+      if (!b || b.disabled) return;
+      this.audio.play(b.classList.contains('btn-primary') ? 'confirm' : b.classList.contains('btn-back') ? 'back' : 'select');
+    });
     this.showHome();
     this.flushNetwork();
+  }
+
+  /** 本編の外（ホーム・結果・練習など）で流す曲を決めて、音を準備する。 */
+  async wakeMenuAudio() {
+    if (this.session || !this.menuTheme) return;
+    if (await this.audio.prepare()) this.audio.setMusic(this.menuTheme);
+  }
+
+  setMenuMusic(theme) {
+    this.menuTheme = theme;
+    this.audio.setMusic(theme);
   }
 
   async safeGet(key) {
@@ -180,6 +200,8 @@ class App {
     this.rerender = rerender;
     this.layer = h('div', { class: 'layer' });
     this.root.append(this.layer);
+    // 本編・練習の画面は、それぞれの始まりで曲を決める。ほかの画面はホームの曲
+    if (!el.classList.contains('game')) this.setMenuMusic('menu');
   }
 
   showHome() {
@@ -215,6 +237,7 @@ class App {
     }
     if (this.runtime.isVerification) notices.append(h('p', { class: 'notice notice-dev' }, t(this.api.configured ? 'notice.verification' : 'notice.notConnected')));
     const el = h('main', { class: 'screen home' }, [
+      h('div', { class: 'home-sky', 'aria-hidden': 'true' }),
       h('header', { class: 'home-header' }, [
         homeArt,
         h('h1', { class: 'title' }, t('app.title')),
@@ -223,14 +246,16 @@ class App {
       notices,
       field?.el,
       h('div', { class: 'home-actions' }, [
-        button('home.start', () => this.startFlow(field?.value ?? ''), { primary: true, testid: 'home-start' }),
+        button('home.start', () => this.startFlow(field?.value ?? ''), { primary: true, className: 'btn-start', testid: 'home-start' }),
         continueBtn,
-        practiceBtn,
-        showOnline && button('home.ranking', () => this.showRanking(), { testid: 'home-ranking' }),
-        button('home.howto', () => this.showHowTo(), { testid: 'home-howto' }),
-        button('home.settings', () => this.showSettings(), { testid: 'home-settings' }),
-        recordsBtn,
-        button('share.button', () => this.shareHome(), { className: 'btn-x', testid: 'home-share' }),
+        h('div', { class: 'home-grid' }, [
+          practiceBtn,
+          showOnline && button('home.ranking', () => this.showRanking(), { testid: 'home-ranking' }),
+          button('home.howto', () => this.showHowTo(), { testid: 'home-howto' }),
+          button('home.settings', () => this.showSettings(), { testid: 'home-settings' }),
+          recordsBtn,
+          button('share.button', () => this.shareHome(), { className: 'btn-x', testid: 'home-share' }),
+        ]),
       ]),
       this.runtime.isVerification ? this.verificationMenu() : null,
       h('footer', { class: 'footer' }, [t('app.version', { v: this.runtime.gameVersion, rules: RULES_V1.rulesVersion })]),
@@ -536,26 +561,42 @@ class App {
 
   async showGame(session, { fresh }) {
     this.session = session;
+    this.setMenuMusic(null); // 本編の曲は、時計が動き始めた時に流す
     const rules = RULES_V1;
     const decorations = makeDecorations(session.meta.seed);
     const stageBox = h('div', { class: 'stage', 'data-testid': 'stage' });
     const cover = h('div', { class: 'cover', hidden: true });
     const hudBuildings = h('span', { class: 'hud-buildings', 'data-testid': 'hud-buildings' });
     const hudScore = h('span', { class: 'hud-score', 'data-testid': 'hud-score' });
+    const hudProgress = h('div', { class: 'hud-progress-fill' });
+    const hudGain = h('span', { class: 'hud-gain', 'aria-hidden': 'true' });
     const gaugeFill = h('div', { class: 'gauge-fill' });
     const gaugeWord = h('span', { class: 'gauge-word' });
+    const gaugeIcon = h('span', { class: 'gauge-icon', 'aria-hidden': 'true' });
     const pauseBtn = h('button', { type: 'button', class: 'btn-pause', 'aria-label': t('game.pause'), 'data-testid': 'pause' }, 'Ⅱ');
     const switchOk = h('div', { class: 'switch-ok', hidden: true }, t('game.switchOk'));
     const matchWord = h('div', { class: 'match-word', 'aria-live': 'polite' });
     const banner = h('div', { class: 'banner-host' });
     const hud = h('div', { class: 'hud' }, [
-      h('div', { class: 'hud-left' }, [hudBuildings, hudScore]),
-      h('div', { class: 'gauge', role: 'meter', 'aria-label': t('game.alertLabel') }, [h('div', { class: 'gauge-track' }, [gaugeFill]), gaugeWord]),
+      h('div', { class: 'hud-left' }, [hudBuildings, h('div', { class: 'hud-progress', 'aria-hidden': 'true' }, [hudProgress]), h('div', { class: 'hud-score-row' }, [hudScore, hudGain])]),
+      h('div', { class: 'gauge', role: 'meter', 'aria-label': t('game.alertLabel') }, [
+        gaugeIcon,
+        h('div', { class: 'gauge-body' }, [h('div', { class: 'gauge-track' }, [gaugeFill, h('i', { class: 'gauge-mark gauge-mark-1' }), h('i', { class: 'gauge-mark gauge-mark-2' })]), gaugeWord]),
+      ]),
       pauseBtn,
     ]);
+    /** 短い見た目の動きをもう一度始める（クラスを付け直す）。 */
+    const pulse = (node, cls) => {
+      node.classList.remove(cls);
+      void node.offsetWidth;
+      node.classList.add(cls);
+    };
     const controls = createControls({
       onChange: (c) => session.input(c, performance.now()),
-      onLockedTap: () => toast(banner, t('controls.lockedHint'), { duration: 1400 }),
+      onLockedTap: () => {
+        this.audio.play('locked');
+        toast(banner, t('controls.lockedHint'), { duration: 1400 });
+      },
     });
     const el = h('main', { class: 'screen game' }, [h('div', { class: 'stage-wrap' }, [stageBox, hud, switchOk, matchWord, banner, cover]), controls.el]);
     this.mount(el, null);
@@ -574,19 +615,30 @@ class App {
     const instant = createInstantSuccessTracker({ rules });
     let lastSaveT = session.state.t;
     let lastStage = 0;
+    let lastCombo = session.state.combo ?? 0;
+    {
+      const b0 = Math.min(rules.buildingCount, Math.floor(session.state.t / rules.buildingMs) + 1);
+      this.audio.setArea(areaOf(b0).time);
+      this.audio.setFinale(b0 >= 40);
+    }
     const refreshHud = () => {
       const s = session.state;
       hudBuildings.textContent = t('game.buildings', { n: s.passed, total: rules.buildingCount });
       hudScore.textContent = t('game.score', { n: formatNumber(s.score.total) });
+      hudProgress.style.transform = `scaleX(${s.passed / rules.buildingCount})`;
       const pct = s.alert / rules.alert.maxUnits;
       gaugeFill.style.transform = `scaleX(${pct})`;
-      gaugeFill.dataset.level = pct >= 0.7 ? 'danger' : pct >= 0.3 ? 'caution' : 'calm';
+      const level = pct >= 0.7 ? 'danger' : pct >= 0.3 ? 'caution' : 'calm';
+      gaugeFill.dataset.level = level;
+      hud.dataset.level = level;
       gaugeWord.textContent = t(alertWordKey(s.alert, rules));
       const grace = s.status === 'playing' && !isEvalTime(s.t, rules);
       switchOk.hidden = !grace || s.t < rules.evalStartMs - 1;
       const wordKey = matchWordKey(s.matchUnits, rules);
       matchWord.textContent = wordKey ? t(wordKey) : '';
-      matchWord.dataset.state = s.matchUnits == null ? '' : classifyMatch(s.matchUnits, rules);
+      const mState = s.matchUnits == null ? '' : classifyMatch(s.matchUnits, rules);
+      if (mState !== matchWord.dataset.state && mState) pulse(matchWord, 'pop');
+      matchWord.dataset.state = mState;
     };
 
     session.on((events) => {
@@ -598,6 +650,7 @@ class App {
           case 'unlockBrightness':
             controls.setLocked(false);
             this.audio.play('unlock');
+            this.stage?.fx('unlock');
             toast(banner, t('game.unlocked'), { duration: 2600, kind: 'big' });
             break;
           case 'reachUnlockBuilding':
@@ -605,9 +658,12 @@ class App {
             break;
           case 'enterBuilding':
             if (ev.building === rules.brightnessUnlockBuilding - 1) toast(banner, t('game.unlockSoon'), { duration: 2200 });
+            this.audio.setArea(areaOf(Math.min(rules.buildingCount, ev.building)).time);
+            this.audio.setFinale(ev.building >= 40);
             if (ev.building === 40) {
               toast(banner, t('game.milestone.final'), { duration: 1600 });
               this.audio.play('milestone');
+              this.stage?.fx('milestone');
             }
             break;
           case 'pass':
@@ -615,13 +671,27 @@ class App {
               // 25棟目の通過＝中間地点（仕様 FX-03）
               toast(banner, t('game.milestone.half'), { duration: 1600 });
               this.audio.play('milestone');
+              this.stage?.fx('milestone');
             }
             if (ev.success && [3, 5, 10].includes(ev.combo)) {
-              this.audio.play('combo');
+              this.audio.play('combo', { level: [3, 5, 10].indexOf(ev.combo) });
+              this.stage?.fx('combo');
               toast(banner, t('game.comboMilestone', { n: ev.combo }), { duration: 1400, kind: 'combo' });
             } else if (ev.success && ev.combo > 1) {
+              this.stage?.fx('pass');
               toast(banner, t('game.combo', { n: ev.combo }), { duration: 900 });
+            } else if (ev.success) {
+              this.stage?.fx('pass');
+            } else if (lastCombo >= 2) {
+              this.audio.play('comboBreak'); // 連続成功が途切れた
             }
+            lastCombo = ev.success ? ev.combo : 0;
+            if (ev.points > 0) {
+              hudGain.textContent = `+${formatNumber(ev.points)}`;
+              pulse(hudGain, 'show');
+              pulse(hudScore, 'bump');
+            }
+            pulse(hudBuildings, 'bump');
             this.saveNow('pass');
             lastSaveT = session.state.t;
             break;
@@ -651,7 +721,9 @@ class App {
       const s = session.state;
       const stage = alertStage.update(s.alert);
       if (stage > lastStage) {
-        this.audio.play('warning');
+        // 1人目は警告音、2人目は笛
+        this.audio.play(stage >= 2 ? 'whistle' : 'warning');
+        pulse(gaugeIcon, 'ring');
         if (!this.flags.alertGuideSeen) {
           this.setFlag('alertGuideSeen', true);
           toast(banner, t('guide.alert'), { duration: 3000 });
@@ -661,9 +733,14 @@ class App {
         this.setFlag('alertGuideSeen', true);
         toast(banner, t('guide.alert'), { duration: 3000 });
       }
+      if (stage < lastStage && session.running) this.audio.play('relief'); // 警察が離れた
       lastStage = stage;
       this.audio.setPoliceStage(session.running ? stage : 0);
-      if (instant.update(s)) this.audio.play('success');
+      this.audio.setDanger(session.running && s.alert >= rules.alert.maxUnits * 0.7);
+      if (instant.update(s)) {
+        this.audio.play('success');
+        this.stage?.fx('success');
+      }
       refreshHud();
       const matchState = s.matchUnits == null ? null : classifyMatch(s.matchUnits);
       this.stage?.update({ t: s.t, color: s.color, policeStage: stage, searching: matchState === 'success' && stage > 0, nervous: stage / 2, walking: session.running, matchState });
@@ -704,7 +781,7 @@ class App {
     const ctrl = new AbortController();
     const skip = button('common.skip', () => ctrl.abort(), { className: 'btn-skip', testid: 'skip-opening' });
     this.layer.append(skip);
-    await this.stage.playOpening({ signal: ctrl.signal });
+    await this.stage.playOpening({ signal: ctrl.signal, onCue: (name) => this.audio.play(name) });
     skip.remove();
   }
 
@@ -783,6 +860,9 @@ class App {
         if (n !== lastShown && n > 0) {
           lastShown = n;
           num.textContent = String(n);
+          num.classList.remove('tick');
+          void num.offsetWidth;
+          num.classList.add('tick');
           this.audio.play('countdown');
         }
         if (left <= 0) return resolve();
@@ -801,6 +881,7 @@ class App {
     this.controls.releaseAll(); // 持ち越しのタッチを捨てる
     this.controls.setEnabled(true);
     this.audio.startGameAudio();
+    this.audio.play('go');
     session.startClock(performance.now());
   }
 
@@ -884,7 +965,7 @@ class App {
     if (!generation) return { result, saved: false, stale: false };
     try {
       await this.store.endRun(TAB_ID, generation, result, { localBest });
-      return { result, saved: true };
+      return { result, saved: true, newBest: !!localBest };
     } catch (err) {
       return { result, saved: false, stale: err instanceof StaleWriterError };
     }
@@ -896,9 +977,9 @@ class App {
     this.finishing = session;
     this.controls?.setEnabled(false);
     this.audio.stopGameAudio();
-    const { result, saved, stale } = await this.persistEnd(session, this.generation, { takenOver: this.takenOver });
+    const { result, saved, stale, newBest = false } = await this.persistEnd(session, this.generation, { takenOver: this.takenOver });
     const summary = session.summary();
-    this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary, saved, stale, netState: session.meta.ranked ? 'pending' : null };
+    this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary, saved, stale, newBest, netState: session.meta.ranked ? 'pending' : null };
     if (!saved && !stale && result?.ranked) {
       // 端末へ保存できなかった：メモリ上の結果を可能なら直接送る（再読込で失われ得ることは画面で伝える）
       this.notices.push('notice.resultNotSaved');
@@ -1007,7 +1088,7 @@ class App {
       if (r.rankError) statusBox.append(h('p', {}, [t('result.rankError'), ' ', button('common.retry', () => this.pollResult(), { className: 'btn-small' })]));
     };
     this.renderResultStatus();
-    const localBests = h('p', { class: 'result-best' });
+    const localBests = h('p', { class: r.newBest ? 'result-best result-best-new' : 'result-best' });
     this.safeGet('localBest').then((all) => {
       const b = all?.[r.name || ''];
       if (b) localBests.textContent = t('result.localBest', { buildings: formatNumber(b.buildings), average: formatPercent2(b.rankAverage) });
@@ -1022,7 +1103,8 @@ class App {
       h('dt', {}, t('result.score.clear')),
       h('dd', {}, formatNumber(s.score.clear)),
     ]);
-    const el = h('main', { class: 'screen result' }, [
+    const el = h('main', { class: `screen result result-screen-${s.endReason}` }, [
+      h('div', { class: 'result-burst', 'aria-hidden': 'true' }),
       h('h1', { class: `result-title result-${s.endReason}` }, t(reasonKey)),
       h('div', { class: 'result-main' }, [
         h('div', { class: 'stat' }, [h('span', { class: 'stat-label' }, t('result.buildings')), h('span', { class: 'stat-value', 'data-testid': 'result-buildings' }, `${formatNumber(s.buildings)} / ${RULES_V1.buildingCount}`)]),
@@ -1045,6 +1127,10 @@ class App {
     ]);
     this.mount(el, () => this.showResult());
     this.audio.play('result');
+    if (r.newBest && !r.bestPlayed) {
+      r.bestPlayed = true; // 言語を切り替えて描き直しても、もう一度は鳴らさない
+      setTimeout(() => this.audio.play('best'), 700);
+    }
     if (this.api.configured) {
       const view = createRankingView({ api: this.api, name: null });
       rankingHost.append(h('h2', { class: 'panel-title' }, t('ranking.top')), view.el);
@@ -1096,6 +1182,7 @@ class App {
     await this.audio.prepare();
     this.audio.play('confirm');
     const practice = createPractice({ kind, seed: randomSeed() });
+    this.setMenuMusic('practice');
     let showValue = false;
     let paused = false;
     let reviewing = false;
@@ -1124,7 +1211,7 @@ class App {
     const skipBtn = button('practice.skip', () => onSkip(), { testid: 'practice-skip' });
     const nextBtn = button('practice.next', () => onNext(), { primary: true, testid: 'practice-next' });
     const review = h('div', { class: 'practice-review', hidden: true });
-    const controls = createControls({ onChange: (c) => practice.setColor(c) });
+    const controls = createControls({ onChange: (c) => practice.setColor(c), onLockedTap: () => this.audio.play('locked') });
     const el = h('main', { class: 'screen game practice' }, [
       h('div', { class: 'stage-wrap' }, [
         stageBox,
@@ -1197,7 +1284,10 @@ class App {
       const dt = now - last;
       last = now;
       if (!paused && !reviewing && document.visibilityState === 'visible') practice.tick(Math.min(dt, 250));
-      if (practice.question.status === 'succeeded' && !wasSucceeded) this.audio.play('success');
+      if (practice.question.status === 'succeeded' && !wasSucceeded) {
+        this.audio.play('success');
+        this.stage.fx('success');
+      }
       wasSucceeded = practice.question.status === 'succeeded';
       refresh();
       this.stage.renderPractice(practice.color, practice.question.target);
@@ -1332,6 +1422,7 @@ class App {
     const stageBox = h('div', { class: 'stage stage-full' });
     const el = h('main', { class: 'screen game' }, [h('div', { class: 'stage-wrap' }, [stageBox])]);
     this.mount(el, null);
+    this.setMenuMusic(null);
     this.stage = await createStage(stageBox, { course: { targets: Array.from({ length: 50 }, () => ({ h: 3000, s: 5000, v: 10000 })) }, decorations: makeDecorations(1), showOpeningShop: true });
     this.stage.resize();
     await this.playOpening();

@@ -11,11 +11,15 @@
 // - 空はカメラに付けた背景（頂点色）、星・月、遠景のビル群（窓の灯り）、霧で空の色へなじませる。
 // - 判定の基準点は主人公の胴体中心の x（playerX）。歩行のアニメーション・カメラの揺れでは動かさない（TIME-02）。
 // - 影は実時間の影ではなく、歩道に置く丸い影（ぼかしテクスチャ）だけ。
+// - 警察官は背景ではなく、主人公と同じ歩道の並び・同じ大きさ・同じ描き方の登場人物。主人公の後ろ（左）から来る。
+//   見失えば立ち止まって探し、見つければ指をさして追う。壁と体色を大きく隠さない位置にとどめる（UI-02）。
+// - 粒や記号（effects.js）は不透明で、色を混ぜない。カメラの揺れはごく小さく、判定の位置は動かさない（FX-03）。
 import * as THREE from 'three';
 import { RULES_V1 } from '../rules/v1/index.js';
 import { areaOf } from '../rules/v1/course.js';
 import { createChameleon, createFerret, createJewelryShop } from './characters.js';
 import { SKY, TOD, rgbFloat } from './palette-colors.js';
+import { createEffects } from './effects.js';
 
 const W = 10; // 1棟の幅（ワールド座標）
 const GAP = 1.3; // 建物の間の路地の幅
@@ -26,7 +30,14 @@ const SIDEWALK_D = 4.45; // 歩道の奥行き（z=0 から縁石まで）
 const HERO_Z = 2.5; // 主人公が歩く位置
 const HERO_YAW = -0.42; // カメラ側へ少し向ける
 const PRACTICE_X = 3.2; // 練習時の主人公の位置
-const SCREEN_X = 0.33; // 主人公の横位置（左から）
+const SCREEN_X = 0.38; // 主人公の横位置（左から）。後ろに警察が並ぶ分だけ、少し中央へ寄せる
+const FERRET_SCALE = 0.9; // 主人公（高さ約3）と並べて見える大きさ
+const FERRET_YAW = -0.36; // 主人公と同じく、カメラ側へ少し向ける
+// 警察の立ち位置（主人公からの x の差）と、歩く列（z）。1人目は主人公とほぼ同じ列、2人目は半歩奥
+const FERRET_NEAR = [-2.9, -4.4];
+const FERRET_AWAY = [-14, -17];
+const FERRET_Z = [HERO_Z + 0.2, HERO_Z - 0.55];
+const CLOUD_N = 5;
 const SCREEN_Y = 0.31; // 主人公の胴の高さの画面位置（下から）
 // カメラ：主人公の少し先（x+）から、街路の奥（右）へゆるく振る
 const CAM = { dx: 3.2, y: 5.2, z: 22, lookDx: 6, lookY: 4.2, lookZ: 0, fov: 44 };
@@ -41,8 +52,8 @@ const TRIMS = [0xece6da, 0x5d626e, 0xc2ad8e, 0x93513f];
 const SIGN_COLORS = [0xff6f61, 0xffd166, 0x06d6a0, 0x118ab2, 0xef476f, 0xf78c6b];
 const AWNING_COLORS = [0xd64541, 0x2e86c1, 0x27ae60, 0xf39c12, 0x8e44ad, 0xe67e73];
 const LIT_GLASS = 0xffd98a;
-const COLOR_KEYS = ['top', 'bottom', 'far', 'road', 'ground', 'hemiSky', 'hemiGround', 'dir', 'glass', 'walk', 'curb'];
-const NUM_KEYS = ['hemi', 'dirI', 'glow', 'stars'];
+const COLOR_KEYS = ['top', 'bottom', 'far', 'road', 'ground', 'hemiSky', 'hemiGround', 'dir', 'glass', 'walk', 'curb', 'cloud'];
+const NUM_KEYS = ['hemi', 'dirI', 'glow', 'stars', 'cloudA'];
 
 const hash = (a) => {
   let x = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b);
@@ -308,6 +319,34 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   moon.frustumCulled = false;
   moon.renderOrder = -89;
   camera.add(moon);
+  // 雲：空の奥をゆっくり流れる（遠景のビルより奥。比較面にはかからない）
+  const cloudTex = makeTexture(
+    canvasOf(256, 128, (g, w, h) => {
+      g.clearRect(0, 0, w, h);
+      const puff = (x, y, r) => {
+        const grad = g.createRadialGradient(x, y, r * 0.2, x, y, r);
+        grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+        grad.addColorStop(0.7, 'rgba(255,255,255,0.75)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grad;
+        g.fillRect(x - r, y - r, r * 2, r * 2);
+      };
+      puff(70, 78, 44);
+      puff(118, 60, 54);
+      puff(170, 74, 46);
+      puff(205, 86, 30);
+      puff(40, 90, 26);
+    }),
+  );
+  const cloudMat = new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, opacity: 0.9, fog: false, depthWrite: false });
+  const cloudGeo = new THREE.PlaneGeometry(1, 1);
+  const clouds = Array.from({ length: CLOUD_N }, (_, i) => {
+    const mesh = new THREE.Mesh(cloudGeo, cloudMat);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = -88;
+    camera.add(mesh);
+    return { mesh, x: hash(i * 7 + 1) * 3 - 1.5, y: 0.25 + hash(i * 7 + 2) * 0.7, size: 0.6 + hash(i * 7 + 3) * 0.7, drift: 0.006 + hash(i * 7 + 4) * 0.008 };
+  });
 
   // ---- 地面・歩道・縁石・道路 ----
   const groundMat = new THREE.MeshBasicMaterial({ color: 0x6f747c });
@@ -408,6 +447,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   const haloMat = new THREE.PointsMaterial({ map: glowTex, color: 0xffc870, size: 4.2, sizeAttenuation: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
   maskAvoid(poolMat);
   maskAvoid(haloMat);
+  maskAvoid(cloudMat);
   const halos = new THREE.Points(haloGeo, haloMat);
   halos.frustumCulled = false;
   scene.add(halos);
@@ -685,6 +725,17 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     shopExtras.add(sBody, sCap);
     scene.add(shopExtras);
   }
+  // 宝石店の警報ランプ（開始演出の間だけ点滅する）
+  let alarmMat = null;
+  if (shopExtras) {
+    alarmMat = new THREE.MeshBasicMaterial({ color: 0x6a1a1a, fog: false });
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 10), alarmMat);
+    lamp.position.set(-W / 2 + 3.4, 9.75, 0.5);
+    const lampBase = new THREE.Mesh(boxGeo, new THREE.MeshLambertMaterial({ color: 0x3a3f4c }));
+    lampBase.scale.set(0.5, 0.2, 0.5);
+    lampBase.position.set(-W / 2 + 3.4, 9.45, 0.5);
+    shopExtras.add(lamp, lampBase);
+  }
 
   // ---- 主人公・警察・影 ----
   const heroRoot = new THREE.Group();
@@ -709,15 +760,10 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   const ferretRoots = ferrets.map((f, i) => {
     const root = new THREE.Group();
     root.add(f.group);
-    f.group.scale.setScalar(0.85);
-    root.rotation.y = -0.2;
-    root.position.set(-100, SIDEWALK_Y, i === 0 ? 1.45 : 0.85);
+    root.scale.setScalar(FERRET_SCALE);
+    root.rotation.y = FERRET_YAW;
+    root.position.set(-100, SIDEWALK_Y, FERRET_Z[i]);
     scene.add(root);
-    // 懐中電灯の光は地面に寝かせる（円板のときだけ）
-    if (f.beam.geometry?.type === 'CircleGeometry') {
-      f.beam.rotation.x = -Math.PI / 2;
-      f.beam.scale.set(1.5, 0.7, 1);
-    }
     return root;
   });
   // 警察の光（透明・加算の材質）は比較面にかけない。キャラクター側が glowMaterials を公開していればそれを使う
@@ -731,7 +777,20 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     }
     glows.forEach(maskAvoid);
   });
-  const ferretShadows = ferrets.map(() => makeBlob(2.2, 1.4));
+  const ferretShadows = ferrets.map(() => makeBlob(2.6, 1.6));
+
+  // 粒・記号の演出（不透明。色を混ぜない）
+  const fx = createEffects(scene);
+  const reducedMotion = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  fx.setEnabled(!reducedMotion); // 動きを減らす設定では粒を出さない（「！」「？」の記号は出す）
+  let shake = 0; // カメラの小さな揺れの大きさ
+  let heroHopT = -1; // 主人公の小さな跳ね（秒）。-1 は跳ねていない
+  let heroHopH = 0;
+  let dustClock = 0;
+  let sweatClock = 0;
+  let lastPoliceStage = 0;
+  const ferretMode = ['run', 'run'];
+  const HERO_ICON = 2;
 
   // 発見演出：カメラに付けた暗幕（中心だけ抜ける）と、主人公に集まる探照灯
   const darkMat = new THREE.MeshBasicMaterial({ map: spotTex, color: 0x000000, transparent: true, opacity: 0, depthTest: false, depthWrite: false, fog: false });
@@ -759,10 +818,14 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   let playerX = 0;
   let refX = 0; // カメラが追う位置
   let lastFrame = performance.now();
-  let ferretRel = [-14, -17];
-  let ending = null;
+  let ferretRel = [...FERRET_AWAY];
+  let ending = null; // 終了演出の状態 { kind, start, duration, done:{} }
+  let worldClock = 0;
+  let opening = false; // 開始演出の間は update を止める（二重に描かない）
+  let lastArgs = null;
   let camQuat = new THREE.Quaternion();
   let heroNdc = { x: 0, y: 0 };
+  let horizonNdc = 0;
   const v3 = new THREE.Vector3();
   const sampleRay = new THREE.Raycaster();
 
@@ -802,6 +865,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     sky.position.set(0, 0, -D);
     v3.set(0, CAM.y, -5000).project(camera);
     const hor = Math.max(-0.9, Math.min(0.9, v3.y));
+    horizonNdc = hor;
     const tl = ndcToCam(-1.4, 1.4, D, new THREE.Vector3());
     const br = ndcToCam(1.4, -1.4, D, new THREE.Vector3());
     const hy = ndcToCam(0, hor, D, new THREE.Vector3()).y;
@@ -881,14 +945,29 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     stars.visible = starMat.opacity > 0.001;
     moonMat.opacity = Math.min(1, cur.stars * 1.1);
     moon.visible = moonMat.opacity > 0.001;
+    cloudMat.color.copy(cur.cloud);
+    cloudMat.opacity = cur.cloudA;
+    // 警察官の色味：夜は少し青く落とす（主人公の体色は比較面なので変えない）
+    ferrets.forEach((f) => f.setTint?.(1 - cur.glow * 0.2, 1 - cur.glow * 0.15, 1 - cur.glow * 0.02));
     refreshGlass();
   }
 
   /** 位置の基準 x に合わせて、カメラ・繰り返す地面・遠景・街灯・影を置く。 */
   function placeWorld(x, time = 0) {
     refX = x;
-    camera.position.set(x + CAM.dx, CAM.y + Math.sin(time / 1000 * 1.7) * 0.025, CAM.z);
+    const now = performance.now();
+    const sx = reducedMotion ? 0 : Math.sin(now * 0.071) * shake;
+    const sy = reducedMotion ? 0 : Math.cos(now * 0.093) * shake * 0.7;
+    camera.position.set(x + CAM.dx + sx, CAM.y + Math.sin(time / 1000 * 1.7) * 0.025 + sy, CAM.z);
     camera.quaternion.copy(camQuat);
+    // 雲：時間と進み具合で少しずつ流す
+    for (const c of clouds) {
+      let nx = c.x - (now / 1000) * c.drift - x * 0.0016;
+      nx = ((((nx + 1.6) % 3.2) + 3.2) % 3.2) - 1.6;
+      ndcToCam(nx, horizonNdc + (1 - horizonNdc) * c.y, 372, v3);
+      c.mesh.position.set(v3.x, v3.y, -372);
+      c.mesh.scale.set(372 * 0.5 * c.size, 372 * 0.25 * c.size, 1);
+    }
     const snap = Math.floor(x / 10) * 10;
     sidewalk.position.x = snap;
     curb.position.x = snap;
@@ -908,6 +987,145 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     heroShadow.material.opacity = 1;
     const s = 1 - Math.min(0.5, y * 0.3);
     heroShadow.scale.set(2.8 * s, 1.7 * s, 1);
+  }
+
+  /** 主人公の小さな跳ね（見た目だけ。判定の位置 playerX は動かさない）。 */
+  function hopHero(height = 0.5) {
+    if (reducedMotion) return;
+    heroHopT = 0;
+    heroHopH = height;
+  }
+  const HOP_S = 0.36;
+  function heroHopY(dt) {
+    if (heroHopT < 0) {
+      heroRoot.scale.set(1, 1, 1);
+      return 0;
+    }
+    heroHopT += dt;
+    const k = Math.min(1, heroHopT / HOP_S);
+    const sq = 1 + Math.sin(k * Math.PI * 2) * 0.07; // 踏み切りで伸び、着地でつぶれる
+    heroRoot.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+    if (k >= 1) {
+      heroHopT = -1;
+      heroRoot.scale.set(1, 1, 1);
+      fx.emit('dust', heroRoot.position.x, SIDEWALK_Y + 0.12, HERO_Z, { count: 3 });
+      return 0;
+    }
+    return Math.sin(k * Math.PI) * heroHopH;
+  }
+
+  /** 警察官の位置・動き・記号。mode は 'run'・'search'・'chase'。 */
+  function updatePolice(dt, stage, mode, { near = FERRET_NEAR, withBeam = true, walking = true } = {}) {
+    ferrets.forEach((f, i) => {
+      const active = stage > i;
+      // 見失った時は少し下がり、見つけた時は詰める
+      const target = active ? near[i] + (mode === 'search' ? -0.55 : mode === 'chase' ? 0.3 : 0) : FERRET_AWAY[i];
+      ferretRel[i] += (target - ferretRel[i]) * Math.min(1, dt * (target > ferretRel[i] ? 2.8 : 1.6));
+      const show = ferretRel[i] > -11;
+      const root = ferretRoots[i];
+      root.visible = show;
+      ferretShadows[i].visible = show;
+      root.position.x = playerX + ferretRel[i];
+      const m = active ? mode : 'run';
+      // 立ち位置に着いてから状態が変わった時に、頭の上に記号を出す（走り込みの「！」とは重ねない）
+      const arrived = active && Math.abs(target - ferretRel[i]) < 1.2;
+      if (!arrived) {
+        ferretMode[i] = 'run';
+      } else if (m !== ferretMode[i]) {
+        if (m === 'search') fx.showIcon(i, '?', 1500);
+        else if (m === 'chase') fx.showIcon(i, '!', 800);
+        else fx.hideIcon(i);
+        ferretMode[i] = m;
+      }
+      if (!show || !active) fx.hideIcon(i);
+      f.animate(dt, { walking: walking || !active, mode: m });
+      const hop = f.hop * FERRET_SCALE;
+      const sh = 1 - Math.min(0.5, hop * 0.3);
+      ferretShadows[i].scale.set(2.6 * sh, 1.6 * sh, 1);
+      ferretShadows[i].position.set(root.position.x + 0.2, SIDEWALK_Y + 0.02, root.position.z - 0.15);
+      fx.placeIcon(i, root.position.x + 0.35, SIDEWALK_Y + 3.6 * FERRET_SCALE + hop + 0.75, root.position.z);
+      f.beam.visible = withBeam && active && show;
+    });
+  }
+
+
+  // ---- 終了演出（毎フレームの update から呼ぶ） ----
+  const eDir = new THREE.Vector3();
+  const eSrc = new THREE.Vector3();
+  const eTarget = new THREE.Vector3();
+  const eUp = new THREE.Vector3(0, -1, 0);
+  function applyEnding(dt, now) {
+    const e = ending;
+    const k = Math.min(1, (now - e.start) / e.duration);
+    const once = (name, at, fn) => {
+      if (k >= at && !e.done[name]) {
+        e.done[name] = true;
+        fn();
+      }
+    };
+    const x = heroRoot.position.x;
+    if (e.kind === 'detected') {
+      // 見つかった：主人公が飛び上がり、警察が指をさして詰め寄る。光が1本ずつ増えて集まり、周りは暗くなる
+      once('shock', 0, () => {
+        hopHero(0.75);
+        fx.showIcon(HERO_ICON, '!', 1300);
+        fx.emit('shock', x + 0.2, SIDEWALK_Y + 3.0, HERO_Z + 0.3);
+        shake = 0.14;
+        ferrets.forEach((f) => f.react());
+      });
+      hero.animate(dt, { walking: false, nervous: 1 });
+      if (!reducedMotion) heroRoot.position.x += Math.sin(now * 0.07) * 0.03 * Math.min(1, k * 3); // 震える
+      sweatClock += dt;
+      if (sweatClock > 0.22 && k < 0.8) {
+        sweatClock = 0;
+        fx.emit('sweat', x - 0.2, SIDEWALK_Y + 2.8, HERO_Z + 0.35, { dirX: Math.random() < 0.5 ? -1.4 : 1.2 });
+      }
+      updatePolice(dt, 2, 'chase', { near: [-2.6, -4.3], walking: k < 0.5 });
+      darkPlane.visible = true;
+      darkMat.opacity = Math.min(0.85, k * 1.1);
+      const n = Math.min(beams.length, Math.floor(k * (beams.length + 1)));
+      eTarget.set(playerX, SIDEWALK_Y + 1.5, HERO_Z);
+      beams.forEach((b, i) => {
+        b.visible = i < n;
+        const a = -1 + (i / (beams.length - 1)) * 2;
+        const conv = 1 - 0.55 * k; // だんだん主人公へ寄る
+        eSrc.set(eTarget.x + a * 9 * conv, 11, eTarget.z + 6 + Math.abs(a) * 2);
+        eDir.copy(eTarget).sub(eSrc);
+        const dist = eDir.length();
+        eDir.divideScalar(dist);
+        b.quaternion.setFromUnitVectors(eUp, eDir);
+        b.scale.set(1.0 + k * 0.3, dist / BEAM_LEN, 1.0 + k * 0.3);
+        b.position.copy(eSrc).addScaledVector(eDir, dist / 2);
+        b.material.opacity = 0.09;
+      });
+    } else if (e.kind === 'cleared') {
+      // 逃げ切った：尻尾から宝石を出して掲げ、跳ねて喜ぶ。紙吹雪
+      hero.animate(dt, { walking: false });
+      updatePolice(dt, 0, 'run');
+      once('hop1', 0.04, () => hopHero(0.8));
+      once('conf1', 0.28, () => fx.emit('confetti', x - 1.4, SIDEWALK_Y + 3.4, HERO_Z + 0.6));
+      once('hop2', 0.45, () => hopHero(0.9));
+      once('conf2', 0.52, () => fx.emit('confetti', x + 1.6, SIDEWALK_Y + 3.8, HERO_Z + 0.6));
+      once('hop3', 0.78, () => hopHero(0.6));
+      once('conf3', 0.8, () => fx.emit('confetti', x, SIDEWALK_Y + 4.2, HERO_Z + 0.6));
+      const j = Math.min(1, Math.max(0, (k - 0.2) / 0.5));
+      const up = 1 - (1 - j) * (1 - j);
+      hero.jewel.visible = k > 0.2;
+      hero.jewel.position.set(jewelHome.x + up * 1.3, jewelHome.y + up * 2.9, jewelHome.z + up * 0.8);
+      hero.jewel.rotation.y += dt * 5;
+      hero.jewel.scale.setScalar(1 + up * 0.8);
+      hero.head.rotation.y = -0.5 * up;
+      hero.tail.scale.set(1 + up * 0.25, 1 - up * 0.2, 1);
+      sweatClock += dt;
+      if (k > 0.3 && sweatClock > 0.28) {
+        sweatClock = 0;
+        hero.jewel.getWorldPosition(v3);
+        fx.emit('gem', v3.x, v3.y, v3.z + 0.2);
+      }
+    } else {
+      hero.animate(dt, { walking: false });
+      updatePolice(dt, 0, 'run');
+    }
   }
 
   resize();
@@ -963,6 +1181,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     show(farGlow);
     show(stars);
     show(moon);
+    fx.objects().forEach(show);
     renderer.compile(scene, camera);
     restore.reverse().forEach(([o, v]) => (o.visible = v));
   }
@@ -970,38 +1189,88 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   const api = {
     kind: 'three',
     renderer,
-    /** 毎フレーム。t はゲーム内時刻、color は体色（HSV整数）、policeStage は警察の人数。 */
-    update({ t, color, policeStage = 0, searching = false, nervous = 0, walking = true }) {
-      if (disposed) return;
+    /** 毎フレーム。t はゲーム内時刻、color は体色（HSV整数）、policeStage は警察の人数、matchState は今の一致の段階。 */
+    update(args) {
+      if (disposed || opening) return;
+      lastArgs = args;
+      const { t, color, policeStage = 0, searching = false, nervous = 0, walking = true, matchState = null } = args;
       const now = performance.now();
       const dt = Math.min(0.1, (now - lastFrame) / 1000);
       lastFrame = now;
+      worldClock += dt;
       playerX = (t / rules.buildingMs) * W; // 判定と同じ時刻から位置を決める
       const building = Math.min(rules.buildingCount, Math.floor(t / rules.buildingMs) + 1);
       assignSlots(building);
       setTimeOfDay(building, (t % rules.buildingMs) / rules.buildingMs);
+      shake *= Math.exp(-dt * 7);
       placeWorld(playerX, t);
-      placeHero(playerX);
+      const hopY = heroHopY(dt);
+      placeHero(playerX, hopY);
       hero.setColor(rgbFloat(color));
-      if (!ending) hero.animate(dt, { walking, nervous });
-      // 警察：通常は画面外。段階に応じて背後（歩道の奥側）から近づき、回復で後退する
-      const rels = [policeStage >= 1 ? -3.3 : -14, policeStage >= 2 ? -5.2 : -17];
-      ferrets.forEach((f, i) => {
-        ferretRel[i] += (rels[i] - ferretRel[i]) * Math.min(1, dt * 2.2);
-        const show = ferretRel[i] > -11;
-        ferretRoots[i].visible = show;
-        ferretShadows[i].visible = show;
-        ferretRoots[i].position.x = playerX + ferretRel[i];
-        ferretShadows[i].position.set(playerX + ferretRel[i] + 0.3, SIDEWALK_Y + 0.02, ferretRoots[i].position.z - 0.1);
-        f.animate(dt, { walking: true, searching });
-        f.beam.visible = policeStage >= 1 && show;
-      });
+      if (ending) {
+        applyEnding(dt, now);
+      } else {
+        hero.animate(dt, { walking, nervous });
+        // 警察：通常は画面外。段階に応じて主人公の後ろ（同じ歩道の並び）へ走り込み、回復で後退する
+        if (policeStage > lastPoliceStage) {
+          const i = Math.min(ferrets.length, policeStage) - 1;
+          ferrets[i].react();
+          fx.showIcon(i, '!', 900);
+          shake = Math.max(shake, 0.05);
+        }
+        lastPoliceStage = policeStage;
+        const mode = policeStage > 0 && (matchState === 'success' || (matchState == null && searching)) ? 'search' : policeStage > 0 && matchState === 'danger' ? 'chase' : 'run';
+        updatePolice(dt, policeStage, mode, { walking });
+        if (walking) {
+          // 足元の土ぼこり
+          dustClock += dt;
+          if (dustClock > 0.38) {
+            dustClock = 0;
+            fx.emit('dust', playerX - 0.35, SIDEWALK_Y + 0.1, HERO_Z, { dirX: -0.8 });
+            ferretRoots.forEach((r) => r.visible && fx.emit('dust', r.position.x - 0.3, SIDEWALK_Y + 0.1, r.position.z, { count: 1, dirX: -0.8 }));
+          }
+          // 焦りの汗（警戒が高い時）
+          if (nervous >= 0.5) {
+            sweatClock += dt;
+            if (sweatClock > (nervous >= 1 ? 0.32 : 0.6)) {
+              sweatClock = 0;
+              fx.emit('sweat', playerX - 0.25, SIDEWALK_Y + 2.75 + hopY, HERO_Z + 0.35, { dirX: -1.4 });
+            }
+          }
+        }
+      }
+      fx.placeIcon(HERO_ICON, heroRoot.position.x + 0.35, SIDEWALK_Y + 3.75 + hopY, HERO_Z);
+      fx.update(dt, camQuat);
       if (shop) {
         const vis = playerX < W * 1.5;
         shop.visible = vis;
         shopExtras.visible = vis;
       }
       drawFrame();
+    },
+    /**
+     * 本編の出来事に合わせた小さな演出（見た目だけ。得点や判定には関わらない）。
+     * success＝擬態成功のきらめき、pass＝棟の成功通過、combo＝連続成功の節目、milestone＝区間の節目、unlock＝明るさの解放。
+     */
+    fx(name) {
+      if (disposed || ending) return;
+      const x = heroRoot.position.x;
+      const y = SIDEWALK_Y;
+      if (name === 'success') {
+        fx.emit('sparkle', x, y + 1.6, HERO_Z + 0.4);
+        hopHero(0.28);
+      } else if (name === 'pass') {
+        fx.emit('pass', x + 0.2, y + 3.2, HERO_Z + 0.2);
+      } else if (name === 'combo') {
+        fx.emit('confetti', x, y + 2.6, HERO_Z + 0.5);
+        hopHero(0.55);
+      } else if (name === 'milestone') {
+        fx.emit('confetti', x + 1.5, y + 3.4, HERO_Z + 0.5);
+        fx.emit('confetti', x - 1.2, y + 3.0, HERO_Z + 0.5, { count: 8 });
+      } else if (name === 'unlock') {
+        fx.emit('sparkle', x, y + 1.6, HERO_Z + 0.4, { count: 12 });
+        hopHero(0.4);
+      }
     },
     /** 練習用：目標の壁だけを見せる。 */
     showPractice(target) {
@@ -1012,6 +1281,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         r.visible = false;
         ferretShadows[i].visible = false;
       });
+      fx.clear();
       if (shop) {
         shop.visible = false;
         shopExtras.visible = false;
@@ -1023,55 +1293,27 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const [r, g, b] = rgbFloat(target);
       s.facadeMat.color.setRGB(r, g, b);
       setTimeOfDay(1, 0);
-      placeWorld(PRACTICE_X);
-      placeHero(PRACTICE_X);
-      hero.setColor(rgbFloat(color));
       const now = performance.now();
-      hero.animate(Math.min(0.1, (now - lastFrame) / 1000), { walking: false });
+      const dt = Math.min(0.1, (now - lastFrame) / 1000);
       lastFrame = now;
+      placeWorld(PRACTICE_X);
+      placeHero(PRACTICE_X, heroHopY(dt));
+      hero.setColor(rgbFloat(color));
+      hero.animate(dt, { walking: false });
+      fx.update(dt, camQuat);
       drawFrame();
     },
     /** 終了演出。結果は先に確定しているので、スキップしても結果は変わらない。 */
     async playEnding(kind, { signal } = {}) {
-      ending = kind;
-      const start = performance.now();
-      const duration = kind === 'detected' ? 2600 : kind === 'cleared' ? 2400 : 600;
-      ferrets.forEach((f) => (f.beam.visible = false));
-      const home = jewelHome; // 宝石は常に尻尾の元の位置から出す（開始演出を飛ばしても胸からは出さない）
-      hero.jewel.position.copy(home);
-      const dir = new THREE.Vector3();
-      const src = new THREE.Vector3();
-      const target = new THREE.Vector3();
-      const up = new THREE.Vector3(0, -1, 0);
+      const duration = kind === 'detected' ? 2800 : kind === 'cleared' ? 3000 : 600;
+      ending = { kind, start: performance.now(), duration, done: {} };
+      hero.jewel.position.copy(jewelHome); // 宝石は常に尻尾の元の位置から出す（開始演出を飛ばしても胸からは出さない）
       return new Promise((resolve) => {
         const step = () => {
-          const k = Math.min(1, (performance.now() - start) / duration);
-          if (kind === 'detected') {
-            darkPlane.visible = true;
-            darkMat.opacity = Math.min(0.85, k * 1.1);
-            const n = Math.min(beams.length, Math.floor(k * (beams.length + 1)));
-            target.set(heroRoot.position.x, SIDEWALK_Y + 1.5, HERO_Z);
-            beams.forEach((b, i) => {
-              b.visible = i < n;
-              const a = -1 + (i / (beams.length - 1)) * 2;
-              const conv = 1 - 0.55 * k; // だんだん主人公へ寄る
-              src.set(target.x + a * 9 * conv, 11, target.z + 6 + Math.abs(a) * 2);
-              dir.copy(target).sub(src);
-              const dist = dir.length();
-              dir.divideScalar(dist);
-              b.quaternion.setFromUnitVectors(up, dir);
-              b.scale.set(1.0 + k * 0.3, dist / BEAM_LEN, 1.0 + k * 0.3);
-              b.position.copy(src).addScaledVector(dir, dist / 2);
-              b.material.opacity = 0.09;
-            });
-          } else if (kind === 'cleared') {
-            hero.jewel.visible = k > 0.25;
-            hero.jewel.position.set(home.x + k * 1.2, home.y + k * 2.6, home.z + k * 0.8);
-            hero.jewel.rotation.y += 0.08;
-            hero.head.rotation.y = -0.5 * k;
-            hero.tail.scale.set(1 + k * 0.25, 1 - k * 0.2, 1);
-          }
-          drawFrame();
+          const now = performance.now();
+          const k = Math.min(1, (now - ending.start) / duration);
+          // 画面側の毎フレームの呼び出しが止まっている時だけ、ここから描く
+          if (now - lastFrame > 60 && lastArgs) api.update(lastArgs);
           if (k >= 1 || signal?.aborted || disposed) {
             resolve();
             return;
@@ -1081,31 +1323,68 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         requestAnimationFrame(step);
       });
     },
-    /** 初回の開始演出：宝石店から飛び出し、宝石を尻尾に隠す。 */
-    async playOpening({ signal } = {}) {
+    /** 初回の開始演出：警報の鳴る宝石店から飛び出し、宝石を尻尾に隠す。onCue は音を合わせるための合図。 */
+    async playOpening({ signal, onCue = () => {} } = {}) {
       const start = performance.now();
       const duration = 2800;
+      let last = start;
+      const done = {};
+      opening = true;
+      fx.clear();
       hero.jewel.visible = true;
       return new Promise((resolve) => {
         const step = () => {
-          const k = Math.min(1, (performance.now() - start) / duration);
+          const now = performance.now();
+          const dt = Math.min(0.1, (now - last) / 1000);
+          last = now;
+          const k = Math.min(1, (now - start) / duration);
+          const once = (name, at, fn) => {
+            if (k >= at && !done[name]) {
+              done[name] = true;
+              fn();
+            }
+          };
           const x = -W * 0.6 + k * W * 0.6;
+          const y = Math.max(0, Math.sin(k * Math.PI * 2) * 1.2 * (1 - k));
           setTimeOfDay(1, 0);
           assignSlots(1);
           placeWorld(x);
-          placeHero(x, Math.max(0, Math.sin(k * Math.PI * 2) * 1.2 * (1 - k)));
+          placeHero(x, y);
+          once('alarm', 0, () => onCue('alarm'));
+          once('burst', 0.03, () => {
+            fx.emit('glass', x + 0.4, SIDEWALK_Y + 1.8, HERO_Z - 0.6);
+            onCue('jump');
+          });
+          once('land', 0.5, () => fx.emit('dust', x, SIDEWALK_Y + 0.12, HERO_Z, { count: 4 }));
+          once('hide', 0.82, () => {
+            hero.jewel.getWorldPosition(v3);
+            fx.emit('gem', v3.x, v3.y, v3.z + 0.3, { count: 6 });
+            onCue('jewel');
+          });
+          if (alarmMat) alarmMat.color.set(Math.floor(now / 150) % 2 ? 0xff3b3b : 0x6a1a1a);
           hero.jewel.position.set(jewelHome.x + (1 - k) * 1.5, jewelHome.y + (1 - k) * 1.6, jewelHome.z);
+          hero.jewel.rotation.y += dt * 5;
           hero.jewel.visible = k < 0.85;
-          hero.animate(0.016, { walking: true });
+          hero.animate(dt, { walking: true });
+          ferretRoots.forEach((r, i) => {
+            r.visible = false;
+            ferretShadows[i].visible = false;
+          });
+          fx.update(dt, camQuat);
           if (shop) {
             shop.visible = true;
             shopExtras.visible = true;
           }
           drawFrame();
           if (k >= 1 || signal?.aborted || disposed) {
+            opening = false;
+            lastFrame = performance.now();
             heroRoot.position.y = SIDEWALK_Y;
             hero.jewel.visible = false;
             hero.jewel.position.copy(jewelHome);
+            hero.jewel.rotation.y = 0;
+            alarmMat?.color.set(0x6a1a1a);
+            fx.clear();
             resolve();
             return;
           }
@@ -1121,7 +1400,11 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       beams.forEach((b) => (b.visible = false));
       hero.jewel.visible = false;
       hero.jewel.position.copy(jewelHome);
+      hero.jewel.scale.setScalar(1);
       hero.tail.scale.set(1, 1, 1);
+      fx.clear();
+      heroHopT = -1;
+      shake = 0;
     },
     /** 検証用：ワールド座標の1点（x,y,z）を、描画済みの画面から読む（8ビットのRGB）。 */
     pixelAt(worldX, worldY, worldZ = 0) {
@@ -1298,6 +1581,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       globalThis.removeEventListener('resize', onResize);
       hero.dispose?.();
       ferrets.forEach((f) => f.dispose?.());
+      fx.dispose();
       scene.traverse((o) => {
         o.geometry?.dispose?.();
         if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
