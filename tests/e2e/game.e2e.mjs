@@ -174,11 +174,37 @@ test('GAME-07b: 警察の光・街灯が近くても、見えている壁の全�
       });
       await page.waitForTimeout(1500);
       const r = await page.evaluate(() => globalThis.__kamereoru.stage.checkComparisonSurfaces());
+      const index = Math.floor(atMs / 5000) + 1;
       assert.ok(r.wallPixels > 2000, `壁の画素が十分に見えている (${r.wallPixels}) at ${atMs}`);
+      assert.ok(r.perSlot.some((wall) => wall.index === index && wall.pixels > 0), `${index}棟目の壁が見えている at ${atMs}`);
+      assert.ok(r.bodyPixels > 0, `体の画素が見えている at ${atMs}`);
       assert.equal(r.wallMismatches, 0, `壁の不一致 ${JSON.stringify(r)} at ${atMs}`);
       assert.equal(r.bodyMismatches, 0, `体の不一致 ${JSON.stringify(r)} at ${atMs}`);
       await page.evaluate(() => globalThis.__kamereoru.leaveGame());
     }
+    assert.deepEqual(env.errors, []);
+  } finally {
+    await env.close();
+  }
+});
+
+test('GAME-07b: 描画枠を使い回した後も、画面に見える29棟目の壁を検査する', async () => {
+  const env = await launch();
+  const { page } = env;
+  try {
+    await openHome(page, env.url);
+    await page.evaluate(() => globalThis.__kamereoru.debugStart({ atMs: 120000 }));
+    const { sample, wall } = await page.evaluate(() => {
+      const { stage, session } = globalThis.__kamereoru;
+      for (let t = 120000; t <= 142000; t += 1000) stage.update({ t, color: session.state.color });
+      return {
+        sample: stage.sampleComparison(29),
+        wall: stage.checkComparisonSurfaces().perSlot.find(({ index }) => index === 29),
+      };
+    });
+    assert.ok(sample?.wall, '29棟目の壁が画面に見えている');
+    assert.ok(wall?.pixels > 0, `29棟目の壁の画素を検査している: ${JSON.stringify(wall)}`);
+    assert.equal(wall.mismatches, 0, '29棟目の壁の色が判定と一致する');
     assert.deepEqual(env.errors, []);
   } finally {
     await env.close();

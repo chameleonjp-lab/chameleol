@@ -83,6 +83,22 @@ test('R1: 95秒の古い保存が、終了・新規開始の後に届いても�
   store.close();
 });
 
+test('古い確認画面からは、その後に始まった別のプレイを引き継いだり保管したりできない', async () => {
+  const store = await fresh();
+  try {
+    const generation = await store.beginRun('tabA', new GameSession(meta('old')).snapshot());
+    await store.endRun('tabA', generation, { playId: 'old', ranked: false });
+    await store.beginRun('tabB', new GameSession(meta('new')).snapshot());
+    const current = await store.loadRun();
+    assert.equal(await store.claimRun('tabA', 'old'), null);
+    assert.equal(await store.quarantineRun('unknown_format', 'old'), false);
+    assert.deepEqual(await store.loadRun(), current);
+    assert.deepEqual(await store.getAll('quarantine'), []);
+  } finally {
+    store.close();
+  }
+});
+
 test('終了の取引で書き込みに失敗しても、直前の有効な保存が残り、旧結果1件が二重にならない', async () => {
   let fail = true;
   const store = await fresh({ failWrites: (names) => (fail && names.includes('outbox') ? new Error('QuotaExceededError') : null) });

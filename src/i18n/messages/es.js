@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "La coincidencia media se muestra redondeada a dos decimales. Las rachas se juzgan antes de redondear (85 % o más).",
   "result.nameLabel": "Nombre:",
   "result.localBest": "Mejor en este dispositivo: {buildings} edificios, {average}",
-  "result.rank": "Puesto oficial: {rank}",
+  "result.rank": "Puesto de tu mejor marca: {rank}",
   "result.rankError": "No se pudo cargar el puesto. Tu registro se ha recibido.",
   "result.again": "Jugar otra vez",
   "result.status.anonymous": "Esta partida no tenía nombre, así que no se envía a la clasificación.",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "Tu nombre",
   "ranking.mineValue": ": {rank}.º ({buildings} edif., {average})",
 
+  "records.localTitle": "Registros locales",
   "records.title": "Estado de los registros",
   "records.intro": "Partidas jugadas en este dispositivo, de la más reciente a la más antigua.",
   "records.empty": "Todavía no hay registros.",

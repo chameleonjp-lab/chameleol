@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "Ortalama uyum iki ondalık basamağa yuvarlanarak gösterilir. Seriler yuvarlamadan önceki değere göre değerlendirilir (%85 veya üstü).",
   "result.nameLabel": "Ad:",
   "result.localBest": "Bu cihazdaki en iyi: {buildings} bina, {average}",
-  "result.rank": "Resmî sıra: {rank}.",
+  "result.rank": "En iyi sonucunun sırası: {rank}.",
   "result.rankError": "Sıra yüklenemedi. Kaydın alındı.",
   "result.again": "Tekrar oyna",
   "result.status.anonymous": "Bu oyunun adı yoktu, bu yüzden sıralamaya gönderilmiyor.",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "Senin adın",
   "ranking.mineValue": ": {rank}. ({buildings} bina, {average})",
 
+  "records.localTitle": "Yerel kayıtlar",
   "records.title": "Kayıt durumu",
   "records.intro": "Bu cihazda oynanan oyunlar, en yeniden başlayarak.",
   "records.empty": "Henüz kayıt yok.",

@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "La correspondance moyenne est arrondie à deux décimales. Les séries sont jugées avant l’arrondi (85 % ou plus).",
   "result.nameLabel": "Nom :",
   "result.localBest": "Meilleur score sur cet appareil : {buildings} immeubles, {average}",
-  "result.rank": "Rang officiel : {rank}",
+  "result.rank": "Rang de ton meilleur résultat : {rank}",
   "result.rankError": "Impossible de charger le rang. Ton score a bien été reçu.",
   "result.again": "Rejouer",
   "result.status.anonymous": "Cette partie n’avait pas de nom, elle n’est donc pas envoyée au classement.",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "Ton nom",
   "ranking.mineValue": " : {rank}e ({buildings} imm., {average})",
 
+  "records.localTitle": "Historique local",
   "records.title": "État des scores",
   "records.intro": "Parties jouées sur cet appareil, de la plus récente à la plus ancienne.",
   "records.empty": "Aucun score pour l’instant.",

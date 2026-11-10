@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "ความตรงเฉลี่ยแสดงแบบปัดเศษทศนิยม 2 ตำแหน่ง การนับต่อเนื่องตัดสินจากค่าก่อนปัดเศษ (85% ขึ้นไป)",
   "result.nameLabel": "ชื่อ:",
   "result.localBest": "สถิติดีที่สุดในอุปกรณ์นี้: {buildings} ตึก・{average}",
-  "result.rank": "อันดับอย่างเป็นทางการ: อันดับที่ {rank}",
+  "result.rank": "อันดับของสถิติที่ดีที่สุดของคุณ: {rank}",
   "result.rankError": "โหลดอันดับไม่ได้ แต่ได้รับสถิติของคุณแล้ว",
   "result.again": "เล่นอีกครั้ง",
   "result.status.anonymous": "เกมนี้ไม่มีชื่อ จึงไม่ส่งไปยังอันดับ",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "ชื่อของคุณ",
   "ranking.mineValue": ": อันดับ {rank} ({buildings} ตึก・{average})",
 
+  "records.localTitle": "ประวัติในอุปกรณ์",
   "records.title": "สถานะการส่งและตรวจสอบสถิติ",
   "records.intro": "สถิติที่เล่นในอุปกรณ์นี้ เรียงจากใหม่ไปเก่า",
   "records.empty": "ยังไม่มีสถิติ",

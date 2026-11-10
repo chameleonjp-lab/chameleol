@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "Среднее совпадение показано с округлением до двух знаков после запятой. Серии оцениваются до округления (85 % и больше).",
   "result.nameLabel": "Имя:",
   "result.localBest": "Лучший результат на этом устройстве: {buildings} домов, {average}",
-  "result.rank": "Официальное место: {rank}",
+  "result.rank": "Место вашего лучшего результата: {rank}",
   "result.rankError": "Не удалось загрузить место. Ваш результат получен.",
   "result.again": "Ещё раз",
   "result.status.anonymous": "У этой игры не было имени, поэтому она не отправляется в рейтинг.",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "Ваше имя",
   "ranking.mineValue": ": {rank}-е место ({buildings} дом., {average})",
 
+  "records.localTitle": "Локальные записи",
   "records.title": "Статус результатов",
   "records.intro": "Игры на этом устройстве, от новых к старым.",
   "records.empty": "Пока нет результатов.",

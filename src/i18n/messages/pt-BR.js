@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "A combinação média aparece arredondada para duas casas decimais. As sequências são avaliadas antes do arredondamento (85% ou mais).",
   "result.nameLabel": "Nome:",
   "result.localBest": "Melhor neste aparelho: {buildings} prédios, {average}",
-  "result.rank": "Posição oficial: {rank}º",
+  "result.rank": "Seu melhor resultado no ranking: {rank}º lugar",
   "result.rankError": "Não foi possível carregar a posição. Seu registro foi recebido.",
   "result.again": "Jogar de novo",
   "result.status.anonymous": "Este jogo não tinha nome, então não é enviado ao ranking.",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "Seu nome",
   "ranking.mineValue": ": {rank}º ({buildings} préd., {average})",
 
+  "records.localTitle": "Registros locais",
   "records.title": "Status dos registros",
   "records.intro": "Partidas jogadas neste aparelho, da mais recente para a mais antiga.",
   "records.empty": "Ainda não há registros.",

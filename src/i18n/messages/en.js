@@ -127,7 +127,7 @@ export default {
   'result.roundingNote': 'The average match is shown rounded to two decimal places. Streaks are judged before rounding (85% or more).',
   'result.nameLabel': 'Name:',
   'result.localBest': 'Best on this device: {buildings} buildings, {average}',
-  'result.rank': 'Official rank: #{rank}',
+  'result.rank': 'Rank of your best result: #{rank}',
   'result.rankError': 'The rank could not be loaded. Your record has been received.',
   'result.again': 'Play again',
   'result.status.anonymous': 'This game had no name, so it is not sent to the ranking.',
@@ -195,6 +195,7 @@ export default {
   'ranking.mine': 'Your name',
   'ranking.mineValue': ': #{rank} ({buildings} bldg, {average})',
 
+  'records.localTitle': 'Local records',
   'records.title': 'Record status',
   'records.intro': 'Records played on this device, newest first.',
   'records.empty': 'No records yet.',

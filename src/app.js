@@ -52,6 +52,7 @@ class App {
     this.flags = {};
     this.nameRaw = '';
     this.session = null;
+    this.playSecrets = new WeakMap();
     this.generation = 0;
     this.memoryOnly = false;
     this.startToken = null;
@@ -132,6 +133,8 @@ class App {
   /** 進行中の保存を検査する。読めない・未対応の版は消さずに隔離し、理由を知らせる。 */
   async checkSavedRun() {
     this.savedRun = null;
+    this.foreignRun = null;
+    if (this.homeContinue?.isConnected) this.homeContinue.hidden = true;
     let run;
     try {
       run = await this.store.loadRun();
@@ -142,15 +145,16 @@ class App {
     const r = GameSession.fromSnapshot(run.snapshot);
     if (r.error === 'unknown_rules_version' || r.error === 'unknown_format') {
       // 別の版で保存したプレイ：消さずに残し、保存した版の資源で続けられるよう案内する（切り戻し・更新の両方向）
-      this.foreignRun = { reason: r.error, assetVersion: run.snapshot?.meta?.assetVersion ?? null, rulesVersion: run.snapshot?.meta?.rulesVersion ?? null };
+      this.foreignRun = { playId: run.playId, reason: r.error, assetVersion: run.snapshot?.meta?.assetVersion ?? null, rulesVersion: run.snapshot?.meta?.rulesVersion ?? null };
       return;
     }
     if (r.error) {
-      await this.store.quarantineRun(r.error).catch(() => {});
+      await this.store.quarantineRun(r.error, run.playId).catch(() => {});
       this.notices.push('notice.savedRunBroken');
       return;
     }
     this.savedRun = run;
+    if (this.homeContinue?.isConnected) this.homeContinue.hidden = false;
   }
 
   /** 別の版のプレイの案内（保存した版のページ）。 */
@@ -158,12 +162,6 @@ class App {
     const v = this.foreignRun?.assetVersion;
     if (!v || v === this.runtime.assetVersion || !/^[0-9A-Za-z._-]{1,64}$/.test(v)) return null;
     return new URL(`v/${v}/`, document.baseURI.replace(/v\/[^/]+\/$/, '')).href;
-  }
-
-  /** 別の版のプレイを、確認してから保管庫へ移す（削除しない）。 */
-  async shelveForeignRun() {
-    await this.store.quarantineRun(this.foreignRun?.reason ?? 'unknown_rules_version').catch(() => {});
-    this.foreignRun = null;
   }
 
   async flushNetwork() {
@@ -208,23 +206,25 @@ class App {
 
   showHome() {
     this.disposeStage();
-    const field = nameField({
+    const showOnline = this.runtime.isVerification || this.api.configured;
+    const field = showOnline ? nameField({
       value: this.nameRaw,
       onChange: (raw) => {
         this.nameRaw = raw;
         this.safeSet('nameRaw', raw);
       },
-    });
+    }) : null;
     const continueBtn = button('home.continue', () => this.resumeSaved(), { testid: 'home-continue' });
     continueBtn.hidden = !this.savedRun;
+    this.homeContinue = continueBtn;
     const practiceBtn = button('home.practice', () => this.showPracticeMenu(), { testid: 'home-practice' });
     const pendingBadge = h('span', { class: 'badge', hidden: true });
-    const recordsBtn = button('home.records', () => this.showRecords(), { testid: 'home-records' });
-    recordsBtn.append(pendingBadge);
+    const recordsBtn = button(showOnline ? 'home.records' : 'records.localTitle', () => this.showRecords(), { testid: 'home-records' });
+    if (showOnline) recordsBtn.append(pendingBadge);
     const homeArt = h('div', { class: 'home-art', 'aria-hidden': 'true' }, [h('div', { class: 'home-chameleon' }), h('div', { class: 'home-jewel' })]);
     const notices = h('div', { class: 'notices' });
     for (const key of this.notices.splice(0)) notices.append(h('p', { class: 'notice' }, t(key)));
-    if (this.flags.recordsChanged) notices.append(h('p', { class: 'notice notice-update' }, [t('notice.recordsUpdated'), ' ', button('home.records', () => this.showRecords(), { className: 'btn-small' })]));
+    if (showOnline && this.flags.recordsChanged) notices.append(h('p', { class: 'notice notice-update' }, [t('notice.recordsUpdated'), ' ', button('home.records', () => this.showRecords(), { className: 'btn-small' })]));
     if (this.foreignRun) {
       const link = this.foreignRunLink();
       notices.append(
@@ -244,13 +244,13 @@ class App {
         h('p', { class: 'subtitle' }, t('app.tagline')),
       ]),
       notices,
-      field.el,
+      field?.el,
       h('div', { class: 'home-actions' }, [
-        button('home.start', () => this.startFlow(field.value), { primary: true, className: 'btn-start', testid: 'home-start' }),
+        button('home.start', () => this.startFlow(field?.value ?? ''), { primary: true, className: 'btn-start', testid: 'home-start' }),
         continueBtn,
         h('div', { class: 'home-grid' }, [
           practiceBtn,
-          button('home.ranking', () => this.showRanking(), { testid: 'home-ranking' }),
+          showOnline && button('home.ranking', () => this.showRanking(), { testid: 'home-ranking' }),
           button('home.howto', () => this.showHowTo(), { testid: 'home-howto' }),
           button('home.settings', () => this.showSettings(), { testid: 'home-settings' }),
           recordsBtn,
@@ -262,6 +262,7 @@ class App {
     ]);
     this.mount(el, () => this.showHome());
     this.mountShowcase(homeArt);
+    if (!showOnline) return;
     this.store
       .getAll('outbox')
       .then((items) => {
@@ -285,45 +286,54 @@ class App {
   }
 
   // ---------- 開始 ----------
-  async startFlow(rawName) {
-    await this.audio.prepare();
-    this.audio.play('confirm');
-    const name = normalizeName(rawName);
-    if (!name.ok) {
-      toast(this.layer, t('name.fixBeforeStart'), { kind: 'warn' });
-      return;
-    }
-    if (this.foreignRun) {
+  showSavedRunChoice(onProceed, onCancel = () => {}) {
+    const foreign = this.foreignRun;
+    if (foreign) {
       const link = this.foreignRunLink();
       dialog(this.layer, {
         titleKey: 'start.foreignRun.title',
         bodyKey: 'start.foreignRun.body',
         actions: [
-          ...(link ? [{ key: 'notice.openSavedVersion', primary: true, onClick: () => globalThis.location.assign(link) }] : []),
+          ...(link ? [{ key: 'notice.openSavedVersion', primary: true, onClick: () => { onCancel(); globalThis.location.assign(link); } }] : []),
           { key: 'start.foreignRun.shelve', danger: true, testid: 'foreign-shelve', onClick: async () => {
-            await this.shelveForeignRun();
-            this.startFlow(rawName);
+            await this.store.quarantineRun(foreign.reason, foreign.playId).catch(() => {});
+            onProceed();
           } },
-          { key: 'common.cancel' },
+          { key: 'common.cancel', onClick: onCancel },
         ],
       });
-      return;
+      return true;
     }
-    if (this.savedRun) {
+    const saved = this.savedRun;
+    if (saved) {
       dialog(this.layer, {
         titleKey: 'start.savedRun.title',
         bodyKey: 'start.savedRun.body',
         actions: [
-          { key: 'start.savedRun.continue', primary: true, onClick: () => this.resumeSaved() },
+          { key: 'start.savedRun.continue', primary: true, onClick: () => { onCancel(); this.resumeSaved(saved.playId); } },
           { key: 'start.savedRun.newGame', danger: true, onClick: async () => {
-            await this.settleSavedRun();
-            this.startFlow(rawName);
+            await this.settleSavedRun(saved.playId);
+            onProceed();
           } },
-          { key: 'common.cancel' },
+          { key: 'common.cancel', onClick: onCancel },
         ],
       });
+      return true;
+    }
+    return false;
+  }
+
+  async startFlow(rawName) {
+    await this.audio.prepare();
+    this.audio.play('confirm');
+    const name = normalizeName(this.runtime.isVerification || this.api.configured ? rawName : '');
+    if (!name.ok) {
+      toast(this.layer, t('name.fixBeforeStart'), { kind: 'warn' });
       return;
     }
+    // ホームを開いた後に、別のタブが始めたプレイも確認する。
+    await this.checkSavedRun();
+    if (this.showSavedRunChoice(() => this.startFlow(rawName))) return;
     const launchId = uuid();
     if (name.empty) {
       this.beginPlay({ ranked: false, launchId });
@@ -389,7 +399,7 @@ class App {
     close();
     if (r.ok) {
       this.startToken = null;
-      this.beginPlay({ ranked: true, launchId, name, playId: r.data.playId, seed: r.data.seed, secret: record.secret, requestId: record.requestId });
+      this.beginPlay({ ranked: true, launchId, name, startRecord: r.record });
       return;
     }
     dialog(this.layer, {
@@ -417,13 +427,12 @@ class App {
   }
 
   /** 前のプレイを、保存できている確定棟までで終了・保全する。 */
-  async settleSavedRun() {
-    const claimed = await this.store.claimRun(TAB_ID).catch(() => null);
-    this.savedRun = null;
+  async settleSavedRun(playId) {
+    const claimed = await this.store.claimRun(TAB_ID, playId).catch(() => null);
     if (!claimed) return;
     const r = GameSession.fromSnapshot(claimed.snapshot);
     if (r.error) {
-      await this.store.quarantineRun(r.error).catch(() => {});
+      await this.store.quarantineRun(r.error, playId).catch(() => {});
       return;
     }
     r.session.quit();
@@ -461,7 +470,6 @@ class App {
     if (session.ended) throw new Error('debugStart ended before atMs');
     session.pausedReason = 'restored';
     this.flags = { ...this.flags, openingSeen: true, guideSeen: true };
-    this.playSecret = null;
     this.generation = 0;
     this.memoryOnly = true; // 端末の本編欄・送信待ちには書かない
     this.takenOver = false;
@@ -470,35 +478,50 @@ class App {
   }
 
   // ---------- 本編 ----------
-  async beginPlay({ ranked, launchId, name = '', playId = null, seed = null, secret = null, requestId = null }) {
+  async beginPlay(options) {
+    const { ranked, launchId, name = '', startRecord = null } = options;
+    const playId = ranked ? startRecord.response.playId : uuid();
+    const secret = ranked ? startRecord.secret : null;
     const meta = {
-      playId: ranked ? playId : uuid(),
+      playId,
       launchId,
       ranked,
       name: ranked ? name : '',
-      requestId,
-      seed: ranked ? seed : randomSeed(),
+      requestId: startRecord?.requestId ?? null,
+      seed: ranked ? startRecord.response.seed : randomSeed(),
       gameVersion: this.runtime.gameVersion,
       assetVersion: this.runtime.assetVersion,
       startedAt: Date.now(),
     };
     const session = new GameSession(meta);
-    this.playSecret = secret;
-    this.memoryOnly = false;
-    this.takenOver = false;
-    this.saveWarned = false;
-    try {
-      this.generation = await this.store.beginRun(TAB_ID, session.snapshot());
-    } catch (err) {
-      if (err?.code === 'active_run_exists') {
-        await this.settleSavedRun();
-        this.generation = await this.store.beginRun(TAB_ID, session.snapshot()).catch(() => 0);
-      }
-      if (!this.generation) {
-        this.memoryOnly = true;
-        this.notices.push('notice.saveFailed');
+    let generation = 0;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        generation = await this.store.beginRun(TAB_ID, session.snapshot());
+        break;
+      } catch (err) {
+        if (err?.code !== 'active_run_exists') break;
+        // 受付待ちなどで別のタブが先に始めた。予約は保ち、本人が選ぶまで前のプレイを終えない。
+        const abandon = () => { if (startRecord) abandonStart(this.api, this.store, startRecord).catch(() => {}); };
+        await this.checkSavedRun();
+        if (this.showSavedRunChoice(() => this.beginPlay(options), abandon)) return;
+        // 読み直す間に前のプレイが終了した場合だけを見込んで、再度保存を試す。
+        if (attempt === 1) {
+          abandon();
+          this.notices.push('notice.storageUnavailable');
+          this.showHome();
+          return;
+        }
       }
     }
+    if (secret) this.playSecrets.set(session, secret);
+    this.savedRun = null;
+    this.foreignRun = null;
+    this.generation = generation;
+    this.memoryOnly = !generation;
+    this.takenOver = false;
+    this.saveWarned = false;
+    if (!generation) this.notices.push('notice.saveFailed');
     // 実際に本編を始めた：開始通知を端末へ保存してから送る（名前ありの開始予約だけでは数えない）
     try {
       await recordLaunch(this.store, { launchId, ranked, playId: ranked ? playId : null, secret: ranked ? secret : null, gameVersion: this.runtime.gameVersion });
@@ -509,17 +532,18 @@ class App {
     await this.showGame(session, { fresh: true });
   }
 
-  async resumeSaved() {
+  async resumeSaved(playId = this.savedRun?.playId) {
+    if (playId == null) return;
     await this.audio.prepare();
-    const claimed = await this.store.claimRun(TAB_ID).catch(() => null);
+    const claimed = await this.store.claimRun(TAB_ID, playId).catch(() => null);
     if (!claimed) {
-      this.savedRun = null;
+      await this.checkSavedRun();
       this.showHome();
       return;
     }
     const r = GameSession.fromSnapshot(claimed.snapshot);
     if (r.error) {
-      await this.store.quarantineRun(r.error).catch(() => {});
+      await this.store.quarantineRun(r.error, playId).catch(() => {});
       this.notices.push('notice.savedRunBroken');
       this.savedRun = null;
       this.showHome();
@@ -530,10 +554,8 @@ class App {
     this.memoryOnly = false;
     this.takenOver = false;
     this.saveWarned = false;
-    if (r.session.meta.ranked && r.session.meta.requestId) {
-      const start = await this.store.getOne('starts', r.session.meta.requestId).catch(() => null);
-      this.playSecret = start?.secret ?? null;
-    }
+    const secret = await this.secretForSession(r.session);
+    if (secret) this.playSecrets.set(r.session, secret);
     await this.showGame(r.session, { fresh: false });
   }
 
@@ -910,15 +932,22 @@ class App {
     this.showHome();
   }
 
+  async secretForSession(session) {
+    const { ranked, playId, requestId, launchId } = session.meta;
+    if (!ranked) return null;
+    const cached = this.playSecrets.get(session);
+    if (cached) return cached;
+    if (!requestId) return null;
+    const start = await this.store.getOne('starts', requestId).catch(() => null);
+    return start?.status === 'accepted' && start.response?.playId === playId && start.launchId === launchId ? start.secret : null;
+  }
+
   /** 終了の確定：結果と履歴を端末へ先に保存してから、演出と送信を行う。 */
   async persistEnd(session, generation, { takenOver = false } = {}) {
     const summary = session.summary();
     const snap = session.snapshot();
     let result;
-    let secret = this.playSecret;
-    if (session.meta.ranked && !secret && session.meta.requestId) {
-      secret = (await this.store.getOne('starts', session.meta.requestId).catch(() => null))?.secret ?? null;
-    }
+    const secret = await this.secretForSession(session);
     if (session.meta.ranked && secret) {
       result = await makeOutboxItem({ snapshot: snap, summary, secret, gameVersion: session.meta.gameVersion });
     } else {
@@ -1014,9 +1043,10 @@ class App {
     }
     if (r.netState === 'official') {
       try {
-        const mine = await this.api.post('rank', { name: r.name });
-        r.officialRank = mine.rank;
+        r.rankedBest = await this.api.post('rank', { name: r.name });
+        r.rankError = false;
       } catch {
+        r.rankedBest = null;
         r.rankError = true;
       }
       this.renderResultStatus?.();
@@ -1028,10 +1058,12 @@ class App {
     this.disposeStage();
     const r = this.lastResult;
     const s = r.summary;
+    const showOnline = this.runtime.isVerification || this.api.configured;
     const reasonKey = { detected: 'result.detected', cleared: 'result.cleared', quit: 'result.quit' }[s.endReason];
     const statusBox = h('div', { class: 'result-status', 'aria-live': 'polite' });
     const rankingHost = h('div', { class: 'result-ranking' });
     this.renderResultStatus = () => {
+      if (!showOnline) return;
       clear(statusBox);
       if (!r.ranked) {
         statusBox.append(h('p', { class: 'note' }, t(r.name ? 'result.status.unranked' : 'result.status.anonymous')));
@@ -1052,7 +1084,7 @@ class App {
       }[r.netState] ?? 'result.status.pending';
       statusBox.append(h('p', {}, t(key)));
       if (r.netState === 'retryable_failed') statusBox.append(button('records.resend', () => this.flushNetwork().then(() => this.pollResult()), { className: 'btn-small' }));
-      if (r.netState === 'official' && r.officialRank != null) statusBox.append(h('p', { class: 'result-rank' }, t('result.rank', { rank: formatNumber(r.officialRank) })));
+      if (r.netState === 'official' && r.rankedBest?.rank != null) statusBox.append(h('p', { class: 'result-rank' }, t('result.rank', { rank: formatNumber(r.rankedBest.rank) })));
       if (r.rankError) statusBox.append(h('p', {}, [t('result.rankError'), ' ', button('common.retry', () => this.pollResult(), { className: 'btn-small' })]));
     };
     this.renderResultStatus();
@@ -1088,7 +1120,7 @@ class App {
       h('div', { class: 'result-actions' }, [
         button('result.again', () => this.startFlow(this.nameRaw), { primary: true, testid: 'result-again' }),
         button('common.home', () => this.showHome(), { testid: 'result-home' }),
-        button('home.ranking', () => this.showRanking(), {}),
+        showOnline && button('home.ranking', () => this.showRanking(), {}),
         button('share.button', () => this.shareResult(), { className: 'btn-x', testid: 'result-share' }),
       ]),
       rankingHost,
@@ -1107,8 +1139,12 @@ class App {
   }
 
   async shareResult() {
-    const r = this.lastResult;
-    const text = buildResultShareText({ result: { buildings: r.summary.buildings, rankAverage: r.summary.rankAverage, endReason: r.summary.endReason }, officialRank: r.netState === 'official' ? r.officialRank : null, lang: getLanguage() });
+    const { summary, official, rankedBest, netState } = this.lastResult;
+    // /rank は名前ごとのベスト。投稿する成績が今回の正式値とベストの両方に一致する時だけ順位を添える。
+    const matchesRankedBest = netState === 'official' && rankedBest?.rank != null && official != null &&
+      summary.buildings === official.buildings && summary.rankAverage === official.rankAverage &&
+      summary.buildings === rankedBest.buildings && summary.rankAverage === rankedBest.average;
+    const text = buildResultShareText({ result: summary, officialRank: matchesRankedBest ? rankedBest.rank : null, lang: getLanguage() });
     const mode = await shareToX({ text, url: this.runtime.publicUrl });
     if (mode !== 'opened') this.showShareFallback(text, mode);
   }
@@ -1302,8 +1338,10 @@ class App {
   async showRecords() {
     this.disposeStage();
     this.flags.recordsChanged = false;
+    const localOnly = !this.runtime.isVerification && !this.api.configured;
     const view = createRecordsView({
       store: this.store,
+      localOnly,
       onResend: async () => {
         await this.flushNetwork();
         await this.refreshStatuses();
@@ -1320,9 +1358,9 @@ class App {
       },
     });
     const el = h('main', { class: 'screen records-screen' }, [
-      h('h1', {}, t('records.title')),
+      h('h1', {}, t(localOnly ? 'records.localTitle' : 'records.title')),
       h('p', { class: 'note' }, t('records.intro')),
-      button('records.refresh', async () => {
+      !localOnly && button('records.refresh', async () => {
         await this.flushNetwork();
         await this.refreshStatuses();
         view.load();

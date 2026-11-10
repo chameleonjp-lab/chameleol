@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "Rata-rata kecocokan ditampilkan dibulatkan ke dua angka desimal. Beruntun dinilai sebelum pembulatan (85% atau lebih).",
   "result.nameLabel": "Nama:",
   "result.localBest": "Terbaik di perangkat ini: {buildings} gedung, {average}",
-  "result.rank": "Peringkat resmi: {rank}",
+  "result.rank": "Peringkat catatan terbaikmu: {rank}",
   "result.rankError": "Peringkat tidak bisa dimuat. Catatanmu sudah diterima.",
   "result.again": "Main lagi",
   "result.status.anonymous": "Permainan ini tanpa nama, jadi tidak dikirim ke peringkat.",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "Namamu",
   "ranking.mineValue": ": #{rank} ({buildings} gedung, {average})",
 
+  "records.localTitle": "Riwayat lokal",
   "records.title": "Status catatan",
   "records.intro": "Permainan di perangkat ini, dari yang terbaru.",
   "records.empty": "Belum ada catatan.",

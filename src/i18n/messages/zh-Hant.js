@@ -127,7 +127,7 @@ export default {
   "result.roundingNote": "平均吻合度四捨五入到小數點後兩位顯示。連續成功依四捨五入前的數值（85% 以上）判定。",
   "result.nameLabel": "名字：",
   "result.localBest": "這台裝置上的最佳成績：{buildings} 棟・{average}",
-  "result.rank": "正式名次：第 {rank} 名",
+  "result.rank": "最佳紀錄的排名：第 {rank} 名",
   "result.rankError": "無法讀取名次。你的紀錄已被接收。",
   "result.again": "再玩一次",
   "result.status.anonymous": "這局遊戲沒有名字，因此不會傳送到排行榜。",
@@ -195,6 +195,7 @@ export default {
   "ranking.mine": "你的名字",
   "ranking.mineValue": "：第 {rank} 名（{buildings} 棟・{average}）",
 
+  "records.localTitle": "裝置內的紀錄",
   "records.title": "紀錄的傳送與確認狀態",
   "records.intro": "依從新到舊顯示在這台裝置上玩過的紀錄。",
   "records.empty": "還沒有紀錄。",

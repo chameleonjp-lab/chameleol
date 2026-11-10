@@ -7,6 +7,7 @@ import { ApiError, sha256Hex, uuid } from './api.js';
 
 export const CHUNK_CHARS = 128 * 1024; // 試作値（文字数。履歴はASCIIのJSONなのでバイト数と同じ）
 export const RESULT_FORMAT = 'kamereoru-result-v1';
+const STATUS_BATCH_SIZE = 50; // サーバーが一度に照会できる上限
 
 /** 終了結果の本文を作る。端末の要約は照合用で、サーバーは開始記録と再計算値を使う。 */
 export function buildResultBody(snapshot, summary, { gameVersion, endedAt = Date.now() } = {}) {
@@ -141,18 +142,20 @@ export async function flushOutbox({ api, store, onUpdate = () => {} }) {
 export async function refreshRecords({ api, store }) {
   if (!api.configured) return [];
   const records = await store.getAll('records');
-  if (!records.length) return [];
-  const data = await api.post('status', { items: records.map((r) => ({ playId: r.playId, secret: r.secret })) });
-  const byId = new Map((data.items ?? []).map((x) => [x.playId, x]));
   const updated = [];
-  for (const r of records) {
-    const s = byId.get(r.playId);
-    if (!s || s.error) continue;
-    const next = { ...r, status: s.status, official: s.official ?? null, corrections: s.corrections ?? [], reviewRequested: s.reviewRequests > 0, lastCheckedAt: Date.now() };
-    const changed = JSON.stringify(next.corrections) !== JSON.stringify(r.corrections) || next.status !== r.status;
-    if (changed) next.unseenChange = (r.unseenChange ?? false) || (r.status != null && r.status !== next.status) || next.corrections.length > (r.corrections?.length ?? 0);
-    await store.put('records', next);
-    updated.push(next);
+  for (let i = 0; i < records.length; i += STATUS_BATCH_SIZE) {
+    const batch = records.slice(i, i + STATUS_BATCH_SIZE);
+    const data = await api.post('status', { items: batch.map((r) => ({ playId: r.playId, secret: r.secret })) });
+    const byId = new Map((data.items ?? []).map((x) => [x.playId, x]));
+    for (const r of batch) {
+      const s = byId.get(r.playId);
+      if (!s || s.error) continue;
+      const next = { ...r, status: s.status, official: s.official ?? null, corrections: s.corrections ?? [], reviewRequested: s.reviewRequests > 0, lastCheckedAt: Date.now() };
+      const changed = JSON.stringify(next.corrections) !== JSON.stringify(r.corrections) || next.status !== r.status;
+      if (changed) next.unseenChange = (r.unseenChange ?? false) || (r.status != null && r.status !== next.status) || next.corrections.length > (r.corrections?.length ?? 0);
+      await store.put('records', next);
+      updated.push(next);
+    }
   }
   return updated;
 }

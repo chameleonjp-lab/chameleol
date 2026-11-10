@@ -1502,9 +1502,10 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       for (const m of mats.keys()) if (m.transparent) m.colorWrite = false;
       const live = slots.filter((sl) => sl.index > 0 && sl.group.visible);
       const saved = live.map((sl) => sl.facadeMat.color.clone());
+      const wallMarkStep = Math.floor(255 / SLOTS); // 全ての描画枠の印を8ビットに収める
       live.forEach((sl, i) => {
         sl.facadeMat.colorWrite = true;
-        sl.facadeMat.color.setRGB(((i + 1) * 40) / 255, 0, 0);
+        sl.facadeMat.color.setRGB(((i + 1) * wallMarkStep) / 255, 0, 0);
       });
       const bodyMats = comparisonMats().filter((m) => m.uniforms?.uColor);
       const bodySaved = bodyMats.map((m) => m.uniforms.uColor.value.clone());
@@ -1534,9 +1535,9 @@ export function createThreeStage(container, { course, decorations, rules = RULES
           let kind = 0;
           let tgt = null;
           let slotNo = -1;
-          if (mask[i + 1] === 0 && mask[i + 2] === 0 && mask[i] > 0 && mask[i] % 40 === 0 && mask[i] / 40 <= live.length) {
+          if (mask[i + 1] === 0 && mask[i + 2] === 0 && mask[i] > 0 && mask[i] % wallMarkStep === 0 && mask[i] / wallMarkStep <= live.length) {
             kind = 1;
-            slotNo = mask[i] / 40 - 1;
+            slotNo = mask[i] / wallMarkStep - 1;
             tgt = targets[slotNo];
           } else if (bodyTarget && mask[i] === 0 && mask[i + 1] === 128 && mask[i + 2] === 0) {
             kind = 2;
