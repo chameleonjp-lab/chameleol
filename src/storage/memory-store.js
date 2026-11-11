@@ -1,3 +1,5 @@
+import { mergePresentationStats } from '../presentation/stats.js';
+import { GUIDE_PROGRESS_KEY, normalizeGuideProgress, mergeGuideProgress, claimGroup, updateGroup } from '../guidance/progress.js';
 // IndexedDB を使えない時の代わり（メモリだけ）。再読込で消えるため、ランキング対象のプレイは始めない。
 import { RUN_SLOT, StaleWriterError } from './store.js';
 
@@ -14,6 +16,7 @@ export class MemoryStore {
   }
 
   keyOf(name, value) {
+    if (name === 'runs') return value.slot;
     return value.playId ?? value.launchId ?? value.requestId ?? value.id ?? value.slot;
   }
 
@@ -47,7 +50,7 @@ export class MemoryStore {
   }
 
   async beginRun(tabId, snapshot) {
-    const current = await this.loadRun();
+    const current = this.bucket('runs').get(RUN_SLOT);
     if (current?.status === 'active') throw Object.assign(new Error('active_run_exists'), { code: 'active_run_exists' });
     const generation = (current?.generation ?? 0) + 1;
     await this.put('runs', { slot: RUN_SLOT, status: 'active', playId: snapshot.meta.playId, owner: tabId, generation, snapshot });
@@ -55,7 +58,7 @@ export class MemoryStore {
   }
 
   async claimRun(tabId, expectedPlayId) {
-    const current = await this.loadRun();
+    const current = this.bucket('runs').get(RUN_SLOT);
     if (!current || current.status !== 'active' || (expectedPlayId !== undefined && current.playId !== expectedPlayId)) return null;
     const generation = current.generation + 1;
     await this.put('runs', { ...current, owner: tabId, generation });
@@ -63,25 +66,38 @@ export class MemoryStore {
   }
 
   async saveRun(tabId, generation, snapshot) {
-    const current = await this.loadRun();
+    const current = this.bucket('runs').get(RUN_SLOT);
     if (!current || current.status !== 'active' || current.owner !== tabId || current.generation !== generation || current.playId !== snapshot.meta.playId) {
       throw new StaleWriterError();
     }
     await this.put('runs', { ...current, snapshot });
   }
 
-  async endRun(tabId, generation, result, { localBest = null } = {}) {
-    const current = await this.loadRun();
+  async guideTransaction(tabId, generation, options, mutate) {
+    const current = this.bucket('runs').get(RUN_SLOT);
+    if (!current || current.status !== 'active' || current.owner !== tabId || current.generation !== generation || current.playId !== options.playId) throw new StaleWriterError();
+    const p = mergeGuideProgress(normalizeGuideProgress(this.kv.get(GUIDE_PROGRESS_KEY), options.legacyFlags, options.legacyRun), options.fallbackProgress);
+    const result = mutate(p); this.kv.set(GUIDE_PROGRESS_KEY, structuredClone(result.progress ?? result)); return result;
+  }
+  initializeGuideProgress(tabId, generation, options) { return this.guideTransaction(tabId, generation, options, p => p); }
+  claimGuideGroup(tabId, generation, options) { return this.guideTransaction(tabId, generation, options, p => claimGroup(p, options.group, options.playId)); }
+  updateGuideProgress(tabId, generation, options) { return this.guideTransaction(tabId, generation, options, p => updateGroup(p, options)); }
+
+  async endRun(tabId, generation, result, { localBest = null, presentation = null } = {}) {
+    const current = this.bucket('runs').get(RUN_SLOT);
     if (!current || current.status !== 'active' || current.owner !== tabId || current.generation !== generation || current.playId !== result.playId) {
       throw new StaleWriterError();
     }
-    await this.put(result.ranked ? 'outbox' : 'localResults', { ...result, createdAt: Date.now() });
-    if (localBest) await this.set('localBest', localBest);
-    await this.put('runs', { slot: RUN_SLOT, status: 'ended', playId: current.playId, owner: tabId, generation: generation + 1 });
+    const stats = presentation ? mergePresentationStats(this.kv.get('presentation.stats.v1'), presentation) : null;
+    if (stats) this.kv.set('presentation.stats.v1', structuredClone(stats.next));
+    this.put(result.ranked ? 'outbox' : 'localResults', { ...result, createdAt: Date.now() });
+    if (localBest) this.set('localBest', localBest);
+    this.put('runs', { slot: RUN_SLOT, status: 'ended', playId: current.playId, owner: tabId, generation: generation + 1 });
+    return stats ? { previous: stats.previous, firstClearNow: stats.firstClearNow } : undefined;
   }
 
   async quarantineRun(reason, expectedPlayId) {
-    const current = await this.loadRun();
+    const current = this.bucket('runs').get(RUN_SLOT);
     if (!current || current.status !== 'active' || (expectedPlayId !== undefined && current.playId !== expectedPlayId)) return false;
     await this.put('quarantine', { id: Date.now(), kind: 'run', reason, record: current });
     await this.put('runs', { slot: RUN_SLOT, status: 'quarantined', playId: current.playId, generation: (current.generation ?? 0) + 1 });
