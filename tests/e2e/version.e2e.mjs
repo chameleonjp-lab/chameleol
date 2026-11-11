@@ -42,7 +42,7 @@ test('VERSION-01: 別の版の中断プレイは消さずに残し、その版�
     await page.click('[data-testid=foreign-shelve]');
     const skip = await page.waitForSelector('[data-testid=skip-opening]', { timeout: 5000 }).catch(() => null);
     if (skip) await skip.click().catch(() => {});
-    const go = await page.waitForSelector('[data-testid=guide-go]', { timeout: 5000 }).catch(() => null);
+    const go = await page.waitForSelector('[data-testid=guide-skip]', { timeout: 5000 }).catch(() => null);
     if (go) await go.click();
     await page.waitForFunction(() => globalThis.__kamereoru.session?.running === true, null, { timeout: 8000 });
     const q = await page.evaluate(() => globalThis.__kamereoru.store.getAll('quarantine'));
@@ -88,7 +88,7 @@ test('単独公開版はランキング登録を表示せず、保存済みの�
     await page.click('[data-testid=home-start]');
     const skip = await page.waitForSelector('[data-testid=skip-opening]', { timeout: 5000 }).catch(() => null);
     if (skip) await skip.click().catch(() => {});
-    await page.click('[data-testid=guide-go]');
+    await page.click('[data-testid=guide-skip]');
     await page.waitForFunction(() => globalThis.__kamereoru.session?.running === true);
     assert.equal(await page.evaluate(() => globalThis.__kamereoru.session.meta.ranked), false);
     assert.deepEqual(env.errors, []);
