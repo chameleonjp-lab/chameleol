@@ -73,3 +73,8 @@
 .guidance-host{top:calc(var(--safe-top,0px) + 88px)}
 .guidance-actions{display:flex;flex-wrap:nowrap}.guidance-actions .btn{width:auto;flex:1;min-width:0}
 @media(orientation:landscape) and (max-height:500px){.guidance-host{top:84px}.guidance-actions{flex:0 0 auto}.guidance-actions .btn{flex:0 1 auto}}
+/* The replay image lands with its feet on the actual replay control. */
+.result-scene.result-photo.is-replaying{overflow:visible;z-index:5}
+.is-replaying .result-portrait{animation:result-replay-jump .15s linear both;pointer-events:none}
+.is-reacting:not(.is-replaying) .result-portrait{animation:none}
+@keyframes result-replay-jump{0%{transform:translate(0,0)}50%{transform:translate(calc(var(--result-jump-x,0px)*.5),calc(var(--result-jump-y,0px)*.5 - 28px))}100%{transform:translate(var(--result-jump-x,0px),var(--result-jump-y,0px))}}

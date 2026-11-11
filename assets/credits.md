@@ -44,7 +44,7 @@
 
 ### 結果画面の固定画像（追加演出80件）
 
-`src/presentation/assets/result-atlas.webp` は2048×2048pxの共用WebPです。5地区の背景は本作向けのCanvas図形、4姿勢（clear/detected/quit/proud）の主人公は持ち主提供のNo.28設定と既存`src/scene/chameleon28.js`から制作時にChromium/Three.jsで描画しました。領域は`result-atlas.json`、再制作手順は`scripts/render-result-atlas.mjs`です。文字・成績は画像に含めず、表示時の撮影・画像生成・画像保存は行いません。Three.jsのライセンスは`vendor/three.LICENSE`を参照してください。
+`src/presentation/assets/result-atlas.webp` は2048×2048pxの共用WebPです。5地区の背景は本作向けのCanvas図形、4姿勢（clear/detected/quit/proud）と目配せ反応（glance）の主人公は持ち主提供のNo.28設定と既存`src/scene/chameleon28.js`から制作時にChromium/Three.jsで描画しました。領域は`result-atlas.json`、再制作手順は`scripts/render-result-atlas.mjs`です。文字・成績は画像に含めず、表示時の撮影・画像生成・画像保存は行いません。Three.jsのライセンスは`vendor/three.LICENSE`を参照してください。
 
 ### Street presentation atlas
 

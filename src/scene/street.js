@@ -1030,7 +1030,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   }
 
   /** 警察官の位置・動き・記号。mode は 'run'・'search'・'chase'。 */
-  function updatePolice(dt, stage, mode, { near = FERRET_NEAR, withBeam = true, walking = true } = {}) {
+  function updatePolice(dt, stage, mode, { near = FERRET_NEAR, withBeam = true, walking=true,freeze=false }={}) {
     ferrets.forEach((f, i) => {
       const active = stage > i;
       // 見失った時は少し下がり、見つけた時は詰める
@@ -1053,7 +1053,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         ferretMode[i] = m;
       }
       if (!show || !active) fx.hideIcon(i);
-      f.animate(dt, { walking: walking || !active, mode: m });
+      if(!freeze)f.animate(dt,{walking:walking||!active,mode:m});
       const hop = f.hop * FERRET_SCALE;
       const sh = 1 - Math.min(0.5, hop * 0.3);
       ferretShadows[i].scale.set(2.6 * sh, 1.6 * sh, 1);
@@ -1229,7 +1229,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         accents?.ending(ending.kind,now);
         applyEnding(dt, now);
       } else {
-        hero.animate(dt, { walking, nervous });
+        if(view.running)hero.animate(dt,{walking,nervous});
         // 警察：通常は画面外。段階に応じて主人公の後ろ（同じ歩道の並び）へ走り込み、回復で後退する
         if (policeStage > lastPoliceStage) {
           const i = Math.min(ferrets.length, policeStage) - 1;
@@ -1239,7 +1239,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         }
         lastPoliceStage = policeStage;
         const mode = policeStage > 0 && (matchState === 'success' || (matchState == null && searching)) ? 'search' : policeStage > 0 && matchState === 'danger' ? 'chase' : 'run';
-        updatePolice(dt, policeStage, mode, { walking });
+        updatePolice(dt,policeStage,mode,{walking,freeze:!view.running});
         presentationScope.tick(view.t);
         reactions?.tick(view);
         accents?.tick(view);

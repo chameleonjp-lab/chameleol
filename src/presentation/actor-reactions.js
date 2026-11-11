@@ -72,6 +72,9 @@ export function createActorReactions({ hero, police = [], scope, reducedMotion =
   }
   function tick(view) {
     if(disposed || !view) return;
+    // Pause retains the rendered pose and props. The scene must also skip base
+    // actor animators while paused so their wrapped restoration cannot run.
+    if(!view.running && view.phase!=='ended') return;
     restore();
     for(const ps of props) for(const p of Object.values(ps)) p.visible=false;
     if(sweat)sweat.visible=false;

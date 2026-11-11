@@ -51,6 +51,7 @@ add('landmark4',`<path d="M38 120V36H55V6H74V36H91V120Z" fill="#899eb9"/><path d
 add('awningFlip',`<path d="M5 36H123L114 72L99 84H14Z" fill="#e78b70"/><path d="M30 36L34 84M64 36V84M98 36L94 84" stroke="#fff2cf" stroke-width="15"/>`);
 add('vendingLit',rect(20,4,88,120,'#bd6464')+rect(30,16,66,57,'#9ccbd1')+rect(36,84,45,24,'#263d4d')+circle(93,83,5,'#fff9d0'));
 add('pipe',`<path d="M18 118V70Q18 44 44 44H88V12" fill="none" stroke="#9caeb9" stroke-width="18"/><path d="M74 12H102M4 118H32" stroke="#d1dce1" stroke-width="8"/>`);
+add('residentFace',rect(12,99,104,29,'#de8b76')+circle(64,58,53,'#e8bb93')+eye(44,46)+eye(84,46)+`<path d="M47 83Q64 95 81 83" fill="none"/>`);
 const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">${shapes.join('')}</svg>`;
 writeFileSync('/tmp/chameleol-street-atlas.svg',svg);try { execFileSync('python',['-c',`import ctypes as c
 r=c.CDLL('librsvg-2.so.2'); a=c.CDLL('libcairo.so.2')

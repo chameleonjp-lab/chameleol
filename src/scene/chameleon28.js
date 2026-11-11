@@ -495,8 +495,11 @@ export function createChameleon(design = CHAMELEON28) {
   const guardedGeo = taperedTube(new THREE.CatmullRomCurve3(guardedPoints), 96, 14, (t) => Math.max(0.006, tailR * (1 - P.tp * t * 0.96) + tailR * 0.1 * (1 - P.tp) * t));
   const tailGuarded = guardedGeo.attributes.position.array.slice();
   guardedGeo.dispose();
+  let lastTailGuard=0;
   function setTailGuard(amount) {
-    const k = Math.max(0, Math.min(1, amount));
+    const k=Math.max(0,Math.min(1,amount));
+    if(k===lastTailGuard)return;
+    lastTailGuard=k;
     const a = tailGeo.attributes.position.array;
     for (let i = 0; i < a.length; i++) a[i] = tailRest[i] + (tailGuarded[i] - tailRest[i]) * k;
     tailGeo.attributes.position.needsUpdate = true;

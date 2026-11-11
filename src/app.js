@@ -818,7 +818,7 @@ class App {
       controls.setEnabled(!this.takenOver && !document.hidden && (this.coverEl?.hidden ?? true) && (session.running || v.stationary));
     };
     const guideDone = (skip) => {
-      if (!current() || document.hidden || this.takenOver) return;
+      if(!ready||!current()||document.hidden||this.takenOver)return;
       const resumed = skip ? guidance.skip(performance.now()) : guidance.continue(performance.now());
       if(resumed)this.saveNow('guide');
       renderGuide();
