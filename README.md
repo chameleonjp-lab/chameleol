@@ -1,8 +1,10 @@
-# kamereoru
+# chameleol
 
 ## カメレオる
 
 宝石を盗んだカメレオンが、街の建物に体色を合わせながら警察から逃げる、スマートフォン向けブラウザゲームです。
+
+リポジトリ：[chameleonjp-lab/chameleol](https://github.com/chameleonjp-lab/chameleol)。リポジトリ名と npm パッケージ名は `chameleol` です。保存データの形式名、API・データベースの識別子、環境変数の `kamereoru` / `KAMEREORU_` は、既存データや接続設定との互換性のため維持します。
 
 本編は全50棟、1棟5秒を試作基準とします。円形パレットで色を合わせ、20棟目から明るさ調整を使います。ランキングは通過棟数を優先し、同じ棟数なら平均一致度で比較します。
 
@@ -23,6 +25,8 @@
 Node.js 20 以上が必要です。
 
 ```sh
+git clone https://github.com/chameleonjp-lab/chameleol.git
+cd chameleol
 npm ci
 npm run serve            # http://127.0.0.1:5173/ で開く（作らずにそのまま動かす）
 npm test                 # 判定・保存・通信・翻訳などの試験

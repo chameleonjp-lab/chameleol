@@ -1,6 +1,6 @@
 # カメレオる 実装計画の敵対的検証
 
-2026年11月7日。[初稿](https://github.com/chameleonjp-lab/kamereoru/blob/4deed37931a300a86edfac333ca7292b9e301eda/docs/superpowers/plans/2026-11-07-kamereoru-implementation-plan.md)を固定し、起草とは別のAI担当が[要件仕様書](../superpowers/specs/2026-11-07-kamereoru-design.md)・[受入試験](../acceptance/kamereoru-acceptance.md)と読み比べた。通信の応答だけを失う、保存や訂正の順番を入れ替える、同点が1ページを超える、といった操作で初稿を検証した。下表に反例と修正をまとめた。保存・受付・再審査・切り戻しなどの主要な指摘は、レビュー担当が[反映版](../superpowers/plans/2026-11-07-kamereoru-implementation-plan.md)の完了条件に入ったことを再確認した。
+2026年11月7日。[初稿](https://github.com/chameleonjp-lab/chameleol/blob/4deed37931a300a86edfac333ca7292b9e301eda/docs/superpowers/plans/2026-11-07-kamereoru-implementation-plan.md)を固定し、起草とは別のAI担当が[要件仕様書](../superpowers/specs/2026-11-07-kamereoru-design.md)・[受入試験](../acceptance/kamereoru-acceptance.md)と読み比べた。通信の応答だけを失う、保存や訂正の順番を入れ替える、同点が1ページを超える、といった操作で初稿を検証した。下表に反例と修正をまとめた。保存・受付・再審査・切り戻しなどの主要な指摘は、レビュー担当が[反映版](../superpowers/plans/2026-11-07-kamereoru-implementation-plan.md)の完了条件に入ったことを再確認した。
 
 ## 記録が消える、増える、別の人に渡るケース
 

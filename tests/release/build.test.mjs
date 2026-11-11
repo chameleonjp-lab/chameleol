@@ -12,7 +12,7 @@ for (const file of files) cpSync(new URL(file, source), join(root, file), { recu
 execFileSync('git', ['init', '-q'], { cwd: root });
 execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '--allow-empty', '-qm', 'test'], { cwd: root });
 
-function build({ api = '', publicUrl = 'https://example.invalid/kamereoru/', standalone = '', args = [] } = {}) {
+function build({ api = '', publicUrl = 'https://example.invalid/chameleol/', standalone = '', args = [] } = {}) {
   execFileSync(process.execPath, ['scripts/build.mjs', ...args], {
     cwd: root,
     env: {
@@ -44,6 +44,6 @@ test('単独公開を指定するとランキングの接続先なしで本番�
   assert.equal(release.env, 'production');
   const html = readFileSync(join(root, 'dist/index.html'), 'utf8');
   assert.match(html, /name="kamereoru-api" content=""/);
-  assert.match(html, /rel="canonical" href="https:\/\/example\.invalid\/kamereoru\/"/);
+  assert.match(html, /rel="canonical" href="https:\/\/example\.invalid\/chameleol\/"/);
   assert.throws(() => build({ standalone: '1', api: 'https://unexpected.example.invalid/' }), /KAMEREORU_STANDALONE/);
 });

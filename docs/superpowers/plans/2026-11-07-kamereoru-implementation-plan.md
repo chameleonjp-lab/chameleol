@@ -1,6 +1,6 @@
 # カメレオる 実装計画書
 
-2026年11月7日・レビュー反映版 ｜ 対象は `chameleonjp-lab/kamereoru`。マージ済みの[要件仕様書 v1.0](../specs/2026-11-07-kamereoru-design.md)と[受入試験82件](../../acceptance/kamereoru-acceptance.md)を基準にする。[初稿で見つかった問題と修正](../../reviews/2026-11-07-kamereoru-implementation-plan-review.md)を別紙に記録した。チェック欄は後続の実装担当者が証拠を残して埋める。
+2026年11月7日・レビュー反映版 ｜ 対象は `chameleonjp-lab/chameleol`。マージ済みの[要件仕様書 v1.0](../specs/2026-11-07-kamereoru-design.md)と[受入試験82件](../../acceptance/kamereoru-acceptance.md)を基準にする。[初稿で見つかった問題と修正](../../reviews/2026-11-07-kamereoru-implementation-plan-review.md)を別紙に記録した。チェック欄は後続の実装担当者が証拠を残して埋める。
 
 > **進み具合（2026年11月7日）**　P1〜P8 の実装はリポジトリに入りました。各工程の試験がどこまで通ったかは[受入試験の記録](../../acceptance/results.md)に、試作値は[調整表](../../tuning/adjustment-table.md)に、実機の確認手順は[iPhone での確認手順](../../device-test-procedure.md)に、公開と切り戻しの順番は[公開と切り戻しの手順（案）](../../release/release-and-rollback.md)にまとめています。iPhone 実機での確認、Supabase 本番への適用、公開方法の決定と公開は、まだ行っていません。そのため、下の確認欄は実機と公開の確認が終わるまで空けたままにしています。
 

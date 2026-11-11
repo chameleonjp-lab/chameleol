@@ -119,4 +119,4 @@ jobs:
       - uses: actions/deploy-pages@v4
 ```
 
-GitHub Pages では、ページの住所にリポジトリ名が入ります（例：`https://<owner>.github.io/kamereoru/`）。ゲームのファイルはすべて相対的な住所で読み込むので、この形でも動くはずですが、実際の公開先ではまだ確かめていません。
+GitHub Pages では、ページの住所にリポジトリ名が入ります（このリポジトリの場合は `https://chameleonjp-lab.github.io/chameleol/`）。採用する場合は、この住所を `KAMEREORU_PUBLIC_URL` に指定します。ゲームのファイルはすべて相対的な住所で読み込みます。実際の公開先ではまだ確かめていません。
