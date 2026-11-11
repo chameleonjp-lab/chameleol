@@ -12,7 +12,7 @@
   "keptVersions": [],
   "files": {
     "v/0.1.0-97abac7451/credits.md": "dcb7b112f314aff6cbd4c0440e9c11d2b559f193d3b5a4482250dce0c279bc6a",
-    "v/0.1.0-97abac7451/index.html": "a44aa1d26f02379b5a25f658db7ec859fabb4177960b660b7a7f71cb53262cc2",
+    "v/0.1.0-97abac7451/index.html": "f2d60ddcd1172b6451a710b09f4cf4023d79adbd0e94208917fdb07f94a36ab9",
     "v/0.1.0-97abac7451/src/app.js": "69c3f7acc0eb20e7933bf439df16ac029139856f2888a95bc60cd207b188ddf3",
     "v/0.1.0-97abac7451/src/audio/mixer.js": "50e14ff6168fa2a1b2cf7032a14c05ff442cc0742e16a2babc5acde5ee9eb054",
     "v/0.1.0-97abac7451/src/config/runtime.js": "296888e5bc7f871584a550c9604abd8becb27c2c9f1a93bc98305e1a07fc1e8b",
@@ -68,6 +68,6 @@
     "v/0.1.0-97abac7451/src/ui/share.js": "58d2d26fb65e2ea56152a203cd7584328f87e21b8c69ac7eb86537d5c814e620",
     "v/0.1.0-97abac7451/vendor/three.LICENSE": "4c40a1ef62450b857c3b2aaf294936304cd552d965fbcd9d32d4c5bcf4ba4454",
     "v/0.1.0-97abac7451/vendor/three.module.min.js": "08fd7545d13d2c7fb65ab691530a802dafefd638596501854f267d0fb13c39e7",
-    "index.html": "7185b663bec5d7a72f1274782e9ed0e894629da6727e00350625df206c2c5ebf"
+    "index.html": "9566cc6755ad50553202ba851b0dc42b22665f9940ee7744a80fffd9ad404076"
   }
 }
