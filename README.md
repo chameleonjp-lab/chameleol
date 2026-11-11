@@ -22,6 +22,8 @@
 - [実装計画書](docs/superpowers/plans/2026-11-11-chameleol-effects80-plan.md)：工程の順序、変更する場所、接続口、確認手順。
 - [80要件とRICEの対応表](docs/requirements/chameleol-effects80.json)と[敵対的検証・修正記録](docs/reviews/2026-11-11-chameleol-effects80-adversarial-review.md)：元の番号、優先度、工程とレビューへの対応。
 
+2026-11-11の追加要件として、[初回ガイドと練習の実装計画](docs/superpowers/plans/2026-11-11-chameleol-guided-play-plan.md)を加えました。初回の1・2棟目と、明度初解放時の20・21棟目に、一致度と95%以上になる操作位置を示します。4段階は練習からいつでも個別に確認できる計画です。これも実装前の文書で、演出80件の件数やRICE値には含めません。
+
 ## 実装の進め方
 
 [実装計画書](docs/superpowers/plans/2026-11-07-kamereoru-implementation-plan.md)では、iPhoneで色合わせを試せる段階から正式ランキングの公開判定までを9工程に分けています。[計画の検証記録](docs/reviews/2026-11-07-kamereoru-implementation-plan-review.md)で、保存や再送の競合、同順位など、初稿で見つけた問題と修正を確認できます。
@@ -50,4 +52,5 @@ npm run build            # 公開用の一式を dist/ に作る
 - [iPhone での確認手順](docs/device-test-procedure.md)：実機で試すことと記録表。
 - [公開と切り戻しの手順（案）](docs/release/release-and-rollback.md)：データベース・サーバー・画面を切り替える順番と、戻し方。
 - [素材の出典](assets/credits.md)：主人公は、提供されたカメレオン No.28 エディター（[docs/design/chameleon-no28-editor.html](docs/design/chameleon-no28-editor.html)）の書き出し値から作っています。
+
 
