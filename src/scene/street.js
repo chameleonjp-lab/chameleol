@@ -21,6 +21,9 @@ import { createChameleon, createFerret, createJewelryShop } from './characters.j
 import { SKY, TOD, rgbFloat } from './palette-colors.js';
 import { createEffects } from './effects.js';
 import { createGamePresentationClock, createVisiblePresentationClock } from './stage.js';
+import { createPresentationScope } from '../presentation/scope.js';
+import { createStreetAccents } from '../presentation/street-accents.js';
+import { createActorReactions } from '../presentation/actor-reactions.js';
 
 const W = 10; // 1棟の幅（ワールド座標）
 const GAP = 1.3; // 建物の間の路地の幅
@@ -72,7 +75,7 @@ function canvasOf(w, h, draw) {
   return canvas;
 }
 
-export function createThreeStage(container, { course, decorations, rules = RULES_V1, showOpeningShop = false } = {}) {
+export function createThreeStage(container, { course, decorations, rules = RULES_V1, showOpeningShop = false, presentationEnabled=true,verification=false }={}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true, stencil: true });
   // 色をそのまま出す：色管理・トーンマッピングを使わない。
   THREE.ColorManagement.enabled = false;
@@ -784,6 +787,14 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   const fx = createEffects(scene);
   const reducedMotion = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   fx.setEnabled(!reducedMotion); // 動きを減らす設定では粒を出さない（「！」「？」の記号は出す）
+  const presentationScope=createPresentationScope({id:'street',kind:'game'});
+  const accents=presentationEnabled?createStreetAccents({scene,camera,slots,scope:presentationScope,seed:decorations?.[0]?.sign??1,reducedMotion}):null;
+  const reactions=presentationEnabled?createActorReactions({hero,police:ferrets,scope:presentationScope,reducedMotion}):null;
+  const ringMaterial=new THREE.MeshBasicMaterial({color:0xffed82,side:THREE.DoubleSide,fog:false});
+  maskAvoid(ringMaterial);
+  const successRing=new THREE.Mesh(new THREE.RingGeometry(.75,.84,32),ringMaterial);
+  successRing.rotation.x=-Math.PI/2;successRing.visible=false;scene.add(successRing);
+  let ringUntil=-Infinity,forcedRing=false,lastPresentation=null;
   let shake = 0; // カメラの小さな揺れの大きさ
   let heroHopT = -1; // 主人公の小さな跳ね（秒）。-1 は跳ねていない
   let heroHopH = 0;
@@ -908,6 +919,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const si = slots.findIndex((s) => s.index === -1);
       if (si < 0) continue;
       layoutSlot(si, index, course.targets[index - 1], decorations[index - 1]);
+      accents?.syncSlot(si,index);
     }
   }
 
@@ -1018,7 +1030,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   }
 
   /** 警察官の位置・動き・記号。mode は 'run'・'search'・'chase'。 */
-  function updatePolice(dt, stage, mode, { near = FERRET_NEAR, withBeam = true, walking = true } = {}) {
+  function updatePolice(dt, stage, mode, { near = FERRET_NEAR, withBeam = true, walking=true,freeze=false }={}) {
     ferrets.forEach((f, i) => {
       const active = stage > i;
       // 見失った時は少し下がり、見つけた時は詰める
@@ -1041,7 +1053,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         ferretMode[i] = m;
       }
       if (!show || !active) fx.hideIcon(i);
-      f.animate(dt, { walking: walking || !active, mode: m });
+      if(!freeze)f.animate(dt,{walking:walking||!active,mode:m});
       const hop = f.hop * FERRET_SCALE;
       const sh = 1 - Math.min(0.5, hop * 0.3);
       ferretShadows[i].scale.set(2.6 * sh, 1.6 * sh, 1);
@@ -1200,6 +1212,8 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const { t, color, policeStage = 0, searching = false, nervous = 0, walking = true, matchState = null } = args;
       const dt = cutsceneFrame?.dt ?? (ending ? 0 : gameTick(args.presentation?.t ?? t, args.presentation?.running ?? args.running ?? true));
       const now = cutsceneFrame?.elapsed ?? 0;
+      const view=args.presentation??{t,building:Math.min(50,Math.floor(t/rules.buildingMs)+1),passed:Math.floor(t/rules.buildingMs),phase:matchState?'eval':'grace',color,policeStage,running:walking,matchState,combo:0,maxCombo:0};
+      lastPresentation=view;
       worldClock += dt;
       playerX = (t / rules.buildingMs) * W; // 判定と同じ時刻から位置を決める
       const building = Math.min(rules.buildingCount, Math.floor(t / rules.buildingMs) + 1);
@@ -1211,9 +1225,11 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       placeHero(playerX, hopY);
       hero.setColor(rgbFloat(color));
       if (ending) {
+        successRing.visible=false;
+        accents?.ending(ending.kind,now);
         applyEnding(dt, now);
       } else {
-        hero.animate(dt, { walking, nervous });
+        if(view.running)hero.animate(dt,{walking,nervous});
         // 警察：通常は画面外。段階に応じて主人公の後ろ（同じ歩道の並び）へ走り込み、回復で後退する
         if (policeStage > lastPoliceStage) {
           const i = Math.min(ferrets.length, policeStage) - 1;
@@ -1223,7 +1239,12 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         }
         lastPoliceStage = policeStage;
         const mode = policeStage > 0 && (matchState === 'success' || (matchState == null && searching)) ? 'search' : policeStage > 0 && matchState === 'danger' ? 'chase' : 'run';
-        updatePolice(dt, policeStage, mode, { walking });
+        updatePolice(dt,policeStage,mode,{walking,freeze:!view.running});
+        presentationScope.tick(view.t);
+        reactions?.tick(view);
+        accents?.tick(view);
+        successRing.visible=presentationEnabled&&(forcedRing||view.t<ringUntil);
+        successRing.position.set(playerX,SIDEWALK_Y+.035,HERO_Z);
         if (walking) {
           // 足元の土ぼこり
           dustClock += dt;
@@ -1255,7 +1276,22 @@ export function createThreeStage(container, { course, decorations, rules = RULES
      * 本編の出来事に合わせた小さな演出（見た目だけ。得点や判定には関わらない）。
      * success＝擬態成功のきらめき、pass＝棟の成功通過、combo＝連続成功の節目、milestone＝区間の節目、unlock＝明るさの解放。
      */
-    presentationEvent(_event) {},
+    presentationEvent(event) {
+      if(disposed||ending)return;
+      reactions?.event(event);accents?.event(event);
+      if(event.type==='instantSuccess')ringUntil=event.t+450;
+    },
+    setBestDistance(value){accents?.setBestDistance(value);},
+    presentationStats(){const a=accents?.stats()??{},r=reactions?.stats()??{};return {...a,actors:r,activeIds:[...(a.activeIds??[]),...(r.activeIds??[]),...(successRing.visible?[41]:[])],successRings:successRing.visible?1:0,enabled:presentationEnabled};},
+    forcePresentationEffect(id){
+      if(!verification||!lastPresentation)return false;
+      if(id===41){forcedRing=true;successRing.visible=true;drawFrame();return true;}
+      const actorIds=[21,22,23,24,25,26,27,28,29,30,31,32,33,35,37,38,40];
+      if(actorIds.includes(id)){const ok=reactions?.forceEffect(id,lastPresentation)??false;drawFrame();return ok;}
+      accents?.tick({...lastPresentation,running:true});
+      const ok=accents?.forceEffect(id)??false;
+      accents?.tick({...lastPresentation,running:true});if(id===59)accents?.ending('cleared',400);drawFrame();return ok;
+    },
     fx(name) {
       if (disposed || ending) return;
       const x = heroRoot.position.x;
@@ -1312,6 +1348,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const tick = createVisiblePresentationClock({ visibilityTarget: document });
       const currentEnding = { kind, duration, done: {} };
       ending = currentEnding;
+      reactions?.reset();
       hero.jewel.position.copy(jewelHome); // 宝石は常に尻尾の元の位置から出す（開始演出を飛ばしても胸からは出さない）
       return new Promise((resolve) => {
         let frameId = null;
@@ -1613,6 +1650,9 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     },
     resize,
     dispose() {
+      if(disposed)return;
+      presentationScope.dispose();
+      successRing.geometry.dispose();ringMaterial.dispose();
       for (const finish of cutsceneCleanups) finish();
       practiceTick.dispose();
       if (disposed) return;

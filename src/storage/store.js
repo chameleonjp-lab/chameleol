@@ -1,3 +1,5 @@
+import { mergePresentationStats } from '../presentation/stats.js';
+import { GUIDE_PROGRESS_KEY, normalizeGuideProgress, mergeGuideProgress, claimGroup, updateGroup } from '../guidance/progress.js';
 // 端末保存（IndexedDB）。複数の値を1つの取引（トランザクション）で一緒に書き、途中で落ちても片方だけ残らないようにする。
 //
 // 本編の欄（runs/main）は「書込担当のタブ」と「世代」で守る：
@@ -197,11 +199,38 @@ export class Store {
     await done(tx);
   }
 
+  async guideTransaction(tabId, generation, options, mutate) {
+    const tx = this.tx(['runs', 'kv'], 'readwrite');
+    const completion = done(tx);
+    completion.catch(() => {});
+    const current = await req(tx.objectStore('runs').get(RUN_SLOT));
+    if (!current || current.status !== 'active' || current.owner !== tabId || current.generation !== generation || current.playId !== options.playId) {
+      tx.abort(); await completion.catch(() => {}); throw new StaleWriterError();
+    }
+    const kv = tx.objectStore('kv');
+    const raw = await req(kv.get(GUIDE_PROGRESS_KEY));
+    const progress = mergeGuideProgress(normalizeGuideProgress(raw, options.legacyFlags, options.legacyRun), options.fallbackProgress);
+    const result = mutate(progress);
+    kv.put(result.progress ?? result, GUIDE_PROGRESS_KEY);
+    await completion;
+    return result;
+  }
+
+  initializeGuideProgress(tabId, generation, options) {
+    return this.guideTransaction(tabId, generation, options, (p) => p);
+  }
+  claimGuideGroup(tabId, generation, options) {
+    return this.guideTransaction(tabId, generation, options, (p) => claimGroup(p, options.group, options.playId));
+  }
+  updateGuideProgress(tabId, generation, options) {
+    return this.guideTransaction(tabId, generation, options, (p) => updateGroup(p, options));
+  }
+
   /**
    * 終了：結果の退避と、進行中の欄を終了済みにすることを1つの取引で行う。
    * result.ranked なら送信待ち（outbox）、そうでなければローカル結果へ。端末内ベストも同じ取引で更新する。
    */
-  async endRun(tabId, generation, result, { localBest = null } = {}) {
+  async endRun(tabId, generation, result, { localBest = null, presentation = null } = {}) {
     const names = ['runs', 'outbox', 'localResults', 'kv', 'launches'];
     const tx = this.tx(names, 'readwrite');
     const runs = tx.objectStore('runs');
@@ -217,11 +246,14 @@ export class Store {
       await done(tx).catch(() => {});
       throw new StaleWriterError();
     }
+    const stats = presentation ? mergePresentationStats(await req(tx.objectStore('kv').get('presentation.stats.v1')), presentation) : null;
+    if (stats) tx.objectStore('kv').put(stats.next, 'presentation.stats.v1');
     if (result.ranked) tx.objectStore('outbox').put({ ...result, state: 'pending', attempts: 0, createdAt: Date.now() });
     else tx.objectStore('localResults').put({ ...result, createdAt: Date.now() });
     if (localBest) tx.objectStore('kv').put(localBest, 'localBest');
     runs.put({ slot: RUN_SLOT, status: 'ended', playId: current.playId, owner: tabId, generation: generation + 1, endedAt: Date.now() });
     await done(tx);
+    return stats ? { previous: stats.previous, firstClearNow: stats.firstClearNow } : undefined;
   }
 
   /** 読めない・対応しない版の保存を、消さずに隔離する。欄は空ける。 */

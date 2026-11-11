@@ -1,0 +1,134 @@
+{
+  "width": 2048,
+  "height": 2048,
+  "backgrounds": [
+    {
+      "id": 1,
+      "rect": [
+        0,
+        0,
+        640,
+        400
+      ]
+    },
+    {
+      "id": 20,
+      "rect": [
+        640,
+        0,
+        640,
+        400
+      ]
+    },
+    {
+      "id": 23,
+      "rect": [
+        1280,
+        0,
+        640,
+        400
+      ]
+    },
+    {
+      "id": 30,
+      "rect": [
+        0,
+        400,
+        640,
+        400
+      ]
+    },
+    {
+      "id": 40,
+      "rect": [
+        640,
+        400,
+        640,
+        400
+      ]
+    }
+  ],
+  "portraits": [
+    {
+      "id": "clear",
+      "rect": [
+        0,
+        960,
+        480,
+        720
+      ]
+    },
+    {
+      "id": "detected",
+      "rect": [
+        480,
+        960,
+        480,
+        720
+      ]
+    },
+    {
+      "id": "quit",
+      "rect": [
+        960,
+        960,
+        480,
+        720
+      ]
+    },
+    {
+      "id": "proud",
+      "rect": [
+        1440,
+        960,
+        480,
+        720
+      ]
+    }
+  ],
+  "source": "src/scene/chameleon28.js createChameleon(CHAMELEON28)",
+  "paintedBounds": {
+    "clear": {
+      "minX": 126,
+      "minY": 138,
+      "maxX": 375,
+      "maxY": 563,
+      "width": 480,
+      "height": 720
+    },
+    "detected": {
+      "minX": 63,
+      "minY": 130,
+      "maxX": 415,
+      "maxY": 565,
+      "width": 480,
+      "height": 720
+    },
+    "quit": {
+      "minX": 151,
+      "minY": 115,
+      "maxX": 373,
+      "maxY": 562,
+      "width": 480,
+      "height": 720
+    },
+    "proud": {
+      "minX": 55,
+      "minY": 143,
+      "maxX": 377,
+      "maxY": 565,
+      "width": 480,
+      "height": 720
+    }
+  },
+  "reaction": {
+    "id": "glance",
+    "rect": [
+      0,
+      1680,
+      240,
+      360
+    ]
+  },
+  "authoringOnly": true
+}

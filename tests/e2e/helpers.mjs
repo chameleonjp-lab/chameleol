@@ -52,8 +52,14 @@ export async function startAnonymous(page) {
   await page.click('[data-testid=home-start]');
   const skip = await page.waitForSelector('[data-testid=skip-opening]', { timeout: 4000 }).catch(() => null);
   if (skip) await skip.click().catch(() => {});
-  const go = await page.waitForSelector('[data-testid=guide-go]', { timeout: 6000 }).catch(() => null);
-  if (go) await go.click();
+  // New guides permit an immediate, explicit skip; legacy guides only have Go.
+  // Select the actual UI so the persisted consumption and cleanup paths run.
+  const guide = await page.waitForSelector('[data-testid=guide-skip], [data-testid=guide-go]', { timeout: 6000 }).catch(() => null);
+  if (guide) {
+    const skipGuide = page.locator('[data-testid=guide-skip]');
+    if (await skipGuide.count()) await skipGuide.click();
+    else await guide.click();
+  }
   await page.waitForFunction(() => globalThis.__kamereoru?.session?.running === true);
 }
 

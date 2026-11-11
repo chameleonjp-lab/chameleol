@@ -36,6 +36,7 @@ export class GameSession {
     this.lastFramePerf = 0;
     this.listeners = new Set();
     this.saveSeq = 0;
+    this.guideStopAt = null;
   }
 
   on(fn) {
@@ -95,6 +96,17 @@ export class GameSession {
     this.recorder.push(event);
   }
 
+  setGuideStopAt(t) {
+    this.guideStopAt = t === null ? null : Math.max(0, Math.floor(t));
+  }
+
+  stopAtGuide(perfNow) {
+    if (this.guideStopAt === null || this.gameNow(perfNow) < this.guideStopAt) return false;
+    this.apply({ type: 'tick', t: Math.max(this.state.t, this.guideStopAt) });
+    this.pause('guide');
+    return true;
+  }
+
   /** 毎フレーム呼ぶ。 */
   frame(perfNow) {
     if (!this.running || this.ended) return [];
@@ -103,6 +115,7 @@ export class GameSession {
       return [];
     }
     this.lastFramePerf = perfNow;
+    if (this.stopAtGuide(perfNow)) return [];
     return this.apply({ type: 'tick', t: this.gameNow(perfNow) });
   }
 
@@ -113,6 +126,7 @@ export class GameSession {
       this.pause('stall');
       return false;
     }
+    if (this.stopAtGuide(perfNow)) return false;
     const c = this.state.brightnessUnlocked ? color : { ...color, v: this.rules.valMax };
     if (c.h === this.state.color.h && c.s === this.state.color.s && c.v === this.state.color.v) return true;
     this.apply({ type: 'color', t: this.gameNow(perfNow), h: c.h, s: c.s, v: c.v });
@@ -122,6 +136,10 @@ export class GameSession {
   /** 自分で途中終了する。停止中なら停止した時刻で終える。 */
   quit(perfNow = 0) {
     if (this.ended) return;
+    if (this.running) {
+      if (this.isStalled(perfNow)) this.pause('stall');
+      else this.stopAtGuide(perfNow);
+    }
     const t = this.running ? this.gameNow(perfNow) : this.state.t;
     this.running = false;
     this.apply({ type: 'quit', t });

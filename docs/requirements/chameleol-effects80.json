@@ -2,7 +2,7 @@
   "version": "2026-11-11",
   "repository": "chameleonjp-lab/chameleol",
   "baselineCommit": "858a4426327594a05ca810ee6156f8c2a0d5ad16",
-  "status": "要件・計画確定／実装は未着手",
+  "status": "全80件実装・個別自動検証済み／Safari実機確認は保留",
   "source": "カメレオる_追加演出と見た目_100アイデア.html（2026-11-11 RICE版）",
   "formula": "reach * impact * confidence / effort",
   "basePlays": 100,
@@ -40,8 +40,16 @@
       "task": "T1",
       "trigger": "結果画面を開く時",
       "acceptance": "通過・一致度・連続成功・クリアの既存内訳を4段の箱で示す。合計はscore.total、順位の基準は棟数と平均のまま。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-data.js",
+        "src/presentation/result-view.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-078.png"
+      }
     },
     {
       "id": 81,
@@ -71,8 +79,16 @@
       "task": "T1",
       "trigger": "結果画面を開く時",
       "acceptance": "最大50マスを通過済み／未通過に分ける。発見された未通過棟を通過済みへ含めない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-data.js",
+        "src/presentation/result-view.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-081.png"
+      }
     },
     {
       "id": 82,
@@ -102,8 +118,16 @@
       "task": "T1",
       "trigger": "通過棟の有効な棟別成績がある時",
       "acceptance": "丸め前の平均が最高の棟を1棟表示する。同値は小さい棟番号、0棟ならデータなしと示す。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-data.js",
+        "src/presentation/result-view.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-082.png"
+      }
     },
     {
       "id": 83,
@@ -133,8 +157,16 @@
       "task": "T1",
       "trigger": "通過棟の有効な棟別成績がある時",
       "acceptance": "丸め前の平均が最低の棟を1棟表示する。同値は小さい棟番号、未通過棟は比較に入れない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-data.js",
+        "src/presentation/result-view.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-083.png"
+      }
     },
     {
       "id": 93,
@@ -164,8 +196,17 @@
       "task": "T2",
       "trigger": "結果画面を開く時",
       "acceptance": "最後に到達した棟の地区に合う静止背景を1枚選ぶ。0棟なら開始地区、50棟なら最終地区。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-view.js",
+        "src/presentation/assets/result-atlas.webp",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-093.png"
+      }
     },
     {
       "id": 43,
@@ -195,8 +236,17 @@
       "task": "T10",
       "trigger": "評価中に成功が続く時",
       "acceptance": "継続0〜1000msを0〜100%の細い帯で示す。成功以外・猶予で0へ戻し、得点・新しい成功条件を作らない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/hud-view.js",
+        "src/scene/street.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-043.png"
+      }
     },
     {
       "id": 77,
@@ -226,8 +276,16 @@
       "task": "T1",
       "trigger": "結果画面を開く時",
       "acceptance": "最大連続成功を最大10粒と実数で表示する。0なら0と示し、空の結果を作らない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-data.js",
+        "src/presentation/result-view.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-077.png"
+      }
     },
     {
       "id": 95,
@@ -257,8 +315,16 @@
       "task": "T1",
       "trigger": "結果画面を開く時",
       "acceptance": "クリア→自己ベスト→連続成功10以上→その他の順で短いせりふを選び、15言語の辞書から表示する。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-data.js",
+        "src/presentation/result-view.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-095.png"
+      }
     },
     {
       "id": 2,
@@ -288,8 +354,16 @@
       "task": "T5",
       "trigger": "地区が切り替わる時",
       "acceptance": "歩道の5種類の模様が地区に対応し、壁・体の比較色が変わらない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/assets/atlas.webp"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-002.png"
+      }
     },
     {
       "id": 3,
@@ -319,8 +393,16 @@
       "task": "T5",
       "trigger": "棟を表示する時",
       "acceptance": "地区ごとに3種類以上の屋根の輪郭を組み合わせ、追加の常時アニメーションを使わない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/assets/atlas.webp"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-003.png"
+      }
     },
     {
       "id": 10,
@@ -350,8 +432,16 @@
       "task": "T5",
       "trigger": "地区が見える時",
       "acceptance": "地区ごとの目印5種類を遠景に置き、現在地区の目印を最大1個表示する。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/assets/atlas.webp"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-010.png"
+      }
     },
     {
       "id": 46,
@@ -381,8 +471,17 @@
       "task": "T10",
       "trigger": "評価／猶予の切替",
       "acceptance": "上部の小さな印を0.2秒で開閉する。印の位置は固定し、操作面を覆わない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/hud-view.js",
+        "src/scene/street.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-046.png"
+      }
     },
     {
       "id": 52,
@@ -412,8 +511,17 @@
       "task": "T10",
       "trigger": "通過棟数が変わる時",
       "acceptance": "50棟の進行バーに小さな主人公を配置し、通過数÷50で位置を決める。操作履歴を使わない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/hud-view.js",
+        "src/scene/street.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-052.png"
+      }
     },
     {
       "id": 91,
@@ -443,8 +551,19 @@
       "task": "T3",
       "trigger": "結果画面を開く時",
       "acceptance": "クリア→自己ベスト→連続成功10／5／3の順で最大3個。連続成功は最上位1種類だけで、該当なしなら出さない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/stats.js",
+        "src/storage/store.js",
+        "src/storage/memory-store.js",
+        "src/presentation/hud-view.js",
+        "src/presentation/street-accents.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-091.png"
+      }
     },
     {
       "id": 92,
@@ -474,8 +593,17 @@
       "task": "T4",
       "trigger": "現在の本編結果を表示する時",
       "acceptance": "その回の出題済み目標色を全50色以内で並べ、到達分と未到達分を区別する。体色の履歴や過去プレイの色は保存しない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-data.js",
+        "src/presentation/result-view.js",
+        "src/app.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-092.png"
+      }
     },
     {
       "id": 41,
@@ -505,8 +633,17 @@
       "task": "T10",
       "trigger": "既存の瞬間成功通知",
       "acceptance": "足元の輪1枚を0.45秒出す。既存の1棟1回・200ms成功維持の通知を再利用する。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/hud-view.js",
+        "src/scene/street.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-041.png"
+      }
     },
     {
       "id": 73,
@@ -536,8 +673,17 @@
       "task": "T2",
       "trigger": "結果画面を開く時",
       "acceptance": "成績の報告書を0.6秒で出す。数値は最初から読み上げ可能とし、タップですぐ完成状態にできる。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-view.js",
+        "src/presentation/assets/result-atlas.webp",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-073.png"
+      }
     },
     {
       "id": 74,
@@ -567,8 +713,17 @@
       "task": "T2",
       "trigger": "結果画面を開く時",
       "acceptance": "総得点を0.6秒で数え上げる。表示は最終的に既存のscore.totalと一致し、タップ・動きを減らす設定では即確定する。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-view.js",
+        "src/presentation/assets/result-atlas.webp",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-074.png"
+      }
     },
     {
       "id": 55,
@@ -598,8 +753,18 @@
       "task": "T11",
       "trigger": "既存のunlockBrightness通知",
       "acceptance": "19棟目の評価終了で鍵と覆いを0.6秒で開く。操作可能になる時刻を演出完了まで遅らせない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/app.js",
+        "src/presentation/street-accents.js",
+        "src/presentation/hud-view.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-055.png"
+      }
     },
     {
       "id": 21,
@@ -629,8 +794,16 @@
       "task": "T8",
       "trigger": "既存の猶予時間",
       "acceptance": "主人公の歩きを忍び足の姿勢へ切り替え、進行距離・速度・当たり判定を変えない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/chameleon28.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-021.png"
+      }
     },
     {
       "id": 71,
@@ -660,8 +833,17 @@
       "task": "T2",
       "trigger": "結果画面を開く時",
       "acceptance": "固定背景1枚と正規モデルから用意した主人公画像1枚で場面を作る。結果用のWebGL描画を増やさない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-view.js",
+        "src/presentation/assets/result-atlas.webp",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-071.png"
+      }
     },
     {
       "id": 80,
@@ -691,8 +873,17 @@
       "task": "T2",
       "trigger": "結果画面の場面表示",
       "acceptance": "固定背景・表情・撮影枠で記念写真風にする。撮影・画像保存・画像共有は追加しない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-view.js",
+        "src/presentation/assets/result-atlas.webp",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-080.png"
+      }
     },
     {
       "id": 48,
@@ -722,8 +913,17 @@
       "task": "T10",
       "trigger": "連続成功数が変わる時",
       "acceptance": "上部に最大10粒と実数0〜50を表示する。11以上でも表示物の数を増やさない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/hud-view.js",
+        "src/scene/street.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-048.png"
+      }
     },
     {
       "id": 99,
@@ -753,8 +953,17 @@
       "task": "T2",
       "trigger": "再プレイを一度受け付けた時",
       "acceptance": "主人公画像がボタンへ0.15秒だけ飛び乗る。開始は1回だけ、演出は開始処理を待たせず、開始失敗時に再操作できる。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-view.js",
+        "src/presentation/assets/result-atlas.webp",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-099.png"
+      }
     },
     {
       "id": 22,
@@ -784,8 +993,16 @@
       "task": "T8",
       "trigger": "評価中の成功状態",
       "acceptance": "口元と肩だけで息を止める姿勢にし、比較用の胴の色・面積を保つ。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/chameleon28.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-022.png"
+      }
     },
     {
       "id": 42,
@@ -815,8 +1032,17 @@
       "task": "T10",
       "trigger": "No.41と同じ通知",
       "acceptance": "上部の枠に0.45秒の光を走らせ、中央の比較面やパレットに重ねない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/hud-view.js",
+        "src/scene/street.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-042.png"
+      }
     },
     {
       "id": 1,
@@ -846,8 +1072,16 @@
       "task": "T5",
       "trigger": "本編の全地区",
       "acceptance": "手前・建物・遠景の3層が見え、既存7棟の表示枠を増やさない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/assets/atlas.webp"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-001.png"
+      }
     },
     {
       "id": 28,
@@ -877,8 +1111,16 @@
       "task": "T8",
       "trigger": "歩行中",
       "acceptance": "足の接地と体の上下を同期し、比較用の胴の基準位置・見え方を大きく動かさない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/chameleon28.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-028.png"
+      }
     },
     {
       "id": 79,
@@ -908,8 +1150,16 @@
       "task": "T1",
       "trigger": "既存のnewBestが真の時",
       "acceptance": "既存の名前ごとの自己ベスト札を0.5秒で更新する。同棟数でも平均が上なら既存の比較規則に従う。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-data.js",
+        "src/presentation/result-view.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-079.png"
+      }
     },
     {
       "id": 89,
@@ -939,8 +1189,17 @@
       "task": "T4",
       "trigger": "到達地区に有効な通過棟がある時",
       "acceptance": "既存の地区境界で最大5枚の絵はがきに集計する。各棟平均を重みなしで平均し、最後に一度だけ丸める。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-data.js",
+        "src/presentation/result-view.js",
+        "src/app.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-089.png"
+      }
     },
     {
       "id": 25,
@@ -970,8 +1229,16 @@
       "task": "T8",
       "trigger": "成功状態で警察がいる時",
       "acceptance": "目と頭で背後を0.5秒確認する。胴を回転させず、同じ確認の間隔を5秒以上空ける。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/chameleon28.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-025.png"
+      }
     },
     {
       "id": 32,
@@ -1001,8 +1268,16 @@
       "task": "T9",
       "trigger": "警察が段階1・2へ増える時",
       "acceptance": "無線機を口元へ0.7秒寄せ、短い通信記号を出す。追加の音声通信や台詞履歴を作らない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/characters.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-032.png"
+      }
     },
     {
       "id": 49,
@@ -1034,8 +1309,17 @@
       "task": "T10",
       "trigger": "連続成功が正数から0になる時",
       "acceptance": "表示済み最大10粒だけを0.4秒でほどく。0から0では再生しない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/hud-view.js",
+        "src/scene/street.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-049.png"
+      }
     },
     {
       "id": 29,
@@ -1065,8 +1349,16 @@
       "task": "T8",
       "trigger": "連続成功3・5・10棟達成時",
       "acceptance": "0.5秒だけ得意顔を出す。以後10棟ごとの追加はせず、各節目は1回だけ。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/chameleon28.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-029.png"
+      }
     },
     {
       "id": 100,
@@ -1098,8 +1390,17 @@
       "task": "T2",
       "trigger": "結果場面の主人公画像を押す時",
       "acceptance": "0.4秒の目配せを出す。一つの操作対象だけ、表示数を増やさず、画面離脱で受付と動きを止める。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-view.js",
+        "src/presentation/assets/result-atlas.webp",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-100.png"
+      }
     },
     {
       "id": 60,
@@ -1131,8 +1432,18 @@
       "task": "T11",
       "trigger": "detected確定後",
       "acceptance": "現在の発見に対応する固定表情を0.6秒表示する。画像撮影・過去状態の保存・再生を行わず、終了スキップに従う。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/app.js",
+        "src/presentation/street-accents.js",
+        "src/presentation/hud-view.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-060.png"
+      }
     },
     {
       "id": 9,
@@ -1162,8 +1473,16 @@
       "task": "T5",
       "trigger": "建物間の隙間",
       "acceptance": "共用の路地画像2種類で奥行きを見せ、通路や操作対象を追加しない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/assets/atlas.webp"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-009.png"
+      }
     },
     {
       "id": 50,
@@ -1193,8 +1512,17 @@
       "task": "T10",
       "trigger": "段階2を経験後、警察が0へ減る時",
       "acceptance": "その回の印1個で判定し、立て直し札を0.8秒・1プレイ1回表示する。停止・復帰だけで再通知しない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/hud-view.js",
+        "src/scene/street.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-050.png"
+      }
     },
     {
       "id": 17,
@@ -1224,8 +1552,16 @@
       "task": "T6",
       "trigger": "猶予中の歩道",
       "acceptance": "葉は最大3枚を0.8秒だけ動かし、使い終えた表示物を再利用する。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-017.png"
+      }
     },
     {
       "id": 24,
@@ -1255,8 +1591,16 @@
       "task": "T8",
       "trigger": "警察段階2／解除",
       "acceptance": "尻尾を宝石を守る形と緩める形の2姿勢へ0.3秒で補間する。現在の固定形状を2形状へ対応させる作業を含む。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/chameleon28.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-024.png"
+      }
     },
     {
       "id": 11,
@@ -1286,8 +1630,16 @@
       "task": "T5",
       "trigger": "1・20・23・30・40棟目へ入る時",
       "acceptance": "門1個と翻訳した地区名を0.8秒表示する。No.55と競合した時は文字を一つにまとめる。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/assets/atlas.webp"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-011.png"
+      }
     },
     {
       "id": 23,
@@ -1317,8 +1669,16 @@
       "task": "T8",
       "trigger": "警察の段階が2の間",
       "acceptance": "腕と上体を小さく身構える姿勢にし、警察の段階が下がると戻る。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/chameleon28.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-023.png"
+      }
     },
     {
       "id": 53,
@@ -1348,8 +1708,19 @@
       "task": "T3",
       "trigger": "名前ごとの保存済み自己ベストがある時",
       "acceptance": "開始時に距離を一度読み、該当地点に旗1枚を置く。同距離では更新扱いにせず、距離を初めて超えた時だけ反応する。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/stats.js",
+        "src/storage/store.js",
+        "src/storage/memory-store.js",
+        "src/presentation/hud-view.js",
+        "src/presentation/street-accents.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-053.png"
+      }
     },
     {
       "id": 31,
@@ -1379,8 +1750,16 @@
       "task": "T9",
       "trigger": "警察が2人いる時",
       "acceptance": "先頭は追跡、後方は捜索の腕・頭の動きに分け、人数・位置・速度は既存の状態を使う。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/characters.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-031.png"
+      }
     },
     {
       "id": 35,
@@ -1410,8 +1789,16 @@
       "task": "T9",
       "trigger": "追跡から捜索へ変わる時",
       "acceptance": "0.5秒の足踏みを出し、判定上の追跡位置はずらさない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/characters.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-035.png"
+      }
     },
     {
       "id": 63,
@@ -1441,8 +1828,16 @@
       "task": "T6",
       "trigger": "1・20・40棟目に到達した後",
       "acceptance": "用意した手配書3枚を切り替える。画像の動的生成やプレイヤー名の画像化をしない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-063.png"
+      }
     },
     {
       "id": 6,
@@ -1472,8 +1867,16 @@
       "task": "T6",
       "trigger": "住宅の表示",
       "acceptance": "植木と洗濯物は1棟2点以内。動く洗濯物は画面内2点まで、周期2秒・振幅2度以内。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-006.png"
+      }
     },
     {
       "id": 98,
@@ -1503,8 +1906,19 @@
       "task": "T3",
       "trigger": "直前1回の端末内成績がある時",
       "acceptance": "棟数・平均一致度・最大連続成功を比較し、同値は±0、平均なしは—と示す。端末内の直前1回で名前をまたぐことを明記する。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/stats.js",
+        "src/storage/store.js",
+        "src/storage/memory-store.js",
+        "src/presentation/hud-view.js",
+        "src/presentation/street-accents.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-098.png"
+      }
     },
     {
       "id": 26,
@@ -1534,8 +1948,16 @@
       "task": "T8",
       "trigger": "警察の段階が下がる時",
       "acceptance": "額をぬぐう動作を0.7秒だけ出し、同じ段階の変化で二重に出さない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/chameleon28.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-026.png"
+      }
     },
     {
       "id": 58,
@@ -1565,8 +1987,18 @@
       "task": "T11",
       "trigger": "46〜50棟目へ入る時",
       "acceptance": "残りを5・4・3・2・1と屋上札に表示する。通過数との1棟ずれがない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/app.js",
+        "src/presentation/street-accents.js",
+        "src/presentation/hud-view.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-058.png"
+      }
     },
     {
       "id": 96,
@@ -1596,8 +2028,17 @@
       "task": "T4",
       "trigger": "正式値と順位の取得が完了した時",
       "acceptance": "今回の正式値と名前ごとのベストが一致する場合だけ今回の順位として開く。一致しなければ名前のベスト順位と明記し、無名・審査中・失敗を順位に見せない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/result-data.js",
+        "src/presentation/result-view.js",
+        "src/app.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-096.png"
+      }
     },
     {
       "id": 5,
@@ -1627,8 +2068,16 @@
       "task": "T6",
       "trigger": "画面近くの看板",
       "acceptance": "同時1枚、振幅3度以内・1.2秒で揺れる。成功反応No.47の間は揺れを止める。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-005.png"
+      }
     },
     {
       "id": 19,
@@ -1658,8 +2107,16 @@
       "task": "T6",
       "trigger": "パン屋が近くにある時",
       "acceptance": "煙は同時3枚まで・寿命1.5秒、煙突は一つまで。比較面に流れ込ませない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-019.png"
+      }
     },
     {
       "id": 8,
@@ -1689,8 +2146,16 @@
       "task": "T6",
       "trigger": "配管がある建物",
       "acceptance": "配管は静止し、換気扇1個の低速回転か蒸気2枚までを動かす。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-008.png"
+      }
     },
     {
       "id": 37,
@@ -1720,8 +2185,16 @@
       "task": "T9",
       "trigger": "段階1で直前の評価終了が成功だった猶予",
       "acceptance": "双眼鏡を0.8秒持ち上げる。No.33と交互に選び、警察の動作を重ねない。 直前成功は今回の表示用の真偽値だけで持ち、次の評価開始で消す。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/characters.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-037.png"
+      }
     },
     {
       "id": 47,
@@ -1751,8 +2224,16 @@
       "task": "T6",
       "trigger": "成功して棟を通過した時",
       "acceptance": "対象の看板1枚だけが0.5秒反応する。スロット再利用後に別棟へ動作を持ち越さない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-047.png"
+      }
     },
     {
       "id": 33,
@@ -1782,8 +2263,16 @@
       "task": "T9",
       "trigger": "段階1で直前の評価終了が成功だった猶予",
       "acceptance": "似顔絵の手帳を1秒示す。同じプレイで1回まで、動作終了で小道具を隠す。 直前成功は今回の表示用の真偽値だけで持ち、次の評価開始で消す。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/characters.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-033.png"
+      }
     },
     {
       "id": 14,
@@ -1813,8 +2302,16 @@
       "task": "T7",
       "trigger": "背景抽選・猶予中",
       "acceptance": "鳥は最大3羽を一組として1.5秒の共通軌道で飛ばす。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-014.png"
+      }
     },
     {
       "id": 30,
@@ -1844,8 +2341,16 @@
       "task": "T8",
       "trigger": "10・25・40棟目通過後の猶予",
       "acceptance": "0.6秒だけ宝石を確かめる。高警戒中やほかの主人公動作中は省略する。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/chameleon28.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-030.png"
+      }
     },
     {
       "id": 36,
@@ -1875,8 +2380,16 @@
       "task": "T7",
       "trigger": "背景抽選・猶予中",
       "acceptance": "遠景のパトカー1台が2秒で通過する。灯りは車体内だけ、比較面を照らさない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-036.png"
+      }
     },
     {
       "id": 54,
@@ -1906,8 +2419,19 @@
       "task": "T3",
       "trigger": "今回の連続成功が保存済み最大値を超える時",
       "acceptance": "端末全体の最大連続成功と明記する。過去値0なら通知せず、正数の過去値を初めて超えた時に1回表示する。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/stats.js",
+        "src/storage/store.js",
+        "src/storage/memory-store.js",
+        "src/presentation/hud-view.js",
+        "src/presentation/street-accents.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-054.png"
+      }
     },
     {
       "id": 4,
@@ -1937,8 +2461,16 @@
       "task": "T5",
       "trigger": "店の窓が画面に入る時",
       "acceptance": "店内は共用画像3種類と棚の平面で見せ、奥行きのある別の室内シーンを作らない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/assets/atlas.webp"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-004.png"
+      }
     },
     {
       "id": 38,
@@ -1968,8 +2500,16 @@
       "task": "T9",
       "trigger": "警察2人が捜索へ変わる時",
       "acceptance": "0.6秒だけ顔を見合わせる。警戒の減少量・退場条件は変えない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/characters.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-038.png"
+      }
     },
     {
       "id": 15,
@@ -1999,8 +2539,16 @@
       "task": "T7",
       "trigger": "背景抽選・猶予中",
       "acceptance": "自転車と乗員を一枚の絵で2秒動かし、ほかの移動する背景人物・乗り物とは同時に出さない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-015.png"
+      }
     },
     {
       "id": 18,
@@ -2030,8 +2578,16 @@
       "task": "T6",
       "trigger": "猶予中の自販機",
       "acceptance": "ランプと缶1個が1秒動く。缶が取得できるようには見せない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-018.png"
+      }
     },
     {
       "id": 64,
@@ -2061,8 +2617,16 @@
       "task": "T6",
       "trigger": "猶予中の広告",
       "acceptance": "目の部分だけ0.4秒動かす。画面内1枚、棟ごと1回まで。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-064.png"
+      }
     },
     {
       "id": 7,
@@ -2092,8 +2656,16 @@
       "task": "T6",
       "trigger": "猶予中のひさし",
       "acceptance": "画面内1枚の端が0.8秒だけ動き、中央の壁にかからない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-007.png"
+      }
     },
     {
       "id": 16,
@@ -2123,8 +2695,16 @@
       "task": "T7",
       "trigger": "背景抽選・猶予中",
       "acceptance": "バス1台が奥を2秒で横切り、窓の影は共用画像で表す。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-016.png"
+      }
     },
     {
       "id": 57,
@@ -2154,8 +2734,16 @@
       "task": "T5",
       "trigger": "40棟目以降",
       "acceptance": "静止した空中通路か高架の共用部品を最大1組遠景に出す。別ステージへ切り替えない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/assets/atlas.webp"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-057.png"
+      }
     },
     {
       "id": 66,
@@ -2185,8 +2773,16 @@
       "task": "T6",
       "trigger": "40棟目以降の猶予",
       "acceptance": "遠景窓の共用画像を0.8秒で切り替える。窓ごとの光源を増やさない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-066.png"
+      }
     },
     {
       "id": 59,
@@ -2216,8 +2812,18 @@
       "task": "T11",
       "trigger": "cleared確定後",
       "acceptance": "門1個を0.8秒で開く。最終評価中は壁・比較面を消さず、既存の終了スキップに従う。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/app.js",
+        "src/presentation/street-accents.js",
+        "src/presentation/hud-view.js",
+        "src/ui/presentation.css"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-059.png"
+      }
     },
     {
       "id": 12,
@@ -2247,8 +2853,16 @@
       "task": "T7",
       "trigger": "背景抽選・猶予中",
       "acceptance": "顔の絵1人が1.2秒だけ窓から出入りし、表示枠から出た時点で終了する。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-012.png"
+      }
     },
     {
       "id": 13,
@@ -2278,8 +2892,16 @@
       "task": "T7",
       "trigger": "背景抽選・猶予中",
       "acceptance": "猫1匹が屋根で2秒以内の伸びをし、自由な移動計算を行わない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-013.png"
+      }
     },
     {
       "id": 40,
@@ -2309,8 +2931,16 @@
       "task": "T9",
       "trigger": "段階1・30棟目以降の猶予",
       "acceptance": "1プレイ1回、帽子1個が0.9秒の固定軌道を通り、警察は腕だけで追う。移動位置は保つ。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/characters.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-040.png"
+      }
     },
     {
       "id": 62,
@@ -2340,8 +2970,16 @@
       "task": "T6",
       "trigger": "地区の歩道",
       "acceptance": "マンホールの絵柄を5種類用意し、近い一つだけ2秒に1回以下のまばたきをする。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-062.png"
+      }
     },
     {
       "id": 85,
@@ -2371,8 +3009,19 @@
       "task": "T3",
       "trigger": "端末内で初めて50棟クリアした時",
       "acceptance": "初クリア日だけを保存し、その回に特別な切符を出す。再表示・再送・次回クリアでは日付を書き換えない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/stats.js",
+        "src/storage/store.js",
+        "src/storage/memory-store.js",
+        "src/presentation/hud-view.js",
+        "src/presentation/street-accents.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-085.png"
+      }
     },
     {
       "id": 65,
@@ -2402,8 +3051,16 @@
       "task": "T7",
       "trigger": "背景抽選・昼の猶予中",
       "acceptance": "二重の虹の共用画像1枚を2秒出す。色面への半透明重ねや色調変更は行わない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-065.png"
+      }
     },
     {
       "id": 70,
@@ -2433,8 +3090,16 @@
       "task": "T7",
       "trigger": "背景抽選・猶予中",
       "acceptance": "屋上の仲間1体が1.2秒顔を出す。出現IDの保存・収集・No.97への連携は行わない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-070.png"
+      }
     },
     {
       "id": 61,
@@ -2464,8 +3129,16 @@
       "task": "T7",
       "trigger": "背景抽選・猶予中",
       "acceptance": "小さなUFO1個が1.5秒で通過する。出現した印や発見帳は保存しない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/street-accents.js",
+        "src/presentation/catalog.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-061.png"
+      }
     },
     {
       "id": 27,
@@ -2495,8 +3168,16 @@
       "task": "T8",
       "trigger": "30棟目以降の猶予中",
       "acceptance": "1プレイ1回だけ0.35秒の軽いつまずきを見せる。位置・速度を止めず、警戒増加・被弾の表示や音を付けない。",
-      "status": "採用確定・未実装",
-      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。"
+      "status": "実装・個別自動検証済み／Safari実機未確認",
+      "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
+      "implementationFiles": [
+        "src/presentation/actor-reactions.js",
+        "src/scene/chameleon28.js"
+      ],
+      "verification": {
+        "test": "tests/e2e/presentation.e2e.mjs",
+        "image": "docs/acceptance/effects80-images/effect-027.png"
+      }
     }
   ],
   "excluded": [

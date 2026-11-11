@@ -1,3 +1,4 @@
+@import './presentation.css';
 /* カメレオる：縦画面の iPhone Safari を主対象にした画面。比較面（壁・体・プレビュー）には色の効果をかけない。 */
 :root {
   --bg: #14183a;

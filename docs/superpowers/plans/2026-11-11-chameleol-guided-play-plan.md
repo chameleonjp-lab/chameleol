@@ -16,7 +16,7 @@
 - ①〜④は一致度の数値と95%以上になる操作位置のガイドを表示し、練習からいつでも個別に確認できる。
 - 本編50棟・1棟5000ms・評価区間[1500,4500)ms、得点、順位、出題、結果送信形式、既存の内部識別子を維持する。静止案内の実時間はゲーム時刻に含めない。
 - 15言語、iPhone 17 Pro Safari、402×700／402×874／874×402、動きを減らす設定、簡易表示に対応する。
-- 本PRは文書の更新。ゲーム実装、公開、実験場連携、データベース適用、マージは行わない。
+- PR #10は文書のみ。後続の実装はこの確定要件に従い、公開・実験場連携・本番データベース適用・マージは行わない。
 
 ## Review Focus
 
@@ -85,7 +85,7 @@
 
 ## 5. 実装する工程
 
-順序はG1→G2→G3→G4。演出計画のT0の画面寿命・停止処理を再利用する。G1〜G4を終えてからT11の解錠表示を結合し、T12の最終確認へ含める。以下は今後の実装項目であり、本PRでは未実施。
+順序はG1→G2→G3→G4。演出計画のT0の画面寿命・停止処理を再利用する。G1〜G4を終えてからT11の解錠表示を結合し、T12の最終確認へ含める。実装と自動検証の進捗を以下へ反映する。Safari実機の検証は保留。
 
 ### G1：二つの初回記録を分ける
 
@@ -93,11 +93,11 @@
 
 **Interfaces:** `normalizeGuideProgress(raw,legacyFlags,legacyRun):GuideProgress`、`Store.claimGuideGroup(tabId,generation,{playId,group:'basic'|'brightness'}):Promise<{owned:boolean,progress:GuideProgress}>`、`Store.updateGuideProgress(tabId,generation,{playId,group,shownMask,staticDone}):Promise<GuideProgress>`。claimは未消費時だけ確保し、同じ所有プレーなら再開を許可する。
 
-- [ ] `first_run_only_basic`、`later_first_unlock_only_brightness`、`quit_before_second_does_not_reoffer`、`practice_does_not_consume`を先に作り、二つのグループの独立と対象プレーの固定を検証する。
-- [ ] `legacy_flags_skip_completed_guides`、`same_run_resume_keeps_progress`、`restore_unlocked_state_claims_missing_group`、`stale_generation_cannot_claim_or_write`、`memory_only_preserves_same_tab_progress`を追加する。明度解放後のsnapshotだけが保存され、claimが遅着中に別タブへ引き継がれる例を含める。1024バイト上限・無効値・保存失敗も確認する。
-- [ ] `node --test tests/guidance/progress.test.mjs tests/storage/guidance.test.mjs`で未実装による失敗を確認する。
-- [ ] 形式・移行・既存run所有権を使う取引とメモリ版を実装する。本編開始成立後・時計開始前に、basicの対象外でも正規化したガイド記録を保存する。その後basicを確保し、unlockBrightnessでbrightnessを確保する。保存済みプレーの復元では、本編状態が解放済みで新形式のbrightnessが未消費なら、同じclaim関数で確保を補う。更新前のプレーとして移行済みの場合は補わない。
-- [ ] 同試験を合格させ、差分確認後に`feat: track independent first-play guide groups`でコミットする。
+- [x] `first_run_only_basic`、`later_first_unlock_only_brightness`、`quit_before_second_does_not_reoffer`、`practice_does_not_consume`を先に作り、二つのグループの独立と対象プレーの固定を検証する。
+- [x] `legacy_flags_skip_completed_guides`、`same_run_resume_keeps_progress`、`restore_unlocked_state_claims_missing_group`、`stale_generation_cannot_claim_or_write`、`memory_only_preserves_same_tab_progress`を追加する。明度解放後のsnapshotだけが保存され、claimが遅着中に別タブへ引き継がれる例を含める。1024バイト上限・無効値・保存失敗も確認する。
+- [x] `node --test tests/guidance/progress.test.mjs tests/storage/guidance.test.mjs`で未実装による失敗を確認する。
+- [x] 形式・移行・既存run所有権を使う取引とメモリ版を実装する。本編開始成立後・時計開始前に、basicの対象外でも正規化したガイド記録を保存する。その後basicを確保し、unlockBrightnessでbrightnessを確保する。保存済みプレーの復元では、本編状態が解放済みで新形式のbrightnessが未消費なら、同じclaim関数で確保を補う。更新前のプレーとして移行済みの場合は補わない。
+- [x] 同試験を合格させ、差分確認後に`feat: track independent first-play guide groups`でコミットする。
 
 ### G2：評価開始前に止め、静止中の色を操作する
 
@@ -105,12 +105,12 @@
 
 **Interfaces:** `GameSession.setGuideStopAt(t:number|null):void`を通常判定の外に追加する。`createGuidance({session,progress}):GuidanceController`は`view()`・`setDraft(color)`・`continue(perfNow)`・`skip(perfNow)`・`dispose()`を返す。`view()`は`{step:null|1|2|3|4,stationary,building,color,target,matchUnits,canContinue}`。
 
-- [ ] `stationary_first_keeps_game_time_zero`、`checkpoint_crossed_by_frame_or_input_stops_before_eval`、`long_stall_does_not_cross_checkpoint`、`resume_completed_static_does_not_repeat`を作る。静止中の得点・警戒・履歴末尾時刻が不変で、明度停止時刻が95000msであることを検証する。
-- [ ] `node --test tests/guidance/session.test.mjs tests/game/guidance-clock.test.mjs`で未実装による失敗を確認する。
-- [ ] ゲーム時刻を進めるframe・input・quitの全入口を停止点以内へ制限する。停止点へ達したら既存tickを適用してから既存pauseを同時刻で記録し、その入口で残りの色入力を処理しない。quitは終了要求を捨てず、制限後の同時刻で終了する。pause済みへの重複pauseは記録しない。判定エンジンへ新しいイベントや静止モードを追加しない。
-- [ ] ガイド記録を開始／再開前に読み、明度未消費の場合と、明度の所有プレーIDが今回と一致して静止未完了の場合には、時計開始前から③の停止点を設定する。unlockBrightness後のclaim書込を待ってから停止点を設定する実装は禁止する。同じ保存済みプレーでclaim済みなら再claimせず、保持した所有記録を使う。claimの遅着中でも入口で止め、確保できなければ案内を出さず通常進行へ戻す。画面世代・プレーIDの違う応答は無効にする。
-- [ ] 既存の開始前showGuideCardを今回のゲーム画面上の案内に置き換える。①は時計開始前、③は停止点到達後の非評価時にdraftを操作する。終了操作は同じ`perfNow`でstartClock→通常inputの順に一度だけ行い、既存pause/resume/color履歴で再構築できるようにする。draftと正式色の使い分けをstage・controls・一致度で統一する。進行中の②④はshownMaskが立っていても同じ所有プレーなら残り区間の表示を再開する。
-- [ ] `moving_guides_never_extend_building`、`pause_hidden_dispose_do_not_advance`、`guide_history_rebuild_matches_session`を追加し、同試験を合格させる。`feat: stop guided matching before evaluation`でコミットする。
+- [x] `stationary_first_keeps_game_time_zero`、`checkpoint_crossed_by_frame_or_input_stops_before_eval`、`long_stall_does_not_cross_checkpoint`、`resume_completed_static_does_not_repeat`を作る。静止中の得点・警戒・履歴末尾時刻が不変で、明度停止時刻が95000msであることを検証する。
+- [x] `node --test tests/guidance/session.test.mjs tests/game/guidance-clock.test.mjs`で未実装による失敗を確認する。
+- [x] ゲーム時刻を進めるframe・input・quitの全入口を停止点以内へ制限する。停止点へ達したら既存tickを適用してから既存pauseを同時刻で記録し、その入口で残りの色入力を処理しない。quitは終了要求を捨てず、制限後の同時刻で終了する。pause済みへの重複pauseは記録しない。判定エンジンへ新しいイベントや静止モードを追加しない。
+- [x] ガイド記録を開始／再開前に読み、明度未消費の場合と、明度の所有プレーIDが今回と一致して静止未完了の場合には、時計開始前から③の停止点を設定する。unlockBrightness後のclaim書込を待ってから停止点を設定する実装は禁止する。同じ保存済みプレーでclaim済みなら再claimせず、保持した所有記録を使う。claimの遅着中でも入口で止め、確保できなければ案内を出さず通常進行へ戻す。画面世代・プレーIDの違う応答は無効にする。
+- [x] 既存の開始前showGuideCardを今回のゲーム画面上の案内に置き換える。①は時計開始前、③は停止点到達後の非評価時にdraftを操作する。終了操作は同じ`perfNow`でstartClock→通常inputの順に一度だけ行い、既存pause/resume/color履歴で再構築できるようにする。draftと正式色の使い分けをstage・controls・一致度で統一する。進行中の②④はshownMaskが立っていても同じ所有プレーなら残り区間の表示を再開する。
+- [x] `moving_guides_never_extend_building`、`pause_hidden_dispose_do_not_advance`、`guide_history_rebuild_matches_session`を追加し、同試験を合格させる。`feat: stop guided matching before evaluation`でコミットする。
 
 ### G3：4段階の数値・位置・案内を表示する
 
@@ -118,11 +118,11 @@
 
 **Interfaces:** `mountGuidance({host,controls,onContinue,onSkip}):{render(view),dispose()}`。controlsへ`setGuideTarget(target:null|HSV)`を追加し、輪と明度の目印を表示する。通常のポインター受付・色の値域は変更しない。
 
-- [ ] `guide_target_roundtrip_at_least_95`、`brightness_wrong_is_not_ready`、`rounded_95_is_not_ready_below_threshold`を先に作る。実際の座標丸めを含め、無彩色・低彩度・円周端・バー端を検証する。
-- [ ] `node --test tests/guidance/view.test.mjs`で失敗を確認後、既存の色判定と座標変換を使って表示を実装する。ガイドがない時は位置と数値を外し、disposeで入力・購読を解除する。独立した描画ループを追加しない。
-- [ ] 15言語の段階名・操作説明・あと少し・95%以上・進む・省略を追加する。2棟目の数値も必須とする。地区名・解錠表示との競合を一つの案内枠で処理する。
-- [ ] 同試験と`node --test --test-concurrency=1 tests/e2e/guidance.e2e.mjs`を合格させる。402×700／402×874／874×402で案内・数値・入力部品が同時に使え、動きを減らした時と簡易表示でも位置が分かることを確認する。
-- [ ] `feat: show matching values and target positions in guides`でコミットする。
+- [x] `guide_target_roundtrip_at_least_95`、`brightness_wrong_is_not_ready`、`rounded_95_is_not_ready_below_threshold`を先に作る。実際の座標丸めを含め、無彩色・低彩度・円周端・バー端を検証する。
+- [x] `node --test tests/guidance/view.test.mjs`で失敗を確認後、既存の色判定と座標変換を使って表示を実装する。ガイドがない時は位置と数値を外し、disposeで入力・購読を解除する。独立した描画ループを追加しない。
+- [x] 15言語の段階名・操作説明・あと少し・95%以上・進む・省略を追加する。2棟目の数値も必須とする。地区名・解錠表示との競合を一つの案内枠で処理する。
+- [x] 同試験と`node --test --test-concurrency=1 tests/e2e/guidance.e2e.mjs`を合格させる。402×700／402×874／874×402で案内・数値・入力部品が同時に使え、動きを減らした時と簡易表示でも位置が分かることを確認する。
+- [x] `feat: show matching values and target positions in guides`でコミットする。
 
 ### G4：練習で4段階を直接選ぶ
 
@@ -130,12 +130,16 @@
 
 **Interfaces:** `createGuidePractice({step:1|2|3|4,seed,rules}):{view(),setColor(color),tick(dt),restart(),dispose()}`。本編用API・開始通知・Store.endRunは呼ばない。G3と同じviewの表示項目を返す。
 
-- [ ] `all_steps_available_before_unlock`、`practice_does_not_consume_or_unlock_main`、`moving_trial_ends_at_5000ms`、`existing_three_question_history_unchanged`を先に作る。
-- [ ] `node --test tests/guidance/practice.test.mjs`で失敗を確認後、4段階の選択と静止／移動を実装する。非表示・停止中はtickへ経過時間を足さず、再開時の長いdtを使わない。
-- [ ] 同試験と対象画面試験を合格させる。新規保存→①②→途中終了→再プレーで①②なし→初解放で③④→次プレーでは全案内なし、を通して確認する。同じ保存済みプレーの静止途中・完了後・移動途中からの再開も確認する。
+- [x] `all_steps_available_before_unlock`、`practice_does_not_consume_or_unlock_main`、`moving_trial_ends_at_5000ms`、`existing_three_question_history_unchanged`を先に作る。
+- [x] `node --test tests/guidance/practice.test.mjs`で失敗を確認後、4段階の選択と静止／移動を実装する。非表示・停止中はtickへ経過時間を足さず、再開時の長いdtを使わない。
+- [x] 同試験と対象画面試験を合格させる。新規保存→①②→途中終了→再プレーで①②なし→初解放で③④→次プレーでは全案内なし、を通して確認する。同じ保存済みプレーの静止途中・完了後・移動途中からの再開も確認する。
 - [ ] `node --test tests/practice/session.test.mjs tests/storage/resume.test.mjs tests/game/session.test.mjs tests/rules/engine.test.mjs tests/i18n/messages.test.mjs`と`npm run build`で影響先を確認する。10回連続で再プレーして案内が戻らず、描画・購読が増えないことをT12へ記録する。iPhone実機確認は実施日時と端末を記録し、代替ブラウザ確認と区別する。
-- [ ] `feat: replay all guided stages from practice`でコミットする。
+- [x] `feat: replay all guided stages from practice`でコミットする。
+
 
 ## 6. 完了の判断
 
-本書で確定したのは仕様と実装の手順である。ゲームへの組込み、保存競合の試験、位置の実測、画面試験、ビルド、iPhone実機確認は未実施。ガイドによる上達効果やランキングへの実際の影響は、現時点では分からない。既存の配点を変更せず、ガイドの有無を理由に記録を初期化しない。
+G1〜G4のゲームへの組込み、保存競合の試験、位置の実測、Chromiumでの画面試験、ビルドを実施した。iPhone実機確認は未実施。ガイドによる上達効果やランキングへの実際の影響は、現時点では分からない。既存の配点を変更せず、ガイドの有無を理由に記録を初期化しない。
+
+
+実装記録：G1〜G4のコードと自動試験を追加した。Safari実機の確認日時・端末は未記入（未実施）。詳細は[演出・ガイドの検証記録](../../acceptance/effects80-evidence.md)。

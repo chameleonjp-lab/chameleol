@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createGuidePractice} from '../../src/guidance/practice.js';
+for(const step of [1,2,3,4])test(`practice step ${step} independent`,()=>{const p=createGuidePractice({step,seed:4});assert.equal(p.view().step,step);p.setDraft(p.view().target);assert.equal(p.view().matchUnits,100000000);p.tick(5000);assert.equal(p.view().complete,step%2===0);p.reset();assert.equal(p.view().complete,false);});

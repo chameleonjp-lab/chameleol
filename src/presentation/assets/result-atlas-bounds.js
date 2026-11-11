@@ -1,0 +1,2 @@
+// Generated authoring-time alpha bounds; no runtime image reads.
+export const PORTRAIT_BOUNDS={"clear":{"minX":126,"minY":138,"maxX":375,"maxY":563,"width":480,"height":720},"detected":{"minX":63,"minY":130,"maxX":415,"maxY":565,"width":480,"height":720},"quit":{"minX":151,"minY":115,"maxX":373,"maxY":562,"width":480,"height":720},"proud":{"minX":55,"minY":143,"maxX":377,"maxY":565,"width":480,"height":720}};

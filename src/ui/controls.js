@@ -58,11 +58,13 @@ function drawPalette(canvas, size) {
 export function createControls({ rules = RULES_V1, onChange = () => {}, onLockedTap = () => {} } = {}) {
   const canvas = h('canvas', { class: 'palette-canvas', 'aria-hidden': 'true' });
   const paletteMarker = h('div', { class: 'marker palette-marker', 'aria-hidden': 'true' });
-  const palette = h('div', { class: 'palette', role: 'slider', 'aria-label': t('controls.palette') }, [canvas, paletteMarker]);
+  const paletteGuide = h('div', { class: 'guide-target palette-guide-target', 'aria-hidden': 'true', style: {pointerEvents:'none',position:'absolute',left:'0',top:'0',display:'none'} });
+  const palette = h('div', { class: 'palette', role: 'slider', 'aria-label': t('controls.palette') }, [canvas, paletteGuide, paletteMarker]);
   const barFill = h('div', { class: 'bar-fill' });
   const barMarker = h('div', { class: 'marker bar-marker', 'aria-hidden': 'true' });
+  const barGuide = h('div', { class: 'guide-target bar-guide-target', 'aria-hidden': 'true', style: {pointerEvents:'none',position:'absolute',top:'0',display:'none'} });
   const lockLabel = h('div', { class: 'bar-lock' }, [h('span', { class: 'lock-icon', 'aria-hidden': 'true' }, '🔒'), h('span', { class: 'lock-text', 'data-i18n': 'controls.locked' }, t('controls.locked'))]);
-  const bar = h('div', { class: 'bar', role: 'slider', 'aria-label': t('controls.bar') }, [barFill, barMarker, lockLabel]);
+  const bar = h('div', { class: 'bar', role: 'slider', 'aria-label': t('controls.bar') }, [barFill, barGuide, barMarker, lockLabel]);
   const barHint = h('div', { class: 'bar-hint', 'aria-hidden': 'true' }, [
     h('span', { 'data-i18n': 'controls.barTop' }, t('controls.barTop')),
     h('span', { 'data-i18n': 'controls.barBottom' }, t('controls.barBottom')),
@@ -72,8 +74,15 @@ export function createControls({ rules = RULES_V1, onChange = () => {}, onLocked
 
   const router = createPointerRouter({ rules, onChange: (v) => render(v) || onChange(v), onLockedTap });
   let paletteSize = 0;
+  let guideTarget = null;
 
   function render(values = router.values) {
+    if (guideTarget) {
+      const radius = router.geometry.palette.r;
+      const pos = pointFromHs(guideTarget.h, guideTarget.s, radius);
+      paletteGuide.style.transform = `translate(${radius + pos.dx}px, ${radius + pos.dy}px) translate(-50%, -50%)`;
+      barGuide.style.transform = `translate(-50%, ${barFromV(guideTarget.v, router.geometry.bar.h)}px) translateY(-50%)`;
+    }
     const hex = hsvToHex(values);
     preview.style.background = hex;
     const { r } = router.geometry.palette;
@@ -132,6 +141,12 @@ export function createControls({ rules = RULES_V1, onChange = () => {}, onLocked
     el,
     router,
     layout,
+    setGuideTarget(target) {
+      guideTarget = target;
+      paletteGuide.style.display = target ? '' : 'none';
+      barGuide.style.display = target && target.showBrightness !== false ? '' : 'none';
+      render();
+    },
     setValues(values) {
       router.setValues(values);
       render();

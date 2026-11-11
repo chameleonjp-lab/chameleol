@@ -78,6 +78,9 @@ export function createDomStage(container, { course, rules = RULES_V1 } = {}) {
       hero.style.background = hsvToHex(color);
     },
     presentationEvent() {},
+    setBestDistance() {},
+    presentationStats:()=>({activeIds:[],enabled:false,staticDecorations:0,ambientParticles:0,drawCalls:0,geometries:0,textures:0}),
+    forcePresentationEffect:()=>false,
     fx() {},
     async playEnding(_kind, { signal, onFrame = () => {} } = {}) {
       if (!signal?.aborted) onFrame(0);
