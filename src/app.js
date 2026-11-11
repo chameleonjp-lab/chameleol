@@ -4,6 +4,7 @@
 import {
   RULES_V1,
   makeDecorations,
+  createGame,
   rankAverage,
   formatRankAverage,
   hsvToHex,
@@ -27,6 +28,14 @@ import { createMixer } from './audio/mixer.js';
 import { createStage, createVisiblePresentationClock } from './scene/stage.js';
 import { createPresentationScope } from './presentation/scope.js';
 import { readPlayView } from './presentation/events.js';
+import { buildResultData } from './presentation/result-data.js';
+import { mountResultPresentation } from './presentation/result-view.js';
+import { sanitizeStats } from './presentation/stats.js';
+import { mountPresentationHud } from './presentation/hud-view.js';
+import { normalizeGuideProgress, claimGroup, GUIDE_PROGRESS_KEY } from './guidance/progress.js';
+import { createGuidance } from './guidance/session.js';
+import { mountGuidance } from './guidance/view.js';
+import { createGuidePractice } from './guidance/practice.js';
 import { createPractice } from './practice/session.js';
 import { normalizeName } from './shared/name.js';
 import { loadRuntimeConfig } from './config/runtime.js';
@@ -388,6 +397,7 @@ class App {
     const completion = new Promise((done) => { resolve = done; });
     const attempt = { id: uuid(), launchId: uuid(), state: 'pending', completion, resolve };
     this.startAttempt = attempt;
+    this.resultPresentation?.replayAccepted();
     return attempt;
   }
 
@@ -535,9 +545,9 @@ class App {
    * 検証版（localhost）だけで使える。目標色どおりに atMs まで自動で進めてから時計を渡す。
    * 必ずランキング対象外として始め、開始受付・順位登録・送信待ちへは入れない。
    */
-  async debugStart({ atMs = 93000 } = {}) {
+  async debugStart({atMs=93000,seed=randomSeed(),effects=true}={}) {
     if (!this.runtime.isVerification) throw new Error('debugStart is only for verification builds');
-    const session = new GameSession({ playId: uuid(), launchId: uuid(), ranked: false, name: '', seed: randomSeed(), gameVersion: this.runtime.gameVersion, assetVersion: this.runtime.assetVersion, startedAt: Date.now(), debug: true });
+    const session = new GameSession({ playId: uuid(), launchId: uuid(), ranked:false,name:'',seed,effects,gameVersion:this.runtime.gameVersion,assetVersion:this.runtime.assetVersion,startedAt:Date.now(),debug:true });
     const rules = RULES_V1;
     for (let i = 1; i <= rules.buildingCount; i += 1) {
       const tEval = (i - 1) * rules.buildingMs + rules.evalStartMs - 100;
@@ -554,6 +564,49 @@ class App {
     this.takenOver = false;
     await this.showGame(session, { fresh: false });
     return session;
+  }
+
+  async debugGuide({step=1}={}) {
+    if(!this.runtime.isVerification)throw new Error('verification_only');
+    return this.startGuidePractice(step);
+  }
+
+  async debugPresentation({effectId}={}) {
+    if(!this.runtime.isVerification)throw new Error('verification_only');
+    const resultIds=[71,73,74,77,78,79,80,81,82,83,85,89,91,92,93,95,96,98,99,100];
+    const hudIds=[11,42,43,46,48,49,50,52,54,55,58];
+    const excluded=[20,34,39,44,45,51,56,67,68,69,72,75,76,84,86,87,88,90,94,97];
+    if(!Number.isInteger(effectId)||effectId<1||effectId>100||excluded.includes(effectId))throw new Error('excluded_effect');
+    if(resultIds.includes(effectId)){
+      const session=new GameSession({playId:uuid(),seed:1,debug:true,name:'',ranked:false});
+      for(let b=1;b<=50;b++){const target=session.game.course.targets[b-1];session.apply({type:'color',t:(b-1)*5000+1400,...target});}
+      session.apply({type:'tick',t:250000});
+      this.lastResult={playId:session.meta.playId,name:'',summary:session.summary(),newBest:true,firstClearNow:true,previous:{playId:'previous',buildings:40,rankAverage:9500,maxCombo:10,endedAt:1},targets:session.game.course.targets.map(c=>({...c})),arrivedBuilding:50,ranked:false};
+      this.session=null;this.showResult();
+      if(effectId===96)this.resultPresentation.updateRank({state:'official',rank:1,label:'current'});
+      if(effectId===99)this.resultPresentation.replayAccepted();
+      if(effectId===100)this.root.querySelector('.result-portrait').click();
+      return this.resultPresentation.stats();
+    }
+    const actorIds=[21,22,23,24,25,26,27,28,29,30,31,32,33,35,37,38,40];
+    const fixtureTimes={4:95000,5:95000,6:55000,7:95000,58:225000,59:246000,63:195000,65:30000};
+    const fixtureTime=fixtureTimes[effectId];
+    if(!this.session||this.session.ended||!this.stage?.forcePresentationEffect||(fixtureTime!==undefined&&this.session.state.t!==fixtureTime))await this.debugStart({atMs:fixtureTime??(effectId>=57&&effectId!==65?200000:30000),seed:1});
+    if(effectId===65&&this.session.state.t>=195000)await this.debugStart({atMs:30000,seed:1});
+    clear(this.layer);if(this.coverEl)this.coverEl.hidden=true;
+    this.stage.resetEnding?.();
+    const view=readPlayView(this.session,1,{lastEvalSuccess:true});
+    if(actorIds.includes(effectId)){
+      const police=[23,24,31,38].includes(effectId)?2:[25,32,33,35,37,40].includes(effectId)?1:0;
+      for(let i=0;i<=30;i++){const t=view.t-3000+i*100;this.stage.update({t,color:view.color,policeStage:police,walking:true,matchState:null,presentation:{...view,t,running:true,policeStage:police}});}
+    }else this.stage.update({t:view.t,color:view.color,policeStage:1,walking:false,presentation:view});
+    if(hudIds.includes(effectId)){this.presentationHud.forceEffect(effectId,{...view,running:true});if([11,58].includes(effectId))this.stage.forcePresentationEffect(effectId);return this.presentationHud.stats();}
+    if(effectId===60){
+      const layer=h('div',{class:'ending-comic','aria-hidden':'true'},'!');this.layer.append(layer);this.presentationScope.own(()=>layer.remove());return {activeIds:[60]};
+    }
+    if(effectId===59){await this.stage.playEnding('cleared',{onFrame:()=>{},signal:AbortSignal.abort()});this.stage.forcePresentationEffect(59);return this.stage.presentationStats();}
+    this.stage.forcePresentationEffect(effectId);
+    return this.stage.presentationStats();
   }
 
   // ---------- 本編 ----------
@@ -661,6 +714,24 @@ class App {
     this.finishStartAttempt(attempt, 'started');
   }
 
+  async initializeGuides(session, fresh) {
+    const options = { playId: session.meta.playId, legacyFlags: this.flags, legacyRun:fresh?null:session.snapshot(),fallbackProgress:this.guideMemory };
+    if (session.meta.debug) return normalizeGuideProgress({version:1,basic:{consumed:true},brightness:{consumed:true}});
+    let progress;
+    try {
+      if (!this.generation || this.memoryOnly) throw new Error('memory_only');
+      progress = await this.store.initializeGuideProgress(TAB_ID, this.generation, options);
+      progress = (await this.store.claimGuideGroup(TAB_ID, this.generation, {playId:session.meta.playId,group:'basic'})).progress;
+    } catch (error) {
+      if(error instanceof StaleWriterError)throw error;
+      if(!this.saveWarned){this.saveWarned=true;this.notices.push('notice.saveFailedNow');}
+      progress = normalizeGuideProgress(this.guideMemory ?? await this.safeGet(GUIDE_PROGRESS_KEY), this.flags, options.legacyRun);
+      progress = claimGroup(progress,'basic',session.meta.playId).progress;
+    }
+    this.guideMemory = progress;
+    return progress;
+  }
+
   async showGame(session, { fresh }) {
     this.session = session;
     this.setMenuMusic(null); // 本編の曲は、時計が動き始めた時に流す
@@ -700,8 +771,12 @@ class App {
         observedEvalSuccess = classifyMatch(session.state.matchUnits, rules) === 'success';
       }
     };
+    let guidance=null,guideUI=null,ready=false,guideAudioRunning=false;
     const controls = createControls({
-      onChange: (c) => { observeEvaluation(); session.input(c, performance.now()); },
+      onChange: (c) => {
+        if (guidance?.view().stationary) guidance.setDraft(c);
+        else { observeEvaluation(); session.input(c, performance.now()); }
+      },
       onLockedTap: () => {
         this.audio.play('locked');
         showNotice(t('controls.lockedHint'), { duration: 1400 });
@@ -721,9 +796,57 @@ class App {
     controls.setValues(session.state.color);
     controls.setLocked(!session.state.brightnessUnlocked);
     controls.setEnabled(false); // 時計が動くまで操作しない（表示と判定の色をずらさない）
-    const stageView = await createStage(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen });
+    const initialProgress = await this.initializeGuides(session, fresh);
+    if (!current()) return;
+    const generation = this.generation;
+    const local = (await this.safeGet('localBest'))?.[session.meta.name || ''] ?? null;
+    const statistics = sanitizeStats(await this.safeGet('presentation.stats.v1'));
+    if (!current()) return;
+    const presentationHud = mountPresentationHud({verification:this.runtime.isVerification,host:el.querySelector('.stage-wrap'),scope,bestDistance:local?.buildings??null,bestCombo:statistics.bestCombo});
+    this.presentationHud = presentationHud;
+    const guideHost = h('div', {class:'guidance-host'});
+    el.querySelector('.stage-wrap').append(guideHost);
+    const renderGuide = () => {
+      if (!current() || !guidance || !ready) return;
+      const v=guidance.view();
+      const audioRunning=session.running&&!document.hidden&&!this.takenOver&&(this.coverEl?.hidden??true);
+      if(audioRunning!==guideAudioRunning){guideAudioRunning=audioRunning;if(audioRunning)this.audio.startGameAudio();else this.audio.stopGameAudio();}
+      guideUI?.render(v);
+      presentationHud.setGuideActive(Boolean(v.step));
+      controls.setLocked(!v.brightnessUnlocked);
+      if (v.stationary) controls.setValues(v.color);
+      controls.setEnabled(!this.takenOver && !document.hidden && (this.coverEl?.hidden ?? true) && (session.running || v.stationary));
+    };
+    const guideDone = (skip) => {
+      if (!current() || document.hidden || this.takenOver) return;
+      const resumed = skip ? guidance.skip(performance.now()) : guidance.continue(performance.now());
+      if(resumed)this.saveNow('guide');
+      renderGuide();
+    };
+    guideUI = mountGuidance({host:guideHost,controls,onContinue:()=>guideDone(false),onSkip:()=>guideDone(true)});
+    scope.own(()=>guideUI.dispose());
+    guidance = createGuidance({session,progress:initialProgress,canResume:()=>current()&&!document.hidden&&!this.takenOver&&(this.coverEl?.hidden??true),
+      onChange:renderGuide,
+      onProgress:async (update, progress) => {
+        this.guideMemory = progress;
+        if (!current() || this.memoryOnly || !generation) return;
+        try { await this.store.updateGuideProgress(TAB_ID,generation,update); }
+        catch(error) { if(error instanceof StaleWriterError){this.takenOver=true;session.pause('takenOver');this.showTakenOver();} else if(!this.saveWarned){this.saveWarned=true;showNotice(t('notice.saveFailedNow'),{kind:'warn'});} }
+      },
+      claimBrightness:async()=> {
+        if (!current()) throw new StaleWriterError();
+        if (!generation || this.memoryOnly) { const result=claimGroup(this.guideMemory,'brightness',session.meta.playId);this.guideMemory=result.progress;return result; }
+        try { return await this.store.claimGuideGroup(TAB_ID,generation,{playId:session.meta.playId,group:'brightness'}); }
+        catch(error) { if(error instanceof StaleWriterError){this.takenOver=true;session.pause('takenOver');this.showTakenOver();throw error;} const result=claimGroup(this.guideMemory,'brightness',session.meta.playId);this.guideMemory=result.progress;showNotice(t('notice.saveFailedNow'),{kind:'warn'});return result; }
+      },
+    });
+    this.guidance = guidance;
+    this.renderGuidance = renderGuide;
+    scope.own(()=>{guidance.dispose();if(this.guidance===guidance){this.guidance=null;this.renderGuidance=null;}});
+    const stageView = await createStage(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,verification:this.runtime.isVerification});
     if (!current()) { stageView.dispose(); return; }
     this.stage = stageView;
+    stageView.setBestDistance?.(local?.buildings??null);
     const layoutFrame = requestAnimationFrame(() => {
       if (!current()) return;
       controls.layout();
@@ -765,6 +888,7 @@ class App {
       for (const ev of events) {
         if (!current()) break;
         stageView.presentationEvent({ ...ev });
+        presentationHud.event(ev);
         if (ev.type === 'evalEnd') lastEvalSuccess = observedEvalSuccess;
         if (['evalStart', 'enterBuilding', 'detected', 'cleared', 'quit'].includes(ev.type)) {
           lastEvalSuccess = false;
@@ -778,7 +902,7 @@ class App {
             controls.setLocked(false);
             this.audio.play('unlock');
             this.stage?.fx('unlock');
-            showNotice(t('game.unlocked'), { duration: 2600, kind: 'big' });
+
             break;
           case 'reachUnlockBuilding':
             this.setFlag('brightnessPractice', true);
@@ -828,6 +952,7 @@ class App {
             this.finishPlay(ev.type);
             break;
           case 'paused':
+            if(ev.reason==='guide'){guideAudioRunning=false;this.audio.stopGameAudio();}
             if (ev.reason === 'stall') this.showPause('stall');
             break;
           default:
@@ -839,6 +964,7 @@ class App {
     const loop = () => {
       if (this.session !== session || !current()) return;
       const now = performance.now();
+      guidance.tick(now);
       if (session.running) {
         observeEvaluation();
         session.frame(now);
@@ -865,28 +991,33 @@ class App {
         showNotice(t('guide.alert'), { duration: 3000 });
       }
       if (stage < lastStage && session.running) this.audio.play('relief'); // 警察が離れた
-      if (stage !== lastStage) stageView.presentationEvent({ type: stage > lastStage ? 'policeUp' : 'policeDown', t: s.t });
+      if (stage !== lastStage) { const event={type:stage>lastStage?'policeUp':'policeDown',t:s.t};stageView.presentationEvent(event);presentationHud.event(event); }
       lastStage = stage;
       this.audio.setPoliceStage(session.running ? stage : 0);
       this.audio.setDanger(session.running && s.alert >= rules.alert.maxUnits * 0.7);
       if (instant.update(s)) {
         this.audio.play('success');
         this.stage?.fx('success');
-        stageView.presentationEvent({ type: 'instantSuccess', t: s.t, building: s.evalBuilding });
+        const event={ type:'instantSuccess',t:s.t,building:s.evalBuilding };stageView.presentationEvent(event);presentationHud.event(event);
       }
       refreshHud();
       const matchState = s.matchUnits == null ? null : classifyMatch(s.matchUnits);
       const searching = matchState === 'success' && stage > 0;
       if (searching && !wasSearching) stageView.presentationEvent({ type: 'searchStart', t: s.t });
       wasSearching = searching;
-      stageView.update({ t: s.t, color: s.color, policeStage: stage, searching, nervous: stage / 2, walking: session.running, matchState, presentation: readPlayView(session, stage, { lastEvalSuccess }) });
+      const playView = readPlayView(session, stage, {lastEvalSuccess});
+      const guideView = guidance.view();
+      presentationHud.setGuideActive(Boolean(guideView.step));
+      presentationHud.tick(playView);
+      renderGuide();
+      stageView.update({t:s.t,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step)}});
       this.raf = requestAnimationFrame(loop);
     };
 
     const pause = () => {
       if (!current()) return;
       this.audio.play('select');
-      if (session.pause('user')) {
+      if(session.pause('user')||guidance.view().stationary||session.pausedReason==='guide'){
         this.saveNow('pause');
         this.showPause('user');
       }
@@ -903,18 +1034,14 @@ class App {
         if (!current()) return;
         await this.setFlag('openingSeen', true);
       }
-      if (!this.flags.guideSeen) {
-        await this.showGuideCard();
-        if (!current()) return;
-        await this.setFlag('guideSeen', true);
-      }
       if (this.session !== session || !current()) return;
-      if (document.hidden) { this.showPause('user'); return; }
+      ready=true;
+      if(document.hidden){this.showPause('user');return;}
       controls.setValues(session.state.color);
-      controls.setEnabled(true);
-      this.audio.startGameAudio();
-      session.startClock(performance.now());
+      if(!guidance.view().stationary)session.startClock(performance.now());
+      renderGuide();
     } else {
+      ready=true;
       this.showPause('restored');
     }
   }
@@ -1024,9 +1151,8 @@ class App {
     if (this.coverEl) this.coverEl.hidden = true;
     this.controls.releaseAll(); // 持ち越しのタッチを捨てる
     this.controls.setEnabled(true);
-    this.audio.startGameAudio();
-    this.audio.play('go');
-    session.startClock(performance.now());
+    if(!this.guidance?.view().stationary){this.audio.play('go');session.startClock(performance.now());}
+    this.renderGuidance?.();
   }
 
   onVisibility() {
@@ -1090,6 +1216,8 @@ class App {
   async persistEnd(session, generation, { takenOver = false } = {}) {
     const summary = session.summary();
     const snap = session.snapshot();
+    const endedAt=Date.now();
+    const presentation={playId:session.meta.playId,buildings:summary.buildings,rankAverage:summary.rankAverage,maxCombo:summary.maxCombo,endedAt,cleared:summary.endReason==='cleared'};
     let result;
     const secret = await this.secretForSession(session);
     if (session.meta.ranked && secret) {
@@ -1108,8 +1236,8 @@ class App {
     if (takenOver) return { result, saved: false, stale: true };
     if (!generation) return { result, saved: false, stale: false };
     try {
-      await this.store.endRun(TAB_ID, generation, result, { localBest });
-      return { result, saved: true, newBest: !!localBest };
+      const savedPresentation=await this.store.endRun(TAB_ID,generation,result,{localBest,presentation});
+      return {result,saved:true,newBest:!!localBest,previous:savedPresentation?.previous??savedPresentation?.presentation?.previous??null,firstClearNow:savedPresentation?.firstClearNow??savedPresentation?.presentation?.firstClearNow??false};
     } catch (err) {
       return { result, saved: false, stale: err instanceof StaleWriterError };
     }
@@ -1126,10 +1254,11 @@ class App {
     const current = () => this.screenGeneration === generation && this.presentationScope === scope;
     this.controls?.setEnabled(false);
     this.audio.stopGameAudio();
-    const { result, saved, stale, newBest = false } = await this.persistEnd(session, this.generation, { takenOver: this.takenOver });
+    const targets=session.game.course.targets.slice(0,50).map(c=>({...c}));
+    const { result, saved, stale, newBest = false, previous=null, firstClearNow=false } = await this.persistEnd(session, this.generation, { takenOver: this.takenOver });
     if (!current()) return;
     const summary = session.summary();
-    this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary, saved, stale, newBest, netState: session.meta.ranked ? 'pending' : null };
+    this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary,saved,stale,newBest,previous,firstClearNow,targets,arrivedBuilding:Math.min(50,Math.floor(session.state.t/RULES_V1.buildingMs)+1),netState: session.meta.ranked ? 'pending' : null };
     if (!saved && !stale && result?.ranked) {
       // 端末へ保存できなかった：メモリ上の結果を可能なら直接送る（再読込で失われ得ることは画面で伝える）
       this.notices.push('notice.resultNotSaved');
@@ -1155,7 +1284,9 @@ class App {
     clear(this.layer);
     const skip = button('common.skip', () => ctrl.abort(), { className: 'btn-skip', testid: 'skip-ending' });
     this.layer.append(skip);
-    await this.stage?.playEnding(reason, { signal: ctrl.signal, onFrame: (elapsed) => scope.tick(elapsed) });
+    const comic=reason==='detected'?h('div',{class:'ending-comic','aria-hidden':'true'},'!'):null;
+    if(comic)this.layer.append(comic);
+    await this.stage?.playEnding(reason, {signal:ctrl.signal,onFrame:(elapsed)=>{scope.tick(elapsed);if(comic)comic.hidden=elapsed>=600;}});
     skip.remove();
     if (!current()) return;
     this.session = null;
@@ -1179,11 +1310,20 @@ class App {
     }
   }
 
-  async pollResult() {
-    const r = this.lastResult;
-    if (!r?.ranked || !this.api.configured) return;
+  pollResult(){
+    const result=this.lastResult,screen=this.screenGeneration;
+    if(this.resultPoll?.result===result&&this.resultPoll.screen===screen)return this.resultPoll.completion;
+    const token={result,screen};
+    token.completion=this.pollResultFor(result,screen).finally(()=>{if(this.resultPoll===token)this.resultPoll=null;});
+    this.resultPoll=token;return token.completion;
+  }
+
+  async pollResultFor(r,screen){
+    const current=()=>this.lastResult===r&&this.screenGeneration===screen;
+    if(!r?.ranked||!this.api.configured)return;
     for (let i = 0; i < 6; i += 1) {
       const rec = await this.store.getOne('records', r.playId).catch(() => null);
+      if(!current())return;
       if (rec) {
         r.netState = rec.status;
         r.official = rec.official;
@@ -1191,17 +1331,22 @@ class App {
         if (rec.status !== 'verifying') break;
       }
       await new Promise((res) => setTimeout(res, 1500 * (i + 1)));
+      if(!current())return;
       await this.refreshStatuses();
     }
+    if(!current())return;
     if (r.netState === 'official') {
       try {
-        r.rankedBest = await this.api.post('rank', { name: r.name });
+        const rankedBest=await this.api.post('rank',{name:r.name});
+        if(!current())return;
+        r.rankedBest=rankedBest;
         r.rankError = false;
       } catch {
-        r.rankedBest = null;
-        r.rankError = true;
+        if(!current())return;
+        r.rankedBest=null;
+        r.rankError=true;
       }
-      this.renderResultStatus?.();
+      if(current())this.renderResultStatus?.();
     }
   }
 
@@ -1209,13 +1354,16 @@ class App {
   showResult() {
     this.disposeStage();
     const r = this.lastResult;
-    const s = r.summary;
+    const s=r.summary;
+    const resultScreen=this.screenGeneration+1;
+    let resultPresentation=null;
+    const resultCurrent=()=>this.lastResult===r&&this.screenGeneration===resultScreen;
     const showOnline = this.runtime.isVerification || this.api.configured;
     const reasonKey = { detected: 'result.detected', cleared: 'result.cleared', quit: 'result.quit' }[s.endReason];
     const statusBox = h('div', { class: 'result-status', 'aria-live': 'polite' });
     const rankingHost = h('div', { class: 'result-ranking' });
     const renderResultStatus = () => {
-      if (!showOnline) return;
+      if(!showOnline||!resultCurrent())return;
       clear(statusBox);
       if (!r.ranked) {
         statusBox.append(h('p', { class: 'note' }, t(r.name ? 'result.status.unranked' : 'result.status.anonymous')));
@@ -1236,12 +1384,13 @@ class App {
       }[r.netState] ?? 'result.status.pending';
       statusBox.append(h('p', {}, t(key)));
       if (r.netState === 'retryable_failed') statusBox.append(button('records.resend', () => this.flushNetwork().then(() => this.pollResult()), { className: 'btn-small' }));
-      if (r.netState === 'official' && r.rankedBest?.rank != null) statusBox.append(h('p', { class: 'result-rank' }, t('result.rank', { rank: formatNumber(r.rankedBest.rank) })));
+      const rankMatches=r.official&&r.summary.buildings===r.official.buildings&&r.summary.rankAverage===r.official.rankAverage&&r.summary.buildings===r.rankedBest?.buildings&&r.summary.rankAverage===r.rankedBest?.average;
+      resultPresentation?.updateRank({state:r.netState,rank:r.rankedBest?.rank??null,label:rankMatches?'current':'personalBest'});
       if (r.rankError) statusBox.append(h('p', {}, [t('result.rankError'), ' ', button('common.retry', () => this.pollResult(), { className: 'btn-small' })]));
     };
-    renderResultStatus();
     const localBests = h('p', { class: r.newBest ? 'result-best result-best-new' : 'result-best' });
     this.safeGet('localBest').then((all) => {
+      if(!resultCurrent())return;
       const b = all?.[r.name || ''];
       if (b) localBests.textContent = t('result.localBest', { buildings: formatNumber(b.buildings), average: formatPercent2(b.rankAverage) });
     });
@@ -1264,7 +1413,6 @@ class App {
         h('div', { class: 'stat' }, [h('span', { class: 'stat-label' }, t('result.total')), h('span', { class: 'stat-value', 'data-testid': 'result-score' }, formatNumber(s.score.total))]),
         h('div', { class: 'stat' }, [h('span', { class: 'stat-label' }, t('result.maxCombo')), h('span', { class: 'stat-value' }, formatNumber(s.maxCombo))]),
       ]),
-      breakdown,
       h('p', { class: 'note' }, t('result.roundingNote')),
       r.name ? h('p', { class: 'result-name' }, [t('result.nameLabel'), ' ', isolatedText(r.name)]) : null,
       localBests,
@@ -1281,14 +1429,20 @@ class App {
     const scopeId = `${this.screenGeneration}:result`;
     const scope = createPresentationScope({ id: scopeId, kind: 'result' });
     this.presentationScope = scope;
+    const resultHost=h('div',{class:'result-supplement'});el.querySelector('.result-actions').after(resultHost);
+    resultPresentation=mountResultPresentation({host:resultHost,data:buildResultData(r),scope,t});
+    el.querySelector('.result-main').before(resultPresentation.sceneElement);
+    this.resultPresentation=resultPresentation;
     this.renderResultStatus = renderResultStatus;
+    renderResultStatus();
     scope.own(() => { if (this.renderResultStatus === renderResultStatus) this.renderResultStatus = null; });
     const tick = createVisiblePresentationClock({ visibilityTarget: document });
     scope.own(tick.dispose);
     scope.own(() => cancelAnimationFrame(this.raf));
     const animate = (now) => {
       if (!scope.isCurrent(scopeId)) return;
-      scope.tick(tick(now, document.hidden).elapsed);
+      const elapsed=tick(now,document.hidden).elapsed;
+      scope.tick(elapsed);resultPresentation.tick(elapsed);
       this.raf = requestAnimationFrame(animate);
     };
     this.raf = requestAnimationFrame(animate);
@@ -1301,6 +1455,7 @@ class App {
       const view = createRankingView({ api: this.api, name: null });
       rankingHost.append(h('h2', { class: 'panel-title' }, t('ranking.top')), view.el);
       view.load();
+      this.pollResult();
     }
   }
 
@@ -1336,12 +1491,54 @@ class App {
     const el = h('main', { class: 'screen practice-menu' }, [
       h('h1', {}, t('practice.title')),
       h('p', { class: 'note' }, t('practice.intro')),
+      button('guidance.practice',()=>this.showGuidePracticeMenu(),{testid:'practice-guides'}),
       button('practice.kind.basic', () => this.startPractice('basic'), { primary: true, testid: 'practice-basic' }),
       button(unlocked ? 'practice.kind.brightness' : 'practice.brightnessLocked', () => this.startPractice('brightness'), { disabled: !unlocked, testid: 'practice-brightness' }),
       section('practice.history', [history.length ? historyList : h('p', { class: 'note' }, t('practice.noHistory'))]),
       backButton(() => this.showHome()),
     ]);
     this.mount(el, () => this.showPracticeMenu());
+  }
+
+  showGuidePracticeMenu(){
+    this.disposeStage();
+    const el=h('main',{class:'screen practice-menu'},[
+      h('h1',{},t('guidance.practice')),
+      ...[1,2,3,4].map(step=>button(`guidance.step${step}`,()=>this.startGuidePractice(step),{testid:`guide-practice-${step}`})),
+      button('guidance.back',()=>this.showPracticeMenu()),
+    ]);
+    this.mount(el,()=>this.showGuidePracticeMenu());
+  }
+
+  async startGuidePractice(step){
+    const seed=1,practice=createGuidePractice({step,seed}),course=createGame({seed,rules:RULES_V1}).course;
+    const stageBox=h('div',{class:'stage','data-testid':'stage'}),guideHost=h('div',{class:'guidance-host'}),actions=h('div',{class:'guide-practice-actions',hidden:true});
+    let paused=false,viewUI;
+    const controls=createControls({onChange:color=>{practice.setColor(color);render();}});
+    const pause=button('game.pause',()=>{paused=!paused;clock(performance.now(),true);controls.setEnabled(!paused);},{testid:'guide-practice-pause'});
+    const finish=()=>{actions.hidden=false;controls.setEnabled(false);};
+    const render=()=>{const v=practice.view();viewUI?.render(v);if(v.complete)finish();};
+    actions.append(button('guidance.again',()=>this.startGuidePractice(step),{testid:'guide-practice-again'}),button('guidance.choose',()=>this.showGuidePracticeMenu(),{testid:'guide-practice-choose'}),button('guidance.back',()=>this.showPracticeMenu(),{testid:'guide-practice-back'}));
+    const el=h('main',{class:'screen game guide-practice'},[h('div',{class:'stage-wrap'},[stageBox,pause,guideHost,actions]),controls.el]);
+    this.mount(el);this.setMenuMusic('practice');
+    const id=`${this.screenGeneration}:practice`,scope=createPresentationScope({id,kind:'game'});this.presentationScope=scope;
+    const current=()=>this.presentationScope===scope&&scope.isCurrent(id);
+    this.controls=controls;scope.own(()=>{practice.dispose();cancelAnimationFrame(this.raf);});
+    const clock=createVisiblePresentationClock({visibilityTarget:document});scope.own(clock.dispose);
+    viewUI=mountGuidance({host:guideHost,controls,onContinue:()=>{practice.continue();render();},onSkip:()=>{practice.skip();render();}});scope.own(viewUI.dispose);
+    const stage=await createStage(stageBox,{course,decorations:makeDecorations(seed)});
+    if(!current()){stage.dispose();return;}
+    this.stage=stage;
+    controls.layout();controls.setValues(practice.view().color);controls.setLocked(step<3);
+    if(step%2===1)stage.showPractice(practice.view().target);
+    this.guidePractice=practice;scope.own(()=>{if(this.guidePractice===practice)this.guidePractice=null;});
+    const loop=now=>{
+      if(!current())return;
+      const frame=clock(now,document.hidden||paused);const v=practice.tick(frame.dt*1000);scope.tick(v.elapsed);
+      if(!document.hidden){if(v.stationary)stage.renderPractice(v.color,v.target);else stage.update({t:(v.building-1)*5000+v.elapsed,color:v.color,walking:!paused&&!v.complete,presentation:{...v,t:v.elapsed,phase:'grace',running:!paused&&!v.complete,guidanceActive:true,policeStage:0,passed:0,combo:0,matchState:null}});}
+      render();this.raf=requestAnimationFrame(loop);
+    };
+    render();this.raf=requestAnimationFrame(loop);return practice;
   }
 
   async startPractice(kind) {
