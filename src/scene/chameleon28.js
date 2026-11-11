@@ -486,6 +486,23 @@ export function createChameleon(design = CHAMELEON28) {
   const tailGeo = track(
     taperedTube(new THREE.CatmullRomCurve3(tPts), 96, 14, (t) => Math.max(0.006, tailR * (1 - P.tp * t * 0.96) + tailR * 0.1 * (1 - P.tp) * t)),
   );
+  // Both shapes share topology; the outline shares this geometry too.
+  const tailRest = tailGeo.attributes.position.array.slice();
+  const guardedPoints = tPts.map((p, i) => {
+    if (i < 2) return p.clone();
+    return new THREE.Vector3(C0.x + (p.x - C0.x) * 0.78, C0.y + (p.y - C0.y) * 0.78, p.z);
+  });
+  const guardedGeo = taperedTube(new THREE.CatmullRomCurve3(guardedPoints), 96, 14, (t) => Math.max(0.006, tailR * (1 - P.tp * t * 0.96) + tailR * 0.1 * (1 - P.tp) * t));
+  const tailGuarded = guardedGeo.attributes.position.array.slice();
+  guardedGeo.dispose();
+  function setTailGuard(amount) {
+    const k = Math.max(0, Math.min(1, amount));
+    const a = tailGeo.attributes.position.array;
+    for (let i = 0; i < a.length; i++) a[i] = tailRest[i] + (tailGuarded[i] - tailRest[i]) * k;
+    tailGeo.attributes.position.needsUpdate = true;
+    tailGeo.computeVertexNormals();
+    tailGeo.computeBoundingSphere();
+  }
   tail.add(part(tailGeo));
   rig.add(tail);
 
@@ -537,6 +554,7 @@ export function createChameleon(design = CHAMELEON28) {
     comparePoint,
     /** 街の覆い（ステンシル）用：比較する面の材質（体色のトゥーンだけ） */
     comparisonMaterials: [bodyMat],
+    actorParts: { head, eyes: eyes.map(e => e.pivot), arms: arms.map(a => a.shoulder), legs: legs.map(l => l.pivot), feet: legs.map(l => l.foot), jaw, mouth, tail, jewel, setTailGuard, tailGeometry: tailGeo },
     setColor(rgb) {
       bodyMat.uniforms.uColor.value.setRGB(rgb[0], rgb[1], rgb[2]);
       eyeMat.uniforms.uColor.value.setRGB(rgb[0] + (1 - rgb[0]) * tint, rgb[1] + (1 - rgb[1]) * tint, rgb[2] + (1 - rgb[2]) * tint);

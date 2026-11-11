@@ -228,12 +228,16 @@ export function createFerret() {
     ell(hd, 0, 0.12, 0.13, 0.07, FUR, true, [-0.12, 0.2, side * 0.36]);
     ell(hd, 0, 0.07, 0.08, 0.03, 0xd98a8a, false, [-0.1, 0.2, side * 0.41]);
   }
+  const hat = new THREE.Group();
+  head.add(hat);
+  const hatParts = new Merge();
   // 帽子：山・上面・帯・つば・バッジ
-  hd.add(tmp(cyl(0.34, 0.4, 0.26, 20)), T([-0.04, 0.4, 0], [0, 0, 0.08]), POLICE.cap, true);
-  hd.add(tmp(cyl(0.4, 0.4, 0.05, 20)), T([-0.03, 0.54, 0], [0, 0, 0.08]), POLICE.cap, true);
-  hd.add(tmp(cyl(0.4, 0.42, 0.06, 20)), T([-0.03, 0.29, 0], [0, 0, 0.08]), POLICE.badge);
-  ell(hd, 0, 0.34, 0.035, 0.36, DARK, true, [0.3, 0.27, 0], [0, 0, -0.12]);
-  hd.add(badgeGeo, T([0.37, 0.41, 0], [0, 0, Math.PI / 2], [0.8, 1, 0.8]), POLICE.badge);
+  hatParts.add(tmp(cyl(0.34, 0.4, 0.26, 20)), T([-0.04, 0.4, 0], [0, 0, 0.08]), POLICE.cap, true);
+  hatParts.add(tmp(cyl(0.4, 0.4, 0.05, 20)), T([-0.03, 0.54, 0], [0, 0, 0.08]), POLICE.cap, true);
+  hatParts.add(tmp(cyl(0.4, 0.42, 0.06, 20)), T([-0.03, 0.29, 0], [0, 0, 0.08]), POLICE.badge);
+  ell(hatParts, 0, 0.34, 0.035, 0.36, DARK, true, [0.3, 0.27, 0], [0, 0, -0.12]);
+  hatParts.add(badgeGeo, T([0.37, 0.41, 0], [0, 0, Math.PI / 2], [0.8, 1, 0.8]), POLICE.badge);
+  meshOf(hatParts, hat);
   meshOf(hd, head);
 
   // 目（まばたきで縦につぶす）・眉（追う時に前下がり）・口（追う時に開く）
@@ -355,6 +359,7 @@ export function createFerret() {
     head,
     /** 街の覆い（ステンシル）用：光の演出の透明な材質 */
     glowMaterials: [coneMat, poolMat],
+    actorParts: { head, hat, arm: backArm, legs: legs.map(l => l.pivot), eyes, brows, mouth, body, lean },
     /** 時間帯の色味（夜は少し青く暗く）。 */
     setTint(r, g, b) {
       litMat.uniforms.uTint.value.setRGB(r, g, b);

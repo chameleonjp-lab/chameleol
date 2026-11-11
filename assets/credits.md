@@ -41,3 +41,13 @@
 警察官の原画は届いていません。今の警察官は、仕様の文章に書かれた特徴（紺の制服・帽子・懐中電灯を持つフェレット）だけで作った仮モデルです。体色の変更対象外です。2026年11月9日に、背景の一部のように小さく奥に置いていたのをやめ、主人公と同じ歩道の並び・近い大きさ・同じ描き方（太い輪郭線、照明を受けない塗り）に変えました。まばたき・眉・口を足し、走る・見失って探す・見つけて指をさす、の3つの動きをします。形そのもの（顔つき・比率）は、原画がないため仮のままです。原画が届いたら、形・色・比率を照合してこの表を更新します。
 
 モデルの受入（受入試験 SCOPE-01）は、警察官の照合が終わるまで「保留」です。
+
+### 結果画面の固定画像（追加演出80件）
+
+`src/presentation/assets/result-atlas.webp` は2048×2048pxの共用WebPです。5地区の背景は本作向けのCanvas図形、4姿勢（clear/detected/quit/proud）の主人公は持ち主提供のNo.28設定と既存`src/scene/chameleon28.js`から制作時にChromium/Three.jsで描画しました。領域は`result-atlas.json`、再制作手順は`scripts/render-result-atlas.mjs`です。文字・成績は画像に含めず、表示時の撮影・画像生成・画像保存は行いません。Three.jsのライセンスは`vendor/three.LICENSE`を参照してください。
+
+### Street presentation atlas
+
+`src/presentation/assets/atlas.webp` is original vector artwork created for this game: five pavement patterns and landmarks, three shop interiors, two alley views, street props, eye/awning/window animation frames, and nine background cameo illustrations. The 1024×1024 WebP and its region definitions in `atlas.json` are produced deterministically from the SVG shapes in `scripts/render-street-atlas.mjs`, using librsvg/Cairo and Pillow at authoring time. No third-party artwork or runtime image generation is used.
+
+- `src/presentation/assets/detected.webp`: 480×720の発見表情。既存No.28モデルから `scripts/render-result-atlas.mjs` が制作時に描画。終了中に16MiBの結果アトラスを読み込まず、街と合わせて約5.32MiBの追加画像に収めるための共有素材。
