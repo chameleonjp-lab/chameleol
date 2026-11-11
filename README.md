@@ -14,6 +14,14 @@
 - [受入試験一覧](docs/acceptance/kamereoru-acceptance.md)：実装後に確認する条件と要件番号の対応。
 - [仕様統合のレビュー記録](docs/reviews/2026-11-07-kamereoru-requirements-review.md)：旧案との整理、補完した境界処理、文書確認の範囲と限界。
 
+## 追加演出80要件の計画（2026-11-11）
+
+除外した20案を外し、残る80要件をすべて実装するための計画です。現在は文書を確定した段階で、追加演出の実装は未着手です。
+
+- [確定仕様書](docs/superpowers/specs/2026-11-11-chameleol-effects80-spec.md)：採用80件・対象外20件、保存・表示・負荷の条件。
+- [実装計画書](docs/superpowers/plans/2026-11-11-chameleol-effects80-plan.md)：工程の順序、変更する場所、接続口、確認手順。
+- [80要件とRICEの対応表](docs/requirements/chameleol-effects80.json)と[敵対的検証・修正記録](docs/reviews/2026-11-11-chameleol-effects80-adversarial-review.md)：元の番号、優先度、工程とレビューへの対応。
+
 ## 実装の進め方
 
 [実装計画書](docs/superpowers/plans/2026-11-07-kamereoru-implementation-plan.md)では、iPhoneで色合わせを試せる段階から正式ランキングの公開判定までを9工程に分けています。[計画の検証記録](docs/reviews/2026-11-07-kamereoru-implementation-plan-review.md)で、保存や再送の競合、同順位など、初稿で見つけた問題と修正を確認できます。
@@ -42,3 +50,4 @@ npm run build            # 公開用の一式を dist/ に作る
 - [iPhone での確認手順](docs/device-test-procedure.md)：実機で試すことと記録表。
 - [公開と切り戻しの手順（案）](docs/release/release-and-rollback.md)：データベース・サーバー・画面を切り替える順番と、戻し方。
 - [素材の出典](assets/credits.md)：主人公は、提供されたカメレオン No.28 エディター（[docs/design/chameleon-no28-editor.html](docs/design/chameleon-no28-editor.html)）の書き出し値から作っています。
+
