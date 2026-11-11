@@ -310,7 +310,7 @@ mountPresentationHud({host,scope,bestDistance:number|null,bestCombo:number})
 - [x] 追加描画・素材の上限を満たす。ウォームアップ後に再プレイごとの対象物数を比較し、解放されるべき対象が単調増加しないことを確認する。SafariでJSヒープの数値を取れない場合は「未測定」とし、オブジェクト数をメモリ測定と言い換えない。
 - [x] 最終変更後に`npm test`、`npm run build`、`node --test --test-concurrency=1 tests/e2e/presentation.e2e.mjs tests/e2e/game.e2e.mjs tests/e2e/play.e2e.mjs tests/e2e/saved-run.e2e.mjs`を1回実行し、合格結果を記録する。工程中は対象試験だけを回す。SQL・サーバー側が無変更ならその試験を手動で繰り返さない。既存CIの設定は今回変更しない。
 - [x] 独立レビューで問題があれば修正し、該当試験だけを再実行する。iPhone未確認・未計測はそのまま記録し、公開済みや合格と書かない。
-- [ ] `test: verify effects coverage and replay lifecycle`でコミットし、実装PRを作る。公開・マージ・実験場更新は別の指示で行う。
+- [x] `test: verify effects coverage and replay lifecycle`でコミットし、実装PRを作る。公開・マージ・実験場更新は別の指示で行う。
 
 
 ## 6. 調整の扱いと完了条件
@@ -319,3 +319,5 @@ RICEの順序は比較の参考です。素材作成や尻尾の形状の実績�
 
 計画の完了は「80件に実装先と確認手段があり、除外20件とその依存が入らず、独立レビューの重要指摘が解消したこと」です。ゲームの完成は別で、T0〜T12の作業と検証を終えた時だけ判断します。後戻りが必要な場合も既存の成績と追加キーを消さず、旧画面が未知の追加キーを無視できる状態を維持します。
 
+
+実装PR：[演出80件・初回ガイドと練習 #12](https://github.com/chameleonjp-lab/chameleol/pull/12)。T12の実機測定は未完了であり、自動試験の成功とは分けて扱う。
