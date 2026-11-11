@@ -20,6 +20,7 @@ import { areaOf } from '../rules/v1/course.js';
 import { createChameleon, createFerret, createJewelryShop } from './characters.js';
 import { SKY, TOD, rgbFloat } from './palette-colors.js';
 import { createEffects } from './effects.js';
+import { createGamePresentationClock, createVisiblePresentationClock } from './stage.js';
 
 const W = 10; // 1棟の幅（ワールド座標）
 const GAP = 1.3; // 建物の間の路地の幅
@@ -817,10 +818,12 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   let viewH = 1;
   let playerX = 0;
   let refX = 0; // カメラが追う位置
-  let lastFrame = performance.now();
+  const gameTick = createGamePresentationClock();
+  const practiceTick = createVisiblePresentationClock({ visibilityTarget: document });
   let ferretRel = [...FERRET_AWAY];
   let ending = null; // 終了演出の状態 { kind, start, duration, done:{} }
   let worldClock = 0;
+  const cutsceneCleanups = new Set();
   let opening = false; // 開始演出の間は update を止める（二重に描かない）
   let lastArgs = null;
   let camQuat = new THREE.Quaternion();
@@ -955,7 +958,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   /** 位置の基準 x に合わせて、カメラ・繰り返す地面・遠景・街灯・影を置く。 */
   function placeWorld(x, time = 0) {
     refX = x;
-    const now = performance.now();
+    const now = worldClock * 1000;
     const sx = reducedMotion ? 0 : Math.sin(now * 0.071) * shake;
     const sy = reducedMotion ? 0 : Math.cos(now * 0.093) * shake * 0.7;
     camera.position.set(x + CAM.dx + sx, CAM.y + Math.sin(time / 1000 * 1.7) * 0.025 + sy, CAM.z);
@@ -1056,7 +1059,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   const eUp = new THREE.Vector3(0, -1, 0);
   function applyEnding(dt, now) {
     const e = ending;
-    const k = Math.min(1, (now - e.start) / e.duration);
+    const k = Math.min(1, now / e.duration);
     const once = (name, at, fn) => {
       if (k >= at && !e.done[name]) {
         e.done[name] = true;
@@ -1190,20 +1193,20 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     kind: 'three',
     renderer,
     /** 毎フレーム。t はゲーム内時刻、color は体色（HSV整数）、policeStage は警察の人数、matchState は今の一致の段階。 */
-    update(args) {
+    update(args, cutsceneFrame = null) {
       if (disposed || opening) return;
+      if (ending && !cutsceneFrame) { lastArgs = args; return; }
       lastArgs = args;
       const { t, color, policeStage = 0, searching = false, nervous = 0, walking = true, matchState = null } = args;
-      const now = performance.now();
-      const dt = Math.min(0.1, (now - lastFrame) / 1000);
-      lastFrame = now;
+      const dt = cutsceneFrame?.dt ?? (ending ? 0 : gameTick(args.presentation?.t ?? t, args.presentation?.running ?? args.running ?? true));
+      const now = cutsceneFrame?.elapsed ?? 0;
       worldClock += dt;
       playerX = (t / rules.buildingMs) * W; // 判定と同じ時刻から位置を決める
       const building = Math.min(rules.buildingCount, Math.floor(t / rules.buildingMs) + 1);
       assignSlots(building);
       setTimeOfDay(building, (t % rules.buildingMs) / rules.buildingMs);
       shake *= Math.exp(-dt * 7);
-      placeWorld(playerX, t);
+      placeWorld(playerX, worldClock * 1000);
       const hopY = heroHopY(dt);
       placeHero(playerX, hopY);
       hero.setColor(rgbFloat(color));
@@ -1252,6 +1255,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
      * 本編の出来事に合わせた小さな演出（見た目だけ。得点や判定には関わらない）。
      * success＝擬態成功のきらめき、pass＝棟の成功通過、combo＝連続成功の節目、milestone＝区間の節目、unlock＝明るさの解放。
      */
+    presentationEvent(_event) {},
     fx(name) {
       if (disposed || ending) return;
       const x = heroRoot.position.x;
@@ -1293,9 +1297,8 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const [r, g, b] = rgbFloat(target);
       s.facadeMat.color.setRGB(r, g, b);
       setTimeOfDay(1, 0);
-      const now = performance.now();
-      const dt = Math.min(0.1, (now - lastFrame) / 1000);
-      lastFrame = now;
+      const { dt } = practiceTick(performance.now(), document.hidden);
+      worldClock += dt;
       placeWorld(PRACTICE_X);
       placeHero(PRACTICE_X, heroHopY(dt));
       hero.setColor(rgbFloat(color));
@@ -1304,40 +1307,80 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       drawFrame();
     },
     /** 終了演出。結果は先に確定しているので、スキップしても結果は変わらない。 */
-    async playEnding(kind, { signal } = {}) {
+    async playEnding(kind, { signal, onFrame = () => {} } = {}) {
       const duration = kind === 'detected' ? 2800 : kind === 'cleared' ? 3000 : 600;
-      ending = { kind, start: performance.now(), duration, done: {} };
+      const tick = createVisiblePresentationClock({ visibilityTarget: document });
+      const currentEnding = { kind, duration, done: {} };
+      ending = currentEnding;
       hero.jewel.position.copy(jewelHome); // 宝石は常に尻尾の元の位置から出す（開始演出を飛ばしても胸からは出さない）
       return new Promise((resolve) => {
-        const step = () => {
-          const now = performance.now();
-          const k = Math.min(1, (now - ending.start) / duration);
-          // 画面側の毎フレームの呼び出しが止まっている時だけ、ここから描く
-          if (now - lastFrame > 60 && lastArgs) api.update(lastArgs);
-          if (k >= 1 || signal?.aborted || disposed) {
-            resolve();
+        let frameId = null;
+        let finished = false;
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          if (frameId != null) cancelAnimationFrame(frameId);
+          tick.dispose();
+          cutsceneCleanups.delete(finish);
+          signal?.removeEventListener('abort', finish);
+          resolve();
+        };
+        cutsceneCleanups.add(finish);
+        signal?.addEventListener('abort', finish, { once: true });
+        const step = (now) => {
+          if (signal?.aborted || disposed || ending !== currentEnding) { finish(); return; }
+          const frame = tick(now, document.hidden);
+          const k = Math.min(1, frame.elapsed / duration);
+          if (!document.hidden) {
+            onFrame(frame.elapsed);
+            if (finished || signal?.aborted || disposed) { finish(); return; }
+            if (lastArgs) api.update(lastArgs, frame);
+          }
+          if (k >= 1) {
+            finish();
             return;
           }
-          requestAnimationFrame(step);
+          frameId = requestAnimationFrame(step);
         };
-        requestAnimationFrame(step);
+        if (signal?.aborted || disposed) finish();
+        else frameId = requestAnimationFrame(step);
       });
     },
     /** 初回の開始演出：警報の鳴る宝石店から飛び出し、宝石を尻尾に隠す。onCue は音を合わせるための合図。 */
     async playOpening({ signal, onCue = () => {} } = {}) {
-      const start = performance.now();
+      const tick = createVisiblePresentationClock({ visibilityTarget: document });
       const duration = 2800;
-      let last = start;
       const done = {};
       opening = true;
       fx.clear();
       hero.jewel.visible = true;
       return new Promise((resolve) => {
-        const step = () => {
-          const now = performance.now();
-          const dt = Math.min(0.1, (now - last) / 1000);
-          last = now;
-          const k = Math.min(1, (now - start) / duration);
+        let frameId = null;
+        let finished = false;
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          if (frameId != null) cancelAnimationFrame(frameId);
+          tick.dispose();
+          cutsceneCleanups.delete(finish);
+          signal?.removeEventListener('abort', finish);
+          opening = false;
+          heroRoot.position.y = SIDEWALK_Y;
+          hero.jewel.visible = false;
+          hero.jewel.position.copy(jewelHome);
+          hero.jewel.rotation.y = 0;
+          alarmMat?.color.set(0x6a1a1a);
+          fx.clear();
+          resolve();
+        };
+        cutsceneCleanups.add(finish);
+        signal?.addEventListener('abort', finish, { once: true });
+        const step = (timestamp) => {
+          if (signal?.aborted || disposed || !opening) { finish(); return; }
+          const { elapsed: now, dt } = tick(timestamp, document.hidden);
+          if (document.hidden && !signal?.aborted && !disposed) { frameId = requestAnimationFrame(step); return; }
+          worldClock += dt;
+          const k = Math.min(1, now / duration);
           const once = (name, at, fn) => {
             if (k >= at && !done[name]) {
               done[name] = true;
@@ -1376,24 +1419,18 @@ export function createThreeStage(container, { course, decorations, rules = RULES
             shopExtras.visible = true;
           }
           drawFrame();
-          if (k >= 1 || signal?.aborted || disposed) {
-            opening = false;
-            lastFrame = performance.now();
-            heroRoot.position.y = SIDEWALK_Y;
-            hero.jewel.visible = false;
-            hero.jewel.position.copy(jewelHome);
-            hero.jewel.rotation.y = 0;
-            alarmMat?.color.set(0x6a1a1a);
-            fx.clear();
-            resolve();
+          if (k >= 1) {
+            finish();
             return;
           }
-          requestAnimationFrame(step);
+          frameId = requestAnimationFrame(step);
         };
-        requestAnimationFrame(step);
+        if (signal?.aborted || disposed) finish();
+        else frameId = requestAnimationFrame(step);
       });
     },
     resetEnding() {
+      for (const finish of cutsceneCleanups) finish();
       ending = null;
       darkPlane.visible = false;
       darkMat.opacity = 0;
@@ -1576,6 +1613,8 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     },
     resize,
     dispose() {
+      for (const finish of cutsceneCleanups) finish();
+      practiceTick.dispose();
       if (disposed) return;
       disposed = true;
       globalThis.removeEventListener('resize', onResize);
