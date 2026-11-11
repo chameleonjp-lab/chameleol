@@ -24,7 +24,9 @@ import { resolveLanguage } from './i18n/languages.js';
 import { openStore, TAB_ID, StaleWriterError } from './storage/store.js';
 import { MemoryStore } from './storage/memory-store.js';
 import { createMixer } from './audio/mixer.js';
-import { createStage } from './scene/stage.js';
+import { createStage, createVisiblePresentationClock } from './scene/stage.js';
+import { createPresentationScope } from './presentation/scope.js';
+import { readPlayView } from './presentation/events.js';
 import { createPractice } from './practice/session.js';
 import { normalizeName } from './shared/name.js';
 import { loadRuntimeConfig } from './config/runtime.js';
@@ -56,6 +58,9 @@ class App {
     this.generation = 0;
     this.memoryOnly = false;
     this.startToken = null;
+    this.startAttempt = null;
+    this.screenGeneration = 0;
+    this.presentationScope = null;
     this.raf = 0;
     this.notices = [];
     this.lastResult = null;
@@ -194,6 +199,9 @@ class App {
 
   // ---------- 画面の切り替え ----------
   mount(el, rerender = null) {
+    if (!el.classList.contains('game')) this.cancelStartAttempt();
+    this.disposeStage();
+    this.screenGeneration += 1;
     cancelAnimationFrame(this.raf);
     clear(this.root);
     this.root.append(el);
@@ -205,6 +213,7 @@ class App {
   }
 
   showHome() {
+    this.session = null;
     this.disposeStage();
     const showOnline = this.runtime.isVerification || this.api.configured;
     const field = showOnline ? nameField({
@@ -286,143 +295,213 @@ class App {
   }
 
   // ---------- 開始 ----------
-  showSavedRunChoice(onProceed, onCancel = () => {}) {
-    const foreign = this.foreignRun;
-    if (foreign) {
-      const link = this.foreignRunLink();
-      dialog(this.layer, {
-        titleKey: 'start.foreignRun.title',
-        bodyKey: 'start.foreignRun.body',
-        actions: [
-          ...(link ? [{ key: 'notice.openSavedVersion', primary: true, onClick: () => { onCancel(); globalThis.location.assign(link); } }] : []),
-          { key: 'start.foreignRun.shelve', danger: true, testid: 'foreign-shelve', onClick: async () => {
-            await this.store.quarantineRun(foreign.reason, foreign.playId).catch(() => {});
-            onProceed();
-          } },
-          { key: 'common.cancel', onClick: onCancel },
-        ],
-      });
-      return true;
-    }
-    const saved = this.savedRun;
-    if (saved) {
-      dialog(this.layer, {
-        titleKey: 'start.savedRun.title',
-        bodyKey: 'start.savedRun.body',
-        actions: [
-          { key: 'start.savedRun.continue', primary: true, onClick: () => { onCancel(); this.resumeSaved(saved.playId); } },
-          { key: 'start.savedRun.newGame', danger: true, onClick: async () => {
-            await this.settleSavedRun(saved.playId);
-            onProceed();
-          } },
-          { key: 'common.cancel', onClick: onCancel },
-        ],
-      });
-      return true;
-    }
-    return false;
+  isStartCurrent(attempt) {
+    return this.startAttempt === attempt;
   }
 
-  async startFlow(rawName) {
+  finishStartAttempt(attempt, state) {
+    if (!this.isStartCurrent(attempt)) return;
+    attempt.state = state;
+    this.startToken = null;
+    this.startAttempt = null;
+    attempt.resolve({ state, launchId: attempt.launchId });
+  }
+
+  cancelStartAttempt() {
+    const attempt = this.startAttempt;
+    if (!attempt) return;
+    attempt.cancelChoice?.();
+    if (attempt.record) abandonStart(this.api, this.store, attempt.record).catch(() => {});
+    this.finishStartAttempt(attempt, 'cancelled');
+  }
+
+  /** A choice belongs to the whole start operation, not to an individual request. */
+  startChoice(attempt, options) {
+    attempt.state = 'choice';
+    let settle;
+    const completion = new Promise((resolve) => { settle = resolve; });
+    let decided = false;
+    const finish = (value) => {
+      if (decided) return;
+      decided = true;
+      close();
+      attempt.cancelChoice = null;
+      settle(value);
+    };
+    const close = dialog(this.layer, {
+      ...options,
+      actions: options.actions.map((action) => ({ ...action, onClick: () => {
+        if (this.isStartCurrent(attempt)) finish(action.key);
+      } })),
+    });
+    attempt.cancelChoice = () => finish(null);
+    return { completion, close: () => finish(null) };
+  }
+
+  async chooseSavedRun(attempt) {
+    if (!this.isStartCurrent(attempt)) return false;
+    const foreign = this.foreignRun;
+    const saved = this.savedRun;
+    if (!foreign && !saved) return true;
+    const link = foreign ? this.foreignRunLink() : null;
+    const choice = await this.startChoice(attempt, foreign ? {
+      titleKey: 'start.foreignRun.title', bodyKey: 'start.foreignRun.body', actions: [
+        ...(link ? [{ key: 'notice.openSavedVersion', primary: true }] : []),
+        { key: 'start.foreignRun.shelve', danger: true, testid: 'foreign-shelve' },
+        { key: 'common.cancel' },
+      ],
+    } : {
+      titleKey: 'start.savedRun.title', bodyKey: 'start.savedRun.body', actions: [
+        { key: 'start.savedRun.continue', primary: true },
+        { key: 'start.savedRun.newGame', danger: true },
+        { key: 'common.cancel' },
+      ],
+    }).completion;
+    if (!this.isStartCurrent(attempt)) return false;
+    attempt.state = 'pending';
+    if (choice === 'start.foreignRun.shelve') {
+      await this.store.quarantineRun(foreign.reason, foreign.playId).catch(() => {});
+    } else if (choice === 'start.savedRun.newGame') {
+      await this.settleSavedRun(saved.playId);
+    } else if (choice === 'start.savedRun.continue') {
+      attempt.state = 'starting';
+      await this.restoreRun(saved.playId, attempt);
+      return false;
+    } else {
+      this.finishStartAttempt(attempt, 'cancelled');
+      if (choice === 'notice.openSavedVersion') globalThis.location.assign(link);
+      return false;
+    }
+    return this.isStartCurrent(attempt);
+  }
+
+  // Install the guard before the first await. Every external burst gets the same promise.
+  startFlow(rawName) {
+    if (this.startAttempt) return this.startAttempt.completion;
+    const attempt = this.createStartAttempt();
+    this.prepareStart(attempt, rawName).catch(() => this.failStartAttempt(attempt));
+    return attempt.completion;
+  }
+
+  createStartAttempt() {
+    let resolve;
+    const completion = new Promise((done) => { resolve = done; });
+    const attempt = { id: uuid(), launchId: uuid(), state: 'pending', completion, resolve };
+    this.startAttempt = attempt;
+    return attempt;
+  }
+
+  failStartAttempt(attempt) {
+    if (!this.isStartCurrent(attempt)) return;
+    attempt.cancelChoice?.();
+    this.finishStartAttempt(attempt, 'failed');
+    toast(this.layer, t('notice.storageUnavailable'), { kind: 'warn' });
+  }
+
+  async prepareStart(attempt, rawName) {
     await this.audio.prepare();
+    if (!this.isStartCurrent(attempt)) return;
     this.audio.play('confirm');
     const name = normalizeName(this.runtime.isVerification || this.api.configured ? rawName : '');
     if (!name.ok) {
       toast(this.layer, t('name.fixBeforeStart'), { kind: 'warn' });
+      this.finishStartAttempt(attempt, 'failed');
       return;
     }
-    // ホームを開いた後に、別のタブが始めたプレイも確認する。
     await this.checkSavedRun();
-    if (this.showSavedRunChoice(() => this.startFlow(rawName))) return;
-    const launchId = uuid();
-    if (name.empty) {
-      this.beginPlay({ ranked: false, launchId });
-      return;
-    }
+    if (!await this.chooseSavedRun(attempt)) return;
+    if (name.empty) return this.beginPlay({ ranked: false, launchId: attempt.launchId }, attempt);
     if (!this.api.configured || this.store.memory) {
-      dialog(this.layer, {
+      const choice = await this.startChoice(attempt, {
         titleKey: 'start.unranked.title',
         bodyKey: this.store.memory ? 'start.unranked.noStorage' : 'start.unranked.notConfigured',
-        actions: [
-          { key: 'start.playUnranked', primary: true, onClick: () => this.beginPlay({ ranked: false, launchId }) },
-          { key: 'common.home', onClick: () => this.showHome() },
-        ],
+        actions: [{ key: 'start.playUnranked', primary: true }, { key: 'common.home' }],
+      }).completion;
+      if (!this.isStartCurrent(attempt)) return;
+      if (choice === 'start.playUnranked') return this.beginPlay({ ranked: false, launchId: attempt.launchId }, attempt);
+      return this.cancelStart(null, attempt);
+    }
+    while (this.isStartCurrent(attempt)) {
+      try {
+        await this.store.probeWrite();
+        if (!this.isStartCurrent(attempt)) return;
+        return this.rankedStart(name.name, attempt);
+      } catch {
+        if (!this.isStartCurrent(attempt)) return;
+        const choice = await this.startChoice(attempt, {
+          titleKey: 'storage.short.title', bodyKey: 'storage.short.body', actions: [
+            { key: 'storage.short.resend' }, { key: 'storage.short.cleanup' },
+            { key: 'start.playUnranked', primary: true },
+          ],
+        }).completion;
+        if (!this.isStartCurrent(attempt)) return;
+        attempt.state = 'pending';
+        if (choice === 'start.playUnranked') return this.beginPlay({ ranked: false, launchId: attempt.launchId }, attempt);
+        if (choice === 'storage.short.resend') await this.flushNetwork();
+        if (choice === 'storage.short.cleanup') await this.store.cleanupSafe().catch(() => 0);
+      }
+    }
+  }
+
+  async rankedStart(name, attempt) {
+    const record = await createStartRequest(this.store, { name, launchId: attempt.launchId, gameVersion: this.runtime.gameVersion });
+    if (!this.isStartCurrent(attempt)) {
+      abandonStart(this.api, this.store, record).catch(() => {});
+      return;
+    }
+    attempt.record = record;
+    while (this.isStartCurrent(attempt)) {
+      const token = {};
+      this.startToken = token;
+      const progress = h('p', { class: 'dialog-body', 'aria-live': 'polite' }, t('start.contacting', { n: 1, total: 3 }));
+      const choice = this.startChoice(attempt, {
+        titleKey: 'start.ranked.title', body: progress,
+        actions: [{ key: 'start.playUnranked' }, { key: 'common.cancel' }],
       });
-      return;
+      attempt.state = 'starting';
+      const current = () => this.isStartCurrent(attempt) && this.startToken === token;
+      const outcome = await Promise.race([
+        sendStartRequest(this.api, this.store, record, {
+          isCurrent: current,
+          onAttempt: (n, total) => { if (current()) progress.textContent = t('start.contacting', { n, total }); },
+        }).then((result) => ({ result })),
+        choice.completion.then((action) => ({ action })),
+      ]);
+      if (!current()) return;
+      this.startToken = null; // Invalidate before switching to anonymous or returning home.
+      choice.close();
+      if (outcome.action != null) {
+        if (outcome.action === 'start.playUnranked') return this.switchToUnranked(record, attempt);
+        return this.cancelStart(record, attempt);
+      }
+      if (outcome.result?.ok) {
+        return this.beginPlay({ ranked: true, launchId: attempt.launchId, name, startRecord: outcome.result.record }, attempt);
+      }
+      const action = await this.startChoice(attempt, {
+        titleKey: 'start.failed.title',
+        bodyKey: outcome.result?.error?.retryable === false ? 'start.failed.rejected' : 'start.failed.body',
+        params: { code: outcome.result?.error?.code ?? '' },
+        actions: [{ key: 'common.retry', primary: true }, { key: 'start.playUnranked' }, { key: 'common.home' }],
+      }).completion;
+      if (!this.isStartCurrent(attempt)) return;
+      if (action === 'start.playUnranked') return this.switchToUnranked(record, attempt);
+      if (action !== 'common.retry') return this.cancelStart(record, attempt);
+      attempt.state = 'pending';
     }
-    // 保存できるかを先に確かめる（新しいランキング対象プレイの前）
-    try {
-      await this.store.probeWrite();
-    } catch {
-      this.storageShortDialog(rawName, launchId);
-      return;
-    }
-    this.rankedStart(name.name, launchId);
   }
 
-  storageShortDialog(rawName, launchId) {
-    dialog(this.layer, {
-      titleKey: 'storage.short.title',
-      bodyKey: 'storage.short.body',
-      actions: [
-        { key: 'storage.short.resend', onClick: async () => {
-          await this.flushNetwork();
-          this.startFlow(rawName);
-        } },
-        { key: 'storage.short.cleanup', onClick: async () => {
-          await this.store.cleanupSafe().catch(() => 0);
-          this.startFlow(rawName);
-        } },
-        { key: 'start.playUnranked', primary: true, onClick: () => this.beginPlay({ ranked: false, launchId }) },
-      ],
-    });
-  }
-
-  async rankedStart(name, launchId, existing = null) {
-    const token = {};
-    this.startToken = token;
-    const record = existing ?? (await createStartRequest(this.store, { name, launchId, gameVersion: this.runtime.gameVersion }));
-    const progress = h('p', { class: 'dialog-body', 'aria-live': 'polite' }, t('start.contacting', { n: 1, total: 3 }));
-    const close = dialog(this.layer, {
-      titleKey: 'start.ranked.title',
-      body: progress,
-      actions: [
-        { key: 'start.playUnranked', onClick: () => this.switchToUnranked(record, launchId) },
-        { key: 'common.cancel', onClick: () => this.cancelStart(record) },
-      ],
-    });
-    const r = await sendStartRequest(this.api, this.store, record, {
-      isCurrent: () => this.startToken === token,
-      onAttempt: (n, total) => (progress.textContent = t('start.contacting', { n, total })),
-    });
-    if (this.startToken !== token) return; // 利用者が別の操作へ進んだ（古い応答は取り付けない）
-    close();
-    if (r.ok) {
-      this.startToken = null;
-      this.beginPlay({ ranked: true, launchId, name, startRecord: r.record });
-      return;
-    }
-    dialog(this.layer, {
-      titleKey: 'start.failed.title',
-      bodyKey: r.error?.retryable === false ? 'start.failed.rejected' : 'start.failed.body',
-      params: { code: r.error?.code ?? '' },
-      actions: [
-        { key: 'common.retry', primary: true, onClick: () => this.rankedStart(name, launchId, { ...record, status: 'requesting' }) },
-        { key: 'start.playUnranked', onClick: () => this.switchToUnranked(record, launchId) },
-        { key: 'common.home', onClick: () => this.cancelStart(record) },
-      ],
-    });
-  }
-
-  switchToUnranked(record, launchId) {
+  switchToUnranked(record, attempt) {
+    if (!this.isStartCurrent(attempt)) return;
     this.startToken = null;
     if (record) abandonStart(this.api, this.store, record).catch(() => {});
-    this.beginPlay({ ranked: false, launchId });
+    return this.beginPlay({ ranked: false, launchId: attempt.launchId }, attempt);
   }
 
-  cancelStart(record) {
+  cancelStart(record, attempt) {
+    if (!this.isStartCurrent(attempt)) return;
     this.startToken = null;
     if (record) abandonStart(this.api, this.store, record).catch(() => {});
+    this.finishStartAttempt(attempt, 'cancelled');
     this.showHome();
   }
 
@@ -478,7 +557,9 @@ class App {
   }
 
   // ---------- 本編 ----------
-  async beginPlay(options) {
+  async beginPlay(options, attempt) {
+    if (!this.isStartCurrent(attempt)) return;
+    attempt.state = 'starting';
     const { ranked, launchId, name = '', startRecord = null } = options;
     const playId = ranked ? startRecord.response.playId : uuid();
     const secret = ranked ? startRecord.secret : null;
@@ -495,7 +576,7 @@ class App {
     };
     const session = new GameSession(meta);
     let generation = 0;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    for (let saveAttempt = 0; saveAttempt < 2; saveAttempt += 1) {
       try {
         generation = await this.store.beginRun(TAB_ID, session.snapshot());
         break;
@@ -504,16 +585,19 @@ class App {
         // 受付待ちなどで別のタブが先に始めた。予約は保ち、本人が選ぶまで前のプレイを終えない。
         const abandon = () => { if (startRecord) abandonStart(this.api, this.store, startRecord).catch(() => {}); };
         await this.checkSavedRun();
-        if (this.showSavedRunChoice(() => this.beginPlay(options), abandon)) return;
+        if (!await this.chooseSavedRun(attempt)) { abandon(); return; }
+        attempt.state = 'starting';
         // 読み直す間に前のプレイが終了した場合だけを見込んで、再度保存を試す。
-        if (attempt === 1) {
+        if (saveAttempt === 1) {
           abandon();
+          this.finishStartAttempt(attempt, 'failed');
           this.notices.push('notice.storageUnavailable');
           this.showHome();
           return;
         }
       }
     }
+    if (!this.isStartCurrent(attempt)) return;
     if (secret) this.playSecrets.set(session, secret);
     this.savedRun = null;
     this.foreignRun = null;
@@ -528,22 +612,38 @@ class App {
     } catch {
       if (!ranked) this.notices.push('notice.launchNotSaved');
     }
+    if (!this.isStartCurrent(attempt)) return;
     flushLaunches(this.api, this.store).catch(() => {});
     await this.showGame(session, { fresh: true });
+    this.finishStartAttempt(attempt, 'started');
   }
 
-  async resumeSaved(playId = this.savedRun?.playId) {
+  resumeSaved(playId = this.savedRun?.playId) {
+    if (this.startAttempt) return this.startAttempt.completion;
     if (playId == null) return;
+    const attempt = this.createStartAttempt();
+    this.restoreRun(playId, attempt).catch(() => this.failStartAttempt(attempt));
+    return attempt.completion;
+  }
+
+  async restoreRun(playId, attempt) {
+    attempt.state = 'starting';
     await this.audio.prepare();
+    if (!this.isStartCurrent(attempt)) return;
     const claimed = await this.store.claimRun(TAB_ID, playId).catch(() => null);
+    if (!this.isStartCurrent(attempt)) return;
     if (!claimed) {
       await this.checkSavedRun();
+      if (!this.isStartCurrent(attempt)) return;
+      this.finishStartAttempt(attempt, 'failed');
       this.showHome();
       return;
     }
     const r = GameSession.fromSnapshot(claimed.snapshot);
     if (r.error) {
       await this.store.quarantineRun(r.error, playId).catch(() => {});
+      if (!this.isStartCurrent(attempt)) return;
+      this.finishStartAttempt(attempt, 'failed');
       this.notices.push('notice.savedRunBroken');
       this.savedRun = null;
       this.showHome();
@@ -555,8 +655,10 @@ class App {
     this.takenOver = false;
     this.saveWarned = false;
     const secret = await this.secretForSession(r.session);
+    if (!this.isStartCurrent(attempt)) return;
     if (secret) this.playSecrets.set(r.session, secret);
     await this.showGame(r.session, { fresh: false });
+    this.finishStartAttempt(attempt, 'started');
   }
 
   async showGame(session, { fresh }) {
@@ -591,25 +693,43 @@ class App {
       void node.offsetWidth;
       node.classList.add(cls);
     };
+    let observedEvalSuccess = false;
+    let lastEvalSuccess = false;
+    const observeEvaluation = () => {
+      if (isEvalTime(session.state.t, rules) && session.state.matchUnits != null) {
+        observedEvalSuccess = classifyMatch(session.state.matchUnits, rules) === 'success';
+      }
+    };
     const controls = createControls({
-      onChange: (c) => session.input(c, performance.now()),
+      onChange: (c) => { observeEvaluation(); session.input(c, performance.now()); },
       onLockedTap: () => {
         this.audio.play('locked');
-        toast(banner, t('controls.lockedHint'), { duration: 1400 });
+        showNotice(t('controls.lockedHint'), { duration: 1400 });
       },
     });
     const el = h('main', { class: 'screen game' }, [h('div', { class: 'stage-wrap' }, [stageBox, hud, switchOk, matchWord, banner, cover]), controls.el]);
     this.mount(el, null);
+    const scopeId = `${this.screenGeneration}:game`;
+    const scope = createPresentationScope({ id: scopeId, kind: 'game' });
+    this.presentationScope = scope;
+    scope.tick(session.state.t);
+    const current = () => this.presentationScope === scope && scope.isCurrent(scopeId);
+    const showNotice = (text, options = {}) => toast(banner, text, { ...options, scope });
+    scope.own(() => cancelAnimationFrame(this.raf));
     this.controls = controls;
     controls.layout();
     controls.setValues(session.state.color);
     controls.setLocked(!session.state.brightnessUnlocked);
     controls.setEnabled(false); // 時計が動くまで操作しない（表示と判定の色をずらさない）
-    this.stage = await createStage(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen });
-    requestAnimationFrame(() => {
+    const stageView = await createStage(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen });
+    if (!current()) { stageView.dispose(); return; }
+    this.stage = stageView;
+    const layoutFrame = requestAnimationFrame(() => {
+      if (!current()) return;
       controls.layout();
-      this.stage.resize();
+      stageView.resize();
     });
+    scope.own(() => cancelAnimationFrame(layoutFrame));
 
     const alertStage = createAlertStageTracker(rules);
     const instant = createInstantSuccessTracker({ rules });
@@ -641,8 +761,15 @@ class App {
       matchWord.dataset.state = mState;
     };
 
-    session.on((events) => {
+    scope.own(session.on((events) => {
       for (const ev of events) {
+        if (!current()) break;
+        stageView.presentationEvent({ ...ev });
+        if (ev.type === 'evalEnd') lastEvalSuccess = observedEvalSuccess;
+        if (['evalStart', 'enterBuilding', 'detected', 'cleared', 'quit'].includes(ev.type)) {
+          lastEvalSuccess = false;
+          observedEvalSuccess = false;
+        }
         switch (ev.type) {
           case 'evalEnd':
             if (ev.building < rules.buildingCount) this.audio.play('switchOk');
@@ -651,17 +778,17 @@ class App {
             controls.setLocked(false);
             this.audio.play('unlock');
             this.stage?.fx('unlock');
-            toast(banner, t('game.unlocked'), { duration: 2600, kind: 'big' });
+            showNotice(t('game.unlocked'), { duration: 2600, kind: 'big' });
             break;
           case 'reachUnlockBuilding':
             this.setFlag('brightnessPractice', true);
             break;
           case 'enterBuilding':
-            if (ev.building === rules.brightnessUnlockBuilding - 1) toast(banner, t('game.unlockSoon'), { duration: 2200 });
+            if (ev.building === rules.brightnessUnlockBuilding - 1) showNotice(t('game.unlockSoon'), { duration: 2200 });
             this.audio.setArea(areaOf(Math.min(rules.buildingCount, ev.building)).time);
             this.audio.setFinale(ev.building >= 40);
             if (ev.building === 40) {
-              toast(banner, t('game.milestone.final'), { duration: 1600 });
+              showNotice(t('game.milestone.final'), { duration: 1600 });
               this.audio.play('milestone');
               this.stage?.fx('milestone');
             }
@@ -669,17 +796,17 @@ class App {
           case 'pass':
             if (ev.building === 25) {
               // 25棟目の通過＝中間地点（仕様 FX-03）
-              toast(banner, t('game.milestone.half'), { duration: 1600 });
+              showNotice(t('game.milestone.half'), { duration: 1600 });
               this.audio.play('milestone');
               this.stage?.fx('milestone');
             }
             if (ev.success && [3, 5, 10].includes(ev.combo)) {
               this.audio.play('combo', { level: [3, 5, 10].indexOf(ev.combo) });
               this.stage?.fx('combo');
-              toast(banner, t('game.comboMilestone', { n: ev.combo }), { duration: 1400, kind: 'combo' });
+              showNotice(t('game.comboMilestone', { n: ev.combo }), { duration: 1400, kind: 'combo' });
             } else if (ev.success && ev.combo > 1) {
               this.stage?.fx('pass');
-              toast(banner, t('game.combo', { n: ev.combo }), { duration: 900 });
+              showNotice(t('game.combo', { n: ev.combo }), { duration: 900 });
             } else if (ev.success) {
               this.stage?.fx('pass');
             } else if (lastCombo >= 2) {
@@ -706,19 +833,23 @@ class App {
           default:
         }
       }
-    });
+    }));
 
+    let wasSearching = false;
     const loop = () => {
-      if (this.session !== session) return;
+      if (this.session !== session || !current()) return;
       const now = performance.now();
       if (session.running) {
+        observeEvaluation();
         session.frame(now);
+        if (!current()) return;
         if (session.state.t - lastSaveT >= SAVE_INTERVAL_MS) {
           lastSaveT = session.state.t;
           this.saveNow('interval');
         }
       }
       const s = session.state;
+      scope.tick(s.t);
       const stage = alertStage.update(s.alert);
       if (stage > lastStage) {
         // 1人目は警告音、2人目は笛
@@ -726,34 +857,42 @@ class App {
         pulse(gaugeIcon, 'ring');
         if (!this.flags.alertGuideSeen) {
           this.setFlag('alertGuideSeen', true);
-          toast(banner, t('guide.alert'), { duration: 3000 });
+          showNotice(t('guide.alert'), { duration: 3000 });
         }
       }
       if (s.alert > 0 && !this.flags.alertGuideSeen) {
         this.setFlag('alertGuideSeen', true);
-        toast(banner, t('guide.alert'), { duration: 3000 });
+        showNotice(t('guide.alert'), { duration: 3000 });
       }
       if (stage < lastStage && session.running) this.audio.play('relief'); // 警察が離れた
+      if (stage !== lastStage) stageView.presentationEvent({ type: stage > lastStage ? 'policeUp' : 'policeDown', t: s.t });
       lastStage = stage;
       this.audio.setPoliceStage(session.running ? stage : 0);
       this.audio.setDanger(session.running && s.alert >= rules.alert.maxUnits * 0.7);
       if (instant.update(s)) {
         this.audio.play('success');
         this.stage?.fx('success');
+        stageView.presentationEvent({ type: 'instantSuccess', t: s.t, building: s.evalBuilding });
       }
       refreshHud();
       const matchState = s.matchUnits == null ? null : classifyMatch(s.matchUnits);
-      this.stage?.update({ t: s.t, color: s.color, policeStage: stage, searching: matchState === 'success' && stage > 0, nervous: stage / 2, walking: session.running, matchState });
+      const searching = matchState === 'success' && stage > 0;
+      if (searching && !wasSearching) stageView.presentationEvent({ type: 'searchStart', t: s.t });
+      wasSearching = searching;
+      stageView.update({ t: s.t, color: s.color, policeStage: stage, searching, nervous: stage / 2, walking: session.running, matchState, presentation: readPlayView(session, stage, { lastEvalSuccess }) });
       this.raf = requestAnimationFrame(loop);
     };
 
-    pauseBtn.addEventListener('click', () => {
+    const pause = () => {
+      if (!current()) return;
       this.audio.play('select');
       if (session.pause('user')) {
         this.saveNow('pause');
         this.showPause('user');
       }
-    });
+    };
+    pauseBtn.addEventListener('click', pause);
+    scope.own(() => pauseBtn.removeEventListener('click', pause));
     this.coverEl = cover;
     refreshHud();
     this.raf = requestAnimationFrame(loop);
@@ -761,13 +900,16 @@ class App {
     if (fresh) {
       if (!this.flags.openingSeen) {
         await this.playOpening();
+        if (!current()) return;
         await this.setFlag('openingSeen', true);
       }
       if (!this.flags.guideSeen) {
         await this.showGuideCard();
+        if (!current()) return;
         await this.setFlag('guideSeen', true);
       }
-      if (this.session !== session) return;
+      if (this.session !== session || !current()) return;
+      if (document.hidden) { this.showPause('user'); return; }
       controls.setValues(session.state.color);
       controls.setEnabled(true);
       this.audio.startGameAudio();
@@ -779,6 +921,7 @@ class App {
 
   async playOpening() {
     const ctrl = new AbortController();
+    this.presentationScope?.own(() => ctrl.abort());
     const skip = button('common.skip', () => ctrl.abort(), { className: 'btn-skip', testid: 'skip-opening' });
     this.layer.append(skip);
     await this.stage.playOpening({ signal: ctrl.signal, onCue: (name) => this.audio.play(name) });
@@ -787,6 +930,7 @@ class App {
 
   showGuideCard() {
     return new Promise((resolve) => {
+      this.presentationScope?.own(resolve);
       dialog(this.layer, {
         titleKey: 'guide.title',
         body: h('ul', { class: 'guide-list' }, ['guide.goal', 'guide.palette', 'guide.grace', 'guide.alertShort', 'guide.bar'].map((k) => h('li', {}, t(k)))),
@@ -975,9 +1119,15 @@ class App {
     const session = this.session;
     if (!session || this.finishing === session) return;
     this.finishing = session;
+    const generation = this.screenGeneration;
+    this.presentationScope?.dispose();
+    const scope = createPresentationScope({ id: `${generation}:ending`, kind: 'ending' });
+    this.presentationScope = scope;
+    const current = () => this.screenGeneration === generation && this.presentationScope === scope;
     this.controls?.setEnabled(false);
     this.audio.stopGameAudio();
     const { result, saved, stale, newBest = false } = await this.persistEnd(session, this.generation, { takenOver: this.takenOver });
+    if (!current()) return;
     const summary = session.summary();
     this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary, saved, stale, newBest, netState: session.meta.ranked ? 'pending' : null };
     if (!saved && !stale && result?.ranked) {
@@ -1001,11 +1151,13 @@ class App {
     }
     this.audio.play(reason === 'detected' ? 'detected' : reason === 'cleared' ? 'clear' : 'back');
     const ctrl = new AbortController();
+    scope.own(() => ctrl.abort());
     clear(this.layer);
     const skip = button('common.skip', () => ctrl.abort(), { className: 'btn-skip', testid: 'skip-ending' });
     this.layer.append(skip);
-    await this.stage?.playEnding(reason, { signal: ctrl.signal });
+    await this.stage?.playEnding(reason, { signal: ctrl.signal, onFrame: (elapsed) => scope.tick(elapsed) });
     skip.remove();
+    if (!current()) return;
     this.session = null;
     this.showResult();
     this.flushNetwork().then(() => this.pollResult());
@@ -1062,7 +1214,7 @@ class App {
     const reasonKey = { detected: 'result.detected', cleared: 'result.cleared', quit: 'result.quit' }[s.endReason];
     const statusBox = h('div', { class: 'result-status', 'aria-live': 'polite' });
     const rankingHost = h('div', { class: 'result-ranking' });
-    this.renderResultStatus = () => {
+    const renderResultStatus = () => {
       if (!showOnline) return;
       clear(statusBox);
       if (!r.ranked) {
@@ -1087,7 +1239,7 @@ class App {
       if (r.netState === 'official' && r.rankedBest?.rank != null) statusBox.append(h('p', { class: 'result-rank' }, t('result.rank', { rank: formatNumber(r.rankedBest.rank) })));
       if (r.rankError) statusBox.append(h('p', {}, [t('result.rankError'), ' ', button('common.retry', () => this.pollResult(), { className: 'btn-small' })]));
     };
-    this.renderResultStatus();
+    renderResultStatus();
     const localBests = h('p', { class: r.newBest ? 'result-best result-best-new' : 'result-best' });
     this.safeGet('localBest').then((all) => {
       const b = all?.[r.name || ''];
@@ -1126,10 +1278,24 @@ class App {
       rankingHost,
     ]);
     this.mount(el, () => this.showResult());
+    const scopeId = `${this.screenGeneration}:result`;
+    const scope = createPresentationScope({ id: scopeId, kind: 'result' });
+    this.presentationScope = scope;
+    this.renderResultStatus = renderResultStatus;
+    scope.own(() => { if (this.renderResultStatus === renderResultStatus) this.renderResultStatus = null; });
+    const tick = createVisiblePresentationClock({ visibilityTarget: document });
+    scope.own(tick.dispose);
+    scope.own(() => cancelAnimationFrame(this.raf));
+    const animate = (now) => {
+      if (!scope.isCurrent(scopeId)) return;
+      scope.tick(tick(now, document.hidden).elapsed);
+      this.raf = requestAnimationFrame(animate);
+    };
+    this.raf = requestAnimationFrame(animate);
     this.audio.play('result');
     if (r.newBest && !r.bestPlayed) {
       r.bestPlayed = true; // 言語を切り替えて描き直しても、もう一度は鳴らさない
-      setTimeout(() => this.audio.play('best'), 700);
+      scope.schedule('best-sound', 700, () => this.audio.play('best'));
     }
     if (this.api.configured) {
       const view = createRankingView({ api: this.api, name: null });
@@ -1446,6 +1612,9 @@ class App {
   }
 
   disposeStage() {
+    this.presentationScope?.dispose();
+    this.presentationScope = null;
+    this.countdownActive = false;
     this.showcaseToken = null;
     this.showcase?.dispose();
     this.showcase = null;

@@ -44,12 +44,21 @@ export function dialog(host, { titleKey, title, bodyKey, body, params, actions =
   return close;
 }
 
-/** 短いお知らせ。壁とパレットを隠さない位置に出す。 */
-export function toast(host, text, { duration = 1800, kind = 'info' } = {}) {
+let toastId = 0;
+
+/** 短いお知らせ。画面のscopeがある時は、その有効な時間だけを使う。 */
+export function toast(host, text, { duration = 1800, kind = 'info', scope = null } = {}) {
   const el = h('div', { class: `toast toast-${kind}`, role: 'status' }, text);
   host.append(el);
-  setTimeout(() => el.classList.add('toast-out'), duration);
-  setTimeout(() => el.remove(), duration + 400);
+  if (scope) {
+    const key = `toast-${++toastId}`;
+    scope.schedule(`${key}-exit`, duration, () => el.classList.add('toast-out'));
+    scope.schedule(`${key}-remove`, duration + 400, () => el.remove());
+    scope.own(() => el.remove());
+  } else {
+    setTimeout(() => el.classList.add('toast-out'), duration);
+    setTimeout(() => el.remove(), duration + 400);
+  }
   return el;
 }
 

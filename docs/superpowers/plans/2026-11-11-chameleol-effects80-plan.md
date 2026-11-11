@@ -35,7 +35,7 @@
 
 ## 1. 作業範囲と現在の構造
 
-今回のPRはこの計画と要件・レビュー記録だけを追加します。以下のチェック項目は今後の実装担当者が実施するものです。未実施の項目を完了扱いにしません。
+計画を追加したPR #10は文書のみです。実装の進捗は工程ごとのチェック項目へ反映し、未実施の項目を完了扱いにしません。T0の実装・検証記録は[こちら](../../acceptance/effects80-t0-evidence.md)。T1〜T12・G1〜G4は未完了です。
 
 | 現在の場所 | 確認した内容と変更方針 |
 |---|---|
@@ -140,13 +140,13 @@ mountPresentationHud({host,scope,bestDistance:number|null,bestCombo:number})
 
 **Interfaces:** 第3章のscope・readPlayView・PresentationEventを作り、以後の全工程へ渡す。既存GameSessionの書込口は増やさない。
 
-- [ ] `dispose_twice_cleans_once`・`paused_tick_does_not_advance`・`ending_scope_starts_at_zero_after_game_dispose`・`disposed_callback_is_ignored`を先に作る。同じactiveMsでは予約が進まず、dispose後の実行回数は0であることを検証する。
-- [ ] `node --test tests/presentation/scope.test.mjs`で新しい接続口が未実装のため失敗することを確認する。
-- [ ] scopeを実装し、appのmount／disposeStageと画面世代へ接続する。既存showResultの700ms後のbest音もscope予約へ移す。session.on解除、終了のAbortController、動作予約をownへ登録する。street.updateは通常プレイのdtをゲーム時刻差から求め、running=falseなら0とする。既存のperformance.now由来のworldClock・粒子更新と追加動作の時計が食い違わないようにし、opening/endingは独立した時計で扱う。
-- [ ] startFlowは最初のawaitより前にStartAttemptを一つ作り、外部からの連打はそのcompletionを返す。beginPlay・rankedStartへの分岐はPromiseをreturn/awaitし、開始保存・通信が未完了の間に受付を解放しない。確認ダイアログを出して関数が戻るだけでは終了にしない。No.99は最初の受付通知だけを読み、開始APIを呼ばない。
-- [ ] StartAttemptは`{id,launchId,state,completion}`、stateはpending/choice/starting/started/cancelled/failedとする。再試行は同じattemptとlaunchIdを使い、再送用requestの既存IDを維持する。既存startTokenは各通信の有効性判定として残す。無名切替では通信トークンを無効にしてから同じattemptでbeginPlayへ一度だけ進む。キャンセル・ホーム・開始全体を中止する失敗ではattemptを終了して受付を解放し、遅着応答を無効にする。開始保存が失敗しても既存のmemoryOnlyでプレイを継続する場合はfailedで解除せず、同じattemptを舞台への引継ぎ完了まで保持する。成功時はbeginPlayの保存と舞台への引継ぎ完了でstartedへ移す。保存済みプレイ選択・容量不足の選択・再送選択も同じattemptのchoiceとして扱い、ダイアログからstartFlowを再帰呼出して自分の受付フラグを迂回しない。
-- [ ] 同試験を合格させる。通し試験の`restart_double_click`で開始呼出1回、`ranked_start_delayed_double_click`で名前あり開始応答を遅らせても開始要求1件、`start_retry_cancel_switch`で再試行・キャンセル・無名切替後の重複開始0件と次の操作可、`leave_before_best_sound`で遅れた音0回、`pause_hidden_resume`で表示時計が飛ばないことを確認する。
-- [ ] 対象ファイルを確認して`feat: add presentation lifecycle boundaries`でコミットする。
+- [x] `dispose_twice_cleans_once`・`paused_tick_does_not_advance`・`ending_scope_starts_at_zero_after_game_dispose`・`disposed_callback_is_ignored`を先に作る。同じactiveMsでは予約が進まず、dispose後の実行回数は0であることを検証する。
+- [x] `node --test tests/presentation/scope.test.mjs`で新しい接続口が未実装のため失敗することを確認する。
+- [x] scopeを実装し、appのmount／disposeStageと画面世代へ接続する。既存showResultの700ms後のbest音もscope予約へ移す。session.on解除、終了のAbortController、動作予約をownへ登録する。street.updateは通常プレイのdtをゲーム時刻差から求め、running=falseなら0とする。既存のperformance.now由来のworldClock・粒子更新と追加動作の時計が食い違わないようにし、opening/endingは独立した時計で扱う。
+- [x] startFlowは最初のawaitより前にStartAttemptを一つ作り、外部からの連打はそのcompletionを返す。beginPlay・rankedStartへの分岐はPromiseをreturn/awaitし、開始保存・通信が未完了の間に受付を解放しない。確認ダイアログを出して関数が戻るだけでは終了にしない。No.99は最初の受付通知だけを読み、開始APIを呼ばない。
+- [x] StartAttemptは`{id,launchId,state,completion}`、stateはpending/choice/starting/started/cancelled/failedとする。再試行は同じattemptとlaunchIdを使い、再送用requestの既存IDを維持する。既存startTokenは各通信の有効性判定として残す。無名切替では通信トークンを無効にしてから同じattemptでbeginPlayへ一度だけ進む。キャンセル・ホーム・開始全体を中止する失敗ではattemptを終了して受付を解放し、遅着応答を無効にする。開始保存が失敗しても既存のmemoryOnlyでプレイを継続する場合はfailedで解除せず、同じattemptを舞台への引継ぎ完了まで保持する。成功時はbeginPlayの保存と舞台への引継ぎ完了でstartedへ移す。保存済みプレイ選択・容量不足の選択・再送選択も同じattemptのchoiceとして扱い、ダイアログからstartFlowを再帰呼出して自分の受付フラグを迂回しない。
+- [x] 同試験を合格させる。通し試験の`restart_double_click`で開始呼出1回、`ranked_start_delayed_double_click`で名前あり開始応答を遅らせても開始要求1件、`start_retry_cancel_switch`で再試行・キャンセル・無名切替後の重複開始0件と次の操作可、`leave_before_best_sound`で遅れた音0回、`pause_hidden_resume`で表示時計が飛ばないことを確認する。
+- [x] 対象ファイルを確認して`feat: add presentation lifecycle boundaries`でコミットする。
 
 ### T1：既存成績から結果を組み立てる
 
