@@ -1,0 +1,14 @@
+// Authoring only: render the existing No.28 model once; no runtime capture path.
+import {createRequire} from 'node:module';import {writeFile} from 'node:fs/promises';import {startServer} from './serve.mjs';
+const {chromium}=createRequire(import.meta.url)('playwright');
+const server=await startServer({rootDir:process.cwd(),listenPort:0});
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--use-gl=swiftshader','--enable-unsafe-swiftshader']});
+try{const page=await browser.newPage();await page.goto(`http://127.0.0.1:${server.address().port}/`);const output=await page.evaluate(async()=>{
+ const THREE=await import('/vendor/three.module.min.js');const {createChameleon}=await import('/src/scene/chameleon28.js');
+ const atlas=document.createElement('canvas');atlas.width=atlas.height=2048;const ctx=atlas.getContext('2d');const backgrounds=[];
+ const skies=[['#fae7bc','#9b6546'],['#cce8ec','#648486'],['#e8dbd2','#8d6179'],['#dcabd1','#564e76'],['#233c60','#17263e']];
+ for(let i=0;i<5;i++){const x=(i%3)*640,y=Math.floor(i/3)*400;const g=ctx.createLinearGradient(0,y,0,y+400);g.addColorStop(0,skies[i][0]);g.addColorStop(1,skies[i][1]);ctx.fillStyle=g;ctx.fillRect(x,y,640,400);for(let b=0;b<10;b++){const h=60+((b*47+i*31)%140);ctx.fillStyle=i===4?'#1d2c48':'#63585e';ctx.fillRect(x+b*70,y+330-h,60,h);ctx.fillStyle=i===4?'#ebc777':'#e9d6b3';for(let k=0;k<3;k++)ctx.fillRect(x+b*70+12,y+345-h+k*24,9,12)}ctx.fillStyle='#51444e';ctx.fillRect(x,y+330,640,70);backgrounds.push({id:[1,20,23,30,40][i],rect:[x,y,640,400]})}
+ const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});renderer.setSize(480,720);renderer.setClearColor(0,0);const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(32,480/720,.1,100);camera.position.set(5,3.2,8);camera.lookAt(0,1.45,0);
+ let comicURL=null;const hero=createChameleon();scene.add(hero.group);const poses=['clear','detected','quit','proud'];for(let i=0;i<4;i++){hero.animate([.7,1.8,0,2.6][i],{walking:false,nervous:i===1?1:0});hero.group.rotation.y=[-.35,.2,-.6,.4][i];hero.head.rotation.z=[.12,-.25,-.12,.2][i];hero.jewel.visible=i===0||i===3;renderer.render(scene,camera);ctx.drawImage(renderer.domElement,i*480,960);if(i===1)comicURL=renderer.domElement.toDataURL('image/webp',.88);}
+ hero.dispose();renderer.dispose();return {url:atlas.toDataURL('image/webp',.88),comicURL,meta:{width:2048,height:2048,backgrounds,portraits:poses.map((id,i)=>({id,rect:[i*480,960,480,720]})),source:'src/scene/chameleon28.js createChameleon(CHAMELEON28)',authoringOnly:true}};
+ });await writeFile('src/presentation/assets/detected.webp',Buffer.from(output.comicURL.split(',')[1],'base64'));await writeFile('src/presentation/assets/result-atlas.webp',Buffer.from(output.url.split(',')[1],'base64'));await writeFile('src/presentation/assets/result-atlas.json',JSON.stringify(output.meta,null,2)+'\n');}finally{await browser.close();server.close()}

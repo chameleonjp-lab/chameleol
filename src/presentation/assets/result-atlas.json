@@ -1,0 +1,91 @@
+{
+  "width": 2048,
+  "height": 2048,
+  "backgrounds": [
+    {
+      "id": 1,
+      "rect": [
+        0,
+        0,
+        640,
+        400
+      ]
+    },
+    {
+      "id": 20,
+      "rect": [
+        640,
+        0,
+        640,
+        400
+      ]
+    },
+    {
+      "id": 23,
+      "rect": [
+        1280,
+        0,
+        640,
+        400
+      ]
+    },
+    {
+      "id": 30,
+      "rect": [
+        0,
+        400,
+        640,
+        400
+      ]
+    },
+    {
+      "id": 40,
+      "rect": [
+        640,
+        400,
+        640,
+        400
+      ]
+    }
+  ],
+  "portraits": [
+    {
+      "id": "clear",
+      "rect": [
+        0,
+        960,
+        480,
+        720
+      ]
+    },
+    {
+      "id": "detected",
+      "rect": [
+        480,
+        960,
+        480,
+        720
+      ]
+    },
+    {
+      "id": "quit",
+      "rect": [
+        960,
+        960,
+        480,
+        720
+      ]
+    },
+    {
+      "id": "proud",
+      "rect": [
+        1440,
+        960,
+        480,
+        720
+      ]
+    }
+  ],
+  "source": "src/scene/chameleon28.js createChameleon(CHAMELEON28)",
+  "authoringOnly": true
+}
