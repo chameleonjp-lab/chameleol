@@ -2,7 +2,7 @@
 // NET-TEST-01/02/05/06、RANK-07、GAME-17 の送信部分などの部分確認。本番の Supabase には接続しない。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { launch, openHome, appState } from './helpers.mjs';
+import { launch, openHome, completeStationaryGuide, appState } from './helpers.mjs';
 import { startCluster, buildTemplate, createTestDb, dropTestDb } from '../../scripts/testdb.mjs';
 import { startLocalApi } from '../../scripts/local-api.mjs';
 
@@ -68,8 +68,7 @@ async function rankedPlay(page, name, ms = 11000) {
   for (;;) {
     if (await page.evaluate(() => globalThis.__kamereoru.session?.running === true)) break;
     if (await page.isVisible('[data-testid=skip-opening]')) await page.click('[data-testid=skip-opening]').catch(() => {});
-    if(await page.isVisible('[data-testid=guide-skip]'))await page.click('[data-testid=guide-skip]').catch(()=>{});
-    else if(await page.isVisible('[data-testid=guide-go]'))await page.click('[data-testid=guide-go]').catch(()=>{});
+    if(await page.isVisible('[data-testid=guidance]'))await completeStationaryGuide(page);
     if (Date.now() > until) throw new Error('ranked play did not start');
     await page.waitForTimeout(100);
   }
@@ -132,8 +131,7 @@ test('NET-TEST-02: 開始前から通信できない時は、自動再試行の�
     await page.click('[data-testid="start.playUnranked"]');
     const skip = await page.waitForSelector('[data-testid=skip-opening]', { timeout: 6000 }).catch(() => null);
     if (skip) await skip.click().catch(() => {});
-    const go = await page.waitForSelector('[data-testid=guide-skip], [data-testid=guide-go]', { timeout: 6000 }).catch(() => null);
-    if(go){const skipGuide=page.locator('[data-testid=guide-skip]');if(await skipGuide.count())await skipGuide.click();else await go.click();}
+    await completeStationaryGuide(page);
     await page.waitForFunction(() => globalThis.__kamereoru.session?.running === true, null, { timeout: 10000 });
     const meta = await page.evaluate(() => globalThis.__kamereoru.session.meta);
     assert.equal(meta.ranked, false);

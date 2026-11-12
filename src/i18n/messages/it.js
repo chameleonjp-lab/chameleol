@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "Miglior serie sul dispositivo!",
   "presentation.distanceRecord": "Nuovo record di distanza!",
   "presentation.lastFive": "{n} alla fuga",
+  "guidance.wall": "Abbina il colore della parete",
   "guidance.step1": "Abbina il colore",
   "guidance.step2": "Abbina il colore in movimento",
   "guidance.step3": "Abbina colore e luminosità",

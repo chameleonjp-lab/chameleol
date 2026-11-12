@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "本裝置最高連勝！",
   "presentation.distanceRecord": "最遠距離新紀錄！",
   "presentation.lastFive": "再過{n}棟就逃脫",
+  "guidance.wall": "調成牆壁的顏色",
   "guidance.step1": "配對顏色",
   "guidance.step2": "移動中配對顏色",
   "guidance.step3": "配對顏色和亮度",

@@ -54,15 +54,24 @@ function drawPalette(canvas, size) {
 /**
  * root に操作部品を作る。
  * onChange({h,s,v}) は整数の値が変わった時だけ呼ばれる。
+ * onColorStep({h,s,v}, part) はドラッグ移動（phase === 'move'）で色相18度・彩度15%・明度12%以上変化した時だけ呼ばれ、
+ * 指を動かさない単発タップ（phase === 'down'）では一切呼ばれない。
  */
-export function createControls({ rules = RULES_V1, onChange = () => {}, onLockedTap = () => {} } = {}) {
+export function createControls({
+  rules = RULES_V1,
+  onChange = () => {},
+  onLockedTap = () => {},
+  onPartDown = () => {},
+  onPartUp = () => {},
+  onColorStep = () => {},
+} = {}) {
   const canvas = h('canvas', { class: 'palette-canvas', 'aria-hidden': 'true' });
   const paletteMarker = h('div', { class: 'marker palette-marker', 'aria-hidden': 'true' });
-  const paletteGuide = h('div', { class: 'guide-target palette-guide-target', 'aria-hidden': 'true', style: {pointerEvents:'none',position:'absolute',left:'0',top:'0',display:'none'} });
+  const paletteGuide = h('div', { class: 'guide-target palette-guide-target', 'aria-hidden': 'true', style: { pointerEvents: 'none', position: 'absolute', left: '0', top: '0', display: 'none' } });
   const palette = h('div', { class: 'palette', role: 'slider', 'aria-label': t('controls.palette') }, [canvas, paletteGuide, paletteMarker]);
   const barFill = h('div', { class: 'bar-fill' });
   const barMarker = h('div', { class: 'marker bar-marker', 'aria-hidden': 'true' });
-  const barGuide = h('div', { class: 'guide-target bar-guide-target', 'aria-hidden': 'true', style: {pointerEvents:'none',position:'absolute',top:'0',display:'none'} });
+  const barGuide = h('div', { class: 'guide-target bar-guide-target', 'aria-hidden': 'true', style: { pointerEvents: 'none', position: 'absolute', top: '0', display: 'none' } });
   const lockLabel = h('div', { class: 'bar-lock' }, [h('span', { class: 'lock-icon', 'aria-hidden': 'true' }, '🔒'), h('span', { class: 'lock-text', 'data-i18n': 'controls.locked' }, t('controls.locked'))]);
   const bar = h('div', { class: 'bar', role: 'slider', 'aria-label': t('controls.bar') }, [barFill, barGuide, barMarker, lockLabel]);
   const barHint = h('div', { class: 'bar-hint', 'aria-hidden': 'true' }, [
@@ -72,7 +81,44 @@ export function createControls({ rules = RULES_V1, onChange = () => {}, onLocked
   const preview = h('div', { class: 'preview', 'aria-label': t('controls.preview') });
   const el = h('div', { class: 'controls' }, [preview, palette, h('div', { class: 'bar-wrap' }, [bar, barHint])]);
 
-  const router = createPointerRouter({ rules, onChange: (v) => render(v) || onChange(v), onLockedTap });
+  const lastStepColor = {
+    palette: { ...rules.initialColor },
+    bar: { ...rules.initialColor },
+  };
+  const hueDiff = (a, b) => {
+    const d = Math.abs(a - b);
+    return Math.min(d, rules.hueSteps - d);
+  };
+
+  const router = createPointerRouter({
+    rules,
+    onChange: (v, meta = {}) => {
+      render(v);
+      const part = meta.part ?? 'palette';
+      const phase = meta.phase ?? 'move';
+      if (phase === 'down') {
+        lastStepColor[part] = { ...v };
+      } else if (phase === 'move') {
+        const ref = lastStepColor[part] ?? v;
+        const movedEnough =
+          part === 'bar'
+            ? Math.abs(v.v - ref.v) >= 1200
+            : hueDiff(v.h, ref.h) >= 1800 || Math.abs(v.s - ref.s) >= 1500;
+        if (movedEnough) {
+          lastStepColor[part] = { ...v };
+          onColorStep(v, part);
+        }
+      }
+      onChange(v);
+    },
+    onLockedTap,
+    onPartDown: (part) => {
+      // 同じ色へのタップで onChange が発火しない場合でも、その部品のドラッグ基準色を現在値に揃える
+      lastStepColor[part] = { ...router.values };
+      onPartDown(part);
+    },
+    onPartUp,
+  });
   let paletteSize = 0;
   let guideTarget = null;
 
@@ -125,11 +171,12 @@ export function createControls({ rules = RULES_V1, onChange = () => {}, onLocked
   };
   const onMove = (e) => router.move(e.pointerId, e.clientX, e.clientY);
   const onUp = (e) => router.up(e.pointerId);
+  const onCancel = (e) => router.cancel(e.pointerId);
   el.addEventListener('pointerdown', onDown);
   el.addEventListener('pointermove', onMove);
   el.addEventListener('pointerup', onUp);
-  el.addEventListener('pointercancel', onUp);
-  el.addEventListener('lostpointercapture', onUp);
+  el.addEventListener('pointercancel', onCancel);
+  el.addEventListener('lostpointercapture', onCancel);
   // iOSの長押しメニュー・拡大・選択を操作領域でだけ止める
   el.addEventListener('contextmenu', (e) => e.preventDefault());
   el.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
@@ -148,7 +195,13 @@ export function createControls({ rules = RULES_V1, onChange = () => {}, onLocked
       render();
     },
     setValues(values) {
+      const previous = router.values;
       router.setValues(values);
+      const next = router.values;
+      // 静止ガイドは onChange の現在色を描画へ返す。同値の再描画では
+      // ドラッグ音の累積基準を消さず、外部から変わった部品だけ更新する。
+      if (next.h !== previous.h || next.s !== previous.s) lastStepColor.palette = { ...next };
+      if (next.v !== previous.v) lastStepColor.bar = { ...next };
       render();
     },
     get values() {

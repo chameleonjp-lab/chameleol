@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "本设备最高连胜！",
   "presentation.distanceRecord": "最远距离新纪录！",
   "presentation.lastFive": "再过{n}栋就逃脱",
+  "guidance.wall": "调成墙壁的颜色",
   "guidance.step1": "匹配颜色",
   "guidance.step2": "移动中匹配颜色",
   "guidance.step3": "匹配颜色和亮度",

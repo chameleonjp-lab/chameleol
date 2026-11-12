@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { cpSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { launch, ROOT } from './helpers.mjs';
+import { launch, ROOT, completeStationaryGuide } from './helpers.mjs';
 
 test('VERSION-01: 別の版の中断プレイは消さずに残し、その版のページへ案内する。新しく始める時は保管庫へ移す', async () => {
   execFileSync(process.execPath, [join(ROOT, 'scripts', 'build.mjs')], { cwd: ROOT, stdio: 'ignore', env: { ...process.env, KAMEREORU_ENV: 'verification' } });
@@ -22,7 +22,7 @@ test('VERSION-01: 別の版の中断プレイは消さずに残し、その版�
     // 新しい版で保存した中断プレイを端末に置く
     await page.evaluate(async () => {
       const a = globalThis.__kamereoru;
-      const snapshot = { format: 'kamereoru-run-v1', meta: { playId: 'future-play', launchId: 'l', ranked: false, name: '', seed: 1, rulesVersion: 'kamereoru-rules-v2', generatorVersion: 'kamereoru-course-v2', assetVersion: 'future-x' }, state: { t: 12345 }, history: [] };
+      const snapshot = { format: 'kamereoru-run-v1', meta: { playId: 'future-play', launchId: 'l', ranked: false, name: '', seed: 1, rulesVersion: 'kamereoru-rules-v99', generatorVersion: 'kamereoru-course-v2', assetVersion: 'future-x' }, state: { t: 12345 }, history: [] };
       await a.store.beginRun('other-tab', snapshot);
     });
     await page.reload();
@@ -32,7 +32,7 @@ test('VERSION-01: 別の版の中断プレイは消さずに残し、その版�
     assert.equal(await page.isVisible('[data-testid=home-continue]'), false, 'この版では再開しない');
     const run = await page.evaluate(() => globalThis.__kamereoru.store.loadRun());
     assert.equal(run.status, 'active', '別の版の保存は消さずに残す');
-    assert.equal(run.snapshot.meta.rulesVersion, 'kamereoru-rules-v2');
+    assert.equal(run.snapshot.meta.rulesVersion, 'kamereoru-rules-v99');
     // 案内先のページ（保存した版の資源）が開ける
     const res = await page.request.get(href);
     assert.equal(res.status(), 200);
@@ -42,8 +42,7 @@ test('VERSION-01: 別の版の中断プレイは消さずに残し、その版�
     await page.click('[data-testid=foreign-shelve]');
     const skip = await page.waitForSelector('[data-testid=skip-opening]', { timeout: 5000 }).catch(() => null);
     if (skip) await skip.click().catch(() => {});
-    const go = await page.waitForSelector('[data-testid=guide-skip]', { timeout: 5000 }).catch(() => null);
-    if (go) await go.click();
+    await completeStationaryGuide(page);
     await page.waitForFunction(() => globalThis.__kamereoru.session?.running === true, null, { timeout: 8000 });
     const q = await page.evaluate(() => globalThis.__kamereoru.store.getAll('quarantine'));
     assert.equal(q.length, 1);
@@ -88,7 +87,7 @@ test('単独公開版はランキング登録を表示せず、保存済みの�
     await page.click('[data-testid=home-start]');
     const skip = await page.waitForSelector('[data-testid=skip-opening]', { timeout: 5000 }).catch(() => null);
     if (skip) await skip.click().catch(() => {});
-    await page.click('[data-testid=guide-skip]');
+    await completeStationaryGuide(page);
     await page.waitForFunction(() => globalThis.__kamereoru.session?.running === true);
     assert.equal(await page.evaluate(() => globalThis.__kamereoru.session.meta.ranked), false);
     assert.deepEqual(env.errors, []);

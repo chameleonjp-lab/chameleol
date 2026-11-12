@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "Bu cihazın en iyi serisi!",
   "presentation.distanceRecord": "Yeni mesafe rekoru!",
   "presentation.lastFive": "Kaçışa {n} bina",
+  "guidance.wall": "Duvarın rengine uyum sağla",
   "guidance.step1": "Rengi eşleştir",
   "guidance.step2": "Hareket ederken rengi eşleştir",
   "guidance.step3": "Rengi ve parlaklığı eşleştir",

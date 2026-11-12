@@ -33,7 +33,7 @@ const SIDEWALK_Y = 0.22; // 歩道の上面
 const SIDEWALK_D = 4.45; // 歩道の奥行き（z=0 から縁石まで）
 const HERO_Z = 2.5; // 主人公が歩く位置
 const HERO_YAW = -0.42; // カメラ側へ少し向ける
-const PRACTICE_X = 3.2; // 練習時の主人公の位置
+const PRACTICE_X = 4; // 建物の中央より少し手前で壁と体を比較する
 const SCREEN_X = 0.38; // 主人公の横位置（左から）。後ろに警察が並ぶ分だけ、少し中央へ寄せる
 const FERRET_SCALE = 0.9; // 主人公（高さ約3）と並べて見える大きさ
 const FERRET_YAW = -0.36; // 主人公と同じく、カメラ側へ少し向ける
@@ -1433,9 +1433,13 @@ export function createThreeStage(container, { course, decorations, rules = RULES
           once('alarm', 0, () => onCue('alarm'));
           once('burst', 0.03, () => {
             fx.emit('glass', x + 0.4, SIDEWALK_Y + 1.8, HERO_Z - 0.6);
+            onCue('glassBurst');
             onCue('jump');
           });
-          once('land', 0.5, () => fx.emit('dust', x, SIDEWALK_Y + 0.12, HERO_Z, { count: 4 }));
+          once('land', 0.5, () => {
+            fx.emit('dust', x, SIDEWALK_Y + 0.12, HERO_Z, { count: 4 });
+            onCue('land');
+          });
           once('hide', 0.82, () => {
             hero.jewel.getWorldPosition(v3);
             fx.emit('gem', v3.x, v3.y, v3.z + 0.3, { count: 6 });

@@ -88,8 +88,11 @@ function nextBoundaryAfter(t, rules) {
   return base + rules.buildingMs;
 }
 
-function rateFor(units, rules) {
-  return rules.alert.ratePerMs[classifyMatch(units, rules)];
+function rateFor(units, building, rules) {
+  const rate = rules.alert.ratePerMs[classifyMatch(units, rules)];
+  if (rate <= 0) return rate;
+  const band = rules.alert.increaseBands?.find(({from,to}) => building >= from && building <= to);
+  return rate * (band?.percent ?? 100) / 100;
 }
 
 function comboBonusFor(combo, rules) {
@@ -187,7 +190,7 @@ function advanceTo(s, T, game, out) {
   while (s.status === 'playing' && s.t < T) {
     let next = Math.min(T, nextBoundaryAfter(s.t, rules));
     if (s.evalBuilding > 0) {
-      const rate = rateFor(s.matchUnits, rules);
+      const rate = rateFor(s.matchUnits, s.evalBuilding, rules);
       if (rate > 0) next = Math.min(next, s.t + Math.ceil((maxUnits - s.alert) / rate));
       const dt = next - s.t;
       s.acc.matchSum += s.matchUnits * dt;

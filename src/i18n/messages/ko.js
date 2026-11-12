@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "기기 전체 최고 연속 성공!",
   "presentation.distanceRecord": "최장 거리 갱신!",
   "presentation.lastFive": "탈출까지 {n}채",
+  "guidance.wall": "벽의 색에 맞춰 보세요",
   "guidance.step1": "색을 맞추세요",
   "guidance.step2": "움직이며 색을 맞추세요",
   "guidance.step3": "색과 밝기를 맞추세요",

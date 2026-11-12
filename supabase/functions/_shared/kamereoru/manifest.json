@@ -1,15 +1,15 @@
 {
   "generatedFrom": "src/rules/v1 + src/shared/name.js",
-  "fingerprint": "378174120dfc48341b60d3b8cc20e1b9e518e4b40af96f5dba10f3d219fa42fc",
+  "fingerprint": "82e9b9158c44f77319be67731a1d6b4848a676812008d8f7cef6c3a20e38ac94",
   "files": {
-    "rules/v1/config.js": "a8455377d640c1fbeb33ee2157e976d89b392b432987ea4e488a4be79b0e6bea",
+    "rules/v1/config.js": "2698a876fd7977dec73a5d6b2323e38a8eb04a1653845e2588e30f17890b9b26",
     "rules/v1/detmath.js": "5971c5ca276db89a077653d074436830278f00e3cc4f259050ca79371b225d7d",
     "rules/v1/color.js": "15a005e6e35c185de7ebb77ce6845655c489d7455efbecc2f06c451c4e0d02b6",
     "rules/v1/course.js": "39cb2396066489a9cc9abdf018109f1b1389b4b8362e31f10112ad9debd18659",
-    "rules/v1/engine.js": "0a4e5d89727b39d7d662f97d68f128cfe5437b47077877042040936fedef2c65",
+    "rules/v1/engine.js": "8da9443df90e91690a8a82fc84ff6c4e5696392532ec5164405c3ee47a136406",
     "rules/v1/history.js": "14b780845c2218568b16003c0f64ad30f7fd6f454284efa8c47bcb6976d3f819",
     "rules/v1/manifest.js": "bafe0c77ffa6bf6f8b830ca9177fc3c3dc916fdd04c2f02061f895062abb978d",
-    "rules/v1/index.js": "4b58a36da6eee6abe8b415979e0ebb1d1fa5e80c1de9de84a7b65b3de0258574",
+    "rules/v1/index.js": "22ec38ec21ccbe43fc7c07f39a98c36920a08d3c9ae9e836a6c48d834c585b7b",
     "shared/name.js": "2cfdfe3b3194a7c7148a17cf06af15ac5cd4f58b96c9c6891b5c71ebf8979654"
   }
 }

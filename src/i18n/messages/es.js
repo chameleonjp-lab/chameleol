@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "¡Mejor racha de este dispositivo!",
   "presentation.distanceRecord": "¡Nuevo récord de distancia!",
   "presentation.lastFive": "{n} para escapar",
+  "guidance.wall": "Iguala el color de la pared",
   "guidance.step1": "Iguala el color",
   "guidance.step2": "Iguala el color en movimiento",
   "guidance.step3": "Iguala color y brillo",

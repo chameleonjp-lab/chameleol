@@ -88,6 +88,30 @@ export const RULES_V1 = deepFreeze({
   rankUnitsPerPercent: 100,
 });
 
+// 新規の単独プレイ用。旧版の保存と履歴を再計算できるようv1は変更しない。
+// 0.5倍・0.8倍でも警戒の積算を整数で保つため、内部単位を10倍にする。
+export const RULES_V2 = deepFreeze({
+  ...RULES_V1,
+  rulesVersion: 'kamereoru-rules-v2',
+  alert: {
+    unitsPerPoint: 10000,
+    maxUnits: 1000000,
+    ratePerMs: { success: -350, slight: 120, danger: 450 },
+    increaseBands: [
+      { from: 20, to: 25, percent: 50 },
+      { from: 26, to: 30, percent: 80 },
+    ],
+    stages: [
+      { enterAt: 300000, exitBelow: 250000 },
+      { enterAt: 700000, exitBelow: 650000 },
+    ],
+  },
+});
+
+export function rulesForVersion(version = RULES_V2.rulesVersion) {
+  return version === RULES_V1.rulesVersion ? RULES_V1 : version === RULES_V2.rulesVersion ? RULES_V2 : null;
+}
+
 // 出題の難易度帯（試作値）。帯ごとに、生成前に許容する色・操作移動量・明暗の条件を置く。
 // paletteMove は円の半径を1としたときのマーカー移動距離、barMove は明るさの差（0〜10,000）。
 // deltaE は直前の棟の目標色との色差（CIEDE2000）。

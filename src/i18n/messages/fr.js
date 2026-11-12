@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "Meilleure série sur cet appareil !",
   "presentation.distanceRecord": "Nouveau record de distance !",
   "presentation.lastFive": "Encore {n} avant la fuite",
+  "guidance.wall": "Reproduis la couleur du mur",
   "guidance.step1": "Reproduisez la couleur",
   "guidance.step2": "Reproduisez la couleur en mouvement",
   "guidance.step3": "Reproduisez couleur et luminosité",

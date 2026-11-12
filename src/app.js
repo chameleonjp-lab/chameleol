@@ -2,7 +2,7 @@
 // 本編の状態：ホーム→開始準備→初回演出（初回のみ）→進行中↔一時停止→再開カウントダウン→進行中→終了確定→終了演出→結果
 // 送信・審査の状態は画面とは別に管理し、送信待ちで次のプレイを止めない。
 import {
-  RULES_V1,
+  RULES_V2 as RULES_V1,
   makeDecorations,
   createGame,
   rankAverage,
@@ -53,12 +53,13 @@ function randomSeed() {
 
 const better = (a, b) => !b || a.buildings > b.buildings || (a.buildings === b.buildings && (a.rankAverage ?? -1) > (b.rankAverage ?? -1));
 
-class App {
-  constructor(root) {
+export class App {
+  constructor(root, { audio = null, stageFactory = null } = {}) {
     this.root = root;
     this.runtime = loadRuntimeConfig();
     this.api = createApi({ base: this.runtime.apiBase });
-    this.audio = createMixer();
+    this.audio = audio ?? createMixer();
+    this.stageFactory = stageFactory ?? createStage;
     this.store = null;
     this.flags = {};
     this.nameRaw = '';
@@ -68,6 +69,7 @@ class App {
     this.memoryOnly = false;
     this.startToken = null;
     this.startAttempt = null;
+    this.practiceToken = null;
     this.screenGeneration = 0;
     this.presentationScope = null;
     this.raf = 0;
@@ -113,8 +115,53 @@ class App {
 
   /** 本編の外（ホーム・結果・練習など）で流す曲を決めて、音を準備する。 */
   async wakeMenuAudio() {
-    if (this.session || !this.menuTheme) return;
-    if (await this.audio.prepare()) this.audio.setMusic(this.menuTheme);
+    if (this.session || !this.menuTheme) return false;
+    const gen = this.screenGeneration;
+    let ready = false;
+    try {
+      ready = await this.audio.prepare();
+    } catch {
+      return false;
+    }
+    if (!ready || this.session || !this.menuTheme) return false;
+    if (this.screenGeneration === gen) {
+      this.audio.setMusic(this.menuTheme);
+    }
+    return ready;
+  }
+
+  /**
+   * パレット・明るさバーの操作開始／ドラッグ刻み／通常の指離し音を結線する。
+   * - 指を動かさない単発タップでは touchPalette / touchBar のみ鳴り、colorStep は一切鳴らない（controls 側で phase === 'move' のみ発火）。
+   * - play() が false を返した場合でも、AudioContext が既に running なら（消音・音量0・最短間隔抑止のため）wakeMenuAudio() を呼ばない。
+   * - 未準備状態で wakeMenuAudio() を待った場合は、完了時に画面世代・セッション・操作部品の有効性を再確認し、古い操作音は破棄する。
+   */
+  controlAudioCallbacks() {
+    const triggerPlay = (name, opts) => {
+      if (this.audio.play(name, opts)) return;
+      if (this.audio.running) return;
+      if (!this.session && this.menuTheme) {
+        const gen = this.screenGeneration;
+        const ctrl = this.controls;
+        this.wakeMenuAudio().then((ready) => {
+          if (!ready) return;
+          if (this.screenGeneration !== gen || this.session) return;
+          if (ctrl && (this.controls !== ctrl || ctrl.el.classList.contains('disabled'))) return;
+          this.audio.play(name, opts);
+        });
+      }
+    };
+    return {
+      onPartDown: (part) => {
+        triggerPlay(part === 'bar' ? 'touchBar' : 'touchPalette');
+      },
+      onPartUp: (_part, changed) => {
+        if (changed) triggerPlay('colorRelease');
+      },
+      onColorStep: (c) => {
+        triggerPlay('colorStep', { v: c.v });
+      },
+    };
   }
 
   setMenuMusic(theme) {
@@ -239,7 +286,8 @@ class App {
     const pendingBadge = h('span', { class: 'badge', hidden: true });
     const recordsBtn = button(showOnline ? 'home.records' : 'records.localTitle', () => this.showRecords(), { testid: 'home-records' });
     if (showOnline) recordsBtn.append(pendingBadge);
-    const homeArt = h('div', { class: 'home-art', 'aria-hidden': 'true' }, [h('div', { class: 'home-chameleon' }), h('div', { class: 'home-jewel' })]);
+    // 読み込み中も現行モデルの領域を確保し、旧CSSキャラクターを一瞬表示しない。
+    const homeArt = h('div', { class: 'home-art home-art-3d', 'aria-hidden': 'true' });
     const notices = h('div', { class: 'notices' });
     for (const key of this.notices.splice(0)) notices.append(h('p', { class: 'notice' }, t(key)));
     if (showOnline && this.flags.recordsChanged) notices.append(h('p', { class: 'notice notice-update' }, [t('notice.recordsUpdated'), ' ', button('home.records', () => this.showRecords(), { className: 'btn-small' })]));
@@ -409,7 +457,11 @@ class App {
   }
 
   async prepareStart(attempt, rawName) {
-    await this.audio.prepare();
+    try {
+      await this.audio.prepare();
+    } catch {
+      /* 音の準備に失敗しても開始処理は止めない */
+    }
     if (!this.isStartCurrent(attempt)) return;
     this.audio.play('confirm');
     const name = normalizeName(this.runtime.isVerification || this.api.configured ? rawName : '');
@@ -623,6 +675,7 @@ class App {
       name: ranked ? name : '',
       requestId: startRecord?.requestId ?? null,
       seed: ranked ? startRecord.response.seed : randomSeed(),
+      rulesVersion: ranked ? startRecord.response.rulesVersion : undefined,
       gameVersion: this.runtime.gameVersion,
       assetVersion: this.runtime.assetVersion,
       startedAt: Date.now(),
@@ -681,7 +734,11 @@ class App {
 
   async restoreRun(playId, attempt) {
     attempt.state = 'starting';
-    await this.audio.prepare();
+    try {
+      await this.audio.prepare();
+    } catch {
+      /* 音の準備に失敗しても再開処理は止めない */
+    }
     if (!this.isStartCurrent(attempt)) return;
     const claimed = await this.store.claimRun(TAB_ID, playId).catch(() => null);
     if (!this.isStartCurrent(attempt)) return;
@@ -735,7 +792,7 @@ class App {
   async showGame(session, { fresh }) {
     this.session = session;
     this.setMenuMusic(null); // 本編の曲は、時計が動き始めた時に流す
-    const rules = RULES_V1;
+    const rules = session.rules;
     const decorations = makeDecorations(session.meta.seed);
     const stageBox = h('div', { class: 'stage', 'data-testid': 'stage' });
     const cover = h('div', { class: 'cover', hidden: true });
@@ -771,7 +828,8 @@ class App {
         observedEvalSuccess = classifyMatch(session.state.matchUnits, rules) === 'success';
       }
     };
-    let guidance=null,guideUI=null,ready=false,guideAudioRunning=false;
+    let guidance=null,guideUI=null,ready=false,guideAudioRunning=false,firstAudioStart=fresh;
+    const ctrlAudio = this.controlAudioCallbacks();
     const controls = createControls({
       onChange: (c) => {
         if (guidance?.view().stationary) guidance.setDraft(c);
@@ -781,6 +839,7 @@ class App {
         this.audio.play('locked');
         showNotice(t('controls.lockedHint'), { duration: 1400 });
       },
+      ...ctrlAudio,
     });
     const el = h('main', { class: 'screen game' }, [h('div', { class: 'stage-wrap' }, [stageBox, hud, switchOk, matchWord, banner, cover]), controls.el]);
     this.mount(el, null);
@@ -810,22 +869,17 @@ class App {
       if (!current() || !guidance || !ready) return;
       const v=guidance.view();
       const audioRunning=session.running&&!document.hidden&&!this.takenOver&&(this.coverEl?.hidden??true);
-      if(audioRunning!==guideAudioRunning){guideAudioRunning=audioRunning;if(audioRunning)this.audio.startGameAudio();else this.audio.stopGameAudio();}
+      if(audioRunning!==guideAudioRunning){guideAudioRunning=audioRunning;if(audioRunning){this.audio.startGameAudio({reset:firstAudioStart});firstAudioStart=false;}else this.audio.stopGameAudio();}
       guideUI?.render(v);
       presentationHud.setGuideActive(Boolean(v.step));
       controls.setLocked(!v.brightnessUnlocked);
       if (v.stationary) controls.setValues(v.color);
       controls.setEnabled(!this.takenOver && !document.hidden && (this.coverEl?.hidden ?? true) && (session.running || v.stationary));
     };
-    const guideDone = (skip) => {
-      if(!ready||!current()||document.hidden||this.takenOver)return;
-      const resumed = skip ? guidance.skip(performance.now()) : guidance.continue(performance.now());
-      if(resumed)this.saveNow('guide');
-      renderGuide();
-    };
-    guideUI = mountGuidance({host:guideHost,controls,onContinue:()=>guideDone(false),onSkip:()=>guideDone(true)});
+    guideUI = mountGuidance({host:guideHost,controls});
     scope.own(()=>guideUI.dispose());
-    guidance = createGuidance({session,progress:initialProgress,canResume:()=>current()&&!document.hidden&&!this.takenOver&&(this.coverEl?.hidden??true),
+    guidance = createGuidance({session,progress:initialProgress,canResume:()=>ready&&current()&&!document.hidden&&!this.takenOver&&(this.coverEl?.hidden??true),
+      onComplete:()=>{this.audio.play('guideClear');this.saveNow('guide');},
       onChange:renderGuide,
       onProgress:async (update, progress) => {
         this.guideMemory = progress;
@@ -843,7 +897,7 @@ class App {
     this.guidance = guidance;
     this.renderGuidance = renderGuide;
     scope.own(()=>{guidance.dispose();if(this.guidance===guidance){this.guidance=null;this.renderGuidance=null;}});
-    const stageView = await createStage(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,verification:this.runtime.isVerification});
+    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,verification:this.runtime.isVerification});
     if (!current()) { stageView.dispose(); return; }
     this.stage = stageView;
     stageView.setBestDistance?.(local?.buildings??null);
@@ -859,11 +913,11 @@ class App {
     let lastSaveT = session.state.t;
     let lastStage = 0;
     let lastCombo = session.state.combo ?? 0;
-    {
-      const b0 = Math.min(rules.buildingCount, Math.floor(session.state.t / rules.buildingMs) + 1);
-      this.audio.setArea(areaOf(b0).time);
-      this.audio.setFinale(b0 >= 40);
-    }
+    const b0 = Math.min(rules.buildingCount, Math.floor(session.state.t / rules.buildingMs) + 1);
+    const announcedTierUp = new Set([11, 21, 31, 41].filter((n) => n <= b0));
+    this.audio.setBuilding(b0);
+    this.audio.setArea(areaOf(b0).time);
+    this.audio.setFinale(b0 >= 41);
     const refreshHud = () => {
       const s = session.state;
       hudBuildings.textContent = t('game.buildings', { n: s.passed, total: rules.buildingCount });
@@ -907,16 +961,25 @@ class App {
           case 'reachUnlockBuilding':
             this.setFlag('brightnessPractice', true);
             break;
-          case 'enterBuilding':
+          case 'enterBuilding': {
+            const b = Math.min(rules.buildingCount, ev.building);
             if (ev.building === rules.brightnessUnlockBuilding - 1) showNotice(t('game.unlockSoon'), { duration: 2200 });
-            this.audio.setArea(areaOf(Math.min(rules.buildingCount, ev.building)).time);
-            this.audio.setFinale(ev.building >= 40);
-            if (ev.building === 40) {
+            this.audio.setBuilding(b);
+            this.audio.setArea(areaOf(b).time);
+            this.audio.setFinale(b >= 41);
+            if (b === 40) {
               showNotice(t('game.milestone.final'), { duration: 1600 });
               this.audio.play('milestone');
               this.stage?.fx('milestone');
             }
+            if ([11, 21, 31, 41].includes(b) && !announcedTierUp.has(b)) {
+              announcedTierUp.add(b);
+              this.audio.play('tierUp', { tier: Math.floor((b - 1) / 10) });
+            } else if (b >= 46 && b <= 50) {
+              this.audio.play('lastFive', { building: b });
+            }
             break;
+          }
           case 'pass':
             if (ev.building === 25) {
               // 25棟目の通過＝中間地点（仕様 FX-03）
@@ -929,9 +992,11 @@ class App {
               this.stage?.fx('combo');
               showNotice(t('game.comboMilestone', { n: ev.combo }), { duration: 1400, kind: 'combo' });
             } else if (ev.success && ev.combo > 1) {
+              this.audio.play('passBuilding', { combo: ev.combo });
               this.stage?.fx('pass');
               showNotice(t('game.combo', { n: ev.combo }), { duration: 900 });
             } else if (ev.success) {
+              this.audio.play('passBuilding', { combo: 1 });
               this.stage?.fx('pass');
             } else if (lastCombo >= 2) {
               this.audio.play('comboBreak'); // 連続成功が途切れた
@@ -1003,14 +1068,17 @@ class App {
       refreshHud();
       const matchState = s.matchUnits == null ? null : classifyMatch(s.matchUnits);
       const searching = matchState === 'success' && stage > 0;
-      if (searching && !wasSearching) stageView.presentationEvent({ type: 'searchStart', t: s.t });
+      if (searching && !wasSearching) {
+        this.audio.play('policeSearch');
+        stageView.presentationEvent({ type: 'searchStart', t: s.t });
+      }
       wasSearching = searching;
       const playView = readPlayView(session, stage, {lastEvalSuccess});
       const guideView = guidance.view();
       presentationHud.setGuideActive(Boolean(guideView.step));
       presentationHud.tick(playView);
       renderGuide();
-      stageView.update({t:s.t,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step)}});
+      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step)}});
       this.raf = requestAnimationFrame(loop);
     };
 
@@ -1049,7 +1117,10 @@ class App {
   async playOpening() {
     const ctrl = new AbortController();
     this.presentationScope?.own(() => ctrl.abort());
-    const skip = button('common.skip', () => ctrl.abort(), { className: 'btn-skip', testid: 'skip-opening' });
+    const skip = button('common.skip', () => {
+      this.audio.stopSfx?.();
+      ctrl.abort();
+    }, { className: 'btn-skip', testid: 'skip-opening' });
     this.layer.append(skip);
     await this.stage.playOpening({ signal: ctrl.signal, onCue: (name) => this.audio.play(name) });
     skip.remove();
@@ -1068,9 +1139,11 @@ class App {
   }
 
   /** 停止画面。壁を覆い、音・入力・時計を止める。 */
-  showPause(reason) {
+  showPause(reason, { settingsOpen = false } = {}) {
     const session = this.session;
     if (!session) return;
+    this.countdownActive = false;
+    this.countdownToken = null;
     this.controls?.releaseAll();
     this.controls?.setEnabled(false);
     this.controls?.setValues(session.state.color);
@@ -1082,22 +1155,35 @@ class App {
       h('h2', {}, t(titleKey)),
       reason === 'restored' ? h('p', { class: 'note' }, t('pause.restoredBody', { n: session.state.passed })) : null,
       button('pause.resume', () => this.beginCountdown(), { primary: true, testid: 'pause-resume' }),
-      button('pause.sound', () => this.showPauseSettings(panel), { testid: 'pause-sound' }),
+      button('pause.sound', () => this.showPauseSettings(panel, reason), { testid: 'pause-sound' }),
       button('pause.restart', () => this.confirmQuit('restart'), { testid: 'pause-restart' }),
       button('pause.home', () => this.confirmQuit('home'), { testid: 'pause-home' }),
     ]);
+    panel.querySelector('[data-testid="pause-sound"]').setAttribute('aria-expanded', 'false');
+    panel.querySelector('[data-testid="pause-sound"]').setAttribute('aria-controls', 'pause-settings');
     this.layer.append(h('div', { class: 'pause-overlay' }, [panel]));
+    if (settingsOpen) this.showPauseSettings(panel, reason);
   }
 
-  showPauseSettings(panel) {
-    const box = h('div', { class: 'pause-settings' }, [
+  showPauseSettings(panel, reason = 'user') {
+    const toggle = panel.querySelector('[data-testid="pause-sound"]');
+    const existing = panel.querySelector('.pause-settings');
+    if (existing) {
+      existing.remove();
+      toggle.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    const box = h('div', { class: 'pause-settings', id: 'pause-settings' }, [
       audioSettings({ mixer: this.audio, onChange: (c) => this.safeSet('audio', this.audio.setSettings(c)) }),
-      languageSelect({ onChange: (id) => this.changeLanguage(id, () => this.showPause('user')) }),
+      languageSelect({ onChange: (id) => this.changeLanguage(id, () => this.showPause(reason, { settingsOpen: true })) }),
     ]);
     panel.append(box);
+    toggle.setAttribute('aria-expanded', 'true');
   }
 
   confirmQuit(next) {
+    this.countdownActive = false;
+    this.countdownToken = null;
     dialog(this.layer, {
       titleKey: 'pause.quitTitle',
       bodyKey: 'pause.quitBody',
@@ -1115,17 +1201,29 @@ class App {
   /** 再開カウントダウン（仮3秒）。覆いは外さず、入力・計測は止めたまま。 */
   async beginCountdown() {
     const session = this.session;
-    await this.audio.prepare();
+    if (!session || session.ended || session.running || this.takenOver || this.countdownActive) return;
+    const token = (this.countdownToken = {});
+    this.countdownActive = true;
+    const isCurrent = () => this.session === session && !session.ended && !this.takenOver && this.countdownToken === token && this.countdownActive;
+    try {
+      await this.audio.prepare();
+    } catch {
+      /* 音の準備に失敗してもカウントダウンは続ける */
+    }
+    if (!isCurrent()) return;
+    if (document.visibilityState === 'hidden') {
+      this.showPause('user');
+      return;
+    }
     clear(this.layer);
     const num = h('div', { class: 'countdown', 'data-testid': 'countdown' });
     this.layer.append(h('div', { class: 'pause-overlay countdown-overlay' }, [num]));
     const total = RULES_V1.resumeCountdownMs;
     const started = performance.now();
-    this.countdownActive = true;
     await new Promise((resolve) => {
       let lastShown = -1;
       const tick = () => {
-        if (this.session !== session || !this.countdownActive) return resolve();
+        if (!isCurrent()) return resolve();
         const left = total - (performance.now() - started);
         const n = Math.ceil(left / 1000);
         if (n !== lastShown && n > 0) {
@@ -1141,8 +1239,9 @@ class App {
       };
       tick();
     });
-    if (this.session !== session || !this.countdownActive) return;
+    if (!isCurrent()) return;
     this.countdownActive = false;
+    this.countdownToken = null;
     if (document.visibilityState === 'hidden') {
       this.showPause('user');
       return;
@@ -1193,6 +1292,8 @@ class App {
   }
 
   showTakenOver() {
+    this.countdownActive = false;
+    this.countdownToken = null;
     clear(this.layer);
     dialog(this.layer, { titleKey: 'notice.takenOverTitle', bodyKey: 'notice.takenOver', actions: [{ key: 'common.home', primary: true, onClick: () => this.leaveGame() }] });
   }
@@ -1246,6 +1347,8 @@ class App {
   async finishPlay(reason) {
     const session = this.session;
     if (!session || this.finishing === session) return;
+    this.countdownActive = false;
+    this.countdownToken = null;
     this.finishing = session;
     const generation = this.screenGeneration;
     this.presentationScope?.dispose();
@@ -1282,7 +1385,10 @@ class App {
     const ctrl = new AbortController();
     scope.own(() => ctrl.abort());
     clear(this.layer);
-    const skip = button('common.skip', () => ctrl.abort(), { className: 'btn-skip', testid: 'skip-ending' });
+    const skip = button('common.skip', () => {
+      this.audio.stopSfx?.();
+      ctrl.abort();
+    }, { className: 'btn-skip', testid: 'skip-ending' });
     this.layer.append(skip);
     const comic=reason==='detected'?h('div',{class:'ending-comic','aria-hidden':'true'},'!'):null;
     if(comic)this.layer.append(comic);
@@ -1473,8 +1579,11 @@ class App {
   // ---------- 練習 ----------
   async showPracticeMenu() {
     this.disposeStage();
+    const token = (this.practiceToken = {});
+    const gen = this.screenGeneration;
     const unlocked = !!this.flags.brightnessPractice;
     const history = await this.store.listPractice().catch(() => []);
+    if (this.practiceToken !== token || this.screenGeneration !== gen) return;
     const historyList = h(
       'ul',
       { class: 'practice-history' },
@@ -1511,23 +1620,41 @@ class App {
   }
 
   async startGuidePractice(step){
+    const token=(this.practiceToken={});
+    const gen=this.screenGeneration;
+    const isRequestCurrent=()=>this.practiceToken===token&&this.screenGeneration===gen;
+    try{
+      await this.audio.prepare();
+    }catch{
+      /* 音の準備に失敗しても練習の開始・進行は止めない */
+    }
+    if(!isRequestCurrent())return null;
     const seed=1,practice=createGuidePractice({step,seed}),course=createGame({seed,rules:RULES_V1}).course;
     const stageBox=h('div',{class:'stage','data-testid':'stage'}),guideHost=h('div',{class:'guidance-host'}),actions=h('div',{class:'guide-practice-actions',hidden:true});
-    let paused=false,viewUI;
-    const controls=createControls({onChange:color=>{practice.setColor(color);render();}});
+    let paused=false,viewUI,completedSoundPlayed=false;
+    const ctrlAudio=this.controlAudioCallbacks();
+    const controls=createControls({
+      onChange:color=>{practice.setColor(color);render();},
+      onLockedTap:()=>this.audio.play('locked'),
+      ...ctrlAudio,
+    });
     const pause=button('game.pause',()=>{paused=!paused;clock(performance.now(),true);controls.setEnabled(!paused);},{testid:'guide-practice-pause'});
-    const finish=()=>{actions.hidden=false;controls.setEnabled(false);};
+    const finish=()=>{
+      if(!completedSoundPlayed){completedSoundPlayed=true;this.audio.play('guideClear');}
+      actions.hidden=false;controls.setEnabled(false);
+    };
     const render=()=>{const v=practice.view();viewUI?.render(v);if(v.complete)finish();};
     actions.append(button('guidance.again',()=>this.startGuidePractice(step),{testid:'guide-practice-again'}),button('guidance.choose',()=>this.showGuidePracticeMenu(),{testid:'guide-practice-choose'}),button('guidance.back',()=>this.showPracticeMenu(),{testid:'guide-practice-back'}));
-    const el=h('main',{class:'screen game guide-practice'},[h('div',{class:'stage-wrap'},[stageBox,pause,guideHost,actions]),controls.el]);
-    this.mount(el);this.setMenuMusic('practice');
+    const tools=h('div',{class:'guide-practice-tools'},[pause,button('guidance.back',()=>this.showGuidePracticeMenu(),{testid:'guide-practice-exit'})]);
+    const el=h('main',{class:'screen game guide-practice'},[h('div',{class:'stage-wrap'},[stageBox,tools,guideHost,actions]),controls.el]);
+    this.mount(el);this.practiceToken=token;this.setMenuMusic('practice');
     const id=`${this.screenGeneration}:practice`,scope=createPresentationScope({id,kind:'game'});this.presentationScope=scope;
-    const current=()=>this.presentationScope===scope&&scope.isCurrent(id);
+    const current=()=>this.practiceToken===token&&this.presentationScope===scope&&scope.isCurrent(id);
     this.controls=controls;scope.own(()=>{practice.dispose();cancelAnimationFrame(this.raf);});
     const clock=createVisiblePresentationClock({visibilityTarget:document});scope.own(clock.dispose);
-    viewUI=mountGuidance({host:guideHost,controls,onContinue:()=>{practice.continue();render();},onSkip:()=>{practice.skip();render();}});scope.own(viewUI.dispose);
-    const stage=await createStage(stageBox,{course,decorations:makeDecorations(seed)});
-    if(!current()){stage.dispose();return;}
+    viewUI=mountGuidance({host:guideHost,controls});scope.own(viewUI.dispose);
+    const stage=await this.stageFactory(stageBox,{course,decorations:makeDecorations(seed)});
+    if(!current()){stage.dispose();return null;}
     this.stage=stage;
     controls.layout();controls.setValues(practice.view().color);controls.setLocked(step<3);
     if(step%2===1)stage.showPractice(practice.view().target);
@@ -1542,10 +1669,17 @@ class App {
   }
 
   async startPractice(kind) {
-    await this.audio.prepare();
+    const token = (this.practiceToken = {});
+    const gen = this.screenGeneration;
+    const isRequestCurrent = () => this.practiceToken === token && this.screenGeneration === gen;
+    try {
+      await this.audio.prepare();
+    } catch {
+      /* 音の準備に失敗しても練習の開始・進行は止めない */
+    }
+    if (!isRequestCurrent()) return null;
     this.audio.play('confirm');
     const practice = createPractice({ kind, seed: randomSeed() });
-    this.setMenuMusic('practice');
     let showValue = false;
     let paused = false;
     let reviewing = false;
@@ -1574,7 +1708,12 @@ class App {
     const skipBtn = button('practice.skip', () => onSkip(), { testid: 'practice-skip' });
     const nextBtn = button('practice.next', () => onNext(), { primary: true, testid: 'practice-next' });
     const review = h('div', { class: 'practice-review', hidden: true });
-    const controls = createControls({ onChange: (c) => practice.setColor(c), onLockedTap: () => this.audio.play('locked') });
+    const ctrlAudio = this.controlAudioCallbacks();
+    const controls = createControls({
+      onChange: (c) => practice.setColor(c),
+      onLockedTap: () => this.audio.play('locked'),
+      ...ctrlAudio,
+    });
     const el = h('main', { class: 'screen game practice' }, [
       h('div', { class: 'stage-wrap' }, [
         stageBox,
@@ -1586,15 +1725,34 @@ class App {
       controls.el,
     ]);
     this.mount(el, null);
+    this.practiceToken = token;
+    this.setMenuMusic('practice');
+    const id = `${this.screenGeneration}:practice`;
+    const scope = createPresentationScope({ id, kind: 'game' });
+    this.presentationScope = scope;
+    const current = () => this.practiceToken === token && this.presentationScope === scope && scope.isCurrent(id) && el.isConnected;
+    this.controls = controls;
+    scope.own(() => cancelAnimationFrame(this.raf));
     controls.layout();
     controls.setValues(practice.color);
     controls.setLocked(kind === 'basic');
-    this.stage = await createStage(stageBox, { course: { targets: [practice.question.target] }, decorations: [{ heightScale: 100, kind: 'house', windows: 2, trimTone: 0, sign: -1 }] });
-    this.stage.showPractice(practice.question.target);
-    requestAnimationFrame(() => {
-      controls.layout();
-      this.stage.resize();
+    const stage = await this.stageFactory(stageBox, { course: { targets: [practice.question.target] }, decorations: [{ heightScale: 100, kind: 'house', windows: 2, trimTone: 0, sign: -1 }] });
+    if (!current()) {
+      stage.dispose();
+      return null;
+    }
+    this.stage = stage;
+    this.practice = practice;
+    scope.own(() => {
+      if (this.practice === practice) this.practice = null;
     });
+    this.stage.showPractice(practice.question.target);
+    const layoutFrame = requestAnimationFrame(() => {
+      if (!current()) return;
+      controls.layout();
+      this.stage?.resize();
+    });
+    scope.own(() => cancelAnimationFrame(layoutFrame));
 
     const refresh = () => {
       const q = practice.question;
@@ -1636,13 +1794,14 @@ class App {
         this.finishPractice(practice);
         return;
       }
+      controls.setValues(practice.color);
       this.stage.showPractice(practice.question.target);
       refresh();
     };
     let last = performance.now();
     let wasSucceeded = false;
     const loop = () => {
-      if (!el.isConnected) return;
+      if (!current()) return;
       const now = performance.now();
       const dt = now - last;
       last = now;
@@ -1658,11 +1817,16 @@ class App {
     };
     refresh();
     this.raf = requestAnimationFrame(loop);
+    return practice;
   }
 
   async finishPractice(practice) {
+    const generation = this.screenGeneration;
+    const token = this.practiceToken;
     const result = practice.result();
     await this.store.addPractice(result).catch(() => {});
+    // 保存は完了させるが、その間に離れた画面や新しい練習は上書きしない。
+    if (this.screenGeneration !== generation || this.practiceToken !== token) return;
     this.disposeStage();
     const rows = result.questions.map((q) =>
       h('tr', {}, [
@@ -1763,10 +1927,14 @@ class App {
   }
 
   async changeLanguage(id, after) {
-    setLanguage(id);
+    const previousLayer = this.layer;
+    if (!setLanguage(id)) return;
+    // 通常画面は言語変更通知で再描画済み。停止画面だけ、ここで直ちに更新する。
+    if (this.layer === previousLayer) after?.();
+    const layer = this.layer;
     const ok = await this.safeSet('lang', id);
-    if (!ok) toast(this.layer, t('settings.langNotSaved'));
-    after?.();
+    // 保存完了を待って画面を戻さない。失敗の通知も、その操作をした画面に限る。
+    if (!ok && this.layer === layer && getLanguage() === id) toast(layer, t('settings.langNotSaved'));
   }
 
   showHowTo() {
@@ -1786,13 +1954,13 @@ class App {
     const el = h('main', { class: 'screen game' }, [h('div', { class: 'stage-wrap' }, [stageBox])]);
     this.mount(el, null);
     this.setMenuMusic(null);
-    this.stage = await createStage(stageBox, { course: { targets: Array.from({ length: 50 }, () => ({ h: 3000, s: 5000, v: 10000 })) }, decorations: makeDecorations(1), showOpeningShop: true });
+    this.stage = await this.stageFactory(stageBox, { course: { targets: Array.from({ length: 50 }, () => ({ h: 3000, s: 5000, v: 10000 })) }, decorations: makeDecorations(1), showOpeningShop: true });
     this.stage.resize();
     await this.playOpening();
     this.showHowTo();
   }
 
-  /** ホームの立体のカメレオン（WebGL が使えない時は CSS の絵のまま）。 */
+  /** ホームは現行の立体モデルだけを表示する。利用不可でも旧キャラクターに戻さない。 */
   async mountShowcase(host) {
     const token = (this.showcaseToken = {});
     try {
@@ -1801,10 +1969,9 @@ class App {
       const { createShowcase } = await import('./scene/showcase.js');
       if (this.showcaseToken !== token || !host.isConnected) return;
       clear(host);
-      host.classList.add('home-art-3d');
       this.showcase = createShowcase(host);
     } catch {
-      /* 絵のまま */
+      /* モデルを表示できなくても、ホームの操作はそのまま使える。 */
     }
   }
 
@@ -1812,6 +1979,8 @@ class App {
     this.presentationScope?.dispose();
     this.presentationScope = null;
     this.countdownActive = false;
+    this.countdownToken = null;
+    this.practiceToken = null;
     this.showcaseToken = null;
     this.showcase?.dispose();
     this.showcase = null;

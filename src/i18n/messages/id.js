@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "Rangkaian terbaik di perangkat ini!",
   "presentation.distanceRecord": "Rekor jarak baru!",
   "presentation.lastFive": "{n} lagi untuk lolos",
+  "guidance.wall": "Samakan dengan warna dinding",
   "guidance.step1": "Cocokkan warna",
   "guidance.step2": "Cocokkan warna sambil bergerak",
   "guidance.step3": "Cocokkan warna dan kecerahan",
