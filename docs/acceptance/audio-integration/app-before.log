@@ -1,0 +1,15 @@
+✖ tests/ui/app-audio.test.mjs (213.367855ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 229.691314
+
+✖ failing tests:
+
+test at tests/ui/app-audio.test.mjs:1:1
+✖ tests/ui/app-audio.test.mjs (213.367855ms)
+  'test failed'

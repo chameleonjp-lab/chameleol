@@ -28,6 +28,7 @@
   "devDependencies": {
     "esbuild": "0.28.2",
     "fake-indexeddb": "6.2.7",
+    "linkedom": "0.18.12",
     "pg": "8.23.1",
     "quickjs-emscripten": "0.32.0"
   }

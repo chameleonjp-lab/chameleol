@@ -1,0 +1,25 @@
+✖ 本編開始は前の曲と本編の再開始前の予約を取り消し、単発SEは残す (11.299338ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 122.331654
+
+✖ failing tests:
+
+test at tests/audio/mixer.test.mjs:608:1
+✖ 本編開始は前の曲と本編の再開始前の予約を取り消し、単発SEは残す (11.299338ms)
+  AssertionError [ERR_ASSERTION]: menu の予約を残さない
+      at TestContext.<anonymous> (file:///workspace/chameleol/tests/audio/mixer.test.mjs:626:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

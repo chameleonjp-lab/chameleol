@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "สถิติต่อเนื่องสูงสุดในอุปกรณ์นี้!",
   "presentation.distanceRecord": "สถิติระยะทางใหม่!",
   "presentation.lastFive": "อีก {n} ตึกจะหนีรอด",
+  "guidance.wall": "ปรับสีให้เหมือนกำแพง",
   "guidance.step1": "ปรับสีให้ตรง",
   "guidance.step2": "ปรับสีให้ตรงขณะเคลื่อนที่",
   "guidance.step3": "ปรับสีและความสว่างให้ตรง",

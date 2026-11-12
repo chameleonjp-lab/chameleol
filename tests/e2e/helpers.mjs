@@ -47,19 +47,27 @@ export async function openHome(page, url) {
   await page.waitForSelector('[data-testid=home-start]');
 }
 
+/** 色合わせの目印を実際に操作し、静止案内を自動で終える。 */
+export async function completeStationaryGuide(page) {
+  await page.waitForFunction(() => globalThis.__kamereoru?.guidance != null);
+  const stationary = await page.evaluate(() => globalThis.__kamereoru.guidance.view().stationary);
+  if (!stationary) return;
+  // Guidance exists before asynchronous stage preparation mounts its targets.
+  // Await the actual control marker before reading its screen coordinates.
+  await page.locator('.palette-guide-target').waitFor({ state: 'visible' });
+  const bar = page.locator('.bar-guide-target');
+  if (await bar.isVisible()) { const r=await bar.boundingBox(); await page.mouse.click(r.x+r.width/2,r.y+r.height/2); }
+  const r=await page.locator('.palette-guide-target').boundingBox();
+  await page.mouse.click(r.x+r.width/2,r.y+r.height/2);
+  await page.waitForFunction(() => !globalThis.__kamereoru.guidance.view().stationary);
+}
+
 /** 名前なしで本編を始め、初回の演出と案内を済ませる。 */
 export async function startAnonymous(page) {
   await page.click('[data-testid=home-start]');
   const skip = await page.waitForSelector('[data-testid=skip-opening]', { timeout: 4000 }).catch(() => null);
   if (skip) await skip.click().catch(() => {});
-  // New guides permit an immediate, explicit skip; legacy guides only have Go.
-  // Select the actual UI so the persisted consumption and cleanup paths run.
-  const guide = await page.waitForSelector('[data-testid=guide-skip], [data-testid=guide-go]', { timeout: 6000 }).catch(() => null);
-  if (guide) {
-    const skipGuide = page.locator('[data-testid=guide-skip]');
-    if (await skipGuide.count()) await skipGuide.click();
-    else await guide.click();
-  }
+  await completeStationaryGuide(page);
   await page.waitForFunction(() => globalThis.__kamereoru?.session?.running === true);
 }
 

@@ -1,6 +1,6 @@
 import { matchUnits } from '../rules/v1/index.js';
 import { normalizeGuideProgress, claimGroup, updateGroup } from './progress.js';
-export function createGuidance({session,progress,onProgress=()=>{},claimBrightness=null,onChange=()=>{},canResume=()=>globalThis.document?.visibilityState!=='hidden'}) {
+export function createGuidance({session,progress,onProgress=()=>{},claimBrightness=null,onChange=()=>{},onComplete=()=>{},canResume=()=>globalThis.document?.visibilityState!=='hidden'}) {
   let p=normalizeGuideProgress(progress),draft=null,disposed=false,pending=false,lastPerf=0;
   const id=session.meta.playId,rules=session.rules,checkpoint=(rules.brightnessUnlockBuilding-1)*rules.buildingMs;
   const skippedSteps=new Set();
@@ -25,10 +25,14 @@ export function createGuidance({session,progress,onProgress=()=>{},claimBrightne
     const target=session.game.course.targets[building-1],color=stationary?(draft??session.state.color):session.state.color;
     const units=matchUnits(color,target,rules);
     if(step){const group=step<3?'basic':'brightness',mask=step%2?1:2;if(!(p[group].shownMask&mask))persist({playId:id,group,shownMask:mask});}
-    return {step,stationary,building,color:{...color},target,matchUnits:units,canContinue:stationary&&units>=95*rules.match.unitsPerPercent,brightnessUnlocked:step>=3||session.state.brightnessUnlocked,pending};
+    const centeredBuilding=owns('basic')&&t<rules.buildingMs?1:owns('brightness')&&t>=checkpoint&&t<checkpoint+rules.buildingMs?rules.brightnessUnlockBuilding:null;
+    // 見た目だけを中央手前へ。再開時は入口へ戻さず、同じ出口へ滑らかに合流する。
+    const base=centeredBuilding===null?0:(centeredBuilding-1)*rules.buildingMs;
+    const sceneT=centeredBuilding===null?t:base+rules.buildingMs*.4+(t-base)*.6;
+    return {step,stationary,building,sceneT,color:{...color},target,matchUnits:units,canContinue:stationary&&units>95*rules.match.unitsPerPercent,brightnessUnlocked:step>=3||session.state.brightnessUnlocked,pending};
   }
   function finish(perfNow,skip){lastPerf=perfNow;const v=view();if(skip&&v.step&&!v.stationary&&!disposed){skippedSteps.add(v.step);onChange();return true;}if(!v.stationary||(!skip&&!v.canContinue)||disposed)return false;
     const color=v.color,group=v.step===1?'basic':'brightness';persist({playId:id,group,staticDone:true});draft=null;arm();session.startClock(perfNow);session.input(color,perfNow);onChange();return true;}
   const off=session.on(()=>{claim();onChange();});claim();
-  return {view,setDraft(color){const v=view();if(!v.stationary)return false;draft={...color,v:v.step===1?rules.valMax:color.v};onChange();return true;},continue(perfNow){return finish(perfNow,false);},skip(perfNow){return finish(perfNow,true);},tick(perfNow=lastPerf){lastPerf=perfNow;claim();return view();},get progress(){return p;},dispose(){disposed=true;off();draft=null;session.setGuideStopAt(null);}};
+  return {view,setDraft(color){const v=view();if(!v.stationary)return false;draft={...color,v:v.step===1?rules.valMax:color.v};onChange();return true;},continue(perfNow){return finish(perfNow,false);},skip(perfNow){return finish(perfNow,true);},tick(perfNow=lastPerf){lastPerf=perfNow;claim();if(view().canContinue&&canResume()&&finish(perfNow,false))onComplete();return view();},get progress(){return p;},dispose(){disposed=true;off();draft=null;session.setGuideStopAt(null);}};
 }

@@ -1,0 +1,65 @@
+{
+  "fetchedAt": "2026-11-12T20:14:34.857Z",
+  "records": [
+    {
+      "n": "12",
+      "id": "1E_tu1bCHXB7sGZNxI-yeLY-SorwupNfP",
+      "title": "12_修正後実ファイル一式_9c4a6eb.zip",
+      "mime_type": "application/zip",
+      "size": "84854",
+      "url": "https://drive.google.com/file/d/1E_tu1bCHXB7sGZNxI-yeLY-SorwupNfP/view?usp=drivesdk",
+      "modified_time": "2026-11-12T10:25:58.240Z",
+      "sha256": "de055b540f1fbf38d7a32d2222fc1d8d1fbca490266ef7b352fdaefc2e3f20ea"
+    },
+    {
+      "n": "13",
+      "id": "1gVwECuERJutZFwZOPATGa8lSBTZG5ZbB",
+      "title": "13_適用パッチ_kamereoru-9c4a6eb-audio.patch",
+      "mime_type": "text/plain",
+      "size": "153956",
+      "url": "https://drive.google.com/file/d/1gVwECuERJutZFwZOPATGa8lSBTZG5ZbB/view?usp=drivesdk",
+      "modified_time": "2026-11-12T10:26:37.213Z",
+      "sha256": "a7e492ecc4493fcb37df448e734cad565aa596376da224c4e545ed7f9da7debe"
+    },
+    {
+      "n": "14",
+      "id": "16QfZ6hYUB-kvKZLKE9wJugk9tr2w8hAh",
+      "title": "14_検証実行ログ_verification-execution-log.txt",
+      "mime_type": "text/plain",
+      "size": "12511",
+      "url": "https://drive.google.com/file/d/16QfZ6hYUB-kvKZLKE9wJugk9tr2w8hAh/view?usp=drivesdk",
+      "modified_time": "2026-11-12T10:26:37.022Z",
+      "sha256": "9438b5cdec8f99874166be34cdaf5ede73c6aff01f47e09fa6d81bf7157f7181"
+    },
+    {
+      "n": "15",
+      "id": "1RO_k56tQZM0q-qUS2tZUdXO3Uk3TSYjf",
+      "title": "15_訂正資料全文_設計・パッチ・実コード一式_raw.md",
+      "mime_type": "text/markdown",
+      "size": "324695",
+      "url": "https://drive.google.com/file/d/1RO_k56tQZM0q-qUS2tZUdXO3Uk3TSYjf/view?usp=drivesdk",
+      "modified_time": "2026-11-12T19:46:41.458Z",
+      "sha256": "f1a2f276c77a93849e0c32f10753dbd6acac2bc14683b4c59a113580297f60e0"
+    },
+    {
+      "n": "04",
+      "id": "12jrm8EqvFfxCmJyhS3vJjPXI-Hoqqcjd",
+      "title": "04_全追跡ファイル_公開版5_9c4a6eb.zip",
+      "mime_type": "application/zip",
+      "size": "19947152",
+      "url": "https://drive.google.com/file/d/12jrm8EqvFfxCmJyhS3vJjPXI-Hoqqcjd/view?usp=drivesdk",
+      "modified_time": "2026-11-12T02:25:51.887Z",
+      "sha256": "a7e85adc4e83481bded5b6d7099aff837178410434d2f5e7348d9283b86e719b"
+    },
+    {
+      "n": "07",
+      "id": "1hO2B-Sz7D_1sAXCj6LJEvZ0WDFUCB7gB",
+      "title": "07_版情報と整合確認.json",
+      "mime_type": "application/json",
+      "size": "95374",
+      "url": "https://drive.google.com/file/d/1hO2B-Sz7D_1sAXCj6LJEvZ0WDFUCB7gB/view?usp=drivesdk",
+      "modified_time": "2026-11-12T02:55:43.010Z",
+      "sha256": "14fa4031dbaacb5ba93c6f54466ddbab5b4b82ca2f2bf94b8a39ebcaf94fbf74"
+    }
+  ]
+}

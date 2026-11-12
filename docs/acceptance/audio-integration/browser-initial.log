@@ -1,0 +1,80 @@
+✖ audio integration: playable screens and four guides 402x874 (77240.871739ms)
+✖ audio integration: playable screens and four guides 402x700 (4191.425243ms)
+✖ audio integration: playable screens and four guides 874x402 (3532.714437ms)
+✔ audio integration: tap, same color, drag, two fingers, cancel, lock and zero-volume recovery (11071.045897ms)
+✔ audio integration: delayed audio/render and rejected audio cannot resurrect abandoned practice (8029.146482ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 2
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 104859.108355
+
+✖ failing tests:
+
+test at tests/e2e/audio-integration.e2e.mjs:21:3
+✖ audio integration: playable screens and four guides 402x874 (77240.871739ms)
+  page.click: Timeout 30000ms exceeded.
+  Call log:
+  [2m  - waiting for locator('[data-testid="guide-practice-choose"]')[22m
+  [2m    - locator resolved to <button class="btn" type="button" data-testid="guide-practice-choose">段階を選ぶ</button>[22m
+  [2m  - attempting click action[22m
+  [2m    2 × waiting for element to be visible, enabled and stable[22m
+  [2m      - element is visible, enabled and stable[22m
+  [2m      - scrolling into view if needed[22m
+  [2m      - done scrolling[22m
+  [2m      - <canvas width="402" height="514" class="stage-canvas" data-engine="three.js r170"></canvas> from <div class="stage" data-testid="stage">…</div> subtree intercepts pointer events[22m
+  [2m    - retrying click action[22m
+  [2m    - waiting 20ms[22m
+  [2m    2 × waiting for element to be visible, enabled and stable[22m
+  [2m      - element is visible, enabled and stable[22m
+  [2m      - scrolling into view if needed[22m
+  [2m      - done scrolling[22m
+  [2m      - <canvas width="402" height="514" class="stage-canvas" data-engine="three.js r170"></canvas> from <div class="stage" data-testid="stage">…</div> subtree intercepts pointer events[22m
+  [2m    - retrying click action[22m
+  [2m      - waiting 100ms[22m
+  [2m    20 × waiting for element to be visible, enabled and stable[22m
+  [2m       - element is visible, enabled and stable[22m
+  [2m       - scrolling into view if needed[22m
+  [2m       - done scrolling[22m
+  [2m       - <canvas width="402" height="514" class="stage-canvas" data-engine="three.js r170"></canvas> from <div class="stage" data-testid="stage">…</div> subtree intercepts pointer events[22m
+  [2m     - retrying click action[22m
+  [2m       - waiting 500ms[22m
+  [2m    - waiting for element to be visible, enabled and stable[22m
+  
+      at TestContext.<anonymous> (/workspace/chameleol/tests/e2e/audio-integration.e2e.mjs:55:20) {
+    name: 'TimeoutError',
+    log: [ `  - waiting for locator('[data-testid="guide-practice-choose"]')`, '    - locator resolved to <button class="btn" type="button" data-testid="guide-practice-choose">段階を選ぶ</button>', '  - attempting click action', '    2 × waiting for element to be visible, enabled and stable', '      - element is visible, enabled and stable', '      - scrolling into view if needed', '      - done scrolling', '      - <canvas width="402" height="514" class="stage-canvas" data-engine="three.js r170"></canvas> from <div class="stage" data-testid="stage">…</div> subtree intercepts pointer events', '    - retrying click action', '    - waiting 20ms', '    2 × waiting for element to be visible, enabled and stable', '      - element is visible, enabled and stable', '      - scrolling into view if needed', '      - done scrolling', '      - <canvas width="402" height="514" class="stage-canvas" data-engine="three.js r170"></canvas> from <div class="stage" data-testid="stage">…</div> subtree intercepts pointer events', '    - retrying click action', '      - waiting 100ms', '    20 × waiting for element to be visible, enabled and stable', '       - element is visible, enabled and stable', '       - scrolling into view if needed', '       - done scrolling', '       - <canvas width="402" height="514" class="stage-canvas" data-engine="three.js r170"></canvas> from <div class="stage" data-testid="stage">…</div> subtree intercepts pointer events', '     - retrying click action', '       - waiting 500ms', '    - waiting for element to be visible, enabled and stable' ]
+  }
+
+test at tests/e2e/audio-integration.e2e.mjs:21:3
+✖ audio integration: playable screens and four guides 402x700 (4191.425243ms)
+  AssertionError [ERR_ASSERTION]: [data-testid="home-practice"] fits: {"x":16,"y":705.78125,"width":181,"height":54}
+      at fits (file:///workspace/chameleol/tests/e2e/audio-integration.e2e.mjs:17:12)
+      at async TestContext.<anonymous> (file:///workspace/chameleol/tests/e2e/audio-integration.e2e.mjs:25:7)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/e2e/audio-integration.e2e.mjs:21:3
+✖ audio integration: playable screens and four guides 874x402 (3532.714437ms)
+  AssertionError [ERR_ASSERTION]: [data-testid="home-start"] fits: {"x":133,"y":602.8125,"width":608,"height":60}
+      at fits (file:///workspace/chameleol/tests/e2e/audio-integration.e2e.mjs:17:12)
+      at async TestContext.<anonymous> (file:///workspace/chameleol/tests/e2e/audio-integration.e2e.mjs:25:7)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

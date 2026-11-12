@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "Chuỗi tốt nhất trên thiết bị!",
   "presentation.distanceRecord": "Kỷ lục quãng đường mới!",
   "presentation.lastFive": "Còn {n} tòa để thoát",
+  "guidance.wall": "Chỉnh màu giống màu tường",
   "guidance.step1": "Khớp màu sắc",
   "guidance.step2": "Khớp màu khi di chuyển",
   "guidance.step3": "Khớp màu và độ sáng",

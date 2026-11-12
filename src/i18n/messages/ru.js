@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "Лучшая серия на устройстве!",
   "presentation.distanceRecord": "Новый рекорд расстояния!",
   "presentation.lastFive": "До побега: {n}",
+  "guidance.wall": "Подбери цвет стены",
   "guidance.step1": "Подберите цвет",
   "guidance.step2": "Подберите цвет в движении",
   "guidance.step3": "Подберите цвет и яркость",

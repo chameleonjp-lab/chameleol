@@ -1,0 +1,50 @@
+[
+  {
+    "path": "src/app.js",
+    "sha256": "49a67e336eb09a96fd70b6a19c8da5672668e5913e6b863928a40c88de62b650",
+    "integrated_sha256": "dbb4bb93cfb907627c71718d8fb93ee8913d630c0dad2efe12abdfc96386a1e7",
+    "matches_submission": false
+  },
+  {
+    "path": "src/audio/mixer.js",
+    "sha256": "12545b064d5e0b6d826b9640b4774e339d4d7750512d98c24b37afba1815c1c7",
+    "integrated_sha256": "71be1bfe64068740b59bd2d22b682b4d6c2bb50219e4c016ae915f3100c624c1",
+    "matches_submission": false
+  },
+  {
+    "path": "src/scene/street.js",
+    "sha256": "6ab052bfc0ada17fccc211f66185ea2a48102c409443bfa80ced45bba21aa812",
+    "integrated_sha256": "6ab052bfc0ada17fccc211f66185ea2a48102c409443bfa80ced45bba21aa812",
+    "matches_submission": true
+  },
+  {
+    "path": "src/ui/controls.js",
+    "sha256": "b721e64d838645c3e9ca9a8093386e85457f47c480c210fb6f88244136703515",
+    "integrated_sha256": "d2f53af20b8f4e807fe9ea5201c6926d2e1413186d974ebc0415a98072903758",
+    "matches_submission": false
+  },
+  {
+    "path": "src/ui/pointer-router.js",
+    "sha256": "ffec99793f0fb782ac1d2dfb7cdf016411851d8f9168c7b12e90e3b90339c8c4",
+    "integrated_sha256": "ffec99793f0fb782ac1d2dfb7cdf016411851d8f9168c7b12e90e3b90339c8c4",
+    "matches_submission": true
+  },
+  {
+    "path": "tests/audio/mixer.test.mjs",
+    "sha256": "deb4ee9d8fee27da81c32e96770134ca3cc11e14a1c2c34ab6e45b65cf7d5c83",
+    "integrated_sha256": "462974caed69ed831b0c3eb05fa3779e51d48b234f13c5202a9ee88e9ea335d9",
+    "matches_submission": false
+  },
+  {
+    "path": "tests/ui/app-audio.test.mjs",
+    "sha256": "b3e6bce1b0662ab0c50695eed62ae92afbb7e9f56bc593241012d46ae3cc5de3",
+    "integrated_sha256": "e81f9fc0c3a9a66cbb56beb1652540a4938ded87b3c2d6843cf4638f8822ed99",
+    "matches_submission": false
+  },
+  {
+    "path": "tests/ui/controls.test.mjs",
+    "sha256": "24e1c8d1f16f41f340b901c43e3c0d3c05fd2f0617c28400ce1468190355ab79",
+    "integrated_sha256": "1cdb12c5d0f56b4add66aabe315c47259aa75daf4c2aa942bf45c5b1b4c908db",
+    "matches_submission": false
+  }
+]

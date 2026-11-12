@@ -1,0 +1,13 @@
+✔ 【問題D修正検証】createControls：指を動かさない単発タップでは touchPalette / touchBar のみ鳴り、colorStep は重複しない（同色タップ・2本指・取消を含む） (37.362898ms)
+✔ 【問題B修正検証】App の通常練習（basic / brightness）および4段階ガイド練習（1〜4）がエラーなく起動・進行し、音が鳴る (153.706639ms)
+✔ 【問題E修正検証】音の準備待ち中に画面が変わった場合は古い操作音を破棄し、同じ画面なら補完し、running中は不要な再準備を呼ばない (85.211224ms)
+✔ 【本編 showGame 統合検証】11・21・31・41棟の tierUp、40棟の milestone、46〜50棟の lastFive、passBuilding、途中再開時の重複防止 (13.409443ms)
+✔ 【練習開始の競合・失敗検証】ガイド練習・通常練習で「準備中に戻る」「別の練習を選ぶ」「準備に失敗する」「同じ画面に留まった場合の正常開始」を検証 (81.717054ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 571.219421

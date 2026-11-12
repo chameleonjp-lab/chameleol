@@ -1,0 +1,12 @@
+
+> chameleol@0.1.0 build
+> node scripts/build.mjs
+
+{
+  "assetVersion": "0.1.0-172dbe78de",
+  "env": "verification",
+  "api": null,
+  "publicUrl": null,
+  "kept": [],
+  "files": 78
+}

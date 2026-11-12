@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "端末全体の連続成功記録！",
   "presentation.distanceRecord": "最長距離を更新！",
   "presentation.lastFive": "脱出まであと{n}棟",
+  "guidance.wall": "壁の色に合わせよう",
   "guidance.step1": "色を合わせる",
   "guidance.step2": "動きながら色を合わせる",
   "guidance.step3": "色と明るさを合わせる",

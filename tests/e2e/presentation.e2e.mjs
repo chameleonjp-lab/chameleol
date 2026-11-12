@@ -450,14 +450,20 @@ test('pause_hidden_resume', async () => {
       a.stage.update = (view) => { __stageTimes.push({ t: view.t, presentation: view.presentation?.t }); return update(view); };
     });
     const paused = await env.page.evaluate(() => __kamereoru.session.state.t);
+    // Public v5 centers the first guide wall with a scene-only time offset.
+    // Compare each clock to its own paused value, rather than treating sceneT
+    // (2000 ms at game time 0) as the game clock.
+    const pausedScene = await env.page.evaluate(() => __kamereoru.guidance.view().sceneT);
     await env.page.clock.fastForward(5000);
     assert.equal(await env.page.evaluate(() => __kamereoru.session.state.t), paused);
+    assert.equal(await env.page.evaluate(() => __kamereoru.guidance.view().sceneT), pausedScene);
     await env.page.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
       document.dispatchEvent(new Event('visibilitychange'));
     });
     await env.page.clock.fastForward(5000);
     assert.equal(await env.page.evaluate(() => __kamereoru.session.state.t), paused);
+    assert.equal(await env.page.evaluate(() => __kamereoru.guidance.view().sceneT), pausedScene);
     await env.page.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
       document.dispatchEvent(new Event('visibilitychange'));
@@ -468,7 +474,9 @@ test('pause_hidden_resume', async () => {
     await env.page.waitForFunction(() => __kamereoru.session.running);
     const stageTimes = await env.page.evaluate(() => __stageTimes);
     assert.ok(stageTimes.length > 0, 'real stage updates observed');
-    assert.ok(stageTimes.every((view) => view.t - paused < 500), 'stage clock excludes the hidden interval');
+    console.log('pause clocks', { paused, pausedScene, stageTimes });
+    assert.ok(stageTimes.every((view) => view.t - pausedScene < 500), 'stage clock excludes the hidden interval');
+    assert.ok(stageTimes.every((view) => view.presentation - paused < 500), 'presentation game clock excludes the hidden interval');
     const resumed = await env.page.evaluate(() => __kamereoru.session.state.t);
     assert.ok(resumed - paused < 500, `${resumed} vs ${paused}: hidden time must not be consumed`);
   } finally { await env.close(); }

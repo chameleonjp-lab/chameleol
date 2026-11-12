@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "Beste Serie auf diesem Gerät!",
   "presentation.distanceRecord": "Neuer Streckenrekord!",
   "presentation.lastFive": "Noch {n} bis zur Flucht",
+  "guidance.wall": "Passe deine Farbe an die Wand an",
   "guidance.step1": "Passe die Farbe an",
   "guidance.step2": "Passe die Farbe in Bewegung an",
   "guidance.step3": "Passe Farbe und Helligkeit an",

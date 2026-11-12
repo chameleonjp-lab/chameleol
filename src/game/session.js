@@ -3,7 +3,7 @@
 // - 長い処理停止（rules.longStallMs 超）は時間を進めず、自動停止にする。
 // - 停止中・再開カウントダウン中は時計が止まり、入力も受け付けない。
 import {
-  RULES_V1,
+  rulesForVersion,
   advance,
   createGame,
   createRecorder,
@@ -18,7 +18,8 @@ export class GameSession {
   /**
    * @param {object} meta { playId, launchId, ranked, name, seed, rulesVersion, generatorVersion, gameVersion, startedAt }
    */
-  constructor(meta, { rules = RULES_V1, restore = null } = {}) {
+  constructor(meta, { rules = rulesForVersion(meta.rulesVersion), restore = null } = {}) {
+    if (!rules) throw new Error('unknown rules version');
     if (meta.rulesVersion && meta.rulesVersion !== rules.rulesVersion) throw new Error('rules version mismatch');
     this.meta = Object.freeze({ ...meta, rulesVersion: rules.rulesVersion, generatorVersion: rules.generatorVersion });
     this.rules = rules;
@@ -163,9 +164,9 @@ export class GameSession {
   }
 
   /** 保存単位から作り直す。状態と履歴が食い違えば null（保存を壊さず隔離する）。 */
-  static fromSnapshot(snap, { rules = RULES_V1 } = {}) {
+  static fromSnapshot(snap, { rules = rulesForVersion(snap?.meta?.rulesVersion) } = {}) {
     if (!snap || snap.format !== SNAPSHOT_FORMAT) return { error: 'unknown_format' };
-    if (snap.meta?.rulesVersion !== rules.rulesVersion) return { error: 'unknown_rules_version' };
+    if (!rules || snap.meta?.rulesVersion !== rules.rulesVersion) return { error: 'unknown_rules_version' };
     try {
       const game = createGame({ seed: snap.meta.seed, rules });
       const rebuilt = stateFromHistory(game, snap.history, snap.state.t);

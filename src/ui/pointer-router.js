@@ -13,18 +13,27 @@ export const DEFAULT_TOLERANCE = Object.freeze({
   barFarScaleY: 0.35,
 });
 
-export function createPointerRouter({ rules = RULES_V1, tolerance = DEFAULT_TOLERANCE, onChange = () => {}, onLockedTap = () => {} } = {}) {
+export function createPointerRouter({
+  rules = RULES_V1,
+  tolerance = DEFAULT_TOLERANCE,
+  onChange = () => {},
+  onLockedTap = () => {},
+  onPartDown = () => {},
+  onPartUp = () => {},
+} = {}) {
   let geometry = { palette: { cx: 0, cy: 0, r: 1 }, bar: { x: 0, y: 0, w: 1, h: 1 } };
   const values = { ...rules.initialColor };
   let barLocked = true;
   let enabled = true;
   const byPointer = new Map(); // pointerId → 'palette' | 'bar'
   const byPart = new Map(); // part → pointerId
+  const changedByPointer = new Map(); // pointerId → boolean
 
-  const emit = (next) => {
+  const emit = (next, pointerId = null, part = null, phase = 'move') => {
     if (next.h === values.h && next.s === values.s && next.v === values.v) return;
     Object.assign(values, next);
-    onChange({ ...values });
+    if (pointerId != null) changedByPointer.set(pointerId, true);
+    onChange({ ...values }, { part, phase, pointerId });
   };
 
   function hit(x, y) {
@@ -47,7 +56,7 @@ export function createPointerRouter({ rules = RULES_V1, tolerance = DEFAULT_TOLE
     return null;
   }
 
-  function track(part, x, y) {
+  function track(part, x, y, pointerId = null, phase = 'move') {
     if (part === 'palette') {
       const p = geometry.palette;
       const dx = x - p.cx;
@@ -55,14 +64,14 @@ export function createPointerRouter({ rules = RULES_V1, tolerance = DEFAULT_TOLE
       if (Math.sqrt(dx * dx + dy * dy) > p.r * tolerance.paletteFarScale) return; // 保持
       const hs = hsFromPoint(dx, dy, p.r, rules);
       // 中心ちょうどでは色合いが決まらないので、前の色合いを残す
-      emit({ h: hs.s === 0 ? values.h : hs.h, s: hs.s, v: values.v });
+      emit({ h: hs.s === 0 ? values.h : hs.h, s: hs.s, v: values.v }, pointerId, part, phase);
     } else if (part === 'bar') {
       if (barLocked) return;
       const b = geometry.bar;
       const farY = b.h * tolerance.barFarScaleY;
       if (x < b.x - tolerance.barFarPadX || x > b.x + b.w + tolerance.barFarPadX) return;
       if (y < b.y - farY || y > b.y + b.h + farY) return;
-      emit({ h: values.h, s: values.s, v: vFromBar(y - b.y, b.h, rules) });
+      emit({ h: values.h, s: values.s, v: vFromBar(y - b.y, b.h, rules) }, pointerId, part, phase);
     }
   }
 
@@ -82,7 +91,9 @@ export function createPointerRouter({ rules = RULES_V1, tolerance = DEFAULT_TOLE
     setBarLocked(locked) {
       barLocked = locked;
       if (locked && byPart.has('bar')) {
-        byPointer.delete(byPart.get('bar'));
+        const pid = byPart.get('bar');
+        byPointer.delete(pid);
+        changedByPointer.delete(pid);
         byPart.delete('bar');
       }
     },
@@ -105,26 +116,36 @@ export function createPointerRouter({ rules = RULES_V1, tolerance = DEFAULT_TOLE
       if (byPart.has(part)) return null; // 先の指を奪わない
       byPointer.set(pointerId, part);
       byPart.set(part, pointerId);
-      track(part, x, y); // 再タップは触れた位置を直接選ぶ
+      changedByPointer.set(pointerId, false);
+      onPartDown(part);
+      track(part, x, y, pointerId, 'down'); // 再タップは触れた位置を直接選ぶ（phase: 'down'）
       return part;
     },
     move(pointerId, x, y) {
       if (!enabled) return;
       const part = byPointer.get(pointerId);
-      if (part) track(part, x, y);
+      if (part) track(part, x, y, pointerId, 'move');
     },
     up(pointerId) {
       const part = byPointer.get(pointerId);
       if (!part) return;
+      const changed = changedByPointer.get(pointerId) === true;
       byPointer.delete(pointerId);
+      changedByPointer.delete(pointerId);
       byPart.delete(part);
+      onPartUp(part, changed);
     },
     cancel(pointerId) {
-      this.up(pointerId);
+      const part = byPointer.get(pointerId);
+      if (!part) return;
+      byPointer.delete(pointerId);
+      changedByPointer.delete(pointerId);
+      byPart.delete(part);
     },
     /** 中断・画面離脱：指の割り当てだけを解放し、値は残す。 */
     releaseAll() {
       byPointer.clear();
+      changedByPointer.clear();
       byPart.clear();
     },
     activeParts() {

@@ -12,7 +12,7 @@ import { join, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { GAME_VERSION } from '../src/config/runtime.js';
-import { RULES_V1 } from '../src/rules/v1/index.js';
+import { RULES_V2 as RULES_V1 } from '../src/rules/v1/index.js';
 import { SNAPSHOT_FORMAT } from '../src/game/session.js';
 import { RESULT_FORMAT } from '../src/net/outbox.js';
 import { computeManifest, check as checkShared } from './sync-shared.mjs';

@@ -1,0 +1,16 @@
+Node: v24.22.1
+src/audio/mixer.js: syntax exit 0
+  integrated SHA-256: 71be1bfe64068740b59bd2d22b682b4d6c2bb50219e4c016ae915f3100c624c1
+  equals source C: False
+src/ui/pointer-router.js: syntax exit 0
+  integrated SHA-256: ffec99793f0fb782ac1d2dfb7cdf016411851d8f9168c7b12e90e3b90339c8c4
+  equals source C: True
+src/ui/controls.js: syntax exit 0
+  integrated SHA-256: b721e64d838645c3e9ca9a8093386e85457f47c480c210fb6f88244136703515
+  equals source C: True
+tests/audio/mixer.test.mjs: syntax exit 0
+  integrated SHA-256: 462974caed69ed831b0c3eb05fa3779e51d48b234f13c5202a9ee88e9ea335d9
+  equals source C: False
+tests/ui/controls.test.mjs: syntax exit 0
+  integrated SHA-256: 24e1c8d1f16f41f340b901c43e3c0d3c05fd2f0617c28400ce1468190355ab79
+  equals source C: True

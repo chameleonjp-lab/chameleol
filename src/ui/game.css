@@ -149,9 +149,7 @@ h3 {
 }
 .home-art {
   position: relative;
-  height: 96px;
-  margin: 8px auto 0;
-  width: 160px;
+  margin: 0 auto;
 }
 .home-art-3d {
   width: min(100%, 300px);
@@ -162,37 +160,6 @@ h3 {
   width: 100%;
   height: 100%;
   display: block;
-}
-.home-chameleon {
-  position: absolute;
-  left: 30px;
-  top: 14px;
-  width: 92px;
-  height: 70px;
-  border-radius: 50% 60% 45% 50%;
-  background: var(--accent);
-  box-shadow: inset -10px -8px 0 rgba(0, 0, 0, 0.12);
-}
-.home-chameleon::after {
-  content: '';
-  position: absolute;
-  right: 12px;
-  top: 12px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: repeating-radial-gradient(circle, #fff 0 3px, #1b1b1b 3px 5px);
-  border: 3px solid #1b1b1b;
-}
-.home-jewel {
-  position: absolute;
-  left: 18px;
-  top: 56px;
-  width: 22px;
-  height: 22px;
-  transform: rotate(45deg);
-  background: #9ff3ff;
-  border: 2px solid #fff;
 }
 .title {
   font-size: 2.2rem;
@@ -1465,3 +1432,29 @@ body {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ガイド練習の停止・戻る・完了操作をWebGLキャンバスより手前に置く。 */
+.guide-practice-tools {
+  position: absolute;
+  top: calc(8px + var(--safe-top));
+  left: calc(8px + var(--safe-left));
+  right: calc(8px + var(--safe-right));
+  z-index: 10;
+  display: flex;
+  gap: 8px;
+}
+.guide-practice-tools .btn { margin: 0; padding: 8px 12px; }
+.guide-practice-actions {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  overflow: auto;
+  padding: calc(8px + var(--safe-top)) 12px 8px;
+  background: rgba(11, 13, 34, .94);
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  align-items: center;
+  gap: 8px;
+}
+.guide-practice-actions .btn { margin: 0; max-width: 100%; }

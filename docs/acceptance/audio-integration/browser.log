@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: audio integration: playable screens and four guides 402x874
+ok 1 - audio integration: playable screens and four guides 402x874
+  ---
+  duration_ms: 102891.422149
+  type: 'test'
+  ...
+# Subtest: audio integration: playable screens and four guides 402x700
+ok 2 - audio integration: playable screens and four guides 402x700
+  ---
+  duration_ms: 109651.232766
+  type: 'test'
+  ...
+# Subtest: audio integration: playable screens and four guides 874x402
+ok 3 - audio integration: playable screens and four guides 874x402
+  ---
+  duration_ms: 112904.883113
+  type: 'test'
+  ...
+# Subtest: audio integration: tap, same color, drag, two fingers, cancel, lock and zero-volume recovery
+ok 4 - audio integration: tap, same color, drag, two fingers, cancel, lock and zero-volume recovery
+  ---
+  duration_ms: 15939.082708
+  type: 'test'
+  ...
+# Subtest: audio integration: delayed audio/render and rejected audio cannot resurrect abandoned practice
+ok 5 - audio integration: delayed audio/render and rejected audio cannot resurrect abandoned practice
+  ---
+  duration_ms: 14366.357309
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 356448.478838

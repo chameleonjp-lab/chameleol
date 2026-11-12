@@ -1,0 +1,30 @@
+file:///workspace/chameleol/tests/audio/mixer.test.mjs:11
+  MAX_CONCURRENT_VOICES,
+  ^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: The requested module '../../src/audio/mixer.js' does not provide an export named 'MAX_CONCURRENT_VOICES'
+    at #asyncInstantiate (node:internal/modules/esm/module_job:455:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:553:5)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.22.1
+✖ tests/audio/mixer.test.mjs (102.094454ms)
+✖ tests/ui/controls.test.mjs (135.844972ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 161.093373
+
+✖ failing tests:
+
+test at tests/audio/mixer.test.mjs:1:1
+✖ tests/audio/mixer.test.mjs (102.094454ms)
+  'test failed'
+
+test at tests/ui/controls.test.mjs:1:1
+✖ tests/ui/controls.test.mjs (135.844972ms)
+  'test failed'

@@ -1,0 +1,10 @@
+{
+  "observedAt": "2026-11-12T20:15:57.930497919Z",
+  "url": "https://chameleonjp-kamereoru.chameleonjp.chatgpt.site",
+  "method": "HTTPS GET of existing live index.html; read only",
+  "assetVersion": "0.1.0-f25f4a9ee1",
+  "commit": "9c4a6ebad65414e4f659537d28f4bc3a93a1f55c",
+  "environment": "production",
+  "api": "",
+  "modifiedLiveSite": false
+}

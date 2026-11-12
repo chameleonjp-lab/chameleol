@@ -275,6 +275,7 @@ export default {
   "presentation.comboRecord": "Device-wide best streak!",
   "presentation.distanceRecord": "New distance best!",
   "presentation.lastFive": "{n} to escape",
+  "guidance.wall": "Match the wall color",
   "guidance.step1": "Match the color",
   "guidance.step2": "Match while moving",
   "guidance.step3": "Match color and brightness",

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GameSession } from '../../src/game/session.js';
 import { createAlertStageTracker, createInstantSuccessTracker } from '../../src/game/feedback.js';
-import { RULES_V1, replayHistory, createGame, summarize } from '../../src/rules/v1/index.js';
+import { RULES_V1, RULES_V2, replayHistory, createGame, summarize } from '../../src/rules/v1/index.js';
 
 const meta = (seed = 7) => ({ playId: 'p', launchId: 'l', ranked: false, name: '', seed, gameVersion: 't' });
 
@@ -95,7 +95,7 @@ test('進行中に記録した履歴を再生すると、終了結果が一致�
       p += 5000;
     }
   }
-  const replay = replayHistory(game, s.recorder.entries);
+  const replay = replayHistory(s.game, s.recorder.entries);
   assert.deepEqual(replay.summary, summarize(s.state));
 });
 
@@ -123,3 +123,34 @@ test('GAME-18: 瞬間の成功は0.2秒続いた後に同じ棟で1回だけ知�
   assert.equal(tr.update(st(6500, 2, S)), false);
   assert.equal(tr.update(st(6700, 2, S)), true);
 });
+
+
+for (const rules of [RULES_V1, RULES_V2]) {
+  test(`${rules.rulesVersion}: 20・25・26棟で保存した警戒・履歴を同じ版で復元して続行する`, () => {
+    let session = new GameSession({ ...meta(17), rulesVersion: rules.rulesVersion });
+    session.startClock(0);
+    for (let perf = 0; perf <= 130000; perf += 250) {
+      session.frame(perf);
+      const target = session.game.course.targets[Math.min(49, Math.floor(session.state.t / 5000))];
+      const elapsedInBuilding = session.state.t % 5000;
+      const color = session.state.t >= 95000 && elapsedInBuilding >= 1500 && elapsedInBuilding < 2500
+        ? { ...target, h: (target.h + 18000) % 36000, s: 10000, v: 0 }
+        : target;
+      session.input(color, perf);
+      if (![97500, 122500, 127500].includes(perf)) continue;
+      assert.equal(session.ended, false);
+      assert.ok(session.state.alert > 0, '色を外した履歴から警戒値も再構築する');
+      const snapshot = JSON.parse(JSON.stringify(session.snapshot()));
+      const restored = GameSession.fromSnapshot(snapshot);
+      assert.equal(restored.error, undefined);
+      assert.equal(restored.session.rules, rules);
+      assert.deepEqual(restored.session.state, session.state);
+      assert.deepEqual(restored.session.recorder.entries, snapshot.history);
+      assert.deepEqual(restored.session.meta, session.meta);
+      session = restored.session;
+      session.startClock(perf);
+    }
+    session.quit(130000);
+    assert.deepEqual(replayHistory(session.game, session.recorder.entries).summary, session.summary());
+  });
+}
