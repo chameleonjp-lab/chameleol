@@ -1,0 +1,26 @@
+CI run: https://github.com/chameleonjp-lab/chameleol/actions/runs/43299969844/job/131468185836
+Source commit: e7ae32f56aaafa9def75d2df0b8d118b2cbd0713
+Node test summary: unit 271 passed + 25 DB-only skips; SQL 25 passed; E2E 150 passed / 1 failed.
+2026-11-12T20:39:50.7031243Z # Subtest: pause_hidden_resume
+2026-11-12T20:39:50.7037112Z not ok 53 - pause_hidden_resume
+2026-11-12T20:39:50.7037899Z   ---
+2026-11-12T20:39:50.7038645Z   duration_ms: 2025.99774
+2026-11-12T20:39:50.7039087Z   type: 'test'
+2026-11-12T20:39:50.7039847Z   location: '/home/runner/work/chameleol/chameleol/tests/e2e/presentation.e2e.mjs:440:1'
+2026-11-12T20:39:50.7040847Z   failureType: 'testCodeFailure'
+2026-11-12T20:39:50.7041439Z   error: "Cannot read properties of null (reading 'x')"
+2026-11-12T20:39:50.7041993Z   code: 'ERR_TEST_FAILURE'
+2026-11-12T20:39:50.7042389Z   name: 'TypeError'
+2026-11-12T20:39:50.7042693Z   stack: |-
+2026-11-12T20:39:50.7043247Z     completeStationaryGuide (file:///home/runner/work/chameleol/chameleol/tests/e2e/helpers.mjs:58:28)
+2026-11-12T20:39:50.7044099Z     async startAnonymous (file:///home/runner/work/chameleol/chameleol/tests/e2e/helpers.mjs:67:3)
+2026-11-12T20:39:50.7045056Z     async TestContext.<anonymous> (file:///home/runner/work/chameleol/chameleol/tests/e2e/presentation.e2e.mjs:445:5)
+2026-11-12T20:39:50.7045849Z     async Test.run (node:internal/test_runner/test:1054:7)
+2026-11-12T20:39:50.7046600Z     async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+2026-11-12T20:39:50.7047042Z   ...
+2026-11-12T20:41:15.1562209Z # tests 151
+2026-11-12T20:41:15.1563285Z # pass 150
+2026-11-12T20:41:15.1563715Z # fail 1
+2026-11-12T20:41:15.1564555Z # skipped 0
+2026-11-12T20:41:15.1565421Z # duration_ms 958954.838171
+2026-11-12T20:41:15.1724092Z ##[error]Process completed with exit code 1.

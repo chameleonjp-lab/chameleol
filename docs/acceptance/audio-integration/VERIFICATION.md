@@ -30,3 +30,5 @@ Node.js v24.22.1 / npm11.9.0。lockfileを維持してnpm ci。資料14の旧31�
 
 
 既存e2e最終ローカル結果: 9ファイル、トップレベル60件＋subtestで146件。初回140成功/6失敗/0skip、上記6失敗の対象再試験はすべて成功。追加統合6件と合わせ152対象に成功証拠あり。ただし単一のclean全件runではない。詳細e2e-existing-summary.json。最終push後のGitHub CIで全体を再確認する（PRのChecks欄を参照）。
+
+旧HEAD e7ae32fのGitHub CIはe2e151件中150成功/1失敗。唯一の失敗はguidance生成直後、非同期stage準備前にテストhelperが目印座標を読みnullになる競合。palette目印visibleを待つ処理をhelperに追加し、pause_hidden_resume対象1件を実Chromiumで再確認成功。ci-initial-failure.logに旧runの証拠、e2e-guide-marker-ready.logに再確認を保持。製品コードは不変。

@@ -52,6 +52,9 @@ export async function completeStationaryGuide(page) {
   await page.waitForFunction(() => globalThis.__kamereoru?.guidance != null);
   const stationary = await page.evaluate(() => globalThis.__kamereoru.guidance.view().stationary);
   if (!stationary) return;
+  // Guidance exists before asynchronous stage preparation mounts its targets.
+  // Await the actual control marker before reading its screen coordinates.
+  await page.locator('.palette-guide-target').waitFor({ state: 'visible' });
   const bar = page.locator('.bar-guide-target');
   if (await bar.isVisible()) { const r=await bar.boundingBox(); await page.mouse.click(r.x+r.width/2,r.y+r.height/2); }
   const r=await page.locator('.palette-guide-target').boundingBox();
