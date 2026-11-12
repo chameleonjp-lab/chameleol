@@ -1,0 +1,16 @@
+
+> chameleol@0.1.0 check:engines
+> node scripts/cross-engine-check.mjs
+
+ok	QuickJS	deltaE golden
+ok	QuickJS	replay clear-steady
+ok	QuickJS	replay detected-sloppy
+ok	QuickJS	replay grace-noise
+ok	QuickJS	replay quit-mid
+ok	QuickJS	replay same-time-bursts
+ok	QuickJS	replay unlock-edge
+ok	QuickJS	course 0
+ok	QuickJS	course 1
+ok	QuickJS	course 123456789
+ok	QuickJS	course 4294967295
+ok	Deno	skipped (deno not found)

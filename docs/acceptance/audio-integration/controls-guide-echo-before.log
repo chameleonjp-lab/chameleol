@@ -1,0 +1,47 @@
+✔ PLAY-02: タップはその位置を直接選び、ドラッグは即時反映、指を離すと値を保持 (2.702652ms)
+✔ PLAY-03: 2本指で同時に操作し、片方を離してももう一方は続く。3本目は先の指を奪わない (0.776634ms)
+✔ PLAY-04: 円外は外周、遠く外れたら保持、戻ると再開。バー外は端、遠くは保持。他方の部品に入っても対象を変えない (0.49281ms)
+✔ PLAY-05: 中断・画面離脱では指の割り当てだけを解放し、値は残す (0.300833ms)
+✔ INPUT-07: 明るさ0%から戻しても色合い・鮮やかさは保持される (0.339891ms)
+✔ 20棟より前はバーがロック。押すとヒントだけ出し、値は変えない。解放後は位置を変えずに使える (0.229202ms)
+✔ 円の中心をタップしても、直前の色合いは消えない (0.257563ms)
+✔ 押し始め（down）とドラッグ移動（move）の phase を区別し、取消・強制解放では onPartUp を呼ばない (0.403634ms)
+✖ 静止ガイドの同値再描画でも、小刻みなドラッグの操作音を累積する (127.528313ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 8
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 230.850887
+
+✖ failing tests:
+
+test at tests/ui/controls.test.mjs:175:1
+✖ 静止ガイドの同値再描画でも、小刻みなドラッグの操作音を累積する (127.528313ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + []
+  - [
+  -   [
+  -     1800,
+  -     'palette'
+  -   ],
+  -   [
+  -     3600,
+  -     'palette'
+  -   ]
+  - ]
+  
+      at TestContext.<anonymous> (file:///workspace/chameleol/tests/ui/controls.test.mjs:193:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [],
+    expected: [ [ 1800, 'palette' ], [ 3600, 'palette' ] ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

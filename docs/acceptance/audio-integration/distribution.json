@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-11-12T20:26:11.837961+00:00",
+  "sourceCommit": "e7ae32f56aaafa9def75d2df0b8d118b2cbd0713",
+  "assetVersion": "0.1.0-73d1e4527b",
+  "env": "production",
+  "api": null,
+  "rulesVersion": "kamereoru-rules-v2",
+  "keptVersions": [
+    "0.1.0-0a170c0573",
+    "0.1.0-11b6b4435c",
+    "0.1.0-3f76c8df26",
+    "0.1.0-6de2bc05c7",
+    "0.1.0-f25f4a9ee1"
+  ],
+  "archive": "chameleol-audio-e7ae32f.tar.gz",
+  "archiveSha256": "44da7bc93fcfa3808c746ac73dae6278213943dd37a4c3a16762aeffba72c5df",
+  "archiveBytes": 3001373,
+  "hashErrors": []
+}

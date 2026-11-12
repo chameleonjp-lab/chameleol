@@ -1,0 +1,34 @@
+✔ 【問題D修正検証】createControls：指を動かさない単発タップでは touchPalette / touchBar のみ鳴り、colorStep は重複しない（同色タップ・2本指・取消を含む） (38.506797ms)
+✔ 【問題B修正検証】App の通常練習（basic / brightness）および4段階ガイド練習（1〜4）がエラーなく起動・進行し、音が鳴る (210.086749ms)
+✔ 【問題E修正検証】音の準備待ち中に画面が変わった場合は古い操作音を破棄し、同じ画面なら補完し、running中は不要な再準備を呼ばない (38.450237ms)
+✔ 【本編 showGame 統合検証】11・21・31・41棟の tierUp、40棟の milestone、46〜50棟の lastFive、passBuilding、途中再開時の重複防止 (19.143447ms)
+✔ 【練習開始の競合・失敗検証】ガイド練習・通常練習で「準備中に戻る」「別の練習を選ぶ」「準備に失敗する」「同じ画面に留まった場合の正常開始」を検証 (131.028329ms)
+✔ 途中保存から各音楽段階を復元すると到達済みtierUpは再発音しない (56.841813ms)
+✖ 練習結果の保存待ち後に古い結果画面や結果音が現在画面を上書きしない (25.040257ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 6
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 754.983933
+
+✖ failing tests:
+
+test at tests/ui/app-audio.test.mjs:835:1
+✖ 練習結果の保存待ち後に古い結果画面や結果音が現在画面を上書きしない (25.040257ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(root.querySelector('.home'))
+  
+      at TestContext.<anonymous> (file:///workspace/chameleol/tests/ui/app-audio.test.mjs:850:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

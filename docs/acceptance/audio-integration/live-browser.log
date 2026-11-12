@@ -1,0 +1,13 @@
+{
+  "url": "https://chameleonjp-kamereoru.chameleonjp.chatgpt.site/",
+  "status": 200,
+  "runtime": {
+    "apiBase": null,
+    "publicUrl": "https://chameleonjp-kamereoru.chameleonjp.chatgpt.site",
+    "env": "production",
+    "gameVersion": "0.1.0",
+    "assetVersion": "0.1.0-f25f4a9ee1",
+    "isVerification": false
+  },
+  "errors": []
+}

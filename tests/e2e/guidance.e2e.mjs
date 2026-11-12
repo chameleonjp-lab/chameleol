@@ -94,7 +94,9 @@ test('G3: pause remains usable during the first stationary guide', async () => {
     await openHome(env.page, env.url);
     await env.page.click(selector('home-start'));
     await env.page.waitForSelector(selector('skip-opening'));
-    await env.page.click(selector('skip-opening'));
+    // Skip is setup here: dispatch before the timed opening removes its button.
+    // The pause action below still uses a real pointer click.
+    await env.page.locator(selector('skip-opening')).dispatchEvent('click');
     await env.page.waitForFunction(() => __kamereoru.guidance?.view().step === 1);
     await env.page.click(selector('pause'));
     await env.page.waitForSelector(selector('pause-resume'), { timeout: 2000 });

@@ -1,0 +1,84 @@
+{
+  "scope": "Existing nine e2e files; new audio-integration.e2e.mjs runs separately",
+  "node": "v24.22.1",
+  "initialDistinctTests": 146,
+  "initialPass": 140,
+  "initialFail": 6,
+  "initialSkipped": 0,
+  "runs": [
+    {
+      "log": "e2e-existing.log",
+      "tests": 146,
+      "pass": 140,
+      "fail": 6,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    {
+      "log": "e2e-guidance-pause-fix.log",
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    {
+      "log": "e2e-online-postgres.log",
+      "tests": 4,
+      "pass": 3,
+      "fail": 1,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    {
+      "log": "e2e-online-paused-fix.log",
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    {
+      "log": "e2e-pause-clocks-fix.log",
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    }
+  ],
+  "resolvedFailures": [
+    {
+      "test": "G3: pause remains usable during the first stationary guide",
+      "initialCause": "Opening ended naturally while Playwright waited for a pointer click on its skip button; setup-only button detached.",
+      "fix": "Dispatch opening skip in setup; retain actual pause click and all pause assertions.",
+      "passingLog": "e2e-guidance-pause-fix.log"
+    },
+    {
+      "test": "online.e2e.mjs (4 tests)",
+      "initialCause": "Initial whole-suite process omitted local PostgreSQL admin URL and initdb was not installed.",
+      "fix": "Rerun with disposable postgres:16 at loopback, existing psql Docker wrapper and KAMEREORU_TEST_ADMIN_URL.",
+      "passingLogs": [
+        "e2e-online-postgres.log (first three tests)",
+        "e2e-online-paused-fix.log (NET-TEST-06)"
+      ],
+      "additionalSetupIssue": "NET-TEST-06 helper unconditionally clicked the game Pause button behind an already displayed normal pause overlay. Helper now uses visible pause Home directly and asserts running=false. Networking assertions remain unchanged."
+    },
+    {
+      "test": "pause_hidden_resume",
+      "initialCause": "Public v5 guide framing uses sceneT=2000+gameT*0.6 in first building. Old test incorrectly compared scene time directly against game time.",
+      "fix": "Compare scene and game clocks against their own paused baselines; add exact fixed-scene checks while paused/hidden and preserve presentation/game elapsed limits.",
+      "observedPaused": {
+        "game": 1170,
+        "scene": 2702
+      },
+      "passingLog": "e2e-pause-clocks-fix.log"
+    }
+  ],
+  "conclusion": "All 146 distinct existing tests have passing evidence across the initial and focused reruns; this is not a claim of a single clean full-suite run. No skips or production-code changes were used to resolve these failures. Final CI run must verify committed test fixes."
+}

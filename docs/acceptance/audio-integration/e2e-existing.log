@@ -1,0 +1,985 @@
+TAP version 13
+# Subtest: ホーム：名前の公開説明があり、中断がなければ「つづきから」を出さない
+ok 1 - ホーム：名前の公開説明があり、中断がなければ「つづきから」を出さない
+  ---
+  duration_ms: 2334.892192
+  type: 'test'
+  ...
+# Subtest: SAVE-01/02: 停止で壁を覆い時計を止め、再開は3秒のカウントダウンの後。画面離脱でも停止する
+ok 2 - SAVE-01/02: 停止で壁を覆い時計を止め、再開は3秒のカウントダウンの後。画面離脱でも停止する
+  ---
+  duration_ms: 17236.440443
+  type: 'test'
+  ...
+# Subtest: PLAY-06: 19→20棟の猶予でバーを解放（位置不変・明るさ100%のまま）、20棟目到達で練習を解放
+ok 3 - PLAY-06: 19→20棟の猶予でバーを解放（位置不変・明るさ100%のまま）、20棟目到達で練習を解放
+  ---
+  duration_ms: 21654.167256
+  type: 'test'
+  ...
+# Subtest: 最終出口：250秒ちょうどで50棟・クリアボーナス1回。結果に通過数・平均・得点を表示
+ok 4 - 最終出口：250秒ちょうどで50棟・クリアボーナス1回。結果に通過数・平均・得点を表示
+  ---
+  duration_ms: 14121.987474
+  type: 'test'
+  ...
+# Subtest: GAME-07: 昼・夜・警察接近中でも、壁・体・プレビューの色は判定と同じ値
+ok 5 - GAME-07: 昼・夜・警察接近中でも、壁・体・プレビューの色は判定と同じ値
+  ---
+  duration_ms: 11158.973829
+  type: 'test'
+  ...
+# Subtest: GAME-07b: 警察の光・街灯が近くても、見えている壁の全体が判定と同じ色
+ok 6 - GAME-07b: 警察の光・街灯が近くても、見えている壁の全体が判定と同じ色
+  ---
+  duration_ms: 14937.067234
+  type: 'test'
+  ...
+# Subtest: GAME-07b: 描画枠を使い回した後も、画面に見える29棟目の壁を検査する
+ok 7 - GAME-07b: 描画枠を使い回した後も、画面に見える29棟目の壁を検査する
+  ---
+  duration_ms: 7103.967529
+  type: 'test'
+  ...
+# Subtest: G4: guide ownership persists across three real plays through both moving guides and first unlock
+ok 8 - G4: guide ownership persists across three real plays through both moving guides and first unlock
+  ---
+  duration_ms: 20238.97216
+  type: 'test'
+  ...
+# Subtest: G3: pause remains usable during the first stationary guide
+not ok 9 - G3: pause remains usable during the first stationary guide
+  ---
+  duration_ms: 35890.934979
+  type: 'test'
+  location: '/workspace/chameleol/tests/e2e/guidance.e2e.mjs:91:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    page.click: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="skip-opening"]')[22m
+    [2m    - locator resolved to <button type="button" class="btn btn-skip" data-testid="skip-opening">スキップ</button>[22m
+    [2m  - attempting click action[22m
+    [2m    - waiting for element to be visible, enabled and stable[22m
+    [2m    - element is visible, enabled and stable[22m
+    [2m    - scrolling into view if needed[22m
+    [2m    - done scrolling[22m
+    [2m    - element is not visible[22m
+    [2m  - retrying click action[22m
+    [2m    - waiting for element to be visible, enabled and stable[22m
+    [2m  - element was detached from the DOM, retrying[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    TestContext.<anonymous> (/workspace/chameleol/tests/e2e/guidance.e2e.mjs:97:20)
+  ...
+# Subtest: G3: hiding during the initial opening preserves the first guide after explicit resume
+ok 10 - G3: hiding during the initial opening preserves the first guide after explicit resume
+  ---
+  duration_ms: 40442.054474
+  type: 'test'
+  ...
+# Subtest: G3: reaching the brightness guide freezes exactly at 95000 and stops game audio
+ok 11 - G3: reaching the brightness guide freezes exactly at 95000 and stops game audio
+  ---
+  duration_ms: 21560.298151
+  type: 'test'
+  ...
+# Subtest: G3: delayed brightness ownership permits countdown before the checkpoint and holds at the checkpoint
+ok 12 - G3: delayed brightness ownership permits countdown before the checkpoint and holds at the checkpoint
+  ---
+  duration_ms: 37059.130715
+  type: 'test'
+  ...
+# Subtest: G4: all four practice guides preserve usable controls at 402x700
+ok 13 - G4: all four practice guides preserve usable controls at 402x700
+  ---
+  duration_ms: 8879.45997
+  type: 'test'
+  ...
+# Subtest: G4: all four practice guides preserve usable controls at 402x874
+ok 14 - G4: all four practice guides preserve usable controls at 402x874
+  ---
+  duration_ms: 8614.206478
+  type: 'test'
+  ...
+# Subtest: G4: all four practice guides preserve usable controls at 874x402
+ok 15 - G4: all four practice guides preserve usable controls at 874x402
+  ---
+  duration_ms: 8657.734034
+  type: 'test'
+  ...
+# Subtest: G3: first stationary guide keeps draft out of game state and history until automatic completion above 95%
+ok 16 - G3: first stationary guide keeps draft out of game state and history until automatic completion above 95%
+  ---
+  duration_ms: 25814.341808
+  type: 'test'
+  ...
+# Subtest: LANG-TEST-01: 15言語でホーム・設定・あそびかた・停止・結果の本文が切り替わり、402px幅で横にはみ出さない
+ok 17 - LANG-TEST-01: 15言語でホーム・設定・あそびかた・停止・結果の本文が切り替わり、402px幅で横にはみ出さない
+  ---
+  duration_ms: 215832.562408
+  type: 'test'
+  ...
+# Subtest: LANG-TEST-02: 未対応の言語だけなら英語。端末に保存できなくても、その画面で言語を切り替えられる
+ok 18 - LANG-TEST-02: 未対応の言語だけなら英語。端末に保存できなくても、その画面で言語を切り替えられる
+  ---
+  duration_ms: 3625.605014
+  type: 'test'
+  ...
+# Subtest: SHARE-TEST-01: Xの投稿画面を開けない時は、本文とURLを手で選べる形で出す（自動投稿しない）
+ok 19 - SHARE-TEST-01: Xの投稿画面を開けない時は、本文とURLを手で選べる形で出す（自動投稿しない）
+  ---
+  duration_ms: 4673.181189
+  type: 'test'
+  ...
+# Subtest: 結果画面では名前のベスト順位を示し、Xには今回の成績に合う順位だけを入れる
+    # Subtest: より多く通過したベストの順位は、今回のX投稿に入らない
+    ok 1 - より多く通過したベストの順位は、今回のX投稿に入らない
+      ---
+      duration_ms: 979.025594
+      type: 'test'
+      ...
+    # Subtest: 通過数が同じでも平均一致度が異なるベストの順位は、今回のX投稿に入らない
+    ok 2 - 通過数が同じでも平均一致度が異なるベストの順位は、今回のX投稿に入らない
+      ---
+      duration_ms: 421.97604
+      type: 'test'
+      ...
+    # Subtest: ベストと同じ記録なら、X投稿に順位を入れる
+    ok 3 - ベストと同じ記録なら、X投稿に順位を入れる
+      ---
+      duration_ms: 435.604888
+      type: 'test'
+      ...
+    # Subtest: 表示成績がサーバーで確定した今回の成績と違う場合は、X投稿に順位を入れない
+    ok 4 - 表示成績がサーバーで確定した今回の成績と違う場合は、X投稿に順位を入れない
+      ---
+      duration_ms: 425.635382
+      type: 'test'
+      ...
+    # Subtest: 確認待ちでは、今回の成績とベストが同じでもX投稿に順位を入れない
+    ok 5 - 確認待ちでは、今回の成績とベストが同じでもX投稿に順位を入れない
+      ---
+      duration_ms: 429.945355
+      type: 'test'
+      ...
+    # Subtest: 結果画面の順位は今回の成績と別に、ベスト記録の順位だと分かる
+    ok 6 - 結果画面の順位は今回の成績と別に、ベスト記録の順位だと分かる
+      ---
+      duration_ms: 20.809835
+      type: 'test'
+      ...
+    1..6
+ok 20 - 結果画面では名前のベスト順位を示し、Xには今回の成績に合う順位だけを入れる
+  ---
+  duration_ms: 4212.468868
+  type: 'test'
+  ...
+# Subtest: 名前ありで遊ぶ：開始受付→本編→途中終了→送信→再計算→正式登録→ランキングに表示
+not ok 21 - 名前ありで遊ぶ：開始受付→本編→途中終了→送信→再計算→正式登録→ランキングに表示
+  ---
+  duration_ms: 0.663259
+  type: 'test'
+  location: '/workspace/chameleol/tests/e2e/online.e2e.mjs:88:1'
+  failureType: 'hookFailed'
+  error: 'spawnSync initdb ENOENT'
+  code: 'ENOENT'
+  stack: |-
+    Object.spawnSync (node:internal/child_process:1191:20)
+    spawnSync (node:child_process:929:24)
+    execFileSync (node:child_process:972:15)
+    asPg (file:///workspace/chameleol/scripts/testdb.mjs:33:122)
+    startCluster (file:///workspace/chameleol/scripts/testdb.mjs:45:3)
+    TestContext.<anonymous> (file:///workspace/chameleol/tests/e2e/online.e2e.mjs:11:19)
+    TestHook.runInAsyncScope (node:async_hooks:227:14)
+    TestHook.run (node:internal/test_runner/test:1402:25)
+    TestHook.run (node:internal/test_runner/test:1757:18)
+    TestHook.run (node:internal/util:581:20)
+  ...
+# Subtest: NET-TEST-02: 開始前から通信できない時は、自動再試行の後に選んでもらい、対象外で遊べる
+not ok 22 - NET-TEST-02: 開始前から通信できない時は、自動再試行の後に選んでもらい、対象外で遊べる
+  ---
+  duration_ms: 0.109066
+  type: 'test'
+  location: '/workspace/chameleol/tests/e2e/online.e2e.mjs:123:1'
+  failureType: 'hookFailed'
+  error: 'spawnSync initdb ENOENT'
+  code: 'ENOENT'
+  stack: |-
+    Object.spawnSync (node:internal/child_process:1191:20)
+    spawnSync (node:child_process:929:24)
+    execFileSync (node:child_process:972:15)
+    asPg (file:///workspace/chameleol/scripts/testdb.mjs:33:122)
+    startCluster (file:///workspace/chameleol/scripts/testdb.mjs:45:3)
+    TestContext.<anonymous> (file:///workspace/chameleol/tests/e2e/online.e2e.mjs:11:19)
+    TestHook.runInAsyncScope (node:async_hooks:227:14)
+    TestHook.run (node:internal/test_runner/test:1402:25)
+    TestHook.run (node:internal/test_runner/test:1757:18)
+    TestHook.run (node:internal/util:581:20)
+  ...
+# Subtest: GAME-17/NET-07: 終了直後（送信前）に再読込しても、結果は端末に残り、起動時に1回だけ送られる
+not ok 23 - GAME-17/NET-07: 終了直後（送信前）に再読込しても、結果は端末に残り、起動時に1回だけ送られる
+  ---
+  duration_ms: 0.267328
+  type: 'test'
+  location: '/workspace/chameleol/tests/e2e/online.e2e.mjs:148:1'
+  failureType: 'hookFailed'
+  error: 'spawnSync initdb ENOENT'
+  code: 'ENOENT'
+  stack: |-
+    Object.spawnSync (node:internal/child_process:1191:20)
+    spawnSync (node:child_process:929:24)
+    execFileSync (node:child_process:972:15)
+    asPg (file:///workspace/chameleol/scripts/testdb.mjs:33:122)
+    startCluster (file:///workspace/chameleol/scripts/testdb.mjs:45:3)
+    TestContext.<anonymous> (file:///workspace/chameleol/tests/e2e/online.e2e.mjs:11:19)
+    TestHook.runInAsyncScope (node:async_hooks:227:14)
+    TestHook.run (node:internal/test_runner/test:1402:25)
+    TestHook.run (node:internal/test_runner/test:1757:18)
+    TestHook.run (node:internal/util:581:20)
+  ...
+# Subtest: NET-TEST-06: 未送信が2件残っていても新しいプレイを始められ、回復後にそれぞれ1回ずつ届く
+not ok 24 - NET-TEST-06: 未送信が2件残っていても新しいプレイを始められ、回復後にそれぞれ1回ずつ届く
+  ---
+  duration_ms: 0.129426
+  type: 'test'
+  location: '/workspace/chameleol/tests/e2e/online.e2e.mjs:170:1'
+  failureType: 'hookFailed'
+  error: 'spawnSync initdb ENOENT'
+  code: 'ENOENT'
+  stack: |-
+    Object.spawnSync (node:internal/child_process:1191:20)
+    spawnSync (node:child_process:929:24)
+    execFileSync (node:child_process:972:15)
+    asPg (file:///workspace/chameleol/scripts/testdb.mjs:33:122)
+    startCluster (file:///workspace/chameleol/scripts/testdb.mjs:45:3)
+    TestContext.<anonymous> (file:///workspace/chameleol/tests/e2e/online.e2e.mjs:11:19)
+    TestHook.runInAsyncScope (node:async_hooks:227:14)
+    TestHook.run (node:internal/test_runner/test:1402:25)
+    TestHook.run (node:internal/test_runner/test:1757:18)
+    TestHook.run (node:internal/util:581:20)
+  ...
+# Subtest: PLAY-03: 2本指で同時に操作し、片方を離してももう一方が続く。3本目は先の指を奪わない
+ok 25 - PLAY-03: 2本指で同時に操作し、片方を離してももう一方が続く。3本目は先の指を奪わない
+  ---
+  duration_ms: 8388.102926
+  type: 'test'
+  ...
+# Subtest: SAVE-TEST-01: 遊んでいる途中で再読込しても、「つづきから」で保存した時点（通過棟数・警戒・色）から再開できる
+ok 26 - SAVE-TEST-01: 遊んでいる途中で再読込しても、「つづきから」で保存した時点（通過棟数・警戒・色）から再開できる
+  ---
+  duration_ms: 18868.125839
+  type: 'test'
+  ...
+# Subtest: R1: 別のタブが同じプレイを引き継ぐと、元のタブの保存は通らず「別の画面で続いています」と知らせる
+ok 27 - R1: 別のタブが同じプレイを引き継ぐと、元のタブの保存は通らず「別の画面で続いています」と知らせる
+  ---
+  duration_ms: 18948.956844
+  type: 'test'
+  ...
+# Subtest: SCOPE-03: 建物は4つの枠を使い回し、進んでも連戦しても描画物体が増え続けない
+ok 28 - SCOPE-03: 建物は4つの枠を使い回し、進んでも連戦しても描画物体が増え続けない
+  ---
+  duration_ms: 49804.818084
+  type: 'test'
+  ...
+# Subtest: GAME-17: クリアの演出を飛ばしても、結果とクリアボーナスは1回だけで変わらない
+ok 29 - GAME-17: クリアの演出を飛ばしても、結果とクリアボーナスは1回だけで変わらない
+  ---
+  duration_ms: 11458.546987
+  type: 'test'
+  ...
+# Subtest: PRACT-05: 練習の3問をすべてスキップしても答え合わせを経て終了でき、直近の練習に残る
+ok 30 - PRACT-05: 練習の3問をすべてスキップしても答え合わせを経て終了でき、直近の練習に残る
+  ---
+  duration_ms: 17968.13556
+  type: 'test'
+  ...
+# Subtest: effects80: accepted requirements and catalog contain exactly 80 unique IDs; excluded 20 stay absent
+ok 31 - effects80: accepted requirements and catalog contain exactly 80 unique IDs; excluded 20 stay absent
+  ---
+  duration_ms: 23.980873
+  type: 'test'
+  ...
+# Subtest: effects80: verification forces each accepted effect and rejects every excluded effect
+    # Subtest: No.78: 得点の内訳が積み上がる
+    ok 1 - No.78: 得点の内訳が積み上がる
+      ---
+      duration_ms: 118.847388
+      type: 'test'
+      ...
+    # Subtest: No.81: 50棟を一枚の逃走地図に
+    ok 2 - No.81: 50棟を一枚の逃走地図に
+      ---
+      duration_ms: 82.714053
+      type: 'test'
+      ...
+    # Subtest: No.82: 最もうまく隠れた一棟
+    ok 3 - No.82: 最もうまく隠れた一棟
+      ---
+      duration_ms: 33.821737
+      type: 'test'
+      ...
+    # Subtest: No.83: 最も苦戦した一棟
+    ok 4 - No.83: 最も苦戦した一棟
+      ---
+      duration_ms: 26.139223
+      type: 'test'
+      ...
+    # Subtest: No.93: 到達した街を結果の背景に
+    ok 5 - No.93: 到達した街を結果の背景に
+      ---
+      duration_ms: 20.484567
+      type: 'test'
+      ...
+    # Subtest: No.43: 成功中に伸びる帯
+    ok 6 - No.43: 成功中に伸びる帯
+      ---
+      duration_ms: 1205.561434
+      type: 'test'
+      ...
+    # Subtest: No.77: 最大連続成功を宝石で数える
+    ok 7 - No.77: 最大連続成功を宝石で数える
+      ---
+      duration_ms: 1116.204173
+      type: 'test'
+      ...
+    # Subtest: No.95: プレイ内容に合ったひと言
+    ok 8 - No.95: プレイ内容に合ったひと言
+      ---
+      duration_ms: 18.539318
+      type: 'test'
+      ...
+    # Subtest: No.2: 歩道の模様が変わる
+    ok 9 - No.2: 歩道の模様が変わる
+      ---
+      duration_ms: 627.059137
+      type: 'test'
+      ...
+    # Subtest: No.3: 屋根の輪郭を増やす
+    ok 10 - No.3: 屋根の輪郭を増やす
+      ---
+      duration_ms: 960.25724
+      type: 'test'
+      ...
+    # Subtest: No.10: 地区ごとの目印
+    ok 11 - No.10: 地区ごとの目印
+      ---
+      duration_ms: 363.567462
+      type: 'test'
+      ...
+    # Subtest: No.46: 評価開始の小さなシャッター
+    ok 12 - No.46: 評価開始の小さなシャッター
+      ---
+      duration_ms: 293.16601
+      type: 'test'
+      ...
+    # Subtest: No.52: 街を進む小さな自分
+    ok 13 - No.52: 街を進む小さな自分
+      ---
+      duration_ms: 159.206969
+      type: 'test'
+      ...
+    # Subtest: No.91: 実績のスタンプを押す
+    ok 14 - No.91: 実績のスタンプを押す
+      ---
+      duration_ms: 196.008963
+      type: 'test'
+      ...
+    # Subtest: No.92: 今回の色を宝石箱に並べる
+    ok 15 - No.92: 今回の色を宝石箱に並べる
+      ---
+      duration_ms: 22.803424
+      type: 'test'
+      ...
+    # Subtest: No.41: 足元に成功の輪
+    ok 16 - No.41: 足元に成功の輪
+      ---
+      duration_ms: 612.057351
+      type: 'test'
+      ...
+    # Subtest: No.73: 逃走報告書が印刷される
+    ok 17 - No.73: 逃走報告書が印刷される
+      ---
+      duration_ms: 849.205218
+      type: 'test'
+      ...
+    # Subtest: No.74: 得点の数字が回る
+    ok 18 - No.74: 得点の数字が回る
+      ---
+      duration_ms: 18.646977
+      type: 'test'
+      ...
+    # Subtest: No.55: 明るさバーの開錠
+    ok 19 - No.55: 明るさバーの開錠
+      ---
+      duration_ms: 472.841631
+      type: 'test'
+      ...
+    # Subtest: No.21: 切替中の忍び足
+    ok 20 - No.21: 切替中の忍び足
+      ---
+      duration_ms: 1094.989142
+      type: 'test'
+      ...
+    # Subtest: No.71: 結果を一枚の場面にする
+    ok 21 - No.71: 結果を一枚の場面にする
+      ---
+      duration_ms: 3735.142517
+      type: 'test'
+      ...
+    # Subtest: No.80: 記念写真を撮る
+    ok 22 - No.80: 記念写真を撮る
+      ---
+      duration_ms: 20.201735
+      type: 'test'
+      ...
+    # Subtest: No.48: 連続成功で宝石が連なる
+    ok 23 - No.48: 連続成功で宝石が連なる
+      ---
+      duration_ms: 516.941384
+      type: 'test'
+      ...
+    # Subtest: No.99: もう一度遊ぶボタンへ飛び乗る
+    ok 24 - No.99: もう一度遊ぶボタンへ飛び乗る
+      ---
+      duration_ms: 859.212086
+      type: 'test'
+      ...
+    # Subtest: No.22: 擬態中の息止め
+    ok 25 - No.22: 擬態中の息止め
+      ---
+      duration_ms: 522.033985
+      type: 'test'
+      ...
+    # Subtest: No.42: 画面の縁を走る成功光
+    ok 26 - No.42: 画面の縁を走る成功光
+      ---
+      duration_ms: 4140.000375
+      type: 'test'
+      ...
+    # Subtest: No.1: 三層に重なる街
+    ok 27 - No.1: 三層に重なる街
+      ---
+      duration_ms: 231.990271
+      type: 'test'
+      ...
+    # Subtest: No.28: 歩く足の接地感
+    ok 28 - No.28: 歩く足の接地感
+      ---
+      duration_ms: 356.910374
+      type: 'test'
+      ...
+    # Subtest: No.79: 自己ベストの額を更新する
+    ok 29 - No.79: 自己ベストの額を更新する
+      ---
+      duration_ms: 3491.631654
+      type: 'test'
+      ...
+    # Subtest: No.89: 地区ごとの絵はがき
+    ok 30 - No.89: 地区ごとの絵はがき
+      ---
+      duration_ms: 14.102694
+      type: 'test'
+      ...
+    # Subtest: No.25: 目だけで様子をうかがう
+    ok 31 - No.25: 目だけで様子をうかがう
+      ---
+      duration_ms: 451.397818
+      type: 'test'
+      ...
+    # Subtest: No.32: 無線で連絡する
+    ok 32 - No.32: 無線で連絡する
+      ---
+      duration_ms: 5269.21164
+      type: 'test'
+      ...
+    # Subtest: No.49: 連続成功の鎖がほどける
+    ok 33 - No.49: 連続成功の鎖がほどける
+      ---
+      duration_ms: 4405.704849
+      type: 'test'
+      ...
+    # Subtest: No.29: こちらへの得意顔
+    ok 34 - No.29: こちらへの得意顔
+      ---
+      duration_ms: 588.45568
+      type: 'test'
+      ...
+    # Subtest: No.100: 結果画面のおまけ反応
+    ok 35 - No.100: 結果画面のおまけ反応
+      ---
+      duration_ms: 3356.568896
+      type: 'test'
+      ...
+    # Subtest: No.60: 発見の決定的瞬間を漫画化
+    ok 36 - No.60: 発見の決定的瞬間を漫画化
+      ---
+      duration_ms: 456.010293
+      type: 'test'
+      ...
+    # Subtest: No.9: 建物の隙間の路地
+    ok 37 - No.9: 建物の隙間の路地
+      ---
+      duration_ms: 926.937143
+      type: 'test'
+      ...
+    # Subtest: No.50: 危険からの立て直し札
+    ok 38 - No.50: 危険からの立て直し札
+      ---
+      duration_ms: 309.755843
+      type: 'test'
+      ...
+    # Subtest: No.17: 歩道の落ち葉
+    ok 39 - No.17: 歩道の落ち葉
+      ---
+      duration_ms: 229.017298
+      type: 'test'
+      ...
+    # Subtest: No.24: 宝石を守る尻尾
+    ok 40 - No.24: 宝石を守る尻尾
+      ---
+      duration_ms: 378.092741
+      type: 'test'
+      ...
+    # Subtest: No.11: 地区の入口ゲート
+    ok 41 - No.11: 地区の入口ゲート
+      ---
+      duration_ms: 5886.328913
+      type: 'test'
+      ...
+    # Subtest: No.23: 危険時に身構える
+    ok 42 - No.23: 危険時に身構える
+      ---
+      duration_ms: 654.45749
+      type: 'test'
+      ...
+    # Subtest: No.53: 自己ベスト地点の旗
+    ok 43 - No.53: 自己ベスト地点の旗
+      ---
+      duration_ms: 6001.311916
+      type: 'test'
+      ...
+    # Subtest: No.31: 2人で役割分担
+    ok 44 - No.31: 2人で役割分担
+      ---
+      duration_ms: 596.101035
+      type: 'test'
+      ...
+    # Subtest: No.35: 急停止の足踏み
+    ok 45 - No.35: 急停止の足踏み
+      ---
+      duration_ms: 6184.327672
+      type: 'test'
+      ...
+    # Subtest: No.63: 更新される手配書
+    ok 46 - No.63: 更新される手配書
+      ---
+      duration_ms: 6334.367549
+      type: 'test'
+      ...
+    # Subtest: No.6: ベランダの生活感
+    ok 47 - No.6: ベランダの生活感
+      ---
+      duration_ms: 1851.26322
+      type: 'test'
+      ...
+    # Subtest: No.98: 前回からの変化を並べる
+    ok 48 - No.98: 前回からの変化を並べる
+      ---
+      duration_ms: 1145.584446
+      type: 'test'
+      ...
+    # Subtest: No.26: 汗をぬぐってひと安心
+    ok 49 - No.26: 汗をぬぐってひと安心
+      ---
+      duration_ms: 509.223421
+      type: 'test'
+      ...
+    # Subtest: No.58: 残り5棟の屋上表示
+    ok 50 - No.58: 残り5棟の屋上表示
+      ---
+      duration_ms: 4648.112504
+      type: 'test'
+      ...
+    # Subtest: No.96: 確定順位が開く札
+    ok 51 - No.96: 確定順位が開く札
+      ---
+      duration_ms: 1195.786339
+      type: 'test'
+      ...
+    # Subtest: No.5: 揺れる大きな看板
+    ok 52 - No.5: 揺れる大きな看板
+      ---
+      duration_ms: 430.368701
+      type: 'test'
+      ...
+    # Subtest: No.19: パン屋の煙突
+    ok 53 - No.19: パン屋の煙突
+      ---
+      duration_ms: 1242.428345
+      type: 'test'
+      ...
+    # Subtest: No.8: 配管まわりの動き
+    ok 54 - No.8: 配管まわりの動き
+      ---
+      duration_ms: 330.716688
+      type: 'test'
+      ...
+    # Subtest: No.37: 双眼鏡での捜索
+    ok 55 - No.37: 双眼鏡での捜索
+      ---
+      duration_ms: 458.679381
+      type: 'test'
+      ...
+    # Subtest: No.47: 成功した店の看板が反応
+    ok 56 - No.47: 成功した店の看板が反応
+      ---
+      duration_ms: 5159.762252
+      type: 'test'
+      ...
+    # Subtest: No.33: 似ていない似顔絵
+    ok 57 - No.33: 似ていない似顔絵
+      ---
+      duration_ms: 658.420226
+      type: 'test'
+      ...
+    # Subtest: No.14: 飛び立つ鳥の群れ
+    ok 58 - No.14: 飛び立つ鳥の群れ
+      ---
+      duration_ms: 5150.93817
+      type: 'test'
+      ...
+    # Subtest: No.30: 宝石の無事を確認
+    ok 59 - No.30: 宝石の無事を確認
+      ---
+      duration_ms: 702.176328
+      type: 'test'
+      ...
+    # Subtest: No.36: 遠景のパトカー
+    ok 60 - No.36: 遠景のパトカー
+      ---
+      duration_ms: 3366.956996
+      type: 'test'
+      ...
+    # Subtest: No.54: 最大連続成功を越える瞬間
+    ok 61 - No.54: 最大連続成功を越える瞬間
+      ---
+      duration_ms: 191.90814
+      type: 'test'
+      ...
+    # Subtest: No.4: 店の奥が見える窓
+    ok 62 - No.4: 店の奥が見える窓
+      ---
+      duration_ms: 135.116473
+      type: 'test'
+      ...
+    # Subtest: No.38: 2人で顔を見合わせる
+    ok 63 - No.38: 2人で顔を見合わせる
+      ---
+      duration_ms: 269.990327
+      type: 'test'
+      ...
+    # Subtest: No.15: 奥を走る自転車
+    ok 64 - No.15: 奥を走る自転車
+      ---
+      duration_ms: 3004.731511
+      type: 'test'
+      ...
+    # Subtest: No.18: 自販機の小芝居
+    ok 65 - No.18: 自販機の小芝居
+      ---
+      duration_ms: 270.84114
+      type: 'test'
+      ...
+    # Subtest: No.64: 看板絵のカメレオンが目配せ
+    ok 66 - No.64: 看板絵のカメレオンが目配せ
+      ---
+      duration_ms: 275.252305
+      type: 'test'
+      ...
+    # Subtest: No.7: 風にめくれるひさし
+    ok 67 - No.7: 風にめくれるひさし
+      ---
+      duration_ms: 282.559353
+      type: 'test'
+      ...
+    # Subtest: No.16: 遠くを横切るバス
+    ok 68 - No.16: 遠くを横切るバス
+      ---
+      duration_ms: 373.534754
+      type: 'test'
+      ...
+    # Subtest: No.57: 高層街への景色の変化
+    ok 69 - No.57: 高層街への景色の変化
+      ---
+      duration_ms: 287.391133
+      type: 'test'
+      ...
+    # Subtest: No.66: 窓の灯りの波
+    ok 70 - No.66: 窓の灯りの波
+      ---
+      duration_ms: 297.609666
+      type: 'test'
+      ...
+    # Subtest: No.59: 逃げ切りゲート
+    ok 71 - No.59: 逃げ切りゲート
+      ---
+      duration_ms: 612.205857
+      type: 'test'
+      ...
+    # Subtest: No.12: 窓から顔を出す住人
+    ok 72 - No.12: 窓から顔を出す住人
+      ---
+      duration_ms: 785.605208
+      type: 'test'
+      ...
+    # Subtest: No.13: 屋根の猫
+    ok 73 - No.13: 屋根の猫
+      ---
+      duration_ms: 344.795744
+      type: 'test'
+      ...
+    # Subtest: No.40: 帽子を追いかける
+    ok 74 - No.40: 帽子を追いかける
+      ---
+      duration_ms: 249.772516
+      type: 'test'
+      ...
+    # Subtest: No.62: 地区のマスコットマンホール
+    ok 75 - No.62: 地区のマスコットマンホール
+      ---
+      duration_ms: 2706.818909
+      type: 'test'
+      ...
+    # Subtest: No.85: 初クリアの特別な切符
+    ok 76 - No.85: 初クリアの特別な切符
+      ---
+      duration_ms: 277.539863
+      type: 'test'
+      ...
+    # Subtest: No.65: 遠くに二重の虹
+    ok 77 - No.65: 遠くに二重の虹
+      ---
+      duration_ms: 269.525539
+      type: 'test'
+      ...
+    # Subtest: No.70: 屋上の隠れカメレオン
+    ok 78 - No.70: 屋上の隠れカメレオン
+      ---
+      duration_ms: 884.719618
+      type: 'test'
+      ...
+    # Subtest: No.61: 遠景の小さなUFO
+    ok 79 - No.61: 遠景の小さなUFO
+      ---
+      duration_ms: 222.855967
+      type: 'test'
+      ...
+    # Subtest: No.27: つまずいて持ち直す
+    ok 80 - No.27: つまずいて持ち直す
+      ---
+      duration_ms: 195.916783
+      type: 'test'
+      ...
+    1..80
+ok 32 - effects80: verification forces each accepted effect and rejects every excluded effect
+  ---
+  duration_ms: 108599.356683
+  type: 'test'
+  ...
+# Subtest: effects80: cosmetics preserve course, summary, history and result submission body
+ok 33 - effects80: cosmetics preserve course, summary, history and result submission body
+  ---
+  duration_ms: 2565.823025
+  type: 'test'
+  ...
+# Subtest: effects80: milestone controls and result at 402x700
+ok 34 - effects80: milestone controls and result at 402x700
+  ---
+  duration_ms: 72176.032347
+  type: 'test'
+  ...
+# Subtest: effects80: milestone controls and result at 402x874
+ok 35 - effects80: milestone controls and result at 402x874
+  ---
+  duration_ms: 65616.56624
+  type: 'test'
+  ...
+# Subtest: effects80: milestone controls and result at 874x402
+ok 36 - effects80: milestone controls and result at 874x402
+  ---
+  duration_ms: 58022.892931
+  type: 'test'
+  ...
+# Subtest: effects80: ten replay replacements release old scopes and keep presentation pools bounded
+ok 37 - effects80: ten replay replacements release old scopes and keep presentation pools bounded
+  ---
+  duration_ms: 10028.971578
+  type: 'test'
+  ...
+# scene objects over ten replacements: 225, 225, 225, 225, 225, 225, 225, 225, 225, 225
+# Subtest: effects80: renderer additions remain within draw, geometry and texture budgets
+ok 38 - effects80: renderer additions remain within draw, geometry and texture budgets
+  ---
+  duration_ms: 4095.218395
+  type: 'test'
+  ...
+# renderer baseline/effects: [{"objects":202,"geometries":22,"textures":10,"calls":65},{"objects":225,"geometries":25,"textures":11,"calls":68}]
+# Subtest: effects80: peak shop, actor props, ring, particles and cameo stay within renderer budgets
+ok 39 - effects80: peak shop, actor props, ring, particles and cameo stay within renderer budgets
+  ---
+  duration_ms: 7821.157175
+  type: 'test'
+  ...
+# peak fixture measurements: [{"atMs":95000,"baseline":{"objects":202,"geometries":56,"textures":13,"calls":105},"samples":[{"effectId":null,"renderer":{"objects":225,"geometries":61,"textures":14,"calls":111},"pools":{"visibleArtwork":["pavement0","alley0","pavement0","alley0","pavement1","interior2","sign","pavement1","interior0","pavement1","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[22,23,24,31,28,32],"staticDecorations":22,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[22,23,24,31,28,32],"hero":null,"police":"radio","tail":0.3333333333333333,"counts":{"radio":1},"props":10},"successRings":0,"enabled":true}},{"effectId":32,"renderer":{"objects":225,"geometries":62,"textures":14,"calls":112},"pools":{"visibleArtwork":["pavement0","alley0","pavement0","alley0","pavement1","interior2","sign","pavement1","interior0","pavement1","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[32],"staticDecorations":22,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[32],"hero":"sweat","police":"radio","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":33,"renderer":{"objects":225,"geometries":64,"textures":14,"calls":112},"pools":{"visibleArtwork":["pavement0","alley0","pavement0","alley0","pavement1","interior2","sign","pavement1","interior0","pavement1","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[33],"staticDecorations":22,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[33],"hero":"sweat","police":"sketch","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":37,"renderer":{"objects":225,"geometries":65,"textures":14,"calls":112},"pools":{"visibleArtwork":["pavement0","alley0","pavement0","alley0","pavement1","interior2","sign","pavement1","interior0","pavement1","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[37],"staticDecorations":22,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[37],"hero":"sweat","police":"binoculars","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":40,"renderer":{"objects":225,"geometries":66,"textures":14,"calls":109},"pools":{"visibleArtwork":["pavement0","alley0","pavement0","alley0","pavement1","interior2","sign","pavement1","interior0","pavement1","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[40],"staticDecorations":22,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[40],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":26,"renderer":{"objects":225,"geometries":66,"textures":14,"calls":110},"pools":{"visibleArtwork":["pavement0","alley0","pavement0","alley0","pavement1","interior2","sign","pavement1","interior0","pavement1","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[26],"staticDecorations":22,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[26],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":4,"renderer":{"objects":225,"geometries":66,"textures":14,"calls":110},"pools":{"visibleArtwork":["pavement0","alley0","pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[4,26],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":0,"actors":{"activeIds":[26],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":41,"renderer":{"objects":225,"geometries":67,"textures":14,"calls":111},"pools":{"visibleArtwork":["pavement0","alley0","pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[4,26,41],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":0,"actors":{"activeIds":[26],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":1,"enabled":true}},{"effectId":19,"renderer":{"objects":225,"geometries":67,"textures":14,"calls":111},"pools":{"visibleArtwork":["pavement0","alley0","pavement0","alley0","pavement1","interior2","chimney","pavement1","interior0","pavement1","pavement2","pavement2","manhole1","poster1","landmark1","leaf","leaf","leaf","smoke","smoke","smoke"],"activeIds":[19,26,41],"staticDecorations":22,"ambientParticles":6,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":0,"actors":{"activeIds":[26],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":1,"enabled":true}},{"effectId":14,"renderer":{"objects":225,"geometries":67,"textures":14,"calls":112},"pools":{"visibleArtwork":["pavement0","alley0","pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","pavement2","pavement2","manhole1","poster1","landmark1","bird","bird","bird"],"activeIds":[14,26,41],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":1,"backgroundBirds":3,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":0,"actors":{"activeIds":[26],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":1,"enabled":true}}]},{"atMs":100000,"baseline":{"objects":202,"geometries":55,"textures":13,"calls":105},"samples":[{"effectId":null,"renderer":{"objects":225,"geometries":60,"textures":14,"calls":111},"pools":{"visibleArtwork":["pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","alley1","pavement2","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[22,23,24,31,28,32],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[22,23,24,31,28,32],"hero":null,"police":"radio","tail":0.3333333333333333,"counts":{"radio":1},"props":10},"successRings":0,"enabled":true}},{"effectId":32,"renderer":{"objects":225,"geometries":61,"textures":14,"calls":112},"pools":{"visibleArtwork":["pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","alley1","pavement2","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[32],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[32],"hero":"sweat","police":"radio","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":33,"renderer":{"objects":225,"geometries":63,"textures":14,"calls":112},"pools":{"visibleArtwork":["pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","alley1","pavement2","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[33],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[33],"hero":"sweat","police":"sketch","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":37,"renderer":{"objects":225,"geometries":64,"textures":14,"calls":112},"pools":{"visibleArtwork":["pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","alley1","pavement2","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[37],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[37],"hero":"sweat","police":"binoculars","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":40,"renderer":{"objects":225,"geometries":65,"textures":14,"calls":109},"pools":{"visibleArtwork":["pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","alley1","pavement2","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[40],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[40],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":26,"renderer":{"objects":225,"geometries":65,"textures":14,"calls":110},"pools":{"visibleArtwork":["pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","alley1","pavement2","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[26],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":1,"actors":{"activeIds":[26],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":4,"renderer":{"objects":225,"geometries":65,"textures":14,"calls":110},"pools":{"visibleArtwork":["pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","alley1","pavement2","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[4,26],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":0,"actors":{"activeIds":[26],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":0,"enabled":true}},{"effectId":41,"renderer":{"objects":225,"geometries":66,"textures":14,"calls":111},"pools":{"visibleArtwork":["pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","alley1","pavement2","pavement2","pavement2","manhole1","poster1","landmark1"],"activeIds":[4,26,41],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":0,"actors":{"activeIds":[26],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":1,"enabled":true}},{"effectId":19,"renderer":{"objects":225,"geometries":66,"textures":14,"calls":111},"pools":{"visibleArtwork":["pavement0","alley0","pavement1","interior2","pavement1","interior0","chimney","pavement1","alley1","pavement2","pavement2","pavement2","manhole1","poster1","landmark1","leaf","leaf","leaf","smoke","smoke","smoke"],"activeIds":[19,26,41],"staticDecorations":22,"ambientParticles":6,"backgroundGroups":0,"backgroundBirds":0,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":0,"actors":{"activeIds":[26],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":1,"enabled":true}},{"effectId":14,"renderer":{"objects":225,"geometries":66,"textures":14,"calls":112},"pools":{"visibleArtwork":["pavement0","alley0","pavement1","interior2","pavement1","interior0","pavement1","alley1","pavement2","pavement2","pavement2","manhole1","poster1","landmark1","bird","bird","bird"],"activeIds":[14,26,41],"staticDecorations":21,"ambientParticles":0,"backgroundGroups":1,"backgroundBirds":3,"shopInteriors":2,"residentWindows":0,"drawCalls":5,"geometries":3,"textures":1,"count":0,"disabled":false,"slow":0,"actors":{"activeIds":[26],"hero":"sweat","police":"hat","tail":0.3333333333333333,"counts":{"radio":1,"sweat":1},"props":10},"successRings":1,"enabled":true}}]}]
+# Subtest: effects80: delivered image bytes and decoded screen images meet asset budgets
+ok 40 - effects80: delivered image bytes and decoded screen images meet asset budgets
+  ---
+  duration_ms: 1459.021895
+  type: 'test'
+  ...
+# compressed bytes 231494; decoded screen images [{"name":"atlas","width":1024,"height":1024,"decodedBytes":4194304},{"name":"result-atlas","width":2048,"height":2048,"decodedBytes":16777216},{"name":"detected","width":480,"height":720,"decodedBytes":1382400}]
+# Subtest: effects80: result settles by 600 active milliseconds, tap skips it, and reduced motion settles immediately
+ok 41 - effects80: result settles by 600 active milliseconds, tap skips it, and reduced motion settles immediately
+  ---
+  duration_ms: 1901.534713
+  type: 'test'
+  ...
+# Subtest: effects80: changing result language restarts rank lookup and ignores the old screen response
+ok 42 - effects80: changing result language restarts rank lookup and ignores the old screen response
+  ---
+  duration_ms: 1503.136365
+  type: 'test'
+  ...
+# Subtest: restart_double_click: delayed prepare
+ok 43 - restart_double_click: delayed prepare
+  ---
+  duration_ms: 2118.471623
+  type: 'test'
+  ...
+# Subtest: restart_double_click: delayed beginRun
+ok 44 - restart_double_click: delayed beginRun
+  ---
+  duration_ms: 2148.694912
+  type: 'test'
+  ...
+# Subtest: ranked_start_delayed_double_click
+ok 45 - ranked_start_delayed_double_click
+  ---
+  duration_ms: 2539.136197
+  type: 'test'
+  ...
+# Subtest: start_retry_cancel_switch: start.playUnranked
+ok 46 - start_retry_cancel_switch: start.playUnranked
+  ---
+  duration_ms: 3671.122022
+  type: 'test'
+  ...
+# Subtest: start_retry_cancel_switch: common.cancel
+ok 47 - start_retry_cancel_switch: common.cancel
+  ---
+  duration_ms: 4897.594721
+  type: 'test'
+  ...
+# Subtest: pause_hidden_resume
+not ok 48 - pause_hidden_resume
+  ---
+  duration_ms: 5034.641873
+  type: 'test'
+  location: '/workspace/chameleol/tests/e2e/presentation.e2e.mjs:440:1'
+  failureType: 'testCodeFailure'
+  error: 'stage clock excludes the hidden interval'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/chameleol/tests/e2e/presentation.e2e.mjs:471:12)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: leave_before_best_sound
+ok 49 - leave_before_best_sound
+  ---
+  duration_ms: 43252.685236
+  type: 'test'
+  ...
+# Subtest: scoped_toast_uses_active_time_and_disposal
+ok 50 - scoped_toast_uses_active_time_and_disposal
+  ---
+  duration_ms: 1722.803721
+  type: 'test'
+  ...
+# Subtest: start_save_failure_keeps_attempt_until_launch_handoff
+ok 51 - start_save_failure_keeps_attempt_until_launch_handoff
+  ---
+  duration_ms: 2151.760468
+  type: 'test'
+  ...
+# Subtest: saved_run_continue_keeps_attempt_while_claim_pending
+ok 52 - saved_run_continue_keeps_attempt_while_claim_pending
+  ---
+  duration_ms: 5484.2317
+  type: 'test'
+  ...
+# Subtest: late_storage_probe_failure_does_not_cover_settings
+ok 53 - late_storage_probe_failure_does_not_cover_settings
+  ---
+  duration_ms: 2666.416829
+  type: 'test'
+  ...
+# Subtest: leave_game_unsubscribes_and_discards_scheduled_callbacks
+ok 54 - leave_game_unsubscribes_and_discards_scheduled_callbacks
+  ---
+  duration_ms: 8343.496981
+  type: 'test'
+  ...
+# Subtest: restart_double_click: result-again burst while audio prepare is pending
+ok 55 - restart_double_click: result-again burst while audio prepare is pending
+  ---
+  duration_ms: 7728.498254
+  type: 'test'
+  ...
+# Subtest: result actions: image lands on replay control and real eye-glance tile restores after active 400ms
+ok 56 - result actions: image lands on replay control and real eye-glance tile restores after active 400ms
+  ---
+  duration_ms: 2212.849338
+  type: 'test'
+  ...
+# Subtest: 別のタブで始まったプレイを、ホームの「はじめる」だけでは終了しない
+ok 57 - 別のタブで始まったプレイを、ホームの「はじめる」だけでは終了しない
+  ---
+  duration_ms: 6080.508284
+  type: 'test'
+  ...
+# Subtest: 開始受付の応答を待つ間に別のタブが始めたら、終了を確認し、それぞれのプレイの秘密で記録する
+ok 58 - 開始受付の応答を待つ間に別のタブが始めたら、終了を確認し、それぞれのプレイの秘密で記録する
+  ---
+  duration_ms: 14280.792931
+  type: 'test'
+  ...
+# Subtest: VERSION-01: 別の版の中断プレイは消さずに残し、その版のページへ案内する。新しく始める時は保管庫へ移す
+ok 59 - VERSION-01: 別の版の中断プレイは消さずに残し、その版のページへ案内する。新しく始める時は保管庫へ移す
+  ---
+  duration_ms: 7866.903147
+  type: 'test'
+  ...
+# Subtest: 単独公開版はランキング登録を表示せず、保存済みの名前があってもそのまま遊べる
+ok 60 - 単独公開版はランキング登録を表示せず、保存済みの名前があってもそのまま遊べる
+  ---
+  duration_ms: 7703.689349
+  type: 'test'
+  ...
+1..60
+# tests 146
+# suites 0
+# pass 140
+# fail 6
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1118981.350122

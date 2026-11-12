@@ -79,7 +79,18 @@ async function rankedPlay(page, name, ms = 11000) {
 }
 
 async function quitToHome(page) {
-  await page.click('[data-testid=pause]');
+  // A long browser frame can already have opened the normal stall pause UI.
+  // Use its Home action instead of clicking the game button behind the overlay.
+  if (await page.isVisible('[data-testid=pause-home]')) {
+    const state = await page.evaluate(() => ({
+      running: globalThis.__kamereoru.session.running,
+      pausedReason: globalThis.__kamereoru.session.pausedReason,
+    }));
+    console.log('quitToHome: already paused', state);
+    assert.equal(state.running, false);
+  } else {
+    await page.click('[data-testid=pause]');
+  }
   await page.click('[data-testid=pause-home]');
   await page.click('[data-testid=quit-confirm]');
   await page.waitForSelector('[data-testid=home-start]');

@@ -1,0 +1,72 @@
+TAP version 13
+# Subtest: 名前ありで遊ぶ：開始受付→本編→途中終了→送信→再計算→正式登録→ランキングに表示
+ok 1 - 名前ありで遊ぶ：開始受付→本編→途中終了→送信→再計算→正式登録→ランキングに表示
+  ---
+  duration_ms: 29228.538163
+  type: 'test'
+  ...
+# Subtest: NET-TEST-02: 開始前から通信できない時は、自動再試行の後に選んでもらい、対象外で遊べる
+ok 2 - NET-TEST-02: 開始前から通信できない時は、自動再試行の後に選んでもらい、対象外で遊べる
+  ---
+  duration_ms: 13655.467049
+  type: 'test'
+  ...
+# Subtest: GAME-17/NET-07: 終了直後（送信前）に再読込しても、結果は端末に残り、起動時に1回だけ送られる
+ok 3 - GAME-17/NET-07: 終了直後（送信前）に再読込しても、結果は端末に残り、起動時に1回だけ送られる
+  ---
+  duration_ms: 22549.428678
+  type: 'test'
+  ...
+# Subtest: NET-TEST-06: 未送信が2件残っていても新しいプレイを始められ、回復後にそれぞれ1回ずつ届く
+not ok 4 - NET-TEST-06: 未送信が2件残っていても新しいプレイを始められ、回復後にそれぞれ1回ずつ届く
+  ---
+  duration_ms: 59265.344261
+  type: 'test'
+  location: '/workspace/chameleol/tests/e2e/online.e2e.mjs:170:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    page.click: Timeout 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid=pause]')[22m
+    [2m    - locator resolved to <button type="button" class="btn-pause" aria-label="一時停止" data-testid="pause">Ⅱ</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <div class="pause-overlay">…</div> from <div class="layer">…</div> subtree intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <div class="pause-overlay">…</div> from <div class="layer">…</div> subtree intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    19 × waiting for element to be visible, enabled and stable[22m
+    [2m       - element is visible, enabled and stable[22m
+    [2m       - scrolling into view if needed[22m
+    [2m       - done scrolling[22m
+    [2m       - <div class="pause-overlay">…</div> from <div class="layer">…</div> subtree intercepts pointer events[22m
+    [2m     - retrying click action[22m
+    [2m       - waiting 500ms[22m
+    [2m    - waiting for element to be visible, enabled and stable[22m
+    [2m    - element is visible, enabled and stable[22m
+    [2m    - scrolling into view if needed[22m
+    
+  code: 'ERR_TEST_FAILURE'
+  name: 'TimeoutError'
+  stack: |-
+    quitToHome (/workspace/chameleol/tests/e2e/online.e2e.mjs:82:14)
+    TestContext.<anonymous> (/workspace/chameleol/tests/e2e/online.e2e.mjs:179:11)
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 3
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 127380.156378

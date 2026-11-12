@@ -51,6 +51,11 @@ Actionsの`chameleol-standalone-<sha>`成果物はそのCI checkoutのソース�
 
 ## iPhoneでの確認（修正版URLが用意された後）
 
-同じChatGPTアカウントで確認URLを開き、設定画面の資源版が案内された版と一致することを確認。通常練習2種とガイド1〜4でタップ/ドラッグ/2本指/戻るを試す。本編の停止・再開、音量0から復帰、別アプリへ移動して戻る、音量バランス・音割れを確認する。現時点の既存ライブでこの修正の合否は判断できない。
+同じChatGPTアカウントで確認URLを開き、確認URL配下の`release.json`を開き、assetVersionとcommitが案内された値に一致することを確認（設定画面には版表示なし）。通常練習2種とガイド1〜4でタップ/ドラッグ/2本指/戻るを試す。本編の停止・再開、音量0から復帰、別アプリへ移動して戻る、音量バランス・音割れを確認する。現時点の既存ライブでこの修正の合否は判断できない。
 
 ブラウザ自動試験はChromiumのタッチ対応viewport。モック音声は発音要求/予約の検査であり聴感ではない。物理iPhone17 Pro/Safariの音量・音割れ・OSのアプリ切替後復帰・実聴は未確認。
+
+
+## 確定ソースから作成した配布物
+
+ソース `e7ae32f56aaafa9def75d2df0b8d118b2cbd0713` を独立worktreeでビルド。資源版`0.1.0-73d1e4527b`、production、API空、規則v2、旧5版保持。`chameleol-audio-e7ae32f.tar.gz`は3,001,373 bytes。SHA-256は`44da7bc93fcfa3808c746ac73dae6278213943dd37a4c3a16762aeffba72c5df`。[distribution.json](distribution.json)に検査結果。これはライブ未配備の配布物で、Sitesへ直接保存する前には前述のソースHEAD照合が必要。

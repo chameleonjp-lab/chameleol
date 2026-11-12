@@ -142,3 +142,27 @@ test('audio integration: delayed audio/render and rejected audio cannot resurrec
     assert.deepEqual(env.errors,[]);
   } finally {await env.close();}
 });
+
+test('audio integration: guide back works before completion and pause cancels held input', {timeout:30000}, async()=>{
+  const env=await launch();const {page}=env;
+  try {
+    await openHome(page,env.url);await page.click(id('home-practice'));await page.click(id('practice-guides'));
+    for(const step of [1,2,3,4]) {
+      await page.click(id(`guide-practice-${step}`));await page.waitForFunction(step=>__kamereoru.guidePractice?.view().step===step,step);
+      if(step===1) {
+        await page.evaluate(()=>{const a=__kamereoru;globalThis.__releaseCalls=[];const original=a.audio.play.bind(a.audio);a.audio.play=(name,...rest)=>{__releaseCalls.push(name);return original(name,...rest);};});
+        const g=await page.evaluate(()=>__kamereoru.controls.router.geometry.palette);
+        const cdp=await page.context().newCDPSession(page);
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:Math.round(g.cx),y:Math.round(g.cy),id:1}]});
+        await page.evaluate(()=>__releaseCalls.splice(0));
+        await page.click(id('guide-practice-pause'));
+        assert.equal(await page.locator('.controls.disabled').count(),1);
+        assert.equal(await page.evaluate(()=>__releaseCalls.includes('colorRelease')),false);
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+      }
+      await page.click(id('guide-practice-exit'));await page.waitForSelector(id('guide-practice-1'));
+      assert.equal(await page.locator('.stage-canvas').count(),0);
+    }
+    assert.deepEqual(env.errors,[]);
+  } finally {await env.close();}
+});
