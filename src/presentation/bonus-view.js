@@ -6,7 +6,7 @@ function elements(host,t){const doc=host.ownerDocument??globalThis.document;retu
 export function mountBonusPresentation({host,scope,t=key=>key,reducedMotion}) {
   const {doc,tr,el}=elements(host,t),root=el('aside','bonus-card',null,host);
   root.hidden=true;root.setAttribute('aria-live','polite');root.setAttribute('aria-atomic','true');
-  const title=el('strong','bonus-card-title',tr('bonus.card.title'),root),total=el('b','bonus-card-points','',root),rows=el('div','bonus-awards',null,root),detail=el('p','bonus-card-detail','',root);
+  const title=el('strong','bonus-card-title',tr('bonus.card.title'),root),total=el('b','bonus-card-points','',root),rows=el('div','bonus-awards',null,root),detail=el('p','bonus-card-detail','',root),notices=el('p','bonus-card-notices','',root);
   const seen=new Set();let disposed=false,batch=null,quiet=false,activeMs=0;
   const reduced=reducedMotion??Boolean(doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   root.classList.toggle('is-reduced',reduced);
@@ -26,7 +26,8 @@ export function mountBonusPresentation({host,scope,t=key=>key,reducedMotion}) {
     seen.add(next.id);
     if(now>=next.expiresAtT)return false;
     batch=next;quiet=nextQuiet;total.textContent=`+${next.bonusPoints}`;title.textContent=tr('bonus.card.title');rows.textContent='';
-    for(const award of next.awards){const row=el('div',`bonus-award bonus-${award.kind}${award.tier===10?' bonus-tier-high':''}`,null,rows);el('i','bonus-symbol',SYMBOLS[award.kind],row).setAttribute('aria-hidden','true');el('span','bonus-name',`${tr(bonusNameKey(award))}${award.kind==='milestone'?` · ${award.building}`:''}`,row);el('b','bonus-points',`+${award.points}`,row);}
+    for(const award of next.awards){const row=el('div',`bonus-award bonus-${award.kind}${award.tier===10?' bonus-tier-high':''}`,null,rows);el('i','bonus-symbol',SYMBOLS[award.kind],row).setAttribute('aria-hidden','true');const key=bonusNameKey(award),shortKey=key.replace('bonus.','bonus.short.'),short=t(shortKey),label=next.awards.length>1&&short!==shortKey?short:tr(key);const name=el('span','bonus-name',`${label}${award.kind==='milestone'?` · ${award.building}`:''}`,row);name.title=tr(key);name.setAttribute('aria-label',tr(key));el('b','bonus-points',`+${award.points}`,row);}
+    notices.textContent=(next.notices??[]).join(' · ');notices.hidden=!notices.textContent;
     detail.textContent=`${tr('bonus.basePoints')} ${next.basePoints} · ${tr('bonus.passTotal')} +${next.totalPoints}`;
     root.hidden=false;tick({t:now,quiet});return true;
   }

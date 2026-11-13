@@ -848,7 +848,7 @@ export class App {
       },
       onLockedTap: () => {
         this.audio.play('locked');
-        showNotice(t('controls.lockedHint'), { duration: 1400 });
+        showNotice(t('controls.lockedHint'), { duration: 1400, kind:'warn' });
       },
       ...ctrlAudio,
     });
@@ -878,6 +878,7 @@ export class App {
     this.bonusPresentation=bonusPresentation;
     let cueCandidates=[],pendingBonus=null;
     const cue=(name,opts)=>cueCandidates.push({name,opts});
+    const showPassNotice=(text,options)=>{if(pendingBonus)(pendingBonus.notices??=[]).push(text);else showNotice(text,options);};
     scope.own(()=>{cueCandidates=[];pendingBonus=null;if(this.bonusPresentation===bonusPresentation)this.bonusPresentation=null;});
     const guideHost = h('div', {class:'guidance-host'});
     el.querySelector('.stage-wrap').append(guideHost);
@@ -980,12 +981,12 @@ export class App {
             break;
           case 'enterBuilding': {
             const b = Math.min(rules.buildingCount, ev.building);
-            if (ev.building === rules.brightnessUnlockBuilding - 1) showNotice(t('game.unlockSoon'), { duration: 2200 });
+            if (ev.building === rules.brightnessUnlockBuilding - 1) showPassNotice(t('game.unlockSoon'), { duration: 2200 });
             this.audio.setBuilding(b);
             this.audio.setArea(areaOf(b).time);
             this.audio.setFinale(b >= 41);
             if (b === 40) {
-              showNotice(t('game.milestone.final'), { duration: 1600 });
+              showPassNotice(t('game.milestone.final'), { duration: 1600 });
               cue('milestone');
               this.stage?.fx('milestone');
             }
@@ -1003,18 +1004,18 @@ export class App {
             pendingBonus=buildBonusBatch({playId:session.meta.playId,passEvent:ev,summary:{rulesVersion:session.meta.rulesVersion}});
             if (ev.building === 25) {
               // 25棟目の通過＝中間地点（仕様 FX-03）
-              showNotice(t('game.milestone.half'), { duration: 1600 });
+              showPassNotice(t('game.milestone.half'), { duration: 1600 });
               cue('milestone');
               this.stage?.fx('milestone');
             }
             if (ev.success && [3, 5, 10].includes(ev.combo)) {
               cue('combo', { level: [3, 5, 10].indexOf(ev.combo) });
               this.stage?.fx('combo');
-              showNotice(t('game.comboMilestone', { n: ev.combo }), { duration: 1400, kind: 'combo' });
+              showPassNotice(t('game.comboMilestone', { n: ev.combo }), { duration: 1400, kind: 'combo' });
             } else if (ev.success && ev.combo > 1) {
               cue('passBuilding', { combo: ev.combo });
               this.stage?.fx('pass');
-              showNotice(t('game.combo', { n: ev.combo }), { duration: 900 });
+              showPassNotice(t('game.combo', { n: ev.combo }), { duration: 900 });
             } else if (ev.success) {
               cue('passBuilding', { combo: 1 });
               this.stage?.fx('pass');
@@ -1069,12 +1070,12 @@ export class App {
         pulse(gaugeIcon, 'ring');
         if (!this.flags.alertGuideSeen) {
           this.setFlag('alertGuideSeen', true);
-          showNotice(t('guide.alert'), { duration: 3000 });
+          showNotice(t('guide.alert'), { duration: 3000, kind:'warn' });
         }
       }
       if (s.alert > 0 && !this.flags.alertGuideSeen) {
         this.setFlag('alertGuideSeen', true);
-        showNotice(t('guide.alert'), { duration: 3000 });
+        showNotice(t('guide.alert'), { duration: 3000, kind:'warn' });
       }
       if (stage < lastStage && session.running) cue('relief'); // 警察が離れた
       if (stage !== lastStage) { const event={type:stage>lastStage?'policeUp':'policeDown',t:s.t};stageView.presentationEvent(event);presentationHud.event(event); }
@@ -1099,10 +1100,21 @@ export class App {
       presentationHud.setGuideActive(Boolean(guideView.step));
       presentationHud.tick(playView);
       renderGuide();
-      const quiet=Boolean(guideView.step)||stage>0;
-      bonusPresentation.tick({activeMs:s.t,phase:playView.phase,guideActive:Boolean(guideView.step),warningActive:stage>0,running:session.running});
+      const activeNotice=[...banner.querySelectorAll('.toast-warn')].some(node=>!node.hidden);
+      const quiet=Boolean(guideView.step)||stage>0||activeNotice;
+      bonusPresentation.tick({activeMs:s.t,phase:playView.phase,guideActive:Boolean(guideView.step),warningActive:stage>0||activeNotice,running:session.running});
       const batch=pendingBonus;
       if(batch)bonusPresentation.show(batch,s.t,{quiet});
+      const bonusVisible=bonusPresentation.stats().visible;
+      if(bonusVisible)switchOk.hidden=true;
+      // Important guidance remains above the compact award text, never obscured by it.
+      let obstacleBottom=0;
+      if(bonusVisible&&quiet){
+        for(const node of [...banner.querySelectorAll('.toast'),...guideHost.querySelectorAll('.guidance-panel')]){
+          if(!node.hidden&&node.getClientRects?.().length)obstacleBottom=Math.max(obstacleBottom,node.getBoundingClientRect().bottom);
+        }
+      }
+      bonusPresentation.element.style.top=obstacleBottom?`${obstacleBottom-el.querySelector('.stage-wrap').getBoundingClientRect().top+6}px`:'';
       const timely=!batch||s.t<batch.expiresAtT;
       const suppressed=quiet||!timely;
       const candidates=suppressed?cueCandidates.filter(c=>['guideClear','unlock','whistle','warning','detected','clear'].includes(c.name)):cueCandidates;

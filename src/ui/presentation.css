@@ -113,3 +113,8 @@
 .game:has(.bonus-card.is-paused) .hud-score.bump{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.bonus-card{opacity:1;transform:none}.bonus-symbol,.bonus-symbol::after{transform:none!important}}
 @media(prefers-reduced-motion:reduce){.bonus-card.is-leaving{opacity:1}}
+/* A pass has one message surface, including the existing combo/milestone text. */
+.bonus-card-notices{margin:5px 0 0;color:#bcff93;font-size:14px;line-height:1.25;font-weight:700;overflow-wrap:anywhere}.bonus-card-notices[hidden]{display:none}
+.bonus-card.is-quiet .bonus-card-detail{display:none}.bonus-card.is-quiet{padding:5px 8px}.bonus-card.is-quiet .bonus-awards{gap:3px 8px}
+.bonus-awards:has(.bonus-award:only-child){grid-template-columns:1fr}
+.bonus-card.is-quiet .bonus-card-notices{display:none}

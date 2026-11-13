@@ -15,7 +15,7 @@ for(const [width,height] of [[402,700],[402,874],[874,402]])test(`bonus: all awa
   await openHome(page,env.url);await clock(page);await page.evaluate(()=>__kamereoru.debugStart({atMs:50000,seed:17}));
   const failures=await page.evaluate(async languages=>{
    const {mountBonusPresentation}=await import('/src/presentation/bonus-view.js');const {buildBonusBatch}=await import('/src/presentation/bonus-data.js');const {createPresentationScope}=await import('/src/presentation/scope.js');const {t}=await import('/src/i18n/i18n.js');
-   __kamereoru.bonusPresentation.dispose();document.querySelector('.pause-panel')?.remove();__kamereoru.coverEl.hidden=true;
+   __kamereoru.bonusPresentation.dispose();document.querySelector('.pause-overlay')?.remove();__kamereoru.coverEl.hidden=true;
    const errors=[],host=document.querySelector('.stage-wrap');
    const award=(kind,points,tier=null)=>({id:`kamereoru-rules-v4:10:${kind}`,building:10,kind,tier,points,earnedAtT:50000});
    const variants=[[award('precision',5,5)],[award('precision',10,10)],[award('steady',5)],[award('quick',5)],[award('milestone',20)],[award('precision',10,10),award('steady',5),award('quick',5),award('milestone',20)]];
@@ -23,11 +23,12 @@ for(const [width,height] of [[402,700],[402,874],[874,402]])test(`bonus: all awa
     for(let v=0;v<variants.length;v++){
      const scope=createPresentationScope({id:`${lang}-${v}`,kind:'game'});const view=mountBonusPresentation({host,scope,t:(k,p)=>t(k,p,lang)});
      const awards=variants[v],points=awards.reduce((n,a)=>n+a.points,0);const batch=buildBonusBatch({playId:`${lang}-${v}`,summary:{rulesVersion:'kamereoru-rules-v4'},passEvent:{building:10,t:50000,basePoints:118,bonusPoints:points,points:118+points,bonusAwards:awards}});
+     if(awards.length===4)batch.notices=[t('game.comboMilestone',{n:10},lang)];
      view.show(batch,50200);view.tick({activeMs:50200,phase:'grace',running:true});
      const card=view.element,r=card.getBoundingClientRect(),label=`${lang}/${v}`;
      if(card.hidden||r.width<=0||r.height<=0||r.left<0||r.top<0||r.right>innerWidth+1||r.bottom>innerHeight+1)errors.push({label,reason:'card viewport',rect:r.toJSON()});
      if(card.querySelectorAll('.bonus-award').length!==awards.length||!card.textContent.includes(`+${points}`))errors.push({label,reason:'missing award/points'});
-     for(const text of card.querySelectorAll('.bonus-name,.bonus-points,.bonus-card-detail,.bonus-card-title')){
+     for(const text of card.querySelectorAll('.bonus-name,.bonus-points,.bonus-card-detail,.bonus-card-title,.bonus-card-notices')){
       const style=getComputedStyle(text),b=text.getBoundingClientRect();
       if(parseFloat(style.fontSize)<14||text.scrollWidth>text.clientWidth+1||style.textOverflow==='ellipsis'||b.right>innerWidth+1)errors.push({label,reason:'text clipping/font',text:text.textContent,font:style.fontSize,width:[text.scrollWidth,text.clientWidth]});
      }
@@ -58,7 +59,7 @@ test('bonus: active-time deadline, hidden pause, guide/warning and reduced motio
  const env=await launch();const {page}=env;try{
   await openHome(page,env.url);await clock(page);await page.emulateMedia({reducedMotion:'reduce'});
   await page.evaluate(()=>__kamereoru.debugStart({atMs:49999,seed:17}));
-  await page.evaluate(()=>{document.querySelector('.pause-panel')?.remove();__kamereoru.coverEl.hidden=true;__kamereoru.session.apply({type:'tick',t:50000});});await page.clock.runFor(16);
+  await page.evaluate(()=>{document.querySelector('.pause-overlay')?.remove();__kamereoru.coverEl.hidden=true;__kamereoru.session.apply({type:'tick',t:50000});});await page.clock.runFor(16);
   const result=await page.evaluate(()=>{
    const view=__kamereoru.bonusPresentation,card=view.element;const initial=card.textContent;
    view.tick({activeMs:50500,phase:'grace',guideActive:true,running:false});const guide=card.classList.contains('is-quiet');
@@ -106,7 +107,7 @@ test('bonus: warning determined after pass suppresses reward; mute and zero volu
   for(const mode of ['warning','muted','zero']){
    await page.evaluate(()=>__kamereoru.debugStart({atMs:9999,seed:17}));
    await page.evaluate(mode=>{
-    const a=__kamereoru;document.querySelector('.pause-panel')?.remove();a.coverEl.hidden=true;
+    const a=__kamereoru;document.querySelector('.pause-overlay')?.remove();a.coverEl.hidden=true;
     globalThis.__bonusSounds=[];const play=a.audio.play.bind(a.audio);a.audio.play=(name,...args)=>{__bonusSounds.push(name);return play(name,...args);};
     a.audio.setSettings({muted:mode==='muted',sfx:mode==='zero'?0:0.7});
     a.session.apply({type:'tick',t:10000});if(mode==='warning')a.session.state.alert=a.session.rules.alert.maxUnits*.75;
@@ -114,6 +115,8 @@ test('bonus: warning determined after pass suppresses reward; mute and zero volu
    assert.equal(await page.locator('.bonus-card:visible').count(),1,mode);assert.match(await page.locator('.bonus-card').textContent(),/20/);
    if(mode==='warning'){
     const sounds=await page.evaluate(()=>__bonusSounds);assert.ok(sounds.includes('whistle'));assert.equal(sounds.some(s=>s==='bonusMulti'||s==='passBuilding'||s==='combo'),false);assert.equal(await page.locator('.bonus-card.is-quiet').count(),1);
+    const collisions=await page.evaluate(()=>{const r=document.querySelector('.bonus-card').getBoundingClientRect();return [...document.querySelectorAll('.banner-host .toast,.guidance-panel')].filter(el=>{const b=el.getBoundingClientRect();return !el.hidden&&b.width&&b.height&&r.left<b.right&&r.right>b.left&&r.top<b.bottom&&r.bottom>b.top;}).map(el=>el.textContent);});
+    assert.deepEqual(collisions,[],'warning or guide message must remain clear of the quiet card');
    }
   }
   assert.deepEqual(env.errors,[]);
@@ -181,5 +184,23 @@ for(const [width,height] of [[402,700],[402,874],[874,402]])test(`bonus: all15 e
    return errors;
   },SUPPORTED_LANGUAGES.map(l=>l.id));
   assert.deepEqual(errors,[]);assert.deepEqual(env.errors,[]);
+ }finally{await env.close();}
+});
+
+test('bonus: real milestone card clears combo and grace notifications at all3 viewports',async()=>{
+ const env=await launch();const {page}=env;try{
+  await openHome(page,env.url);await clock(page);const conflicts=[];
+  for(const [width,height] of [[402,700],[402,874],[874,402]]){
+   await page.setViewportSize({width,height});await page.evaluate(()=>__kamereoru.debugStart({atMs:49999,seed:17}));
+   await page.evaluate(()=>{document.querySelector('.pause-overlay')?.remove();__kamereoru.coverEl.hidden=true;__kamereoru.session.apply({type:'tick',t:50200});});await page.clock.runFor(32);
+   const state=await page.evaluate(async()=>{
+    const {t}=await import('/src/i18n/i18n.js'),card=document.querySelector('.bonus-card'),r=card.getBoundingClientRect();
+    const collisions=[...document.querySelectorAll('.switch-ok,.banner-host .toast')].filter(el=>{const b=el.getBoundingClientRect();return !el.hidden&&b.width&&b.height&&r.left<b.right&&r.right>b.left&&r.top<b.bottom&&r.bottom>b.top;}).map(el=>({class:el.className,text:el.textContent}));
+    return {collisions,comboTextRetained:document.body.innerText.includes(t('game.comboMilestone',{n:10})),opacity:getComputedStyle(card).opacity};
+   });
+   assert.equal(state.comboTextRetained,true,`${width}x${height}: milestone combo text retained`);assert.equal(Number(state.opacity),1);
+   conflicts.push(...state.collisions.map(c=>({viewport:`${width}x${height}`,...c})));
+  }
+  assert.deepEqual(conflicts,[]);assert.deepEqual(env.errors,[]);
  }finally{await env.close();}
 });
