@@ -1,0 +1,2097 @@
+{
+  "rules": {
+    "rulesVersion": "kamereoru-rules-v1",
+    "generatorVersion": "kamereoru-course-v1",
+    "decorationVersion": "kamereoru-deco-v1",
+    "historyFormat": "kamereoru-history-v1",
+    "buildingCount": 50,
+    "buildingMs": 5000,
+    "evalStartMs": 1500,
+    "evalEndMs": 4500,
+    "brightnessUnlockBuilding": 20,
+    "longStallMs": 1000,
+    "resumeCountdownMs": 3000,
+    "hueSteps": 36000,
+    "satMax": 10000,
+    "valMax": 10000,
+    "initialColor": {
+      "h": 10765,
+      "s": 6939,
+      "v": 10000
+    },
+    "match": {
+      "unitsPerPercent": 1000000,
+      "knots": [
+        [
+          0,
+          100
+        ],
+        [
+          6,
+          85
+        ],
+        [
+          14,
+          55
+        ],
+        [
+          40,
+          0
+        ]
+      ],
+      "successMinUnits": 85000000,
+      "slightMinUnits": 55000000
+    },
+    "alert": {
+      "unitsPerPoint": 1000,
+      "maxUnits": 100000,
+      "ratePerMs": {
+        "success": -35,
+        "slight": 12,
+        "danger": 45
+      },
+      "stages": [
+        {
+          "enterAt": 30000,
+          "exitBelow": 25000
+        },
+        {
+          "enterAt": 70000,
+          "exitBelow": 65000
+        }
+      ]
+    },
+    "score": {
+      "pass": 20,
+      "accuracyMax": 80,
+      "comboTiers": [
+        [
+          10,
+          20
+        ],
+        [
+          5,
+          10
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "clearBonus": 200,
+      "comboMinUnits": 85000000
+    },
+    "rankUnitsPerPercent": 100
+  },
+  "history": [
+    [
+      0,
+      0,
+      16069,
+      9117,
+      10000
+    ],
+    [
+      0,
+      5000,
+      22808,
+      5248,
+      10000
+    ],
+    [
+      0,
+      5000,
+      4035,
+      7324,
+      10000
+    ],
+    [
+      0,
+      5000,
+      35044,
+      7249,
+      10000
+    ],
+    [
+      0,
+      5000,
+      2412,
+      7479,
+      10000
+    ],
+    [
+      0,
+      5000,
+      28033,
+      7448,
+      10000
+    ],
+    [
+      0,
+      5000,
+      974,
+      8954,
+      10000
+    ],
+    [
+      0,
+      5000,
+      2355,
+      5725,
+      10000
+    ],
+    [
+      0,
+      5000,
+      5299,
+      7803,
+      10000
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      0,
+      5000,
+      1207,
+      6119,
+      10000
+    ],
+    [
+      0,
+      5000,
+      20232,
+      6633,
+      10000
+    ],
+    [
+      0,
+      5000,
+      22602,
+      5252,
+      10000
+    ],
+    [
+      0,
+      5000,
+      32817,
+      6438,
+      10000
+    ],
+    [
+      0,
+      5000,
+      4128,
+      4780,
+      10000
+    ],
+    [
+      0,
+      5000,
+      34052,
+      8905,
+      10000
+    ],
+    [
+      0,
+      5000,
+      24414,
+      8449,
+      10000
+    ],
+    [
+      0,
+      5000,
+      24154,
+      5870,
+      10000
+    ],
+    [
+      0,
+      5000,
+      9657,
+      6195,
+      10000
+    ],
+    [
+      0,
+      5000,
+      19121,
+      9685,
+      10000
+    ],
+    [
+      0,
+      5000,
+      17231,
+      4909,
+      8702
+    ],
+    [
+      0,
+      1500,
+      35231,
+      10000,
+      0
+    ],
+    [
+      0,
+      1000,
+      17231,
+      4909,
+      8702
+    ],
+    [
+      0,
+      2500,
+      5013,
+      4251,
+      6574
+    ],
+    [
+      0,
+      1500,
+      23013,
+      10000,
+      0
+    ],
+    [
+      0,
+      1000,
+      5013,
+      4251,
+      6574
+    ],
+    [
+      0,
+      2500,
+      1883,
+      8601,
+      7715
+    ],
+    [
+      0,
+      1500,
+      19883,
+      10000,
+      0
+    ],
+    [
+      0,
+      1000,
+      1883,
+      8601,
+      7715
+    ],
+    [
+      0,
+      2500,
+      11890,
+      3398,
+      5606
+    ],
+    [
+      0,
+      1500,
+      29890,
+      10000,
+      0
+    ],
+    [
+      0,
+      1000,
+      11890,
+      3398,
+      5606
+    ],
+    [
+      0,
+      2500,
+      27314,
+      7348,
+      9136
+    ],
+    [
+      0,
+      1500,
+      9314,
+      10000,
+      0
+    ],
+    [
+      0,
+      1000,
+      27314,
+      7348,
+      9136
+    ],
+    [
+      0,
+      2500,
+      2106,
+      3201,
+      6965
+    ],
+    [
+      0,
+      1500,
+      20106,
+      10000,
+      0
+    ],
+    [
+      0,
+      1000,
+      2106,
+      3201,
+      6965
+    ],
+    [
+      0,
+      2500,
+      25010,
+      8806,
+      8203
+    ],
+    [
+      0,
+      1500,
+      7010,
+      10000,
+      0
+    ],
+    [
+      0,
+      1000,
+      25010,
+      8806,
+      8203
+    ],
+    [
+      0,
+      2500,
+      19687,
+      4749,
+      4337
+    ],
+    [
+      3,
+      0
+    ]
+  ],
+  "snapshots": [
+    {
+      "format": "kamereoru-run-v1",
+      "meta": {
+        "playId": "pre-bonus",
+        "launchId": "fixture",
+        "ranked": false,
+        "name": "",
+        "seed": 17,
+        "gameVersion": "pre-bonus",
+        "rulesVersion": "kamereoru-rules-v1",
+        "generatorVersion": "kamereoru-course-v1"
+      },
+      "state": {
+        "rulesVersion": "kamereoru-rules-v1",
+        "seed": 17,
+        "t": 97500,
+        "status": "playing",
+        "endReason": null,
+        "endT": null,
+        "color": {
+          "h": 17231,
+          "s": 4909,
+          "v": 8702
+        },
+        "alert": 45000,
+        "evalBuilding": 20,
+        "matchUnits": 100000000,
+        "acc": {
+          "matchSum": 0,
+          "evalMs": 1000
+        },
+        "closed": null,
+        "passed": 19,
+        "buildings": [
+          {
+            "index": 1,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 0,
+            "combo": 1,
+            "points": 100
+          },
+          {
+            "index": 2,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 0,
+            "combo": 2,
+            "points": 100
+          },
+          {
+            "index": 3,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 5,
+            "combo": 3,
+            "points": 105
+          },
+          {
+            "index": 4,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 5,
+            "combo": 4,
+            "points": 105
+          },
+          {
+            "index": 5,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 5,
+            "points": 110
+          },
+          {
+            "index": 6,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 6,
+            "points": 110
+          },
+          {
+            "index": 7,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 7,
+            "points": 110
+          },
+          {
+            "index": 8,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 8,
+            "points": 110
+          },
+          {
+            "index": 9,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 9,
+            "points": 110
+          },
+          {
+            "index": 10,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 10,
+            "points": 120
+          },
+          {
+            "index": 11,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 11,
+            "points": 120
+          },
+          {
+            "index": 12,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 12,
+            "points": 120
+          },
+          {
+            "index": 13,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 13,
+            "points": 120
+          },
+          {
+            "index": 14,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 14,
+            "points": 120
+          },
+          {
+            "index": 15,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 15,
+            "points": 120
+          },
+          {
+            "index": 16,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 16,
+            "points": 120
+          },
+          {
+            "index": 17,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 17,
+            "points": 120
+          },
+          {
+            "index": 18,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 18,
+            "points": 120
+          },
+          {
+            "index": 19,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 19,
+            "points": 120
+          }
+        ],
+        "combo": 19,
+        "maxCombo": 19,
+        "score": {
+          "pass": 380,
+          "accuracy": 1520,
+          "combo": 260,
+          "clear": 0,
+          "total": 2160
+        },
+        "brightnessUnlocked": true,
+        "reached20": true,
+        "inputs": 22,
+        "violations": []
+      },
+      "history": [
+        [
+          0,
+          0,
+          16069,
+          9117,
+          10000
+        ],
+        [
+          0,
+          5000,
+          22808,
+          5248,
+          10000
+        ],
+        [
+          0,
+          5000,
+          4035,
+          7324,
+          10000
+        ],
+        [
+          0,
+          5000,
+          35044,
+          7249,
+          10000
+        ],
+        [
+          0,
+          5000,
+          2412,
+          7479,
+          10000
+        ],
+        [
+          0,
+          5000,
+          28033,
+          7448,
+          10000
+        ],
+        [
+          0,
+          5000,
+          974,
+          8954,
+          10000
+        ],
+        [
+          0,
+          5000,
+          2355,
+          5725,
+          10000
+        ],
+        [
+          0,
+          5000,
+          5299,
+          7803,
+          10000
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          0,
+          5000,
+          1207,
+          6119,
+          10000
+        ],
+        [
+          0,
+          5000,
+          20232,
+          6633,
+          10000
+        ],
+        [
+          0,
+          5000,
+          22602,
+          5252,
+          10000
+        ],
+        [
+          0,
+          5000,
+          32817,
+          6438,
+          10000
+        ],
+        [
+          0,
+          5000,
+          4128,
+          4780,
+          10000
+        ],
+        [
+          0,
+          5000,
+          34052,
+          8905,
+          10000
+        ],
+        [
+          0,
+          5000,
+          24414,
+          8449,
+          10000
+        ],
+        [
+          0,
+          5000,
+          24154,
+          5870,
+          10000
+        ],
+        [
+          0,
+          5000,
+          9657,
+          6195,
+          10000
+        ],
+        [
+          0,
+          5000,
+          19121,
+          9685,
+          10000
+        ],
+        [
+          0,
+          5000,
+          17231,
+          4909,
+          8702
+        ],
+        [
+          0,
+          1500,
+          35231,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          17231,
+          4909,
+          8702
+        ]
+      ],
+      "historyEndT": 97500,
+      "saveSeq": 1
+    },
+    {
+      "format": "kamereoru-run-v1",
+      "meta": {
+        "playId": "pre-bonus",
+        "launchId": "fixture",
+        "ranked": false,
+        "name": "",
+        "seed": 17,
+        "gameVersion": "pre-bonus",
+        "rulesVersion": "kamereoru-rules-v1",
+        "generatorVersion": "kamereoru-course-v1"
+      },
+      "state": {
+        "rulesVersion": "kamereoru-rules-v1",
+        "seed": 17,
+        "t": 122500,
+        "status": "playing",
+        "endReason": null,
+        "endT": null,
+        "color": {
+          "h": 2106,
+          "s": 3201,
+          "v": 6965
+        },
+        "alert": 45000,
+        "evalBuilding": 25,
+        "matchUnits": 100000000,
+        "acc": {
+          "matchSum": 0,
+          "evalMs": 1000
+        },
+        "closed": null,
+        "passed": 24,
+        "buildings": [
+          {
+            "index": 1,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 0,
+            "combo": 1,
+            "points": 100
+          },
+          {
+            "index": 2,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 0,
+            "combo": 2,
+            "points": 100
+          },
+          {
+            "index": 3,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 5,
+            "combo": 3,
+            "points": 105
+          },
+          {
+            "index": 4,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 5,
+            "combo": 4,
+            "points": 105
+          },
+          {
+            "index": 5,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 5,
+            "points": 110
+          },
+          {
+            "index": 6,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 6,
+            "points": 110
+          },
+          {
+            "index": 7,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 7,
+            "points": 110
+          },
+          {
+            "index": 8,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 8,
+            "points": 110
+          },
+          {
+            "index": 9,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 9,
+            "points": 110
+          },
+          {
+            "index": 10,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 10,
+            "points": 120
+          },
+          {
+            "index": 11,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 11,
+            "points": 120
+          },
+          {
+            "index": 12,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 12,
+            "points": 120
+          },
+          {
+            "index": 13,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 13,
+            "points": 120
+          },
+          {
+            "index": 14,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 14,
+            "points": 120
+          },
+          {
+            "index": 15,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 15,
+            "points": 120
+          },
+          {
+            "index": 16,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 16,
+            "points": 120
+          },
+          {
+            "index": 17,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 17,
+            "points": 120
+          },
+          {
+            "index": 18,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 18,
+            "points": 120
+          },
+          {
+            "index": 19,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 19,
+            "points": 120
+          },
+          {
+            "index": 20,
+            "matchSum": 200000000000,
+            "evalMs": 3000,
+            "success": false,
+            "accuracy": 53,
+            "comboBonus": 0,
+            "combo": 0,
+            "points": 73
+          },
+          {
+            "index": 21,
+            "matchSum": 200000000000,
+            "evalMs": 3000,
+            "success": false,
+            "accuracy": 53,
+            "comboBonus": 0,
+            "combo": 0,
+            "points": 73
+          },
+          {
+            "index": 22,
+            "matchSum": 200000000000,
+            "evalMs": 3000,
+            "success": false,
+            "accuracy": 53,
+            "comboBonus": 0,
+            "combo": 0,
+            "points": 73
+          },
+          {
+            "index": 23,
+            "matchSum": 200000000000,
+            "evalMs": 3000,
+            "success": false,
+            "accuracy": 53,
+            "comboBonus": 0,
+            "combo": 0,
+            "points": 73
+          },
+          {
+            "index": 24,
+            "matchSum": 200000000000,
+            "evalMs": 3000,
+            "success": false,
+            "accuracy": 53,
+            "comboBonus": 0,
+            "combo": 0,
+            "points": 73
+          }
+        ],
+        "combo": 0,
+        "maxCombo": 19,
+        "score": {
+          "pass": 480,
+          "accuracy": 1785,
+          "combo": 260,
+          "clear": 0,
+          "total": 2525
+        },
+        "brightnessUnlocked": true,
+        "reached20": true,
+        "inputs": 37,
+        "violations": []
+      },
+      "history": [
+        [
+          0,
+          0,
+          16069,
+          9117,
+          10000
+        ],
+        [
+          0,
+          5000,
+          22808,
+          5248,
+          10000
+        ],
+        [
+          0,
+          5000,
+          4035,
+          7324,
+          10000
+        ],
+        [
+          0,
+          5000,
+          35044,
+          7249,
+          10000
+        ],
+        [
+          0,
+          5000,
+          2412,
+          7479,
+          10000
+        ],
+        [
+          0,
+          5000,
+          28033,
+          7448,
+          10000
+        ],
+        [
+          0,
+          5000,
+          974,
+          8954,
+          10000
+        ],
+        [
+          0,
+          5000,
+          2355,
+          5725,
+          10000
+        ],
+        [
+          0,
+          5000,
+          5299,
+          7803,
+          10000
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          0,
+          5000,
+          1207,
+          6119,
+          10000
+        ],
+        [
+          0,
+          5000,
+          20232,
+          6633,
+          10000
+        ],
+        [
+          0,
+          5000,
+          22602,
+          5252,
+          10000
+        ],
+        [
+          0,
+          5000,
+          32817,
+          6438,
+          10000
+        ],
+        [
+          0,
+          5000,
+          4128,
+          4780,
+          10000
+        ],
+        [
+          0,
+          5000,
+          34052,
+          8905,
+          10000
+        ],
+        [
+          0,
+          5000,
+          24414,
+          8449,
+          10000
+        ],
+        [
+          0,
+          5000,
+          24154,
+          5870,
+          10000
+        ],
+        [
+          0,
+          5000,
+          9657,
+          6195,
+          10000
+        ],
+        [
+          0,
+          5000,
+          19121,
+          9685,
+          10000
+        ],
+        [
+          0,
+          5000,
+          17231,
+          4909,
+          8702
+        ],
+        [
+          0,
+          1500,
+          35231,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          17231,
+          4909,
+          8702
+        ],
+        [
+          0,
+          2500,
+          5013,
+          4251,
+          6574
+        ],
+        [
+          0,
+          1500,
+          23013,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          5013,
+          4251,
+          6574
+        ],
+        [
+          0,
+          2500,
+          1883,
+          8601,
+          7715
+        ],
+        [
+          0,
+          1500,
+          19883,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          1883,
+          8601,
+          7715
+        ],
+        [
+          0,
+          2500,
+          11890,
+          3398,
+          5606
+        ],
+        [
+          0,
+          1500,
+          29890,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          11890,
+          3398,
+          5606
+        ],
+        [
+          0,
+          2500,
+          27314,
+          7348,
+          9136
+        ],
+        [
+          0,
+          1500,
+          9314,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          27314,
+          7348,
+          9136
+        ],
+        [
+          0,
+          2500,
+          2106,
+          3201,
+          6965
+        ],
+        [
+          0,
+          1500,
+          20106,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          2106,
+          3201,
+          6965
+        ]
+      ],
+      "historyEndT": 122500,
+      "saveSeq": 2
+    },
+    {
+      "format": "kamereoru-run-v1",
+      "meta": {
+        "playId": "pre-bonus",
+        "launchId": "fixture",
+        "ranked": false,
+        "name": "",
+        "seed": 17,
+        "gameVersion": "pre-bonus",
+        "rulesVersion": "kamereoru-rules-v1",
+        "generatorVersion": "kamereoru-course-v1"
+      },
+      "state": {
+        "rulesVersion": "kamereoru-rules-v1",
+        "seed": 17,
+        "t": 127500,
+        "status": "playing",
+        "endReason": null,
+        "endT": null,
+        "color": {
+          "h": 25010,
+          "s": 8806,
+          "v": 8203
+        },
+        "alert": 45000,
+        "evalBuilding": 26,
+        "matchUnits": 100000000,
+        "acc": {
+          "matchSum": 6405173000,
+          "evalMs": 1000
+        },
+        "closed": null,
+        "passed": 25,
+        "buildings": [
+          {
+            "index": 1,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 0,
+            "combo": 1,
+            "points": 100
+          },
+          {
+            "index": 2,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 0,
+            "combo": 2,
+            "points": 100
+          },
+          {
+            "index": 3,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 5,
+            "combo": 3,
+            "points": 105
+          },
+          {
+            "index": 4,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 5,
+            "combo": 4,
+            "points": 105
+          },
+          {
+            "index": 5,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 5,
+            "points": 110
+          },
+          {
+            "index": 6,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 6,
+            "points": 110
+          },
+          {
+            "index": 7,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 7,
+            "points": 110
+          },
+          {
+            "index": 8,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 8,
+            "points": 110
+          },
+          {
+            "index": 9,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 10,
+            "combo": 9,
+            "points": 110
+          },
+          {
+            "index": 10,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 10,
+            "points": 120
+          },
+          {
+            "index": 11,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 11,
+            "points": 120
+          },
+          {
+            "index": 12,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 12,
+            "points": 120
+          },
+          {
+            "index": 13,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 13,
+            "points": 120
+          },
+          {
+            "index": 14,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 14,
+            "points": 120
+          },
+          {
+            "index": 15,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 15,
+            "points": 120
+          },
+          {
+            "index": 16,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 16,
+            "points": 120
+          },
+          {
+            "index": 17,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 17,
+            "points": 120
+          },
+          {
+            "index": 18,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 18,
+            "points": 120
+          },
+          {
+            "index": 19,
+            "matchSum": 300000000000,
+            "evalMs": 3000,
+            "success": true,
+            "accuracy": 80,
+            "comboBonus": 20,
+            "combo": 19,
+            "points": 120
+          },
+          {
+            "index": 20,
+            "matchSum": 200000000000,
+            "evalMs": 3000,
+            "success": false,
+            "accuracy": 53,
+            "comboBonus": 0,
+            "combo": 0,
+            "points": 73
+          },
+          {
+            "index": 21,
+            "matchSum": 200000000000,
+            "evalMs": 3000,
+            "success": false,
+            "accuracy": 53,
+            "comboBonus": 0,
+            "combo": 0,
+            "points": 73
+          },
+          {
+            "index": 22,
+            "matchSum": 200000000000,
+            "evalMs": 3000,
+            "success": false,
+            "accuracy": 53,
+            "comboBonus": 0,
+            "combo": 0,
+            "points": 73
+          },
+          {
+            "index": 23,
+            "matchSum": 200000000000,
+            "evalMs": 3000,
+            "success": false,
+            "accuracy": 53,
+            "comboBonus": 0,
+            "combo": 0,
+            "points": 73
+          },
+          {
+            "index": 24,
+            "matchSum": 200000000000,
+            "evalMs": 3000,
+            "success": false,
+            "accuracy": 53,
+            "comboBonus": 0,
+            "combo": 0,
+            "points": 73
+          },
+          {
+            "index": 25,
+            "matchSum": 200000000000,
+            "evalMs": 3000,
+            "success": false,
+            "accuracy": 53,
+            "comboBonus": 0,
+            "combo": 0,
+            "points": 73
+          }
+        ],
+        "combo": 0,
+        "maxCombo": 19,
+        "score": {
+          "pass": 500,
+          "accuracy": 1838,
+          "combo": 260,
+          "clear": 0,
+          "total": 2598
+        },
+        "brightnessUnlocked": true,
+        "reached20": true,
+        "inputs": 40,
+        "violations": []
+      },
+      "history": [
+        [
+          0,
+          0,
+          16069,
+          9117,
+          10000
+        ],
+        [
+          0,
+          5000,
+          22808,
+          5248,
+          10000
+        ],
+        [
+          0,
+          5000,
+          4035,
+          7324,
+          10000
+        ],
+        [
+          0,
+          5000,
+          35044,
+          7249,
+          10000
+        ],
+        [
+          0,
+          5000,
+          2412,
+          7479,
+          10000
+        ],
+        [
+          0,
+          5000,
+          28033,
+          7448,
+          10000
+        ],
+        [
+          0,
+          5000,
+          974,
+          8954,
+          10000
+        ],
+        [
+          0,
+          5000,
+          2355,
+          5725,
+          10000
+        ],
+        [
+          0,
+          5000,
+          5299,
+          7803,
+          10000
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          0,
+          5000,
+          1207,
+          6119,
+          10000
+        ],
+        [
+          0,
+          5000,
+          20232,
+          6633,
+          10000
+        ],
+        [
+          0,
+          5000,
+          22602,
+          5252,
+          10000
+        ],
+        [
+          0,
+          5000,
+          32817,
+          6438,
+          10000
+        ],
+        [
+          0,
+          5000,
+          4128,
+          4780,
+          10000
+        ],
+        [
+          0,
+          5000,
+          34052,
+          8905,
+          10000
+        ],
+        [
+          0,
+          5000,
+          24414,
+          8449,
+          10000
+        ],
+        [
+          0,
+          5000,
+          24154,
+          5870,
+          10000
+        ],
+        [
+          0,
+          5000,
+          9657,
+          6195,
+          10000
+        ],
+        [
+          0,
+          5000,
+          19121,
+          9685,
+          10000
+        ],
+        [
+          0,
+          5000,
+          17231,
+          4909,
+          8702
+        ],
+        [
+          0,
+          1500,
+          35231,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          17231,
+          4909,
+          8702
+        ],
+        [
+          0,
+          2500,
+          5013,
+          4251,
+          6574
+        ],
+        [
+          0,
+          1500,
+          23013,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          5013,
+          4251,
+          6574
+        ],
+        [
+          0,
+          2500,
+          1883,
+          8601,
+          7715
+        ],
+        [
+          0,
+          1500,
+          19883,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          1883,
+          8601,
+          7715
+        ],
+        [
+          0,
+          2500,
+          11890,
+          3398,
+          5606
+        ],
+        [
+          0,
+          1500,
+          29890,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          11890,
+          3398,
+          5606
+        ],
+        [
+          0,
+          2500,
+          27314,
+          7348,
+          9136
+        ],
+        [
+          0,
+          1500,
+          9314,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          27314,
+          7348,
+          9136
+        ],
+        [
+          0,
+          2500,
+          2106,
+          3201,
+          6965
+        ],
+        [
+          0,
+          1500,
+          20106,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          2106,
+          3201,
+          6965
+        ],
+        [
+          0,
+          2500,
+          25010,
+          8806,
+          8203
+        ],
+        [
+          0,
+          1500,
+          7010,
+          10000,
+          0
+        ],
+        [
+          0,
+          1000,
+          25010,
+          8806,
+          8203
+        ]
+      ],
+      "historyEndT": 127500,
+      "saveSeq": 3
+    }
+  ],
+  "summary": {
+    "rulesVersion": "kamereoru-rules-v1",
+    "buildings": 26,
+    "rankAverage": 9111,
+    "meanNum": "7106405173",
+    "meanDen": "78",
+    "score": {
+      "pass": 520,
+      "accuracy": 1893,
+      "combo": 260,
+      "clear": 0,
+      "total": 2673
+    },
+    "maxCombo": 19,
+    "endReason": "quit",
+    "endT": 130000,
+    "perBuilding": [
+      [
+        300000000000,
+        3000,
+        100
+      ],
+      [
+        300000000000,
+        3000,
+        100
+      ],
+      [
+        300000000000,
+        3000,
+        105
+      ],
+      [
+        300000000000,
+        3000,
+        105
+      ],
+      [
+        300000000000,
+        3000,
+        110
+      ],
+      [
+        300000000000,
+        3000,
+        110
+      ],
+      [
+        300000000000,
+        3000,
+        110
+      ],
+      [
+        300000000000,
+        3000,
+        110
+      ],
+      [
+        300000000000,
+        3000,
+        110
+      ],
+      [
+        300000000000,
+        3000,
+        120
+      ],
+      [
+        300000000000,
+        3000,
+        120
+      ],
+      [
+        300000000000,
+        3000,
+        120
+      ],
+      [
+        300000000000,
+        3000,
+        120
+      ],
+      [
+        300000000000,
+        3000,
+        120
+      ],
+      [
+        300000000000,
+        3000,
+        120
+      ],
+      [
+        300000000000,
+        3000,
+        120
+      ],
+      [
+        300000000000,
+        3000,
+        120
+      ],
+      [
+        300000000000,
+        3000,
+        120
+      ],
+      [
+        300000000000,
+        3000,
+        120
+      ],
+      [
+        200000000000,
+        3000,
+        73
+      ],
+      [
+        200000000000,
+        3000,
+        73
+      ],
+      [
+        200000000000,
+        3000,
+        73
+      ],
+      [
+        200000000000,
+        3000,
+        73
+      ],
+      [
+        200000000000,
+        3000,
+        73
+      ],
+      [
+        200000000000,
+        3000,
+        73
+      ],
+      [
+        206405173000,
+        3000,
+        75
+      ]
+    ]
+  }
+}

@@ -96,7 +96,7 @@ test('進行中に記録した履歴を再生すると、終了結果が一致�
     }
   }
   const replay = replayHistory(s.game, s.recorder.entries);
-  assert.deepEqual(replay.summary, summarize(s.state));
+  assert.deepEqual(replay.summary, summarize(s.state, s.rules));
 });
 
 test('GAME-13: 警戒段階の境目付近を短時間往復しても、警察の人数が点滅しない', () => {
