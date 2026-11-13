@@ -14,6 +14,14 @@
 - [受入試験一覧](docs/acceptance/kamereoru-acceptance.md)：実装後に確認する条件と要件番号の対応。
 - [仕様統合のレビュー記録](docs/reviews/2026-11-07-kamereoru-requirements-review.md)：旧案との整理、補完した境界処理、文書確認の範囲と限界。
 
+## ボーナス得点と獲得演出の計画（2026-11-13）
+
+精密擬態・安定擬態・10棟ごとの到達・素早い色合わせ・全棟成功の5種類を追加するための文書です。現在の採点・ゲーム画面へはまだ反映していません。
+
+- [ボーナス仕様書](docs/superpowers/specs/2026-11-13-chameleol-bonus-score-spec.md)
+- [実装計画書](docs/superpowers/plans/2026-11-13-chameleol-bonus-score-plan.md)
+- [敵対的検証と修正記録](docs/reviews/2026-11-13-chameleol-bonus-score-review.md)
+
 ## 追加演出80要件の計画（2026-11-11）
 
 除外した20案を外し、残る80要件をすべて実装するための計画です。現在は文書を確定した段階で、追加演出の実装は未着手です。
