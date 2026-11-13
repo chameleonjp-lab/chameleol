@@ -5,6 +5,7 @@ export const RULES_FILES = Object.freeze([
   'color.js',
   'course.js',
   'engine.js',
+  'bonus.js',
   'history.js',
   'manifest.js',
   'index.js',

@@ -108,8 +108,21 @@ export const RULES_V2 = deepFreeze({
   },
 });
 
-export function rulesForVersion(version = RULES_V2.rulesVersion) {
-  return version === RULES_V1.rulesVersion ? RULES_V1 : version === RULES_V2.rulesVersion ? RULES_V2 : null;
+const BONUS_V1 = deepFreeze({
+  format: 'kamereoru-bonus-v1',
+  precision: { minUnits: 95000000, highMinUnits: 98000000, points: 5, highPoints: 10 },
+  steady: { minUnits: 90000000, holdMs: 2500, points: 5 },
+  milestone: { every: 10, points: 20 },
+  quick: { minUnits: 95000000, startWithinMs: 500, holdMs: 1000, points: 5 },
+  allSuccess: { buildings: 50, minUnits: 85000000, points: 100 },
+});
+
+// ランキングの後継はv1、単独プレイの後継はv2の条件をそのまま継承する。
+export const RULES_V3 = deepFreeze({ ...RULES_V1, rulesVersion: 'kamereoru-rules-v3', bonus: BONUS_V1 });
+export const RULES_V4 = deepFreeze({ ...RULES_V2, rulesVersion: 'kamereoru-rules-v4', bonus: BONUS_V1 });
+
+export function rulesForVersion(version = RULES_V4.rulesVersion) {
+  return [RULES_V1, RULES_V2, RULES_V3, RULES_V4].find((rules) => rules.rulesVersion === version) ?? null;
 }
 
 // 出題の難易度帯（試作値）。帯ごとに、生成前に許容する色・操作移動量・明暗の条件を置く。
