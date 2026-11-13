@@ -1,6 +1,6 @@
 # ホームの連続色変化・巻きベロ：実装検証
 
-2026-11-14（日本時間）。対象は[仕様](../superpowers/specs/2026-11-14-chameleol-home-idle-spec.md)と[計画](../superpowers/plans/2026-11-14-chameleol-home-idle-plan.md)。基準main: `e3a74eb8f843eb2d608c9435ae9cb15e28c6b60a`。実装・テストの対象コミット: `a040856`（この後の文書・画像コミットと合わせてPR #17に記録）。
+2026-11-14（日本時間）。対象は[仕様](../superpowers/specs/2026-11-14-chameleol-home-idle-spec.md)と[計画](../superpowers/plans/2026-11-14-chameleol-home-idle-plan.md)。基準main: `e3a74eb8f843eb2d608c9435ae9cb15e28c6b60a`。実装・テストの対象コミット: `a040856`（この後の文書・画像コミットと合わせて、計画PR #17に基づく別の実装PRに記録）。
 
 ## 実装範囲
 
