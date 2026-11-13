@@ -64,6 +64,12 @@ export const SOUND_EVENTS = Object.freeze({
   passBuilding: { bus: 'sfx', minGapMs: 400, important: false, priority: 1, category: 'sfx' },
   policeSearch: { bus: 'sfx', minGapMs: 1800, important: false, priority: 2, category: 'sfx' },
   tierUp: { bus: 'sfx', minGapMs: 1000, important: true, priority: 3, category: 'sfx' },
+  bonusPrecision: { bus: 'sfx', minGapMs: 400, important: false, priority: 2, category: 'sfx' },
+  bonusSteady: { bus: 'sfx', minGapMs: 400, important: false, priority: 2, category: 'sfx' },
+  bonusMilestone: { bus: 'sfx', minGapMs: 400, important: true, priority: 3, category: 'sfx' },
+  bonusQuick: { bus: 'sfx', minGapMs: 400, important: false, priority: 2, category: 'sfx' },
+  bonusMulti: { bus: 'sfx', minGapMs: 400, important: true, priority: 3, category: 'sfx' },
+  bonusAllSuccess: { bus: 'sfx', minGapMs: 2000, important: true, priority: 3, category: 'sfx' },
   lastFive: { bus: 'sfx', minGapMs: 800, important: false, priority: 1, category: 'sfx' },
 });
 
@@ -645,6 +651,28 @@ export function createMixer({ AudioContextImpl = globalThis.AudioContext ?? glob
       seq(bus.sfx, [55, 55, 55, 60, 0, 58, 60], { t0, gap: 0.11, type: 'triangle', dur: 0.14, peak: 0.12, priority: 3, category: 'sfx' });
       chord(bus.sfx, [72, 76, 79, 84], { t0: t0 + 0.77, type: 'triangle', dur: 1.1, peak: 0.09, priority: 3, category: 'sfx' });
       seq(bus.sfx, [91, 96, 100, 103, 108], { t0: t0 + 0.9, gap: 0.065, type: 'sine', dur: 0.22, peak: 0.065, priority: 3, category: 'sfx' });
+    },
+    bonusPrecision: (t0, { tier = 5 } = {}) => {
+      seq(bus.sfx, tier === 10 ? [84, 91] : [84], { t0, gap: 0.05, type: 'sine', dur: 0.15, peak: 0.09, priority: 2, category: 'sfx' });
+    },
+    bonusSteady: (t0) => {
+      chord(bus.sfx, [72, 79], { t0, type: 'sine', dur: 0.2, peak: 0.07, priority: 2, category: 'sfx' });
+    },
+    bonusMilestone: (t0) => {
+      seq(bus.sfx, [72, 76, 84], { t0, gap: 0.07, type: 'triangle', dur: 0.15, peak: 0.1, priority: 3, category: 'sfx' });
+    },
+    bonusQuick: (t0) => {
+      noise(bus.sfx, { t0, dur: 0.07, peak: 0.035, filter: 3000, q: 0.8, priority: 2, category: 'sfx' });
+      tone(bus.sfx, { freq: NOTE(88), type: 'sine', t0: t0 + 0.05, dur: 0.13, peak: 0.085, priority: 2, category: 'sfx' });
+    },
+    bonusMulti: (t0) => {
+      seq(bus.sfx, [76, 79, 84], { t0, gap: 0.06, type: 'triangle', dur: 0.13, peak: 0.095, priority: 3, category: 'sfx' });
+      chord(bus.sfx, [84, 88], { t0: t0 + 0.18, type: 'sine', dur: 0.18, peak: 0.055, priority: 3, category: 'sfx' });
+    },
+    // One integrated ending cue; never play clear plus a separate medal sound.
+    bonusAllSuccess: (t0) => {
+      SFX.clear(t0);
+      chord(bus.sfx, [79, 84, 88], { t0: t0 + 1.3, type: 'sine', dur: 0.45, peak: 0.045, priority: 3, category: 'sfx' });
     },
     result: (t0) => {
       chord(bus.sfx, [60, 64, 67, 71], { t0, dur: 0.6, peak: 0.08, priority: 1, category: 'sfx' });

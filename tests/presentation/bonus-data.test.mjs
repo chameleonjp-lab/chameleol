@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {buildBonusBatch,buildBonusResult,buildEndingBonus} from '../../src/presentation/bonus-data.js';
+export const awards=(building=10)=>[['precision',10,10],['steady',null,5],['milestone',null,20],['quick',null,5]].map(([kind,tier,points])=>({id:`kamereoru-rules-v3:${building}:${kind}`,building,kind,tier,points,earnedAtT:building*5000}));
+export const pass={type:'pass',building:10,t:50000,basePoints:118,bonusPoints:40,points:158,bonusAwards:awards()};
+test('four_awards_one_card_40_points',()=>{const b=buildBonusBatch({playId:'play',passEvent:pass});assert.equal(b.basePoints,118);assert.equal(b.bonusPoints,40);assert.equal(b.totalPoints,158);assert.deepEqual(b.awards.map(a=>a.kind),['precision','steady','quick','milestone']);assert.equal(b.expiresAtT,51400);assert.equal(b.id,'play:kamereoru-rules-v3:10');});
+test('precision_tier_is_exclusive',()=>{assert.equal(buildBonusBatch({playId:'play',passEvent:{...pass,bonusAwards:[...awards(),{...awards()[0],tier:5,points:5}]}}),null);});
+test('display_data_never_mutates_awarded_input',()=>{const e=structuredClone(pass),b=buildBonusBatch({playId:'p',passEvent:e});b.awards[0].points=99;assert.equal(e.bonusAwards[0].points,10);});
+test('legacy_is_not_zero_bonus_run',()=>{assert.deepEqual(buildBonusResult({rulesVersion:'kamereoru-rules-v2',score:{total:0}}),{available:false});});
+test('final_summary_separates_final_awards_clear_and_all_success',()=>{const finalAwards=[...awards(50),{id:'kamereoru-rules-v3:50:allSuccess',building:50,kind:'allSuccess',tier:null,points:100,earnedAtT:250000}];const data=buildEndingBonus({endReason:'cleared',buildings:50,score:{clear:200},perBuilding:Array.from({length:50},()=>[300e9,3000,160]),bonus:{awards:finalAwards}});assert.equal(data.points,460);assert.equal(data.bonusPoints,40);assert.equal(data.clearPoints,200);assert.equal(data.allSuccessPoints,100);});
