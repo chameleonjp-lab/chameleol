@@ -1,7 +1,7 @@
 // 照合例（操作履歴と期待する再計算結果）を作る。判定規則を変えた時だけ作り直す（rulesVersion を上げる）。
 // 使い方: node scripts/make-replay-fixtures.mjs
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { RULES_V1, createGame, createRecorder, compactHistory, replayHistory, initialState, advance } from '../src/rules/v1/index.js';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { RULES_V1, rulesForVersion, createGame, createRecorder, compactHistory, replayHistory, initialState, advance } from '../src/rules/v1/index.js';
 import { createRng } from '../src/rules/v1/course.js';
 
 const OUT = new URL('../tests/replay/fixtures/', import.meta.url);
@@ -56,6 +56,8 @@ const cases = [
 ];
 
 for (const c of cases) {
+  // Historical baselines are evidence, never regenerate them during upgrades.
+  if (existsSync(new URL(`${c.name}.json`, OUT))) continue;
   const { game, entries } = play(c.seed, c.opts);
   const compact = compactHistory(entries);
   const expected = replayHistory(game, entries).summary;
@@ -64,4 +66,36 @@ for (const c of cases) {
   const fixture = { name: c.name, rulesVersion: RULES_V1.rulesVersion, seed: c.seed, history: compact, expected };
   writeFileSync(new URL(`${c.name}.json`, OUT), `${JSON.stringify(fixture)}\n`);
   console.log(c.name, entries.length, '→', compact.length, 'entries', expected.endReason, expected.buildings, expected.rankAverage);
+}
+
+// New cases use actual course HSV colors, never a substituted match function.
+for (const c of [
+  {name:'bonus-v3-clear', version:3},
+  {name:'bonus-v3-thresholds', version:3, thresholds:true},
+  {name:'bonus-v4-pause', version:4, pause:true},
+]) {
+  const rules = rulesForVersion(`kamereoru-rules-v${c.version}`);
+  const seed = 17;
+  const game = createGame({seed,rules});
+  const recorder = createRecorder(rules);
+  const push = ev => recorder.push(ev);
+  for (let i=0;i<rules.buildingCount;i++) {
+    const start=i*rules.buildingMs, target=game.course.targets[i];
+    if(c.thresholds && i<2) {
+      push({type:'color', t:start, h:(target.h+18000)%36000,s:target.s,v:target.v});
+      push({type:'color', t:start+rules.evalStartMs+500+i,...target});
+    } else {
+      push({type:'color',t:start,...target});
+    }
+    if(c.pause && i===20) {
+      push({type:'pause',t:start+2499}); push({type:'resume',t:start+2499});
+    }
+  }
+  const history = compactHistory(recorder.entries);
+  const expected = replayHistory(game,history).summary;
+  if(expected.endReason!=='cleared') throw new Error(`${c.name} did not clear`);
+  const fixture={name:c.name,rulesVersion:rules.rulesVersion,seed,history,expected};
+  const path=new URL(`${c.name}.json`,OUT);
+  if(!existsSync(path)) writeFileSync(path,`${JSON.stringify(fixture)}\n`);
+  console.log(c.name,expected.score.total,expected.bonus.points);
 }

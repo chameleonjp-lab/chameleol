@@ -361,7 +361,7 @@ for (const gate of ['prepare', 'beginRun']) {
 }
 
 function response(data) {
-  return { ok: true, requestId: data.requestId, name: data.name, playId: '00000000-0000-4000-8000-000000000001', seed: 1, rulesVersion: 'kamereoru-rules-v1', generatorVersion: 'kamereoru-course-v1' };
+  return { ok: true, requestId: data.requestId, name: data.name, gameVersion: data.gameVersion, playId: '00000000-0000-4000-8000-000000000001', seed: 1, rulesVersion: 'kamereoru-rules-v1', generatorVersion: 'kamereoru-course-v1' };
 }
 async function rankedFixture(env, handler) {
   await env.context.addInitScript(() => localStorage.setItem('kamereoru.apiBase', '/test-api'));
