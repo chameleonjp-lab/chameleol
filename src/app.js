@@ -633,7 +633,7 @@ export class App {
       const session=new GameSession({playId:uuid(),seed:1,debug:true,name:'',ranked:false});
       for(let b=1;b<=50;b++){const target=session.game.course.targets[b-1];session.apply({type:'color',t:(b-1)*5000+1400,...target});}
       session.apply({type:'tick',t:250000});
-      this.lastResult={playId:session.meta.playId,name:'',summary:session.summary(),newBest:true,firstClearNow:true,previous:{playId:'previous',buildings:40,rankAverage:9500,maxCombo:10,endedAt:1},targets:session.game.course.targets.map(c=>({...c})),arrivedBuilding:50,ranked:false};
+      this.lastResult={playId:session.meta.playId,name:'',summary:session.summary(),newBest:true,firstClearNow:true,firstClearAt:Date.now(),previous:{playId:'previous',buildings:40,rankAverage:9500,maxCombo:10,endedAt:1},targets:session.game.course.targets.map(c=>({...c})),arrivedBuilding:50,ranked:false};
       this.session=null;this.showResult();
       if(effectId===96)this.resultPresentation.updateRank({state:'official',rank:1,label:'current'});
       if(effectId===99)this.resultPresentation.replayAccepted();
@@ -1338,7 +1338,8 @@ export class App {
     if (!generation) return { result, saved: false, stale: false };
     try {
       const savedPresentation=await this.store.endRun(TAB_ID,generation,result,{localBest,presentation});
-      return {result,saved:true,newBest:!!localBest,previous:savedPresentation?.previous??savedPresentation?.presentation?.previous??null,firstClearNow:savedPresentation?.firstClearNow??savedPresentation?.presentation?.firstClearNow??false};
+      const firstClearNow=savedPresentation?.firstClearNow??savedPresentation?.presentation?.firstClearNow??false;
+      return {result,saved:true,newBest:!!localBest,previous:savedPresentation?.previous??savedPresentation?.presentation?.previous??null,firstClearNow,firstClearAt:firstClearNow?presentation.endedAt:null};
     } catch (err) {
       return { result, saved: false, stale: err instanceof StaleWriterError };
     }
@@ -1358,10 +1359,10 @@ export class App {
     this.controls?.setEnabled(false);
     this.audio.stopGameAudio();
     const targets=session.game.course.targets.slice(0,50).map(c=>({...c}));
-    const { result, saved, stale, newBest = false, previous=null, firstClearNow=false } = await this.persistEnd(session, this.generation, { takenOver: this.takenOver });
+    const { result, saved, stale, newBest = false, previous=null, firstClearNow=false, firstClearAt=null } = await this.persistEnd(session, this.generation, { takenOver: this.takenOver });
     if (!current()) return;
     const summary = session.summary();
-    this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary,saved,stale,newBest,previous,firstClearNow,targets,arrivedBuilding:Math.min(50,Math.floor(session.state.t/RULES_V1.buildingMs)+1),netState: session.meta.ranked ? 'pending' : null };
+    this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary,saved,stale,newBest,previous,firstClearNow,firstClearAt,targets,arrivedBuilding:Math.min(50,Math.floor(session.state.t/RULES_V1.buildingMs)+1),netState: session.meta.ranked ? 'pending' : null };
     if (!saved && !stale && result?.ranked) {
       // 端末へ保存できなかった：メモリ上の結果を可能なら直接送る（再読込で失われ得ることは画面で伝える）
       this.notices.push('notice.resultNotSaved');

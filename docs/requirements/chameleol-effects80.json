@@ -2262,7 +2262,7 @@
       "originalRICErank": 65,
       "task": "T9",
       "trigger": "段階1で直前の評価終了が成功だった猶予",
-      "acceptance": "似顔絵の手帳を1秒示す。同じプレイで1回まで、動作終了で小道具を隠す。 直前成功は今回の表示用の真偽値だけで持ち、次の評価開始で消す。",
+      "acceptance": "似顔絵の手帳を1秒示す。No.37と交互に選び、同じ猶予で1回まで。動作終了で小道具を隠す。 直前成功は今回の表示用の真偽値だけで持ち、次の評価開始で消す。",
       "status": "実装・個別自動検証済み／Safari実機未確認",
       "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
       "implementationFiles": [
@@ -3008,7 +3008,7 @@
       "originalRICErank": 88,
       "task": "T3",
       "trigger": "端末内で初めて50棟クリアした時",
-      "acceptance": "初クリア日だけを保存し、その回に特別な切符を出す。再表示・再送・次回クリアでは日付を書き換えない。",
+      "acceptance": "初クリア日だけを保存し、その回に保存した日付入りの切符を出す。再表示・再送・次回クリアでは日付を書き換えない。",
       "status": "実装・個別自動検証済み／Safari実機未確認",
       "estimateNote": "RICE各値は100案評価時の仮見積もり。80要件への確定仕様はscope・trigger・acceptanceを正とする。",
       "implementationFiles": [

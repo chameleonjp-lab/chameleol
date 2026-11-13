@@ -1,5 +1,7 @@
 import {PORTRAIT_BOUNDS} from './assets/result-atlas-bounds.js';
 import {formatRankAverage} from '../rules/v1/engine.js';
+import {getLanguage} from '../i18n/i18n.js';
+import {getLanguageLocale} from '../i18n/languages.js';
 const ATLAS=new URL('./assets/result-atlas.webp',import.meta.url).href;
 /** Static DOM presentation. The caller supplies the sole shared active clock. */
 export function mountResultPresentation({host,data,scope,t=(key)=>key}){
@@ -17,7 +19,18 @@ export function mountResultPresentation({host,data,scope,t=(key)=>key}){
  el('p','result-combo',`${tr('resultMaxCombo','Maximum combo')}: ${'◆'.repeat(data.gems)} ${data.maxCombo}`,report);
  for(const [key,b] of [['resultBestBuilding',data.bestBuilding],['resultWorstBuilding',data.worstBuilding]])el('p','result-extreme',`${tr(key,key==='resultBestBuilding'?'Best building':'Toughest building')}: ${b?`${b.building} · ${formatRankAverage(b.rankAverage)}%`:'—'}`,report);
  if(data.newBest)el('p','result-new-best',tr('resultNewBest','New personal best'),report);
- if(data.firstClearNow)el('p','result-first-clear',tr('resultFirstClear','First clear on this device!'),report);
+ if(data.firstClearNow){
+   const ticket=el('aside','result-first-clear result-ticket',null,report);
+   const stamp=el('span','result-ticket-stamp','50',ticket);stamp.setAttribute('aria-hidden','true');
+   const body=el('div','result-ticket-body',null,ticket);
+   el('strong','result-ticket-title',tr('resultFirstClear','First clear on this device!'),body);
+   if(data.firstClearAt!==null&&data.firstClearAt!==undefined){
+     const date=new Date(data.firstClearAt),iso=date.toISOString();
+     let label=iso.slice(0,10);
+     try{label=new Intl.DateTimeFormat(getLanguageLocale(getLanguage()),{year:'numeric',month:'short',day:'numeric'}).format(date);}catch{}
+     const time=el('time','result-ticket-date',label,body);time.setAttribute('datetime',iso);
+   }
+ }
  const badges=el('div','result-badges',null,report);for(const b of data.badges)el('span','result-badge',tr('resultBadge'+b,b),badges);
  el('p','result-speech',tr(data.speechKey,{resultSpeechClear:'We escaped!',resultSpeechBest:'A new personal best!',resultSpeechCombo:'What a streak!',resultSpeechOther:'Every street is another chance.'}[data.speechKey]),report);
  const cards=el('div','result-districts',null,report);for(const d of data.districts){const card=el('article','result-district',null,cards);const districtIndex=[1,20,23,30,40].indexOf(d.from);sprite(card,[(districtIndex%3)*640,Math.floor(districtIndex/3)*400,640,400]);el('span','result-district-range',`${d.from}–${d.to}`,card);el('strong','result-district-average',d.rankAverage===null?tr('resultNoData','No results for this district yet.'):`${formatRankAverage(d.rankAverage)}%`,card)}

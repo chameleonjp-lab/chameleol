@@ -11,3 +11,13 @@ test('district_mean_uses_equal_building_weights',()=>assert.equal(make([[0,1,0],
 test('district_at_unpassed_building_boundary',()=>assert.equal(make([], {arrivedBuilding:20}).backgroundId,20));
 test('targets_are_optional_and_not_persisted',()=>{assert.deepEqual(make().colors,[]);const targets=[{h:0,s:10000,v:10000}];const data=make([],{targets});targets[0].h=40;assert.equal(data.colors[0].color.h,0)});
 test('reached_district_without_passed_cells_is_explicit',()=>{const data=make(Array.from({length:19},()=>[100e6,1,0]),{arrivedBuilding:20});assert.equal(data.districts.length,2);assert.deepEqual(data.districts[1],{from:20,to:22,main:'shop',time:'day',buildings:0,count:0,rankAverage:null})});
+
+test('first-clear ticket keeps its recorded date and rejects missing or invalid dates', () => {
+  const at = Date.parse('2026-11-13T12:00:00.000Z');
+  const context = { summary: { buildings: 50, endReason: 'cleared', score: {} }, firstClearNow: true };
+  assert.equal(buildResultData({ ...context, firstClearAt: at }).firstClearAt, at);
+  for (const firstClearAt of [undefined, null, NaN, Infinity, -1, 0.5, 8640000000000001]) {
+    assert.equal(buildResultData({ ...context, firstClearAt }).firstClearAt, null);
+  }
+  assert.equal(buildResultData({ ...context, firstClearNow: false, firstClearAt: at }).firstClearAt, null);
+});
