@@ -68,6 +68,29 @@ function pause() {
   app.showPause('user');
 }
 
+test('first-clear date reaches the result context; a later clear keeps the original stored date', async () => {
+  const clearSession = async (playId) => {
+    const session = new GameSession({ playId, launchId: playId + '-launch', seed: 1, ranked: false, name: '', gameVersion: 'test' });
+    const generation = await app.store.beginRun(TAB_ID, session.snapshot());
+    for (let i = 0; i < 50; i++) {
+      const target = session.game.course.targets[i];
+      session.apply({ type: 'color', t: i * 5000, ...target, v: i < 19 ? 10000 : target.v });
+      session.apply({ type: 'tick', t: (i + 1) * 5000 });
+    }
+    assert.equal(session.summary().endReason, 'cleared');
+    return app.persistEnd(session, generation);
+  };
+  const first = await clearSession('first-clear');
+  const savedDate = (await app.store.get('presentation.stats.v1')).firstClearAt;
+  assert.equal(first.firstClearNow, true);
+  assert.equal(first.firstClearAt, savedDate);
+  assert.ok(Number.isSafeInteger(first.firstClearAt));
+  const second = await clearSession('second-clear');
+  assert.equal(second.firstClearNow, false);
+  assert.equal(second.firstClearAt, null);
+  assert.equal((await app.store.get('presentation.stats.v1')).firstClearAt, savedDate);
+});
+
 test('音と言語を連打しても設定は一組だけ開閉し、IDが重複しない', () => {
   pause();
   for (let n = 0; n < 20; n++) {

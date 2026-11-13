@@ -8,7 +8,7 @@ const ranks = { glance: 3, sweat: 3, proud: 2, gem: 1, trip: 0, radio: 3, sketch
 export function createActorReactions({ hero, police = [], scope, reducedMotion = false } = {}) {
   const officers = police.map(p => p.model ?? p.ferret ?? p);
   let disposed = false, previous = null, heroAction = null, policeAction = null, tailK = 0;
-  let lastGlance = -Infinity, sketchUsed = false, tripUsed = false, hatUsed = false, alternate = false;
+  let lastGlance = -Infinity, tripUsed = false, hatUsed = false, alternate = false;
   const proudUsed = new Set(), gemUsed = new Set(), counts = {};
   let forced = null, pendingSearch = null, searchPropGrace = null;
   const snapshots = new Map(), wrappers = [];
@@ -64,7 +64,7 @@ export function createActorReactions({ hero, police = [], scope, reducedMotion =
     if (side === 'hero') heroAction=action; else policeAction=action;
     counts[name]=(counts[name]??0)+1; return true;
   }
-  function reset() { forced=null; pendingSearch=null; searchPropGrace=null; sketchUsed=tripUsed=hatUsed=alternate=false; proudUsed.clear(); gemUsed.clear(); lastGlance=-Infinity; restore(); hp?.setTailGuard(0); tailK=0; heroAction=policeAction=null; for (const ps of props) for (const p of Object.values(ps)) p.visible=false; if(sweat)sweat.visible=false; previous=null; }
+  function reset() { forced=null; pendingSearch=null; searchPropGrace=null; tripUsed=hatUsed=alternate=false; proudUsed.clear(); gemUsed.clear(); lastGlance=-Infinity; restore(); hp?.setTailGuard(0); tailK=0; heroAction=policeAction=null; for (const ps of props) for (const p of Object.values(ps)) p.visible=false; if(sweat)sweat.visible=false; previous=null; }
   function event(e) {
     if(disposed || !e || !previous) return;
     const t=Number.isFinite(e.t)?e.t:previous.t;
@@ -81,7 +81,7 @@ export function createActorReactions({ hero, police = [], scope, reducedMotion =
     if(view.phase==='ended'){ reset(); return; }
     if(forced) view={...view,...forced.overrides};
     const t=view.t, old=previous;
-    if(old && old.playId!==view.playId) { reset(); sketchUsed=tripUsed=hatUsed=alternate=false; proudUsed.clear();gemUsed.clear();lastGlance=-Infinity; }
+    if(old && old.playId!==view.playId) { reset(); tripUsed=hatUsed=alternate=false; proudUsed.clear();gemUsed.clear();lastGlance=-Infinity; }
     if(!view.running) return;
     const dt=old?Math.max(0,Math.min(100,t-old.t)):0;
     if(heroAction&&t>=heroAction.end)heroAction=null;
@@ -109,7 +109,7 @@ export function createActorReactions({ hero, police = [], scope, reducedMotion =
     if(view.phase!=='grace') searchPropGrace=null;
     const graceKey=`${view.playId}:${view.building}`;
     if(stage===1&&view.phase==='grace'&&view.lastEvalSuccess && !policeAction && searchPropGrace!==graceKey) {
-      const name=!sketchUsed&&!alternate?'sketch':'binoculars'; if(choose('police',name,t)){searchPropGrace=graceKey;if(name==='sketch')sketchUsed=true;alternate=!alternate;}
+      const name=alternate?'binoculars':'sketch'; if(choose('police',name,t)){searchPropGrace=graceKey;alternate=!alternate;}
     }
     if(grace && stage===1&&view.building>=30&&!hatUsed&&!policeAction){hatUsed=true;choose('police','hat',t);}
     if(heroAction&&t>=heroAction.end)heroAction=null;

@@ -17,3 +17,46 @@ test('pooled props allocate at most ten geometries across both officers',()=>{co
 test('radio and binocular props lift from rest to mouth and eyes',()=>{const a=rig();a.tick(view(0,{policeStage:1}));const radio=a.police[0].head.children.find(n=>n.isMesh&&n.geometry.type==='BoxGeometry'&&n.material.color.getHex()===0x202a3e);assert.ok(radio);const rest=radio.position.clone();a.tick(view(350,{policeStage:1}));assert.ok(radio.position.distanceTo(rest)>.1);a.tick(view(800,{policeStage:1,phase:'grace',lastEvalSuccess:true}));a.tick(view(1400,{policeStage:1,phase:'grace',lastEvalSuccess:true}));a.tick(view(2500,{policeStage:1}));a.tick(view(2600,{policeStage:1,building:2,phase:'grace',lastEvalSuccess:true}));a.tick(view(3101,{policeStage:1,building:2,phase:'grace',lastEvalSuccess:true}));const binoculars=a.police[0].head.children.find(n=>n.isGroup&&n.children.length===2&&n.children.every(c=>c.geometry?.type==='CylinderGeometry'));assert.ok(binoculars);const low=binoculars.position.clone();a.tick(view(3501,{policeStage:1,building:2,phase:'grace',lastEvalSuccess:true}));assert.ok(binoculars.position.distanceTo(low)>.1);a.dispose();});
 test('reduced motion selects guarded tail geometry immediately',()=>{const hero=createChameleon();const r=createActorReactions({hero,reducedMotion:true});r.tick(view(0,{policeStage:2}));assert.equal(r.stats().tail,1);r.tick(view(1,{policeStage:0}));assert.equal(r.stats().tail,0);r.dispose();hero.dispose();});
 test('pause retains visible radio and exact actor pose; resume at same time has no drift',()=>{const a=rig();a.tick(view(0,{policeStage:1}));a.tick(view(350,{policeStage:1}));const radio=a.police[0].head.children.find(n=>n.isMesh&&n.material.color?.getHex()===0x202a3e);const capture=()=>{const result=[];for(const actor of [a.hero,...a.police])actor.group.traverse(n=>result.push([n.uuid,n.visible,...n.position.toArray(),...n.quaternion.toArray(),...n.scale.toArray()]));return result;};const before=capture(),vertices=Array.from(a.hero.actorParts.tailGeometry.attributes.position.array);assert.equal(radio.visible,true);a.r.tick(view(350,{policeStage:1,running:false}));assert.equal(radio.visible,true);assert.deepEqual(capture(),before);assert.deepEqual(Array.from(a.hero.actorParts.tailGeometry.attributes.position.array),vertices);a.tick(view(350,{policeStage:1}));assert.deepEqual(capture(),before);a.dispose();});
+
+// A successful grace must select the other real prop, including after the first pair.
+function enterSuccessfulGrace(a, building, t) {
+  a.tick(view(t, { building, policeStage: 1 }));
+  a.tick(view(t + 1, { building, policeStage: 1, phase: 'grace', lastEvalSuccess: true }));
+  a.tick(view(t + 502, { building, policeStage: 1, phase: 'grace', lastEvalSuccess: true }));
+  return a.r.stats().police;
+}
+
+test('successive successful graces alternate sketch and binoculars beyond the first pair', () => {
+  const a = rig();
+  try {
+    a.tick(view(0, { policeStage: 1 }));
+    const selected = [
+      enterSuccessfulGrace(a, 1, 1000),
+      enterSuccessfulGrace(a, 2, 3500),
+      enterSuccessfulGrace(a, 3, 6000),
+      enterSuccessfulGrace(a, 4, 8500),
+    ];
+    assert.deepEqual(selected, ['sketch', 'binoculars', 'sketch', 'binoculars']);
+    assert.equal(a.r.stats().counts.sketch, 2);
+    assert.equal(a.r.stats().counts.binoculars, 2);
+  } finally { a.dispose(); }
+});
+
+test('ineligible grace and paused frames preserve the next prop; reset starts with sketch', () => {
+  const a = rig();
+  try {
+    a.tick(view(0, { policeStage: 1 }));
+    assert.equal(enterSuccessfulGrace(a, 1, 1000), 'sketch');
+    a.tick(view(3500, { building: 2, policeStage: 1 }));
+    a.tick(view(3501, { building: 2, policeStage: 1, phase: 'grace', lastEvalSuccess: false }));
+    assert.equal(a.r.stats().police, null);
+    assert.equal(enterSuccessfulGrace(a, 3, 6000), 'binoculars');
+    const before = { ...a.r.stats().counts };
+    for (let n = 0; n < 5; n++) a.tick(view(6502, { building: 3, policeStage: 1, phase: 'grace', lastEvalSuccess: true, running: false }));
+    assert.deepEqual(a.r.stats().counts, before);
+    assert.equal(enterSuccessfulGrace(a, 4, 8500), 'sketch');
+    a.r.reset();
+    a.tick(view(0, { policeStage: 1 }));
+    assert.equal(enterSuccessfulGrace(a, 1, 1000), 'sketch');
+  } finally { a.dispose(); }
+});
