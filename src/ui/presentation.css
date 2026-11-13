@@ -86,3 +86,35 @@
 .result-ticket-title{font-size:.9rem;line-height:1.5;overflow-wrap:anywhere}
 .result-ticket-date{font-size:.78rem;font-weight:500;line-height:1.5;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 @media(max-height:740px){.result-first-clear.result-ticket{margin:10px auto;padding:10px 14px}}
+/* Awarded points are read-only. One card shares the game clock and never blocks input. */
+.bonus-card,.bonus-card *,.ending-bonus,.ending-bonus *{pointer-events:none!important;box-sizing:border-box}
+.bonus-card{position:absolute;z-index:8;left:10px;right:10px;top:calc(var(--safe-top,0px) + 84px);max-width:520px;margin:0 auto;padding:8px 10px;border:1px solid #f3df8b;border-radius:12px;background:#10182def;color:#fff7d6;font-size:14px;line-height:1.25;font-variant-numeric:tabular-nums;box-shadow:0 3px 10px #0005;animation:bonus-arrive 150ms ease-out both;animation-delay:calc(-1 * var(--bonus-age,0ms))}
+.bonus-card[hidden],.ending-bonus[hidden]{display:none!important}
+.bonus-card-title{display:inline-block;margin-right:10px;font-size:14px}.bonus-card-points{font-size:20px}.bonus-awards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;margin-top:5px}
+.bonus-award{display:flex;align-items:center;gap:4px;min-width:0;font-size:14px;overflow-wrap:anywhere}.bonus-name{flex:1;min-width:0}.bonus-points{white-space:nowrap}.bonus-symbol{display:inline-block;width:18px;flex:none;text-align:center;font-style:normal;font-size:18px}
+.bonus-precision .bonus-symbol{border-radius:50%;outline:1px solid currentColor;outline-offset:-3px;animation:bonus-rings 150ms ease-out both;animation-delay:calc(-1 * var(--bonus-age,0ms))}
+.bonus-steady .bonus-symbol{position:relative}.bonus-steady .bonus-symbol::after{content:'';display:block;position:absolute;bottom:0;left:2px;right:2px;border-bottom:2px solid currentColor;animation:bonus-steady 150ms ease-out both;animation-delay:calc(-1 * var(--bonus-age,0ms))}
+.bonus-quick .bonus-symbol{animation:bonus-arrow 150ms ease-out both;animation-delay:calc(-1 * var(--bonus-age,0ms))}
+.bonus-card-detail{font-size:14px;line-height:1.3;margin:6px 0 0;overflow-wrap:anywhere}
+.bonus-card.is-leaving{opacity:calc(1 - var(--bonus-progress,0));transform:translateY(calc(-8px * var(--bonus-progress,0)))}
+.bonus-card.is-paused *,.bonus-card.is-paused{animation-play-state:paused!important}
+.bonus-card.is-quiet,.bonus-card.is-reduced{animation:none!important;transform:none!important;opacity:1;box-shadow:none}.bonus-card.is-quiet *,.bonus-card.is-reduced *{animation:none!important;transform:none!important}.bonus-card.is-quiet .bonus-symbol{display:none}
+.ending-bonus{position:absolute;z-index:12;left:12px;right:12px;top:calc(var(--safe-top,0px) + 84px);max-width:520px;margin:auto;padding:12px;border:1px solid #f2da89;border-radius:12px;background:#10182ded;color:#fff8d5;font-size:14px;line-height:1.35;overflow-wrap:anywhere}.ending-base,.ending-medal-detail{margin:8px 0}.ending-medal{display:block;color:#ffe294}.ending-total{display:block;font-size:18px}
+.result-total-label{display:block;font-size:14px;font-weight:600}.result-score-visual{display:block}.result-main>.result-score{min-width:0}.result-bonus{margin-top:12px;font-size:14px}.result-bonus-total{font-size:17px}.result-bonus-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;margin:8px 0;padding:10px;border:1px solid #ffffff25;border-radius:10px}.result-bonus-name,.result-bonus-count{overflow-wrap:anywhere}.result-bonus-count{text-align:right}.result-bonus-tiers,.result-bonus-help{grid-column:1/-1;font-size:14px;line-height:1.4;margin:0;overflow-wrap:anywhere}.result-bonus-medal{font-size:26px;color:#ffe294}.result-bonus-legacy{font-size:14px;line-height:1.4}.result-components{font-size:14px}
+@keyframes bonus-arrive{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}@keyframes bonus-rings{from{transform:scale(.6);outline-offset:3px}to{transform:none;outline-offset:-3px}}@keyframes bonus-steady{from{transform:rotate(-20deg)}to{transform:none}}@keyframes bonus-arrow{from{transform:translateX(-7px)}to{transform:none}}
+@media(orientation:landscape) and (max-height:500px){.bonus-card{top:calc(var(--safe-top,0px) + 82px);padding:5px 8px}.bonus-awards{gap:3px 8px}.bonus-card-detail{margin-top:4px}.ending-bonus{top:calc(var(--safe-top,0px) + 68px);padding:8px}}
+@media(prefers-reduced-motion:reduce){.bonus-card,.bonus-card *,.bonus-card *::after,.ending-bonus,.hud-gain,.hud-score.bump{animation:none!important;transition:none!important;transform:none!important}.bonus-card.is-leaving{opacity:1}}
+/* The caller's integer game clock controls every part of the card movement. */
+.bonus-card{animation:none;opacity:var(--bonus-enter,0);transform:translateY(calc(5px * (1 - var(--bonus-enter,0))))}
+.bonus-precision .bonus-symbol{animation:none;transform:scale(calc(.6 + .4 * var(--bonus-enter,0)));outline-offset:calc(3px - 6px * var(--bonus-enter,0))}.bonus-tier-high .bonus-symbol{box-shadow:0 0 0 1px #fff5,0 0 6px #ffdf84}
+.bonus-steady .bonus-symbol::after{animation:none;transform:rotate(calc(-20deg * (1 - var(--bonus-enter,0))))}.bonus-quick .bonus-symbol{animation:none;transform:translateX(calc(-7px * (1 - var(--bonus-enter,0))))}
+.bonus-card.is-leaving{opacity:calc(1 - var(--bonus-progress,0));transform:translateY(calc(-8px * var(--bonus-progress,0)))}
+.bonus-card.is-quiet,.bonus-card.is-reduced{opacity:1;transform:none}.bonus-card.is-quiet .bonus-symbol::after,.bonus-card.is-reduced .bonus-symbol::after{transform:none}
+.game:has(.bonus-card.is-paused) .hud-score.bump{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.bonus-card{opacity:1;transform:none}.bonus-symbol,.bonus-symbol::after{transform:none!important}}
+@media(prefers-reduced-motion:reduce){.bonus-card.is-leaving{opacity:1}}
+/* A pass has one message surface, including the existing combo/milestone text. */
+.bonus-card-notices{margin:5px 0 0;color:#bcff93;font-size:14px;line-height:1.25;font-weight:700;overflow-wrap:anywhere}.bonus-card-notices[hidden]{display:none}
+.bonus-card.is-quiet .bonus-card-detail{display:none}.bonus-card.is-quiet{padding:5px 8px}.bonus-card.is-quiet .bonus-awards{gap:3px 8px}
+.bonus-awards:has(.bonus-award:only-child){grid-template-columns:1fr}
+.bonus-card.is-quiet .bonus-card-notices{display:none}

@@ -4,6 +4,7 @@
 // - 全片がそろってからサーバーが「完全受付」を返す。受付証と照会情報を端末へ保存できてから送信待ちを外す。
 // - 1件の恒久的な拒否や失敗が、ほかの記録の送信を止めない。
 import { ApiError, sha256Hex, uuid } from './api.js';
+import { validateVerifiedScore } from './verified-score.js';
 
 export const CHUNK_CHARS = 128 * 1024; // 試作値（文字数。履歴はASCIIのJSONなのでバイト数と同じ）
 export const RESULT_FORMAT = 'kamereoru-result-v1';
@@ -151,6 +152,12 @@ export async function refreshRecords({ api, store }) {
       const s = byId.get(r.playId);
       if (!s || s.error) continue;
       const next = { ...r, status: s.status, official: s.official ?? null, corrections: s.corrections ?? [], reviewRequested: s.reviewRequests > 0, lastCheckedAt: Date.now() };
+      const verifiedScore = validateVerifiedScore(s.verifiedScore, {
+        playId: r.playId, responsePlayId: s.playId, rulesVersion: r.summary?.rulesVersion, summary: r.summary, status: s.status,
+      });
+      // Missing or malformed corrections never erase the last verified value.
+      // Auxiliary corrections are not ranking changes and do not set unseenChange.
+      if (verifiedScore) next.verifiedScore = verifiedScore;
       const changed = JSON.stringify(next.corrections) !== JSON.stringify(r.corrections) || next.status !== r.status;
       if (changed) next.unseenChange = (r.unseenChange ?? false) || (r.status != null && r.status !== next.status) || next.corrections.length > (r.corrections?.length ?? 0);
       await store.put('records', next);

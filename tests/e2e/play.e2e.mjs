@@ -163,6 +163,11 @@ test('GAME-17: クリアの演出を飛ばしても、結果とクリアボー�
     const fixed = await page.evaluate(() => globalThis.__kamereoru.lastResult.summary);
     await page.click('[data-testid=skip-ending]');
     await page.waitForSelector('[data-testid=result-score]');
+    // 結果の唯一の得点表示は600msで数え上げる。表示完了を待って確定値と照合する。
+    await page.waitForFunction((total) => {
+      const score = document.querySelector('[data-testid=result-score]');
+      return score && Number(score.textContent.replace(/\D/g, '')) === total;
+    }, fixed.score.total);
     const shown = await page.evaluate(() => globalThis.__kamereoru.lastResult.summary);
     assert.deepEqual(shown, fixed, '演出の前に結果を確定している');
     assert.equal(shown.score.clear, 200);

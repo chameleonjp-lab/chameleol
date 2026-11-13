@@ -12,12 +12,12 @@ for (const file of files) cpSync(new URL(file, source), join(root, file), { recu
 execFileSync('git', ['init', '-q'], { cwd: root });
 execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '--allow-empty', '-qm', 'test'], { cwd: root });
 
-function build({ api = '', publicUrl = 'https://example.invalid/chameleol/', standalone = '', args = [] } = {}) {
+function build({ api = '', publicUrl = 'https://example.invalid/chameleol/', standalone = '', env = 'production', args = [] } = {}) {
   execFileSync(process.execPath, ['scripts/build.mjs', ...args], {
     cwd: root,
     env: {
       ...process.env,
-      KAMEREORU_ENV: 'production',
+      KAMEREORU_ENV: env,
       KAMEREORU_API: api,
       KAMEREORU_PUBLIC_URL: publicUrl,
       KAMEREORU_STANDALONE: standalone,
@@ -46,4 +46,23 @@ test('単独公開を指定するとランキングの接続先なしで本番�
   assert.match(html, /name="kamereoru-api" content=""/);
   assert.match(html, /rel="canonical" href="https:\/\/example\.invalid\/chameleol\/"/);
   assert.throws(() => build({ standalone: '1', api: 'https://unexpected.example.invalid/' }), /KAMEREORU_STANDALONE/);
+});
+
+test('release metadata distinguishes preferred ranked and standalone rules while retaining all readable versions', () => {
+  for (const options of [{ api: 'https://example.invalid/kamereoru' }, { standalone: '1' }]) {
+    const release = build(options);
+    assert.equal(release.rulesVersion, options.standalone ? 'kamereoru-rules-v4' : 'kamereoru-rules-v3');
+    assert.deepEqual(release.supportedRulesVersions, ['kamereoru-rules-v1', 'kamereoru-rules-v2', 'kamereoru-rules-v3', 'kamereoru-rules-v4']);
+    assert.equal(release.preferredRankedRulesVersion, 'kamereoru-rules-v3');
+    assert.equal(release.defaultStandaloneRulesVersion, 'kamereoru-rules-v4');
+    const versioned = JSON.parse(readFileSync(join(root, 'dist/v', release.assetVersion, 'release.json'), 'utf8'));
+    assert.deepEqual(versioned, release);
+  }
+});
+
+test('standalone selection creates a separate asset version even without a configured API', () => {
+  const ranked = build({ env: 'verification' });
+  const standalone = build({ env: 'verification', standalone: '1', args: ['--keep', 'dist'] });
+  assert.notEqual(standalone.assetVersion, ranked.assetVersion);
+  assert.deepEqual(standalone.keptVersions, [ranked.assetVersion]);
 });

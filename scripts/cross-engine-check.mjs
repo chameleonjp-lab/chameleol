@@ -3,7 +3,7 @@
 // - Deno（本番の Edge Function と同じ実行環境）があれば、サーバーの検証処理（replay.ts）でも比べる
 // 使い方: node scripts/cross-engine-check.mjs   （DENO_BIN で deno の場所を指定できる）
 import { build } from 'esbuild';
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -11,8 +11,8 @@ import { join } from 'node:path';
 import { getQuickJS } from 'quickjs-emscripten';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const FIX = join(ROOT, 'tests', 'replay', 'fixtures');
-const fixtures = readdirSync(FIX).filter((f) => f.endsWith('.json')).map((f) => JSON.parse(readFileSync(join(FIX, f), 'utf8')));
+const { loadReplayFixtures } = await import('./replay-fixtures.mjs');
+const fixtures = loadReplayFixtures();
 const golden = readFileSync(join(ROOT, 'tests', 'rules', 'fixtures', 'deltae-golden.txt'), 'utf8').trim();
 
 const bundle = await build({
@@ -53,7 +53,7 @@ try {
   g.value.dispose();
   results.push({ engine: 'QuickJS', check: 'deltaE golden', ok: digest === golden, detail: digest });
   for (const f of fixtures) {
-    const src = `JSON.stringify(KR.replayHistory(KR.createGame({ seed: ${f.seed} }), ${JSON.stringify(f.history)}).summary)`;
+    const src = `JSON.stringify(KR.replayHistory(KR.createGame({ seed: ${f.seed}, rules: KR.rulesForVersion(${JSON.stringify(f.rulesVersion)}) }), ${JSON.stringify(f.history)}).summary)`;
     const r = vm.evalCode(src);
     if (r.error) throw new Error(JSON.stringify(vm.dump(r.error)));
     const got = JSON.parse(vm.dump(r.value));

@@ -2,6 +2,7 @@
 // NET-TEST-01/02/05/06、RANK-07、GAME-17 の送信部分などの部分確認。本番の Supabase には接続しない。
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { runInNewContext } from 'node:vm';
 import { launch, openHome, completeStationaryGuide, appState } from './helpers.mjs';
 import { startCluster, buildTemplate, createTestDb, dropTestDb } from '../../scripts/testdb.mjs';
 import { startLocalApi } from '../../scripts/local-api.mjs';
@@ -69,6 +70,9 @@ async function rankedPlay(page, name, ms = 11000) {
     if (await page.evaluate(() => globalThis.__kamereoru.session?.running === true)) break;
     if (await page.isVisible('[data-testid=skip-opening]')) await page.click('[data-testid=skip-opening]').catch(() => {});
     if(await page.isVisible('[data-testid=guidance]'))await completeStationaryGuide(page);
+    // Completing the guide can itself start the session. Check the condition
+    // again before expiring the deadline after a slow renderer frame.
+    if (await page.evaluate(() => globalThis.__kamereoru.session?.running === true)) break;
     if (Date.now() > until) throw new Error('ranked play did not start');
     await page.waitForTimeout(100);
   }
@@ -200,5 +204,31 @@ test('NET-TEST-06: 未送信が2件残っていても新しいプレイを始め
     assert.equal((await page.evaluate(() => globalThis.__kamereoru.store.getAll('outbox'))).length, 0);
   } finally {
     await s.close();
+  }
+});
+
+test('ranked startup observes guide completion before checking its deadline', async () => {
+  // Execute the real test helper against a controlled browser boundary: the
+  // awaited guide finishes after the initial deadline and starts the session.
+  for (const becomesReady of [true, false]) {
+    let now = 0;
+    let running = false;
+    const page = {
+      fill: async () => {},
+      click: async () => {},
+      isVisible: async (selector) => selector === '[data-testid=guidance]',
+      evaluate: async (fn) => runInNewContext(`(${fn.toString()})()`, {
+        __kamereoru: { session: { running, meta: { ranked: true } } },
+      }),
+      waitForTimeout: async () => {},
+    };
+    const run = runInNewContext(`(${rankedPlay.toString()})`, {
+      Date: { now: () => now },
+      assert,
+      completeStationaryGuide: async () => { running = becomesReady; now = 16000; },
+      followTargets: async () => {},
+    });
+    if (becomesReady) assert.deepEqual(await run(page, 'guide-ready'), { ranked: true });
+    else await assert.rejects(run(page, 'guide-not-ready'), /ranked play did not start/);
   }
 });

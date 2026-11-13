@@ -12,7 +12,7 @@ import {
   MAX_SCHEDULED_VOICES,
 } from '../../src/audio/mixer.js';
 
-// 要件から独立に定義した全35種の音イベント一覧（既存24種＋初期提案追加11種）
+// 要件から独立に定義した全41種の音イベント一覧（既存24種＋初期提案追加11種）
 const EXPECTED_SOUND_EVENTS = Object.freeze([
   // 既存24種
   'footstep',
@@ -51,6 +51,7 @@ const EXPECTED_SOUND_EVENTS = Object.freeze([
   'policeSearch',
   'tierUp',
   'lastFive',
+  'bonusPrecision', 'bonusSteady', 'bonusMilestone', 'bonusQuick', 'bonusAllSuccess', 'bonusMulti',
 ]);
 
 function enableIntervalMock(t) {
@@ -244,7 +245,7 @@ function recordingContext() {
   return { Ctx, made };
 }
 
-test('すべての出来事（独立定義した全35種）に音があり、すべて実際に鳴らして検証できる', async () => {
+test('すべての出来事（独立定義した全41種）に音があり、すべて実際に鳴らして検証できる', async () => {
   const { Ctx, made } = recordingContext();
   const mixer = createMixer({ AudioContextImpl: Ctx });
   assert.equal(mixer.running, false);
@@ -256,9 +257,9 @@ test('すべての出来事（独立定義した全35種）に音があり、す
   assert.deepEqual(
     [...actualKeys].sort(),
     [...EXPECTED_SOUND_EVENTS].sort(),
-    'SOUND_EVENTS の定義一覧が要件の35種と完全一致する',
+    'SOUND_EVENTS の定義一覧が要件の41種と完全一致する',
   );
-  assert.equal(actualKeys.length, 35);
+  assert.equal(actualKeys.length, 41);
 
   const ctx = Ctx.last;
   for (const name of EXPECTED_SOUND_EVENTS) {

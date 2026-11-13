@@ -2,7 +2,7 @@
 // 本編の状態：ホーム→開始準備→初回演出（初回のみ）→進行中↔一時停止→再開カウントダウン→進行中→終了確定→終了演出→結果
 // 送信・審査の状態は画面とは別に管理し、送信待ちで次のプレイを止めない。
 import {
-  RULES_V2 as RULES_V1,
+  RULES_V4 as RULES_V1,
   makeDecorations,
   createGame,
   rankAverage,
@@ -28,6 +28,9 @@ import { createMixer } from './audio/mixer.js';
 import { createStage, createVisiblePresentationClock } from './scene/stage.js';
 import { createPresentationScope } from './presentation/scope.js';
 import { readPlayView } from './presentation/events.js';
+import { buildBonusBatch, buildEndingBonus } from './presentation/bonus-data.js';
+import { mountBonusPresentation, mountEndingBonus } from './presentation/bonus-view.js';
+import { choosePassCue } from './presentation/bonus-audio.js';
 import { buildResultData } from './presentation/result-data.js';
 import { mountResultPresentation } from './presentation/result-view.js';
 import { sanitizeStats } from './presentation/stats.js';
@@ -240,6 +243,14 @@ export class App {
     try {
       const updated = await refreshRecords({ api: this.api, store: this.store });
       if (updated.some((r) => r.unseenChange)) this.flags.recordsChanged = true;
+      const currentRecord=updated.find(r=>r.playId===this.lastResult?.playId);
+      if(currentRecord){
+        this.lastResult.netState=currentRecord.status;
+        this.lastResult.official=currentRecord.official;
+        if(currentRecord.verifiedScore)this.lastResult.verifiedScore=currentRecord.verifiedScore;
+        this.renderResultScore?.();
+        this.renderResultStatus?.();
+      }
       return updated;
     } catch {
       return [];
@@ -837,7 +848,7 @@ export class App {
       },
       onLockedTap: () => {
         this.audio.play('locked');
-        showNotice(t('controls.lockedHint'), { duration: 1400 });
+        showNotice(t('controls.lockedHint'), { duration: 1400, kind:'warn' });
       },
       ...ctrlAudio,
     });
@@ -863,6 +874,12 @@ export class App {
     if (!current()) return;
     const presentationHud = mountPresentationHud({verification:this.runtime.isVerification,host:el.querySelector('.stage-wrap'),scope,bestDistance:local?.buildings??null,bestCombo:statistics.bestCombo});
     this.presentationHud = presentationHud;
+    const bonusPresentation=mountBonusPresentation({host:el.querySelector('.stage-wrap'),scope,t});
+    this.bonusPresentation=bonusPresentation;
+    let cueCandidates=[],pendingBonus=null;
+    const cue=(name,opts)=>cueCandidates.push({name,opts});
+    const showPassNotice=(text,options)=>{if(pendingBonus)(pendingBonus.notices??=[]).push(text);else showNotice(text,options);};
+    scope.own(()=>{cueCandidates=[];pendingBonus=null;if(this.bonusPresentation===bonusPresentation)this.bonusPresentation=null;});
     const guideHost = h('div', {class:'guidance-host'});
     el.querySelector('.stage-wrap').append(guideHost);
     const renderGuide = () => {
@@ -879,7 +896,7 @@ export class App {
     guideUI = mountGuidance({host:guideHost,controls});
     scope.own(()=>guideUI.dispose());
     guidance = createGuidance({session,progress:initialProgress,canResume:()=>ready&&current()&&!document.hidden&&!this.takenOver&&(this.coverEl?.hidden??true),
-      onComplete:()=>{this.audio.play('guideClear');this.saveNow('guide');},
+      onComplete:()=>{cue('guideClear');this.saveNow('guide');},
       onChange:renderGuide,
       onProgress:async (update, progress) => {
         this.guideMemory = progress;
@@ -913,6 +930,7 @@ export class App {
     let lastSaveT = session.state.t;
     let lastStage = 0;
     let lastCombo = session.state.combo ?? 0;
+    const announcedPasses=new Set(Array.from({length:session.state.passed},(_,i)=>i+1));
     const b0 = Math.min(rules.buildingCount, Math.floor(session.state.t / rules.buildingMs) + 1);
     const announcedTierUp = new Set([11, 21, 31, 41].filter((n) => n <= b0));
     this.audio.setBuilding(b0);
@@ -950,11 +968,11 @@ export class App {
         }
         switch (ev.type) {
           case 'evalEnd':
-            if (ev.building < rules.buildingCount) this.audio.play('switchOk');
+            if (ev.building < rules.buildingCount) cue('switchOk');
             break;
           case 'unlockBrightness':
             controls.setLocked(false);
-            this.audio.play('unlock');
+            cue('unlock');
             this.stage?.fx('unlock');
 
             break;
@@ -963,47 +981,50 @@ export class App {
             break;
           case 'enterBuilding': {
             const b = Math.min(rules.buildingCount, ev.building);
-            if (ev.building === rules.brightnessUnlockBuilding - 1) showNotice(t('game.unlockSoon'), { duration: 2200 });
+            if (ev.building === rules.brightnessUnlockBuilding - 1) showPassNotice(t('game.unlockSoon'), { duration: 2200 });
             this.audio.setBuilding(b);
             this.audio.setArea(areaOf(b).time);
             this.audio.setFinale(b >= 41);
             if (b === 40) {
-              showNotice(t('game.milestone.final'), { duration: 1600 });
-              this.audio.play('milestone');
+              showPassNotice(t('game.milestone.final'), { duration: 1600 });
+              cue('milestone');
               this.stage?.fx('milestone');
             }
             if ([11, 21, 31, 41].includes(b) && !announcedTierUp.has(b)) {
               announcedTierUp.add(b);
-              this.audio.play('tierUp', { tier: Math.floor((b - 1) / 10) });
+              cue('tierUp', { tier: Math.floor((b - 1) / 10) });
             } else if (b >= 46 && b <= 50) {
-              this.audio.play('lastFive', { building: b });
+              cue('lastFive', { building: b });
             }
             break;
           }
           case 'pass':
+            if(announcedPasses.has(ev.building))break;
+            announcedPasses.add(ev.building);
+            pendingBonus=buildBonusBatch({playId:session.meta.playId,passEvent:ev,summary:{rulesVersion:session.meta.rulesVersion}});
             if (ev.building === 25) {
               // 25棟目の通過＝中間地点（仕様 FX-03）
-              showNotice(t('game.milestone.half'), { duration: 1600 });
-              this.audio.play('milestone');
+              showPassNotice(t('game.milestone.half'), { duration: 1600 });
+              cue('milestone');
               this.stage?.fx('milestone');
             }
             if (ev.success && [3, 5, 10].includes(ev.combo)) {
-              this.audio.play('combo', { level: [3, 5, 10].indexOf(ev.combo) });
+              cue('combo', { level: [3, 5, 10].indexOf(ev.combo) });
               this.stage?.fx('combo');
-              showNotice(t('game.comboMilestone', { n: ev.combo }), { duration: 1400, kind: 'combo' });
+              showPassNotice(t('game.comboMilestone', { n: ev.combo }), { duration: 1400, kind: 'combo' });
             } else if (ev.success && ev.combo > 1) {
-              this.audio.play('passBuilding', { combo: ev.combo });
+              cue('passBuilding', { combo: ev.combo });
               this.stage?.fx('pass');
-              showNotice(t('game.combo', { n: ev.combo }), { duration: 900 });
+              showPassNotice(t('game.combo', { n: ev.combo }), { duration: 900 });
             } else if (ev.success) {
-              this.audio.play('passBuilding', { combo: 1 });
+              cue('passBuilding', { combo: 1 });
               this.stage?.fx('pass');
             } else if (lastCombo >= 2) {
-              this.audio.play('comboBreak'); // 連続成功が途切れた
+              cue('comboBreak'); // 連続成功が途切れた
             }
             lastCombo = ev.success ? ev.combo : 0;
             if (ev.points > 0) {
-              hudGain.textContent = `+${formatNumber(ev.points)}`;
+              hudGain.textContent = pendingBonus?'':`+${formatNumber(ev.points)}`;
               pulse(hudGain, 'show');
               pulse(hudScore, 'bump');
             }
@@ -1017,6 +1038,7 @@ export class App {
             this.finishPlay(ev.type);
             break;
           case 'paused':
+            if(ev.reason!=='guide'){cueCandidates=[];pendingBonus=null;}
             if(ev.reason==='guide'){guideAudioRunning=false;this.audio.stopGameAudio();}
             if (ev.reason === 'stall') this.showPause('stall');
             break;
@@ -1044,24 +1066,24 @@ export class App {
       const stage = alertStage.update(s.alert);
       if (stage > lastStage) {
         // 1人目は警告音、2人目は笛
-        this.audio.play(stage >= 2 ? 'whistle' : 'warning');
+        cue(stage >= 2 ? 'whistle' : 'warning');
         pulse(gaugeIcon, 'ring');
         if (!this.flags.alertGuideSeen) {
           this.setFlag('alertGuideSeen', true);
-          showNotice(t('guide.alert'), { duration: 3000 });
+          showNotice(t('guide.alert'), { duration: 3000, kind:'warn' });
         }
       }
       if (s.alert > 0 && !this.flags.alertGuideSeen) {
         this.setFlag('alertGuideSeen', true);
-        showNotice(t('guide.alert'), { duration: 3000 });
+        showNotice(t('guide.alert'), { duration: 3000, kind:'warn' });
       }
-      if (stage < lastStage && session.running) this.audio.play('relief'); // 警察が離れた
+      if (stage < lastStage && session.running) cue('relief'); // 警察が離れた
       if (stage !== lastStage) { const event={type:stage>lastStage?'policeUp':'policeDown',t:s.t};stageView.presentationEvent(event);presentationHud.event(event); }
       lastStage = stage;
       this.audio.setPoliceStage(session.running ? stage : 0);
       this.audio.setDanger(session.running && s.alert >= rules.alert.maxUnits * 0.7);
       if (instant.update(s)) {
-        this.audio.play('success');
+        cue('success');
         this.stage?.fx('success');
         const event={ type:'instantSuccess',t:s.t,building:s.evalBuilding };stageView.presentationEvent(event);presentationHud.event(event);
       }
@@ -1069,7 +1091,7 @@ export class App {
       const matchState = s.matchUnits == null ? null : classifyMatch(s.matchUnits);
       const searching = matchState === 'success' && stage > 0;
       if (searching && !wasSearching) {
-        this.audio.play('policeSearch');
+        cue('policeSearch');
         stageView.presentationEvent({ type: 'searchStart', t: s.t });
       }
       wasSearching = searching;
@@ -1078,6 +1100,27 @@ export class App {
       presentationHud.setGuideActive(Boolean(guideView.step));
       presentationHud.tick(playView);
       renderGuide();
+      const activeNotice=[...banner.querySelectorAll('.toast-warn')].some(node=>!node.hidden);
+      const quiet=Boolean(guideView.step)||stage>0||activeNotice;
+      bonusPresentation.tick({activeMs:s.t,phase:playView.phase,guideActive:Boolean(guideView.step),warningActive:stage>0||activeNotice,running:session.running});
+      const batch=pendingBonus;
+      if(batch)bonusPresentation.show(batch,s.t,{quiet});
+      const bonusVisible=bonusPresentation.stats().visible;
+      if(bonusVisible)switchOk.hidden=true;
+      // Important guidance remains above the compact award text, never obscured by it.
+      let obstacleBottom=0;
+      if(bonusVisible&&quiet){
+        for(const node of [...banner.querySelectorAll('.toast'),...guideHost.querySelectorAll('.guidance-panel')]){
+          if(!node.hidden&&node.getClientRects?.().length)obstacleBottom=Math.max(obstacleBottom,node.getBoundingClientRect().bottom);
+        }
+      }
+      bonusPresentation.element.style.top=obstacleBottom?`${obstacleBottom-el.querySelector('.stage-wrap').getBoundingClientRect().top+6}px`:'';
+      const timely=!batch||s.t<batch.expiresAtT;
+      const suppressed=quiet||!timely;
+      const candidates=suppressed?cueCandidates.filter(c=>['guideClear','unlock','whistle','warning','detected','clear'].includes(c.name)):cueCandidates;
+      const selected=choosePassCue({batch:suppressed?null:batch,cues:candidates});
+      cueCandidates=[];pendingBonus=null;
+      if(selected&&!document.hidden)this.audio.play(selected.name,selected.opts);
       stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step)}});
       this.raf = requestAnimationFrame(loop);
     };
@@ -1361,8 +1404,9 @@ export class App {
     const targets=session.game.course.targets.slice(0,50).map(c=>({...c}));
     const { result, saved, stale, newBest = false, previous=null, firstClearNow=false, firstClearAt=null } = await this.persistEnd(session, this.generation, { takenOver: this.takenOver });
     if (!current()) return;
-    const summary = session.summary();
-    this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary,saved,stale,newBest,previous,firstClearNow,firstClearAt,targets,arrivedBuilding:Math.min(50,Math.floor(session.state.t/RULES_V1.buildingMs)+1),netState: session.meta.ranked ? 'pending' : null };
+    const summary = result?.summary??session.summary();
+    const endingBonus=buildEndingBonus(summary);
+    this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary,saved,stale,newBest,previous,firstClearNow,firstClearAt,targets,arrivedBuilding:Math.min(50,Math.floor(session.state.t/session.rules.buildingMs)+1),netState: session.meta.ranked ? 'pending' : null };
     if (!saved && !stale && result?.ranked) {
       // 端末へ保存できなかった：メモリ上の結果を可能なら直接送る（再読込で失われ得ることは画面で伝える）
       this.notices.push('notice.resultNotSaved');
@@ -1382,7 +1426,7 @@ export class App {
       this.startFlow(this.nameRaw);
       return;
     }
-    this.audio.play(reason === 'detected' ? 'detected' : reason === 'cleared' ? 'clear' : 'back');
+    this.audio.play(reason === 'detected' ? 'detected' : reason === 'cleared' ? (endingBonus?.allSuccessPoints?'bonusAllSuccess':'clear') : 'back');
     const ctrl = new AbortController();
     scope.own(() => ctrl.abort());
     clear(this.layer);
@@ -1393,7 +1437,8 @@ export class App {
     this.layer.append(skip);
     const comic=reason==='detected'?h('div',{class:'ending-comic','aria-hidden':'true'},'!'):null;
     if(comic)this.layer.append(comic);
-    await this.stage?.playEnding(reason, {signal:ctrl.signal,onFrame:(elapsed)=>{scope.tick(elapsed);if(comic)comic.hidden=elapsed>=600;}});
+    const endingBonusView=mountEndingBonus({host:this.layer,data:endingBonus,scope,t});
+    await this.stage?.playEnding(reason, {signal:ctrl.signal,onFrame:(elapsed)=>{scope.tick(elapsed);endingBonusView?.tick(elapsed);if(comic)comic.hidden=elapsed>=600;}});
     skip.remove();
     if (!current()) return;
     this.session = null;
@@ -1434,6 +1479,8 @@ export class App {
       if (rec) {
         r.netState = rec.status;
         r.official = rec.official;
+        if(rec.verifiedScore)r.verifiedScore=rec.verifiedScore;
+        this.renderResultScore?.();
         this.renderResultStatus?.();
         if (rec.status !== 'verifying') break;
       }
@@ -1461,7 +1508,8 @@ export class App {
   showResult() {
     this.disposeStage();
     const r = this.lastResult;
-    const s=r.summary;
+    const displayData=buildResultData(r);
+    const s=displayData.summary;
     const resultScreen=this.screenGeneration+1;
     let resultPresentation=null;
     const resultCurrent=()=>this.lastResult===r&&this.screenGeneration===resultScreen;
@@ -1501,26 +1549,16 @@ export class App {
       const b = all?.[r.name || ''];
       if (b) localBests.textContent = t('result.localBest', { buildings: formatNumber(b.buildings), average: formatPercent2(b.rankAverage) });
     });
-    const breakdown = h('dl', { class: 'breakdown' }, [
-      h('dt', {}, t('result.score.pass')),
-      h('dd', {}, formatNumber(s.score.pass)),
-      h('dt', {}, t('result.score.accuracy')),
-      h('dd', {}, formatNumber(s.score.accuracy)),
-      h('dt', {}, t('result.score.combo')),
-      h('dd', {}, formatNumber(s.score.combo)),
-      h('dt', {}, t('result.score.clear')),
-      h('dd', {}, formatNumber(s.score.clear)),
-    ]);
     const el = h('main', { class: `screen result result-screen-${s.endReason}` }, [
       h('div', { class: 'result-burst', 'aria-hidden': 'true' }),
       h('h1', { class: `result-title result-${s.endReason}` }, t(reasonKey)),
       h('div', { class: 'result-main' }, [
         h('div', { class: 'stat' }, [h('span', { class: 'stat-label' }, t('result.buildings')), h('span', { class: 'stat-value', 'data-testid': 'result-buildings' }, `${formatNumber(s.buildings)} / ${RULES_V1.buildingCount}`)]),
         h('div', { class: 'stat' }, [h('span', { class: 'stat-label' }, t('result.average')), h('span', { class: 'stat-value', 'data-testid': 'result-average' }, s.rankAverage == null ? '—' : formatPercent2(s.rankAverage))]),
-        h('div', { class: 'stat' }, [h('span', { class: 'stat-label' }, t('result.total')), h('span', { class: 'stat-value', 'data-testid': 'result-score' }, formatNumber(s.score.total))]),
-        h('div', { class: 'stat' }, [h('span', { class: 'stat-label' }, t('result.maxCombo')), h('span', { class: 'stat-value' }, formatNumber(s.maxCombo))]),
+        h('div', { class: 'stat' }, [h('span', { class: 'stat-label' }, t('result.maxCombo')), h('span', { class: 'stat-value', 'data-testid':'result-max-combo' }, formatNumber(s.maxCombo))]),
       ]),
       h('p', { class: 'note' }, t('result.roundingNote')),
+      r.saved===false&&!r.stale?h('p',{class:'note result-save-warning',role:'status'},t('notice.resultNotSaved')):null,
       r.name ? h('p', { class: 'result-name' }, [t('result.nameLabel'), ' ', isolatedText(r.name)]) : null,
       localBests,
       statusBox,
@@ -1537,9 +1575,17 @@ export class App {
     const scope = createPresentationScope({ id: scopeId, kind: 'result' });
     this.presentationScope = scope;
     const resultHost=h('div',{class:'result-supplement'});el.querySelector('.result-actions').after(resultHost);
-    resultPresentation=mountResultPresentation({host:resultHost,data:buildResultData(r),scope,t});
+    resultPresentation=mountResultPresentation({host:resultHost,data:displayData,scope,t});
     el.querySelector('.result-main').before(resultPresentation.sceneElement);
     this.resultPresentation=resultPresentation;
+    el.querySelector('.result-main').append(resultPresentation.scoreElement);
+    if(r.presentationPlayed)resultPresentation.finishNow();
+    r.presentationPlayed=true;
+    let scoreSignature=JSON.stringify(r.verifiedScore??null);
+    const renderResultScore=()=>{if(!resultCurrent())return;const signature=JSON.stringify(r.verifiedScore??null);if(signature===scoreSignature)return;scoreSignature=signature;const data=buildResultData(r);resultPresentation.updateData(data);el.querySelector('[data-testid="result-max-combo"]').textContent=formatNumber(data.maxCombo);};
+    this.renderResultScore=renderResultScore;
+    scope.own(()=>{if(this.renderResultScore===renderResultScore)this.renderResultScore=null;});
+    if(r.ranked)this.store.getOne('records',r.playId).then(rec=>{if(!resultCurrent()||!rec?.verifiedScore)return;r.verifiedScore=rec.verifiedScore;renderResultScore();}).catch(()=>{});
     this.renderResultStatus = renderResultStatus;
     renderResultStatus();
     scope.own(() => { if (this.renderResultStatus === renderResultStatus) this.renderResultStatus = null; });
@@ -1553,7 +1599,7 @@ export class App {
       this.raf = requestAnimationFrame(animate);
     };
     this.raf = requestAnimationFrame(animate);
-    this.audio.play('result');
+    if(!r.resultSoundPlayed){r.resultSoundPlayed=true;this.audio.play('result');}
     if (r.newBest && !r.bestPlayed) {
       r.bestPlayed = true; // 言語を切り替えて描き直しても、もう一度は鳴らさない
       scope.schedule('best-sound', 700, () => this.audio.play('best'));

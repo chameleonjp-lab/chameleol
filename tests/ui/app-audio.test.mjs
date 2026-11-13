@@ -581,6 +581,7 @@ test('【問題E修正検証】音の準備待ち中に画面が変わった場�
 });
 
 test('【本編 showGame 統合検証】11・21・31・41棟の tierUp、40棟の milestone、46〜50棟の lastFive、passBuilding、途中再開時の重複防止', async () => {
+  const originalRaf=globalThis.requestAnimationFrame;let update;globalThis.requestAnimationFrame=fn=>{update=fn;return 1;};
   const { GameSession } = await import('../../src/game/session.js');
   const root = document.createElement('div');
   document.body.append(root);
@@ -605,19 +606,26 @@ test('【本編 showGame 統合検証】11・21・31・41棟の tierUp、40棟�
   });
 
   await app.showGame(session, { fresh: true });
+  session.running=false; // synthetic events only; each frame collects its full cue batch
+  app.guidance.view=()=>({step:null,sceneT:session.state.t});
+  app.presentationHud.tick=()=>{};
+  const updateAudio=()=>update();
   audio.events.length = 0;
 
-  // 10棟通過→11棟突入で tierUp(tier=1) と passBuilding が鳴る
+  // 同じ更新の10棟通過と11棟到達はtierUpの1音へ集約する
   session.emit([{ type: 'pass', building: 10, success: true, combo: 1, points: 100 }]);
   session.emit([{ type: 'enterBuilding', building: 11, t: 50000 }]);
-  assert.ok(audio.events.some((e) => e.name === 'passBuilding' && e.opts?.combo === 1), '10棟通過で passBuilding が鳴る');
+  updateAudio();
+  assert.equal(audio.events.some((e) => e.name === 'passBuilding'), false, '同じ更新で通常通過音を重ねない');
   assert.ok(audio.events.some((e) => e.name === 'tierUp' && e.opts?.tier === 1), '11棟突入で tierUp(tier=1) が鳴る');
   assert.equal(audio.building, 11);
 
   // 21棟・31棟突入で tierUp(tier=2, 3) が鳴る
   audio.events.length = 0;
   session.emit([{ type: 'enterBuilding', building: 21, t: 100000 }]);
+  updateAudio();
   session.emit([{ type: 'enterBuilding', building: 31, t: 150000 }]);
+  updateAudio();
   assert.deepEqual(
     audio.events.filter((e) => e.name === 'tierUp').map((e) => e.opts?.tier),
     [2, 3],
@@ -627,6 +635,7 @@ test('【本編 showGame 統合検証】11・21・31・41棟の tierUp、40棟�
   // 40棟突入では夜の街到達の milestone が鳴り、tierUp や転調(finale)はまだ発火しない
   audio.events.length = 0;
   session.emit([{ type: 'enterBuilding', building: 40, t: 195000 }]);
+  updateAudio();
   assert.ok(audio.events.some((e) => e.name === 'milestone'), '40棟突入で milestone が鳴る');
   assert.equal(audio.events.some((e) => e.name === 'tierUp'), false, '40棟突入では tierUp は鳴らない');
   assert.equal(audio.finale, false, '40棟ではまだ転調しない');
@@ -634,21 +643,25 @@ test('【本編 showGame 統合検証】11・21・31・41棟の tierUp、40棟�
   // 41棟突入で tierUp(tier=4) が鳴り、finale=true（+2半音転調）になる
   audio.events.length = 0;
   session.emit([{ type: 'enterBuilding', building: 41, t: 200000 }]);
+  updateAudio();
   assert.ok(audio.events.some((e) => e.name === 'tierUp' && e.opts?.tier === 4), '41棟突入で tierUp(tier=4) が鳴る');
   assert.equal(audio.finale, true, '41棟突入で finale=true になる');
 
   // 同じ41棟の enterBuilding が万一再送されても tierUp は重複しない
   audio.events.length = 0;
   session.emit([{ type: 'enterBuilding', building: 41, t: 200000 }]);
+  updateAudio();
   assert.equal(audio.events.some((e) => e.name === 'tierUp'), false, '同じ節目音は重複しない');
 
   // 46棟突入で lastFive が鳴る
   audio.events.length = 0;
   for (let building = 46; building <= 50; building += 1) {
     session.emit([{ type: 'enterBuilding', building, t: (building - 1) * 5000 }]);
+  updateAudio();
   }
   assert.deepEqual(audio.events.filter((e) => e.name === 'lastFive').map((e) => e.opts.building), [46, 47, 48, 49, 50]);
   app.disposeStage();
+  globalThis.requestAnimationFrame=originalRaf;
 });
 
 test('【練習開始の競合・失敗検証】ガイド練習・通常練習で「準備中に戻る」「別の練習を選ぶ」「準備に失敗する」「同じ画面に留まった場合の正常開始」を検証', async () => {

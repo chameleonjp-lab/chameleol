@@ -9,6 +9,7 @@
 import { RULES_V1 } from './config.js';
 import { classifyMatch, divRoundHalfUp, isValidHsv, matchUnits as defaultMatchUnits } from './color.js';
 import { makeCourse } from './course.js';
+import { createBonusAccumulator, accumulateBonus, settleBuildingBonus, settleClearBonus, createBonusSummary, cloneBonusSummary, addBonusAwards } from './bonus.js';
 
 /**
  * 1プレイ分の判定の前提（ルール・出題・一致度の関数）。
@@ -46,11 +47,12 @@ export function initialState(game) {
     buildings: [],
     combo: 0,
     maxCombo: 0,
-    score: { pass: 0, accuracy: 0, combo: 0, clear: 0, total: 0 },
+    score: { pass: 0, accuracy: 0, combo: 0, clear: 0, total: 0, ...(rules.bonus ? { bonus: 0 } : {}) },
     brightnessUnlocked: false,
     reached20: false,
     inputs: 0,
     violations: [],
+    ...(rules.bonus ? { bonus: createBonusSummary(rules) } : {}),
   };
 }
 
@@ -58,11 +60,12 @@ export function cloneState(s) {
   return {
     ...s,
     color: { ...s.color },
-    acc: s.acc && { ...s.acc },
-    closed: s.closed && { ...s.closed },
+    acc: s.acc && { ...s.acc, ...(s.acc.bonus ? { bonus: { ...s.acc.bonus } } : {}) },
+    closed: s.closed && { ...s.closed, ...(s.closed.bonus ? { bonus: { ...s.closed.bonus } } : {}) },
     buildings: s.buildings.slice(),
     score: { ...s.score },
     violations: s.violations.slice(),
+    ...(s.bonus ? { bonus: cloneBonusSummary(s.bonus) } : {}),
   };
 }
 
@@ -125,20 +128,30 @@ function passBuilding(s, index, game, out) {
   const combo = success ? s.combo + 1 : 0;
   const accuracy = divRoundHalfUp(rules.score.accuracyMax * S, E * 100 * rules.match.unitsPerPercent);
   const comboBonus = success ? comboBonusFor(combo, rules) : 0;
-  const points = rules.score.pass + accuracy + comboBonus;
+  const basePoints = rules.score.pass + accuracy + comboBonus;
+  const bonusAwards = rules.bonus ? settleBuildingBonus({ building: index, matchSum: S, evalMs: E, acc: closed.bonus }, rules) : [];
+  const bonusPoints = rules.bonus ? addBonusAwards(s.bonus, bonusAwards) : 0;
+  const bonusFields = rules.bonus ? { basePoints, bonusPoints, bonusAwards } : {};
+  const points = basePoints + bonusPoints;
   s.closed = null;
   s.combo = combo;
   s.maxCombo = Math.max(s.maxCombo, combo);
   s.passed = index;
-  s.buildings.push({ index, matchSum: S, evalMs: E, success, accuracy, comboBonus, combo, points });
+  s.buildings.push({ index, matchSum: S, evalMs: E, success, accuracy, comboBonus, combo, points, ...bonusFields });
   s.score.pass += rules.score.pass;
   s.score.accuracy += accuracy;
   s.score.combo += comboBonus;
+  if (rules.bonus) s.score.bonus += bonusPoints;
   s.score.total += points;
-  out.push({ type: 'pass', t: s.t, building: index, success, accuracy, comboBonus, combo, points });
+  out.push({ type: 'pass', t: s.t, building: index, success, accuracy, comboBonus, combo, points, ...bonusFields });
   if (index === rules.buildingCount) {
     s.score.clear = rules.score.clearBonus;
     s.score.total += rules.score.clearBonus;
+    if (rules.bonus) {
+      const clearPoints = addBonusAwards(s.bonus, settleClearBonus(s.buildings, rules));
+      s.score.bonus += clearPoints;
+      s.score.total += clearPoints;
+    }
     end(s, 'cleared', out);
   }
 }
@@ -154,6 +167,7 @@ function processPoint(s, game, out) {
   // 3a. 評価区間の終了
   if (offset === rules.evalEndMs && s.evalBuilding === index) {
     s.closed = { building: index, matchSum: s.acc.matchSum, evalMs: s.acc.evalMs };
+    if (rules.bonus) s.closed.bonus = { ...s.acc.bonus };
     s.evalBuilding = 0;
     s.matchUnits = null;
     s.acc = null;
@@ -178,6 +192,7 @@ function processPoint(s, game, out) {
   if (offset === rules.evalStartMs) {
     s.evalBuilding = index;
     s.acc = { matchSum: 0, evalMs: 0 };
+    if (rules.bonus) s.acc.bonus = createBonusAccumulator();
     s.matchUnits = game.matchFn(s.color, game.course.targets[index - 1]);
     out.push({ type: 'evalStart', t: s.t, building: index });
   }
@@ -193,6 +208,7 @@ function advanceTo(s, T, game, out) {
       const rate = rateFor(s.matchUnits, s.evalBuilding, rules);
       if (rate > 0) next = Math.min(next, s.t + Math.ceil((maxUnits - s.alert) / rate));
       const dt = next - s.t;
+      if (rules.bonus) accumulateBonus(s.acc.bonus, { matchUnits: s.matchUnits, fromEvalMs: s.acc.evalMs, dtMs: dt }, rules);
       s.acc.matchSum += s.matchUnits * dt;
       s.acc.evalMs += dt;
       s.alert = Math.min(maxUnits, Math.max(0, s.alert + rate * dt));
@@ -323,5 +339,6 @@ export function summarize(state, rules = RULES_V1) {
     endReason: state.endReason,
     endT: state.endT,
     perBuilding: state.buildings.map((b) => [b.matchSum, b.evalMs, b.points]),
+    ...(rules.bonus ? { bonus: cloneBonusSummary(state.bonus) } : {}),
   };
 }

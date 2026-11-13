@@ -12,7 +12,7 @@ import { join, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { GAME_VERSION } from '../src/config/runtime.js';
-import { RULES_V2 as RULES_V1 } from '../src/rules/v1/index.js';
+import { RULES_V1, RULES_V2, RULES_V3, RULES_V4 } from '../src/rules/v1/index.js';
 import { SNAPSHOT_FORMAT } from '../src/game/session.js';
 import { RESULT_FORMAT } from '../src/net/outbox.js';
 import { computeManifest, check as checkShared } from './sync-shared.mjs';
@@ -70,7 +70,7 @@ for (const file of ['index.html', 'assets/credits.md', 'scripts/build.mjs']) {
   contentHash.update(file);
   contentHash.update(readFileSync(join(ROOT, file)));
 }
-contentHash.update(JSON.stringify({ env, api, publicUrl, commit }));
+contentHash.update(JSON.stringify({ env, api, publicUrl, standalone, commit }));
 const assetVersion = `${GAME_VERSION}-${contentHash.digest('hex').slice(0, 10)}`;
 
 // 以前の版のフォルダを残す（切り戻し・旧版の保存の再開のため）
@@ -125,7 +125,10 @@ const release = {
   assetVersion,
   commit,
   env,
-  rulesVersion: RULES_V1.rulesVersion,
+  rulesVersion: (standalone ? RULES_V4 : RULES_V3).rulesVersion,
+  supportedRulesVersions: [RULES_V1, RULES_V2, RULES_V3, RULES_V4].map((rules) => rules.rulesVersion),
+  preferredRankedRulesVersion: RULES_V3.rulesVersion,
+  defaultStandaloneRulesVersion: RULES_V4.rulesVersion,
   generatorVersion: RULES_V1.generatorVersion,
   historyFormat: RULES_V1.historyFormat,
   snapshotFormat: SNAPSHOT_FORMAT,

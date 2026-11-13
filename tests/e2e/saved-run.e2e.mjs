@@ -63,7 +63,7 @@ test('開始受付の応答を待つ間に別のタブが始めたら、終了�
         markSecondArrived();
         await secondResponse;
       }
-      return route.fulfill({ json: { ok: true, playId, requestId: data.requestId, name: data.name, seed: 1, rulesVersion: 'kamereoru-rules-v1', generatorVersion: 'kamereoru-course-v1' } });
+      return route.fulfill({ json: { ok: true, playId, requestId: data.requestId, name: data.name, gameVersion: data.gameVersion, seed: 1, rulesVersion: 'kamereoru-rules-v1', generatorVersion: 'kamereoru-course-v1' } });
     }
     if (path === 'launch') launches.set(data.playId, data.secret);
     return route.fulfill({ json: { ok: true } });
