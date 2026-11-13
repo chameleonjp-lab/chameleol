@@ -7,20 +7,26 @@
 // 開始通知（プレイ回数）：
 //   - スタート操作1回につき launchId を1つ。実際に本編を始めた時だけ、端末へ保存してから送る。
 //   - 名前ありの開始予約だけでは回数に入れない。再開・終了・再送では数えない。
-import { RULES_V1 } from '../rules/v1/index.js';
+import { RULES_V1, RULES_V3 } from '../rules/v1/index.js';
 import { randomSecret } from '../storage/store.js';
 import { ApiError, UUID_RE, sleep, uuid } from './api.js';
 
 export const START_RETRY_DELAYS = Object.freeze([700, 1600]); // 試作値
+const RANKED_RULES = [RULES_V3, RULES_V1];
 
 /** 開始受付の応答を検査する。HTTPの成功だけで受付成功としない。 */
-export function validateStartResponse(data, { requestId, name, rules = RULES_V1 }) {
+export function validateStartResponse(data, { requestId, name, gameVersion, rules = RULES_V1, supportedRulesVersions = [rules.rulesVersion] }) {
   const problems = [];
+  const selectedRules = RANKED_RULES.find((candidate) => candidate.rulesVersion === data?.rulesVersion);
+  const validSupported = Array.isArray(supportedRulesVersions) && supportedRulesVersions.length >= 1 && supportedRulesVersions.length <= 2
+    && new Set(supportedRulesVersions).size === supportedRulesVersions.length
+    && supportedRulesVersions.every((version) => RANKED_RULES.some((candidate) => candidate.rulesVersion === version));
   if (data?.requestId !== requestId) problems.push('requestId');
   if (typeof data?.playId !== 'string' || !UUID_RE.test(data.playId)) problems.push('playId');
   if (!Number.isInteger(data?.seed) || data.seed < 0 || data.seed > 0xffffffff) problems.push('seed');
-  if (data?.rulesVersion !== rules.rulesVersion) problems.push('rulesVersion');
-  if (data?.generatorVersion !== rules.generatorVersion) problems.push('generatorVersion');
+  if (!selectedRules || !validSupported || !supportedRulesVersions.includes(data?.rulesVersion)) problems.push('rulesVersion');
+  if (data?.generatorVersion !== (selectedRules ?? rules).generatorVersion) problems.push('generatorVersion');
+  if (gameVersion !== undefined && data?.gameVersion !== gameVersion) problems.push('gameVersion');
   if (data?.name !== name) problems.push('name');
   return problems;
 }
@@ -35,6 +41,7 @@ export async function createStartRequest(store, { name, launchId, gameVersion })
     launchId,
     name,
     gameVersion,
+    supportedRulesVersions: RANKED_RULES.map((rules) => rules.rulesVersion),
     status: 'requesting',
     createdAt: Date.now(),
     attempts: 0,
@@ -49,6 +56,9 @@ export async function createStartRequest(store, { name, launchId, gameVersion })
  */
 export async function sendStartRequest(api, store, record, { delays = START_RETRY_DELAYS, onAttempt = () => {}, isCurrent = () => true } = {}) {
   let lastError = null;
+  // 保存時の対応版を固定する。版一覧のない旧要求は、更新後も v1 の要求として再送する。
+  const supportedRulesVersions = record.supportedRulesVersions === undefined ? [RULES_V1.rulesVersion]
+    : Array.isArray(record.supportedRulesVersions) ? [...record.supportedRulesVersions] : record.supportedRulesVersions;
   for (let i = 0; i <= delays.length; i += 1) {
     if (i > 0) await sleep(delays[i - 1]);
     if (!isCurrent()) break;
@@ -61,8 +71,9 @@ export async function sendStartRequest(api, store, record, { delays = START_RETR
         launchId: record.launchId,
         name: record.name,
         gameVersion: record.gameVersion,
+        supportedRulesVersions,
       });
-      const problems = validateStartResponse(data, { requestId: record.requestId, name: record.name });
+      const problems = validateStartResponse(data, { requestId: record.requestId, name: record.name, gameVersion: record.gameVersion, supportedRulesVersions });
       if (problems.length) throw new ApiError('invalid_start_response', { retryable: false, detail: problems });
       const accepted = { ...record, status: 'accepted', response: data, acceptedAt: Date.now() };
       if (!isCurrent()) {

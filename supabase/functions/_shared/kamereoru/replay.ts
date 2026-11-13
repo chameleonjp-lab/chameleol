@@ -1,9 +1,9 @@
 // 終了結果の再計算と判定。開始記録に固定した出題番号と当時の判定規則で、初期状態から終了まで計算し直す。
 // 端末が送った名義・棟数・版・状態は採用せず、開始記録と再計算した値を使う。
 // 再計算できても、人が操作したことの証明にはならない（自動操作を完全には排除できない）。
-import { RULES_V1, createGame, replayHistory, summarize } from './rules/v1/index.js';
+import { RULES_V1, RULES_V3, createGame, replayHistory, summarize } from './rules/v1/index.js';
 
-export const SUPPORTED_RULES: Record<string, typeof RULES_V1> = { [RULES_V1.rulesVersion]: RULES_V1 };
+export const SUPPORTED_RULES: Record<string, typeof RULES_V1> = { [RULES_V1.rulesVersion]: RULES_V1, [RULES_V3.rulesVersion]: RULES_V3 };
 
 // 既知の違い（版ごとに、原因が分かっていて再計算で解消できるもの）。v1 には登録なし。
 export const KNOWN_DISCREPANCIES: Record<string, Array<{ id: string; matches: (claimed: any, computed: any) => boolean }>> = {
@@ -24,7 +24,7 @@ export interface JobInput {
 export interface Verdict {
   status: 'official' | 'pending_review' | 'rejected';
   values: Record<string, unknown>;
-  verdict: { reason: string; notes: string[]; computed?: unknown; claimed?: unknown };
+  verdict: { reason: string; notes: string[]; computed?: unknown; claimed?: unknown; verifiedScore?: unknown };
 }
 
 const REAL_TIME_TOLERANCE_MS = 5000;
@@ -95,13 +95,17 @@ export function verifyResult(input: JobInput): Verdict {
   if (!sameJson(claimed.score, computed.score)) notes.push('aux_score');
   if (claimed.maxCombo !== computed.maxCombo) notes.push('aux_combo');
   if (!sameJson(claimed.perBuilding, computed.perBuilding)) notes.push('aux_per_building');
+  const verified = rules.rulesVersion === RULES_V3.rulesVersion ? {
+    verifiedScore: { rulesVersion: rules.rulesVersion, score: computed.score, bonus: computed.bonus, perBuilding: computed.perBuilding, maxCombo: computed.maxCombo },
+  } : {};
+  if (rules.rulesVersion === RULES_V3.rulesVersion && !sameJson(claimed.bonus, computed.bonus)) notes.push('aux_bonus');
   if (rankMatches) {
     // 順位用の値が正しい。補助の違いは内部に記録するだけで、本人へ警告しない
-    return { status: 'official', values, verdict: { reason: notes.length ? 'verified_aux_mismatch' : 'verified', notes } };
+    return { status: 'official', values, verdict: { reason: notes.length ? 'verified_aux_mismatch' : 'verified', notes, ...verified } };
   }
   const known = (KNOWN_DISCREPANCIES[input.rulesVersion] ?? []).find((k) => k.matches(claimed, computed));
   if (known) {
-    return { status: 'official', values, verdict: { reason: `recomputed_known:${known.id}`, notes } };
+    return { status: 'official', values, verdict: { reason: `recomputed_known:${known.id}`, notes, ...verified } };
   }
   return {
     status: 'pending_review',

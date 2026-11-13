@@ -3,7 +3,7 @@
 // - 重複防止・1開始1結果・照合・順位の計算はデータベースの関数と制約で保証する。
 // - 頻度制限は接続元のハッシュ単位。名前では制限しない。同じ要求の正当な再送は新規として数えない。
 import { normalizeName } from './shared/name.js';
-import { RULES_V1 } from './rules/v1/index.js';
+import { RULES_V1, RULES_V3 } from './rules/v1/index.js';
 import { verifyResult } from './replay.ts';
 
 export interface Db {
@@ -161,21 +161,24 @@ export function createHandler(options: HandlerOptions) {
       need(typeof b.requestId === 'string' && UUID.test(b.requestId), 'bad_request_id');
       need(typeof b.launchId === 'string' && UUID.test(b.launchId), 'bad_launch_id');
       need(typeof b.gameVersion === 'string' && VERSION.test(b.gameVersion), 'bad_game_version');
+      const supported = b.supportedRulesVersions === undefined ? [RULES_V1.rulesVersion] : b.supportedRulesVersions;
+      need(Array.isArray(supported) && supported.length >= 1 && supported.length <= 2
+        && new Set(supported).size === supported.length
+        && supported.every((v: unknown) => v === RULES_V1.rulesVersion || v === RULES_V3.rulesVersion), 'unsupported_rules_versions');
       const hash = await secretHash(b.secret);
       const n = normalizeName(b.name);
       if (!n.ok || n.empty) throw bad('bad_name', n.ok ? 'empty' : n.error);
       if (n.name !== b.name) throw bad('name_not_normalized', n.name);
       const existing = await call('select 1 from private.kamereoru_starts where request_id = $1', [b.requestId]);
       if (!existing.length) await rate(req, 'start', limits.startPer10m);
-      const rows = await call('select private.kamereoru_start($1, decode($2, \'hex\'), $3, $4, $5, $6, $7, $8) as r', [
+      const rows = await call('select private.kamereoru_start_compatible($1, decode($2, \'hex\'), $3, $4, $5, $6, $7::text[]) as r', [
         b.requestId,
         hash,
         b.launchId,
         n.name,
         n.key,
-        RULES_V1.rulesVersion,
-        RULES_V1.generatorVersion,
         b.gameVersion,
+        supported,
       ]);
       const r = rows[0].r;
       return json(200, { ok: true, ...r, seed: Number(r.seed) });
