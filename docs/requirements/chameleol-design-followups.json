@@ -1,0 +1,657 @@
+{
+  "schemaVersion": 2,
+  "baseline": "9c1c06fdde1121334f9c0093182f873318e4f57c",
+  "date": "2026-11-14",
+  "state": "plan-only",
+  "spec": "../superpowers/specs/2026-11-14-chameleol-design-followups-spec.md",
+  "plan": "../superpowers/plans/2026-11-14-chameleol-design-followups-plan.md",
+  "prompt": "../prompts/2026-11-14-claude-design-followups.md",
+  "requirements": {
+    "design": [
+      "DES-01",
+      "DES-02",
+      "DES-03",
+      "DES-04",
+      "DES-05",
+      "DES-06",
+      "DES-07",
+      "DES-08"
+    ],
+    "extensions": [
+      "EXT-01",
+      "EXT-02",
+      "EXT-03",
+      "EXT-04"
+    ],
+    "followups": [
+      "FOLLOW-01",
+      "FOLLOW-02",
+      "FOLLOW-03",
+      "FOLLOW-04",
+      "FOLLOW-05",
+      "FOLLOW-06",
+      "FOLLOW-07",
+      "FOLLOW-08"
+    ],
+    "result": [
+      "RES-01",
+      "RES-02",
+      "RES-03",
+      "RES-04",
+      "RES-05",
+      "RES-06",
+      "RES-07",
+      "RES-08"
+    ]
+  },
+  "outline": [
+    {
+      "from": 1,
+      "to": 10,
+      "thickness": 0.0255,
+      "rgb": [
+        0.6196078431372549,
+        0.6196078431372549,
+        0.6196078431372549
+      ]
+    },
+    {
+      "from": 11,
+      "to": 15,
+      "thickness": 0.034,
+      "rgb": [
+        0.5450980392156862,
+        0.5450980392156862,
+        0.5450980392156862
+      ]
+    },
+    {
+      "from": 16,
+      "to": 20,
+      "thickness": 0.0425,
+      "rgb": [
+        0.47058823529411764,
+        0.47058823529411764,
+        0.47058823529411764
+      ]
+    },
+    {
+      "from": 21,
+      "to": 25,
+      "thickness": 0.051,
+      "rgb": [
+        0.396078431372549,
+        0.396078431372549,
+        0.396078431372549
+      ]
+    },
+    {
+      "from": 26,
+      "to": 30,
+      "thickness": 0.0595,
+      "rgb": [
+        0.3215686274509804,
+        0.3215686274509804,
+        0.3215686274509804
+      ]
+    },
+    {
+      "from": 31,
+      "to": 35,
+      "thickness": 0.068,
+      "rgb": [
+        0.24705882352941178,
+        0.24705882352941178,
+        0.24705882352941178
+      ]
+    },
+    {
+      "from": 36,
+      "to": 39,
+      "thickness": 0.0765,
+      "rgb": [
+        0.17254901960784313,
+        0.17254901960784313,
+        0.17254901960784313
+      ]
+    },
+    {
+      "from": 40,
+      "to": 50,
+      "thickness": 0.085,
+      "rgb": [
+        0.1059,
+        0.1059,
+        0.1059
+      ]
+    }
+  ],
+  "tongue": {
+    "periodMovingMs": 10000,
+    "phasesMs": [
+      150,
+      250,
+      350,
+      450,
+      200
+    ],
+    "reloadResets": true
+  },
+  "effects": [
+    {
+      "id": 20,
+      "requirementId": "E020",
+      "method": "A",
+      "task": "T4",
+      "status": "planned"
+    },
+    {
+      "id": 34,
+      "requirementId": "E034",
+      "method": "A",
+      "task": "T5",
+      "status": "planned"
+    },
+    {
+      "id": 39,
+      "requirementId": "E039",
+      "method": "A",
+      "task": "T5",
+      "status": "planned"
+    },
+    {
+      "id": 44,
+      "requirementId": "E044",
+      "method": "B",
+      "task": "T6",
+      "status": "planned"
+    },
+    {
+      "id": 56,
+      "requirementId": "E056",
+      "method": "A",
+      "task": "T4",
+      "status": "planned"
+    },
+    {
+      "id": 67,
+      "requirementId": "E067",
+      "method": "A",
+      "task": "T4",
+      "status": "planned"
+    },
+    {
+      "id": 68,
+      "requirementId": "E068",
+      "method": "B",
+      "task": "T4",
+      "status": "planned"
+    },
+    {
+      "id": 69,
+      "requirementId": "E069",
+      "method": "A",
+      "task": "T4",
+      "status": "planned"
+    },
+    {
+      "id": 72,
+      "requirementId": "E072",
+      "method": "A",
+      "task": "T3",
+      "status": "planned"
+    },
+    {
+      "id": 75,
+      "requirementId": "E075",
+      "method": "B",
+      "task": "T7",
+      "status": "planned"
+    },
+    {
+      "id": 76,
+      "requirementId": "E076",
+      "method": "A",
+      "task": "T3",
+      "status": "planned"
+    },
+    {
+      "id": 84,
+      "requirementId": "E084",
+      "method": "A",
+      "task": "T3",
+      "status": "planned"
+    },
+    {
+      "id": 86,
+      "requirementId": "E086",
+      "method": "A",
+      "task": "T3",
+      "status": "planned"
+    },
+    {
+      "id": 87,
+      "requirementId": "E087",
+      "method": "A",
+      "task": "T3",
+      "status": "planned"
+    },
+    {
+      "id": 90,
+      "requirementId": "E090",
+      "method": "A",
+      "task": "T7",
+      "status": "planned"
+    },
+    {
+      "id": 94,
+      "requirementId": "E094",
+      "method": "A",
+      "task": "T7",
+      "status": "planned"
+    }
+  ],
+  "requirementTasks": {
+    "DES-01": [
+      "T1"
+    ],
+    "DES-02": [
+      "T1"
+    ],
+    "DES-03": [
+      "T1",
+      "T7"
+    ],
+    "DES-04": [
+      "T2"
+    ],
+    "DES-05": [
+      "T2"
+    ],
+    "DES-06": [
+      "T2"
+    ],
+    "DES-07": [
+      "T2"
+    ],
+    "DES-08": [
+      "T1",
+      "T2",
+      "T9"
+    ],
+    "EXT-01": [
+      "T4",
+      "T9"
+    ],
+    "EXT-02": [
+      "T3"
+    ],
+    "EXT-03": [
+      "T8"
+    ],
+    "EXT-04": [
+      "T7"
+    ],
+    "FOLLOW-01": [
+      "T0"
+    ],
+    "FOLLOW-02": [
+      "T9"
+    ],
+    "FOLLOW-03": [
+      "T9"
+    ],
+    "FOLLOW-04": [
+      "T9"
+    ],
+    "FOLLOW-05": [
+      "T9"
+    ],
+    "FOLLOW-06": [
+      "T9"
+    ],
+    "FOLLOW-07": [
+      "T9"
+    ],
+    "FOLLOW-08": [
+      "T9"
+    ],
+    "E020": [
+      "T4"
+    ],
+    "E034": [
+      "T5"
+    ],
+    "E039": [
+      "T5"
+    ],
+    "E044": [
+      "T6"
+    ],
+    "E056": [
+      "T4"
+    ],
+    "E067": [
+      "T4"
+    ],
+    "E068": [
+      "T4"
+    ],
+    "E069": [
+      "T4"
+    ],
+    "E072": [
+      "T3"
+    ],
+    "E075": [
+      "T7"
+    ],
+    "E076": [
+      "T3"
+    ],
+    "E084": [
+      "T3"
+    ],
+    "E086": [
+      "T3"
+    ],
+    "E087": [
+      "T3"
+    ],
+    "E090": [
+      "T7"
+    ],
+    "E094": [
+      "T7"
+    ],
+    "RES-01": [
+      "T7"
+    ],
+    "RES-02": [
+      "T7"
+    ],
+    "RES-03": [
+      "T3",
+      "T7"
+    ],
+    "RES-04": [
+      "T3",
+      "T7"
+    ],
+    "RES-05": [
+      "T7"
+    ],
+    "RES-06": [
+      "T7"
+    ],
+    "RES-07": [
+      "T7"
+    ],
+    "RES-08": [
+      "T7"
+    ]
+  },
+  "reviewReader": {
+    "maxEntries": 200000,
+    "batchEntries": 1000,
+    "batchMs": 4,
+    "maxStateCheckpoints": 320
+  },
+  "presentationStorage": {
+    "key": "presentation.extras.v1",
+    "maxPlayRecords": 32,
+    "maxUtf8Bytes": 32768
+  },
+  "revision": 2,
+  "previousDocumentHead": "5753cdb621181761d3d28e08d4e47232f47abce0",
+  "withdrawnEffects": [
+    {
+      "id": 45,
+      "requirementId": "E045",
+      "status": "withdrawn",
+      "reason": "2026-11-14 本人が除外を指定"
+    },
+    {
+      "id": 51,
+      "requirementId": "E051",
+      "status": "withdrawn",
+      "reason": "2026-11-14 本人が除外を指定"
+    },
+    {
+      "id": 88,
+      "requirementId": "E088",
+      "status": "withdrawn",
+      "reason": "2026-11-14 本人が除外を指定"
+    },
+    {
+      "id": 97,
+      "requirementId": "E097",
+      "status": "withdrawn",
+      "reason": "2026-11-14 本人が除外を指定"
+    }
+  ],
+  "acceptedOriginalEffectCount": 96,
+  "resultCard": {
+    "width": 1200,
+    "height": 630,
+    "type": "image/png",
+    "characterCount": 1,
+    "characterChoice": "user-confirmed-best-average-building",
+    "fields": [
+      "bestMatchChameleon",
+      "totalScore",
+      "rankTitle",
+      "bonusAwardCount"
+    ],
+    "preGenerateBeforeTap": true,
+    "sharePath": "native-file-share",
+    "xAttachmentRequiresDeviceVerification": true
+  },
+  "titles": [
+    {
+      "from": 0,
+      "to": 0,
+      "key": "beginning",
+      "ja": "かくれんぼ入門"
+    },
+    {
+      "from": 1,
+      "to": 9,
+      "key": "apprentice",
+      "ja": "見習いカメレオン"
+    },
+    {
+      "from": 10,
+      "to": 19,
+      "key": "alley",
+      "ja": "路地の隠れ上手"
+    },
+    {
+      "from": 20,
+      "to": 29,
+      "key": "expert",
+      "ja": "街の擬態名人"
+    },
+    {
+      "from": 30,
+      "to": 39,
+      "key": "elusive",
+      "ja": "変幻自在の逃走者"
+    },
+    {
+      "from": 40,
+      "to": 49,
+      "key": "phantom",
+      "ja": "幻の宝石泥棒"
+    },
+    {
+      "from": 50,
+      "to": 50,
+      "key": "legend",
+      "ja": "伝説のカメレオン"
+    }
+  ],
+  "twoBuildingTitleProposals": [
+    {
+      "from": 2,
+      "to": 3,
+      "key": "proposal_02_03",
+      "ja": "色合わせの練習生",
+      "status": "proposal-only"
+    },
+    {
+      "from": 4,
+      "to": 5,
+      "key": "proposal_04_05",
+      "ja": "壁ぎわの隠れ上手",
+      "status": "proposal-only"
+    },
+    {
+      "from": 6,
+      "to": 7,
+      "key": "proposal_06_07",
+      "ja": "路地の忍び足",
+      "status": "proposal-only"
+    },
+    {
+      "from": 8,
+      "to": 9,
+      "key": "proposal_08_09",
+      "ja": "追跡かわしの新顔",
+      "status": "proposal-only"
+    },
+    {
+      "from": 12,
+      "to": 13,
+      "key": "proposal_12_13",
+      "ja": "裏道のすり抜け役",
+      "status": "proposal-only"
+    },
+    {
+      "from": 14,
+      "to": 15,
+      "key": "proposal_14_15",
+      "ja": "色変わりの手品師",
+      "status": "proposal-only"
+    },
+    {
+      "from": 16,
+      "to": 17,
+      "key": "proposal_16_17",
+      "ja": "追手泣かせの隠れ役",
+      "status": "proposal-only"
+    },
+    {
+      "from": 18,
+      "to": 19,
+      "key": "proposal_18_19",
+      "ja": "壁になりきる役者",
+      "status": "proposal-only"
+    },
+    {
+      "from": 22,
+      "to": 23,
+      "key": "proposal_22_23",
+      "ja": "街角の変装名人",
+      "status": "proposal-only"
+    },
+    {
+      "from": 24,
+      "to": 25,
+      "key": "proposal_24_25",
+      "ja": "色をまとう怪盗",
+      "status": "proposal-only"
+    },
+    {
+      "from": 26,
+      "to": 27,
+      "key": "proposal_26_27",
+      "ja": "警察泣かせの怪盗",
+      "status": "proposal-only"
+    },
+    {
+      "from": 28,
+      "to": 29,
+      "key": "proposal_28_29",
+      "ja": "追跡をかわす達人",
+      "status": "proposal-only"
+    },
+    {
+      "from": 32,
+      "to": 33,
+      "key": "proposal_32_33",
+      "ja": "気配を消す名手",
+      "status": "proposal-only"
+    },
+    {
+      "from": 34,
+      "to": 35,
+      "key": "proposal_34_35",
+      "ja": "夜道に溶ける影",
+      "status": "proposal-only"
+    },
+    {
+      "from": 36,
+      "to": 37,
+      "key": "proposal_36_37",
+      "ja": "包囲を抜ける怪盗",
+      "status": "proposal-only"
+    },
+    {
+      "from": 38,
+      "to": 39,
+      "key": "proposal_38_39",
+      "ja": "姿なき逃走者",
+      "status": "proposal-only"
+    },
+    {
+      "from": 42,
+      "to": 43,
+      "key": "proposal_42_43",
+      "ja": "月夜の大怪盗",
+      "status": "proposal-only"
+    },
+    {
+      "from": 44,
+      "to": 45,
+      "key": "proposal_44_45",
+      "ja": "街をあざむく幻",
+      "status": "proposal-only"
+    },
+    {
+      "from": 46,
+      "to": 47,
+      "key": "proposal_46_47",
+      "ja": "追いつけない残像",
+      "status": "proposal-only"
+    },
+    {
+      "from": 48,
+      "to": 49,
+      "key": "proposal_48_49",
+      "ja": "伝説目前のカメレオン",
+      "status": "proposal-only"
+    }
+  ],
+  "titleProposalPolicy": {
+    "status": "proposal-only",
+    "preserveExistingTitles": true,
+    "changeActiveRankRanges": false,
+    "displayAdditionalTitle": false,
+    "existingAnchorValues": [
+      0,
+      1,
+      10,
+      20,
+      30,
+      40,
+      50
+    ],
+    "singleValueExceptions": [
+      0,
+      1,
+      50
+    ],
+    "addedProposalCount": 20
+  }
+}

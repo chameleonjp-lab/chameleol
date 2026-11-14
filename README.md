@@ -14,9 +14,21 @@
 - [受入試験一覧](docs/acceptance/kamereoru-acceptance.md)：実装後に確認する条件と要件番号の対応。
 - [仕様統合のレビュー記録](docs/reviews/2026-11-07-kamereoru-requirements-review.md)：旧案との整理、補完した境界処理、文書確認の範囲と限界。
 
+## 輪郭・舌のダイヤ・称号と結果画像の計画（2026-11-14改訂）
+
+線の8段階と移動10秒ごとの舌・ダイヤに加え、通過棟数の称号と、最高一致の主人公1体・スコア・称号・ボーナス獲得件数を一枚にした結果画像を計画します。主ボタン「Xでシェア」から画像を端末共有へ渡す設計です。Xへの添付はiPhone実機で確認します。
+
+本人指定で45の軌跡・51の物語・88の再生・97の発見帳を除外し、後続は16案、元の案は合計96採用・4除外です。こちらは文書の改訂で、ゲーム実装や実際の画像共有を完了したものではありません。
+
+- [要件仕様書](docs/superpowers/specs/2026-11-14-chameleol-design-followups-spec.md)と[実装計画書](docs/superpowers/plans/2026-11-14-chameleol-design-followups-plan.md)
+- [Claude向け依頼文・担当組織・エフォート](docs/prompts/2026-11-14-claude-design-followups.md)
+- [敵対的検証・修正記録](docs/reviews/2026-11-14-chameleol-design-followups-review.md)と[要件の対応表](docs/requirements/chameleol-design-followups.json)
+
+既存の7称号は維持したまま、2棟単位で使える追加称号案20件を要件仕様書へ追記しました。追加案は候補として別管理し、現在の称号判定を変更する指示とは区別します。
+
 ## ホームの連続色変化・巻きベロ（2026-11-14）
 
-ホームのカメレオンが24色・12秒周期でなめらかに色変化し、時々巻きベロを伸縮させます。初回2〜3秒後、以後は動作終了から6〜10秒間隔です。非表示・描画停止中は時間を止め、「動きを減らす」が有効な時は体色だけを変化させます。実装と自動確認の結果は[検証記録](docs/acceptance/home-idle-evidence.md)にまとめています。iPhone実機確認と本番公開は未実施です。
+ホームのカメレオンが24色・12秒周期でなめらかに色変化し、時々巻きベロを伸縮させます。初回2〜3秒後、以後は動作終了から6〜10秒間隔です。非表示・描画停止中は時間を止め、「動きを減らす」が有効な時は体色だけを変化させます。実装と自動確認の結果は[検証記録](docs/acceptance/home-idle-evidence.md)にまとめています。当該記録時点ではiPhone実機確認・本番公開を行っていません。現在の配布版は別途照合します。
 
 - [仕様書](docs/superpowers/specs/2026-11-14-chameleol-home-idle-spec.md)
 - [実装計画書](docs/superpowers/plans/2026-11-14-chameleol-home-idle-plan.md)
@@ -24,7 +36,7 @@
 
 ## ボーナス得点と獲得演出の計画（2026-11-13）
 
-精密擬態・安定擬態・10棟ごとの到達・素早い色合わせ・全棟成功の5種類を追加するための文書です。現在の採点・ゲーム画面へはまだ反映していません。
+精密擬態・安定擬態・10棟ごとの到達・素早い色合わせ・全棟成功の5種類は、PR [#16](https://github.com/chameleonjp-lab/chameleol/pull/16)でmainへ取り込み済みです。[実装検証の記録](docs/acceptance/bonus-score-evidence.md)に自動確認と残る実機・公開条件をまとめています。以下は実装の根拠になった文書です。
 
 - [ボーナス仕様書](docs/superpowers/specs/2026-11-13-chameleol-bonus-score-spec.md)
 - [実装計画書](docs/superpowers/plans/2026-11-13-chameleol-bonus-score-plan.md)
@@ -32,19 +44,19 @@
 
 ## 追加演出80要件の計画（2026-11-11）
 
-除外した20案を外し、残る80要件をすべて実装するための計画です。現在は文書を確定した段階で、追加演出の実装は未着手です。
+当初採用した80要件の計画です。PR #12と残る2件を補完したPR #14はmainへ取り込み済みです。[80件の証拠](docs/acceptance/effects80-evidence.md)と[補完2件の記録](docs/acceptance/effects37-85-completion.md)で、自動確認・実機未確認を区別します。当初除外20案のうち、今回の16採用・4除外は上の改訂計画で扱います。
 
 - [確定仕様書](docs/superpowers/specs/2026-11-11-chameleol-effects80-spec.md)：採用80件・対象外20件、保存・表示・負荷の条件。
 - [実装計画書](docs/superpowers/plans/2026-11-11-chameleol-effects80-plan.md)：工程の順序、変更する場所、接続口、確認手順。
 - [80要件とRICEの対応表](docs/requirements/chameleol-effects80.json)と[敵対的検証・修正記録](docs/reviews/2026-11-11-chameleol-effects80-adversarial-review.md)：元の番号、優先度、工程とレビューへの対応。
 
-2026-11-11の追加要件として、[初回ガイドと練習の実装計画](docs/superpowers/plans/2026-11-11-chameleol-guided-play-plan.md)を加えました。初回の1・2棟目と、明度初解放時の20・21棟目に、一致度と95%以上になる操作位置を示します。4段階は練習からいつでも個別に確認できる計画です。これも実装前の文書で、演出80件の件数やRICE値には含めません。
+2026-11-11の追加要件として、[初回ガイドと練習の実装計画](docs/superpowers/plans/2026-11-11-chameleol-guided-play-plan.md)を加えました。初回の1・2棟目と、明度初解放時の20・21棟目に、一致度と95%以上になる操作位置を示します。4段階は練習からいつでも個別に確認できます。ガイドはPR #12でmainへ取り込み済みで、演出80件の件数やRICE値には含めません。
 
 ## 実装の進め方
 
 [実装計画書](docs/superpowers/plans/2026-11-07-kamereoru-implementation-plan.md)では、iPhoneで色合わせを試せる段階から正式ランキングの公開判定までを9工程に分けています。[計画の検証記録](docs/reviews/2026-11-07-kamereoru-implementation-plan-review.md)で、保存や再送の競合、同順位など、初稿で見つけた問題と修正を確認できます。
 
-工程 P1〜P8 の実装はこのリポジトリに入っています。P9 のうち、iPhone 実機での確認、Supabase 本番への適用、ゲームの公開はまだ行っていません。配点・演出時間・難易度などの数値は試作値で、実機で確かめてから決めます。
+工程 P1〜P8 と、その後の音・演出・ガイド・ボーナス・ホーム動作の実装がこのリポジトリに入っています。個別の検証記録ではiPhone実機などの未確認事項を残しています。本番の現状は古いP9の記述だけで断定せず、公開候補と実際の配布版を照合して管理します。配点・演出時間・難易度などの正式値は実機の証拠に基づいて判断します。
 
 ## 手元で動かす
 
@@ -68,5 +80,6 @@ npm run build            # 公開用の一式を dist/ に作る
 - [iPhone での確認手順](docs/device-test-procedure.md)：実機で試すことと記録表。
 - [公開と切り戻しの手順（案）](docs/release/release-and-rollback.md)：データベース・サーバー・画面を切り替える順番と、戻し方。
 - [素材の出典](assets/credits.md)：主人公は、提供されたカメレオン No.28 エディター（[docs/design/chameleon-no28-editor.html](docs/design/chameleon-no28-editor.html)）の書き出し値から作っています。
+
 
 
