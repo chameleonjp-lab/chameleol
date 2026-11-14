@@ -11,6 +11,22 @@
 
 試験の実行環境は、Node 22.23.4（Ubuntu 24.04）、PostgreSQL 16.15、Chromium（Playwright 1.63.0）、QuickJS（quickjs-emscripten 0.32.0）、Deno 2.1.4 です。実行方法は `npm test`、`npm run test:sql`、`npm run check:engines`、`npm run test:e2e`、`npm run smoke:edge` です（README を参照）。
 
+## 2026-11-14 時点の注記（実装前の文書整理）
+
+以下の表は2026-11-07の記録で、書き換えていません。その後に取り込まれた機能の確認は、別の記録に分けています。
+
+| 取り込み | 内容 | 記録 |
+| --- | --- | --- |
+| PR #11・#12 | 追加演出80件、初回ガイドと練習 | [effects80-evidence.md](effects80-evidence.md) |
+| PR #13 | 音の統合 | `docs/acceptance/audio-integration/` の画像 |
+| PR #14 | 似顔絵・双眼鏡の交互表示、初クリア切符 | [effects37-85-completion.md](effects37-85-completion.md) |
+| PR #16 | 5種ボーナス（規則v3/v4） | [bonus-score-evidence.md](bonus-score-evidence.md) |
+| PR #18 | ホームの24色・巻きベロ | [home-idle-evidence.md](home-idle-evidence.md) |
+
+- 基準main `e8c69b4`（PR #20マージ後）の `npm test` は429件、成功398、失敗0、スキップ31でした。スキップ31件はすべて `tests/server/` の試験で、使い捨てのPostgreSQLがない時に飛ばす設定です（bonus 6・ranking 8・results 10・start 7。`npm run test:sql` で別に実行するもの）。この時、ブラウザ試験とSQL試験は実行していません。
+- 2026-11-14改訂3の計画（[要件](../superpowers/specs/2026-11-14-chameleol-design-followups-spec.md)）で、元100案は採用96件・除外4件（E045・E051・E088・E097）になりました。新しい結果要件RES-01〜08と全27称号を正式に採用しました。これらはまだ実装しておらず、この表のどの行にも合格として数えていません。実装後の証拠は計画T9の `docs/acceptance/design-followups-evidence.md`（未作成）へ分けて記録します。
+- 公開版の状態は未確認です（[公開手順](../release/release-and-rollback.md)の冒頭を参照）。下の「正式URLでの実機確認（P9）」などの残りは、そのまま残っています。
+
 ## 1. 本編・色・得点
 
 | ID | 状態 | 確かめたこと（証拠） | 残り |
@@ -125,7 +141,7 @@
 
 ## 分かっている限界
 
-2026-11-11追加演出80件の統合記録は [effects80-evidence.md](effects80-evidence.md) に分けて記録しています。採用80件・除外20件の集合とタスク割当の自動確認は合格しました。個別表示・ガイド・3画面寸法・再プレイ・描画上限の統合確認は同記録の各行で管理し、未確認の項目を完了扱いにしません。iPhone 17 Pro Safari実機の性能、JSヒープ、発熱は未測定です。
+2026-11-11追加演出80件の統合記録は [effects80-evidence.md](effects80-evidence.md) に分けて記録しています。採用80件・除外20件の集合とタスク割当の自動確認は合格しました（2026-11-14改訂3で、除外20件のうち16件を後続の採用対象に変更。実装前のため、コードと試験はまだ80件・20件のままです）。個別表示・ガイド・3画面寸法・再プレイ・描画上限の統合確認は同記録の各行で管理し、未確認の項目を完了扱いにしません。iPhone 17 Pro Safari実機の性能、JSヒープ、発熱は未測定です。
 
 iPhone の Safari（JavaScriptCore）は、この環境では動かせません。端末とサーバーの計算が一致することは、V8（Node・Chromium・Deno）とは別のエンジンである QuickJS で、色差の照合値・照合例・出題がビット単位で一致することで代わりに示しました。計算は四則演算と平方根だけで組んでいるため、IEEE 754 に従うエンジンなら同じ結果になるはずですが、Safari での照合は実機で行う必要があります。
 
