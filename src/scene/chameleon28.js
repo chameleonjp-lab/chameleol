@@ -5,6 +5,7 @@
 // - 設定値の意味は元の道具が手元になく不明。下の「解釈」に沿って読み、直す時はこのファイルだけで済むようにしてある。
 
 import * as THREE from 'three';
+import { CURRENT_OUTLINE_STAGE, DEFAULT_OUTLINE_RGB } from './chameleon-outline.js';
 
 /** 持ち主の設定値（そのまま） */
 export const CHAMELEON28 = {
@@ -108,7 +109,8 @@ void main() {
   gl_Position = projectionMatrix * mv;
 }`;
 const OUT_FRAG = /* glsl */ `
-void main() { gl_FragColor = vec4(0.1059, 0.1059, 0.1059, 1.0); }`;
+uniform vec3 uOutlineRgb;
+void main() { gl_FragColor = vec4(uOutlineRgb, 1.0); }`;
 
 /** 比較用トゥーン。uColor が中央の色そのもの。 */
 export function createToonMaterial(rgb, gloss) {
@@ -119,9 +121,10 @@ export function createToonMaterial(rgb, gloss) {
   });
 }
 
-export function createOutlineMaterial(thick = K.outline) {
+export function createOutlineMaterial(thick = K.outline, rgb = DEFAULT_OUTLINE_RGB) {
   return new THREE.ShaderMaterial({
-    uniforms: { uThick: { value: thick } },
+    // 色は Vector3（色空間の変換が入らない）。不透明のまま値だけ変える。
+    uniforms: { uThick: { value: thick }, uOutlineRgb: { value: new THREE.Vector3(rgb[0], rgb[1], rgb[2]) } },
     vertexShader: OUT_VERT,
     fragmentShader: OUT_FRAG,
     side: THREE.BackSide,
@@ -277,6 +280,8 @@ export function createChameleon(design = CHAMELEON28) {
   const bodyMat = createToonMaterial(bodyRgb0, P.gloss);
   const eyeMat = createToonMaterial(eyeRgb0, P.gloss * 0.6);
   const outMat = createOutlineMaterial();
+  let outlineStage = CURRENT_OUTLINE_STAGE;
+  let outlineWrites = 0;
   const darkMat = new THREE.MeshBasicMaterial({ color: 0x1b1b1b });
   const tongueMat = new THREE.MeshBasicMaterial({ color: new THREE.Color().setStyle(C.tongue, THREE.NoColorSpace) });
   const jewelMat = new THREE.MeshBasicMaterial({ color: 0x9ff3ff });
@@ -561,6 +566,24 @@ export function createChameleon(design = CHAMELEON28) {
     setColor(rgb) {
       bodyMat.uniforms.uColor.value.setRGB(rgb[0], rgb[1], rgb[2]);
       eyeMat.uniforms.uColor.value.setRGB(rgb[0] + (1 - rgb[0]) * tint, rgb[1] + (1 - rgb[1]) * tint, rgb[2] + (1 - rgb[2]) * tint);
+    },
+    /**
+     * 外周線の段階を変える（{stage, thickness, rgb}。outlineForBuilding の返り値）。
+     * 作成済みの材質の値を書き換えるだけ。段階が同じなら書き直さない。
+     * 目の渦・口・鼻の黒線、胴と壁の比較色、警察の線は変えない。
+     */
+    setOutlineStyle(style) {
+      if (!style || !Number.isInteger(style.stage) || style.stage === outlineStage) return;
+      const { thickness, rgb } = style;
+      if (!Number.isFinite(thickness) || !rgb || rgb.length < 3 || !(rgb[0] >= 0) || !(rgb[1] >= 0) || !(rgb[2] >= 0)) return;
+      outMat.uniforms.uThick.value = thickness;
+      outMat.uniforms.uOutlineRgb.value.set(rgb[0], rgb[1], rgb[2]);
+      outlineStage = style.stage;
+      outlineWrites += 1;
+    },
+    getOutlineStyle() {
+      const rgb = outMat.uniforms.uOutlineRgb.value;
+      return { stage: outlineStage, thickness: outMat.uniforms.uThick.value, rgb: [rgb.x, rgb.y, rgb.z], writes: outlineWrites };
     },
     animate,
     dispose() {

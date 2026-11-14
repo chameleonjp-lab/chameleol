@@ -18,6 +18,7 @@ import * as THREE from 'three';
 import { RULES_V1 } from '../rules/v1/index.js';
 import { areaOf } from '../rules/v1/course.js';
 import { createChameleon, createFerret, createJewelryShop } from './characters.js';
+import { outlineForBuilding } from './chameleon-outline.js';
 import { SKY, TOD, rgbFloat } from './palette-colors.js';
 import { createEffects } from './effects.js';
 import { createGamePresentationClock, createVisiblePresentationClock } from './stage.js';
@@ -745,6 +746,9 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   const heroRoot = new THREE.Group();
   const hero = createChameleon();
   heroRoot.add(hero.group);
+  // 主人公の外周線の段階。表示する棟から決め、棟に入った最初の描画で一度だけ書き換える（同じ段階なら何もしない）。
+  const applyOutline = (building) => hero.setOutlineStyle(outlineForBuilding(building));
+  applyOutline(1); // 開始演出・練習の最初は第1段階。本編は update が表示中の棟で上書きする
   heroRoot.rotation.y = HERO_YAW;
   heroRoot.position.set(0, SIDEWALK_Y, HERO_Z);
   scene.add(heroRoot);
@@ -1214,6 +1218,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const now = cutsceneFrame?.elapsed ?? 0;
       const view=args.presentation??{t,building:Math.min(50,Math.floor(t/rules.buildingMs)+1),passed:Math.floor(t/rules.buildingMs),phase:matchState?'eval':'grace',color,policeStage,running:walking,matchState,combo:0,maxCombo:0};
       lastPresentation=view;
+      applyOutline(view.building); // ガイドの見せる位置 t ではなく、ゲームの表示中の棟
       worldClock += dt;
       playerX = (t / rules.buildingMs) * W; // 判定と同じ時刻から位置を決める
       const building = Math.min(rules.buildingCount, Math.floor(t / rules.buildingMs) + 1);
@@ -1327,8 +1332,10 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         shopExtras.visible = false;
       }
     },
-    renderPractice(color, target) {
+    /** 静止した練習。building は個別ガイドの対象棟（通常の練習は省略＝第1段階）。 */
+    renderPractice(color, target, { building = 1 } = {}) {
       if (disposed) return;
+      applyOutline(building);
       const s = slots[0];
       const [r, g, b] = rgbFloat(target);
       s.facadeMat.color.setRGB(r, g, b);
@@ -1652,6 +1659,8 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       scene.traverse(() => (objects += 1));
       return { objects, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, calls: renderer.info.render.calls };
     },
+    /** 主人公の外周線の今の段階（試験・確認用）。 */
+    outlineStyle: () => hero.getOutlineStyle(),
     resize,
     dispose() {
       if(disposed)return;
