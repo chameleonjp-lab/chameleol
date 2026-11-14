@@ -1121,7 +1121,7 @@ export class App {
       const selected=choosePassCue({batch:suppressed?null:batch,cues:candidates});
       cueCandidates=[];pendingBonus=null;
       if(selected&&!document.hidden)this.audio.play(selected.name,selected.opts);
-      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step)}});
+      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step),moving:session.running&&!guideView.stationary,warningActive:activeNotice}});
       this.raf = requestAnimationFrame(loop);
     };
 
@@ -1709,7 +1709,7 @@ export class App {
     const loop=now=>{
       if(!current())return;
       const frame=clock(now,document.hidden||paused);const v=practice.tick(frame.dt*1000);scope.tick(v.elapsed);
-      if(!document.hidden){if(v.stationary)stage.renderPractice(v.color,v.target);else stage.update({t:(v.building-1)*5000+v.elapsed,color:v.color,walking:!paused&&!v.complete,presentation:{...v,t:v.elapsed,phase:'grace',running:!paused&&!v.complete,guidanceActive:true,policeStage:0,passed:0,combo:0,matchState:null}});}
+      if(!document.hidden){if(v.stationary)stage.renderPractice(v.color,v.target,{building:v.building});else stage.update({t:(v.building-1)*5000+v.elapsed,color:v.color,walking:!paused&&!v.complete,presentation:{...v,t:v.elapsed,phase:'grace',running:!paused&&!v.complete,guidanceActive:true,policeStage:0,passed:0,combo:0,matchState:null}});}
       render();this.raf=requestAnimationFrame(loop);
     };
     render();this.raf=requestAnimationFrame(loop);return practice;
