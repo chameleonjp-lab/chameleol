@@ -173,6 +173,7 @@ T0後、T1→T2、T3、T8を分担する。T8完了後にT4/T6、T4後にT5、T1
 - `prepareResultCard({canvas,revision,signal}):Promise<{blob:Blob,file:File,revision}>`。
 - `sharePreparedResult({prepared,currentRevision,text,url,navigator}):Promise<'shared'|'cancelled'|'unavailable'|'failed'>`。共有の成功は投稿成功としない。
 
+- [ ] RES-02へ追加した2棟単位の20案はproposal-onlyとして扱う。今回の追加では既存7称号の名称・rankKey・範囲とrankForPassedを変更しない。候補を確定一覧として自動読込したり、共有画像に第2称号を追加したりしない。
 - [ ] 称号の0/1/9/10/19/20/29/30/39/40/49/50、負・小数・51・NaN、今回と自己ベストの違いを試験化する。50棟と全クリアが矛盾する入力は確認中にする。
 - [ ] ベスト棟は通過済みの有効tupleだけを候補にし、matchSum/evalMsをBigIntの交差積で比較する。丸め同率と真の同率、早い棟、v1〜v4の単位差、正の評価時間、実色欠損を試験化する。平均値から体色を逆算しない。
 - [ ] ボーナス5行のcount合計と重複のないawards ID数を照合する。精密の5/10点を1件、種類数5と獲得件数を区別し、現行完全成功の156件・7280点を別値として検算する。対応版の0と旧版missingも区別する。追加得点のないE044の札だけでは件数を増やさない。
