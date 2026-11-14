@@ -1,0 +1,409 @@
+{
+  "schemaVersion": 1,
+  "baseline": "9c1c06fdde1121334f9c0093182f873318e4f57c",
+  "date": "2026-11-14",
+  "state": "plan-only",
+  "spec": "../superpowers/specs/2026-11-14-chameleol-design-followups-spec.md",
+  "plan": "../superpowers/plans/2026-11-14-chameleol-design-followups-plan.md",
+  "prompt": "../prompts/2026-11-14-claude-design-followups.md",
+  "requirements": {
+    "design": [
+      "DES-01",
+      "DES-02",
+      "DES-03",
+      "DES-04",
+      "DES-05",
+      "DES-06",
+      "DES-07",
+      "DES-08"
+    ],
+    "extensions": [
+      "EXT-01",
+      "EXT-02",
+      "EXT-03",
+      "EXT-04"
+    ],
+    "followups": [
+      "FOLLOW-01",
+      "FOLLOW-02",
+      "FOLLOW-03",
+      "FOLLOW-04",
+      "FOLLOW-05",
+      "FOLLOW-06",
+      "FOLLOW-07",
+      "FOLLOW-08"
+    ]
+  },
+  "outline": [
+    {
+      "from": 1,
+      "to": 10,
+      "thickness": 0.0255,
+      "rgb": [
+        0.6196078431372549,
+        0.6196078431372549,
+        0.6196078431372549
+      ]
+    },
+    {
+      "from": 11,
+      "to": 15,
+      "thickness": 0.034,
+      "rgb": [
+        0.5450980392156862,
+        0.5450980392156862,
+        0.5450980392156862
+      ]
+    },
+    {
+      "from": 16,
+      "to": 20,
+      "thickness": 0.0425,
+      "rgb": [
+        0.47058823529411764,
+        0.47058823529411764,
+        0.47058823529411764
+      ]
+    },
+    {
+      "from": 21,
+      "to": 25,
+      "thickness": 0.051,
+      "rgb": [
+        0.396078431372549,
+        0.396078431372549,
+        0.396078431372549
+      ]
+    },
+    {
+      "from": 26,
+      "to": 30,
+      "thickness": 0.0595,
+      "rgb": [
+        0.3215686274509804,
+        0.3215686274509804,
+        0.3215686274509804
+      ]
+    },
+    {
+      "from": 31,
+      "to": 35,
+      "thickness": 0.068,
+      "rgb": [
+        0.24705882352941178,
+        0.24705882352941178,
+        0.24705882352941178
+      ]
+    },
+    {
+      "from": 36,
+      "to": 39,
+      "thickness": 0.0765,
+      "rgb": [
+        0.17254901960784313,
+        0.17254901960784313,
+        0.17254901960784313
+      ]
+    },
+    {
+      "from": 40,
+      "to": 50,
+      "thickness": 0.085,
+      "rgb": [
+        0.1059,
+        0.1059,
+        0.1059
+      ]
+    }
+  ],
+  "tongue": {
+    "periodMovingMs": 10000,
+    "phasesMs": [
+      150,
+      250,
+      350,
+      450,
+      200
+    ],
+    "reloadResets": true
+  },
+  "effects": [
+    {
+      "id": 20,
+      "requirementId": "E020",
+      "method": "A",
+      "task": "T4",
+      "status": "planned"
+    },
+    {
+      "id": 34,
+      "requirementId": "E034",
+      "method": "A",
+      "task": "T5",
+      "status": "planned"
+    },
+    {
+      "id": 39,
+      "requirementId": "E039",
+      "method": "A",
+      "task": "T5",
+      "status": "planned"
+    },
+    {
+      "id": 44,
+      "requirementId": "E044",
+      "method": "B",
+      "task": "T6",
+      "status": "planned"
+    },
+    {
+      "id": 45,
+      "requirementId": "E045",
+      "method": "A",
+      "task": "T6",
+      "status": "planned"
+    },
+    {
+      "id": 51,
+      "requirementId": "E051",
+      "method": "A",
+      "task": "T4",
+      "status": "planned"
+    },
+    {
+      "id": 56,
+      "requirementId": "E056",
+      "method": "A",
+      "task": "T4",
+      "status": "planned"
+    },
+    {
+      "id": 67,
+      "requirementId": "E067",
+      "method": "A",
+      "task": "T4",
+      "status": "planned"
+    },
+    {
+      "id": 68,
+      "requirementId": "E068",
+      "method": "B",
+      "task": "T4",
+      "status": "planned"
+    },
+    {
+      "id": 69,
+      "requirementId": "E069",
+      "method": "A",
+      "task": "T4",
+      "status": "planned"
+    },
+    {
+      "id": 72,
+      "requirementId": "E072",
+      "method": "A",
+      "task": "T3",
+      "status": "planned"
+    },
+    {
+      "id": 75,
+      "requirementId": "E075",
+      "method": "B",
+      "task": "T7",
+      "status": "planned"
+    },
+    {
+      "id": 76,
+      "requirementId": "E076",
+      "method": "A",
+      "task": "T3",
+      "status": "planned"
+    },
+    {
+      "id": 84,
+      "requirementId": "E084",
+      "method": "A",
+      "task": "T3",
+      "status": "planned"
+    },
+    {
+      "id": 86,
+      "requirementId": "E086",
+      "method": "A",
+      "task": "T3",
+      "status": "planned"
+    },
+    {
+      "id": 87,
+      "requirementId": "E087",
+      "method": "A",
+      "task": "T3",
+      "status": "planned"
+    },
+    {
+      "id": 88,
+      "requirementId": "E088",
+      "method": "A",
+      "task": "T3",
+      "status": "planned"
+    },
+    {
+      "id": 90,
+      "requirementId": "E090",
+      "method": "A",
+      "task": "T7",
+      "status": "planned"
+    },
+    {
+      "id": 94,
+      "requirementId": "E094",
+      "method": "A",
+      "task": "T7",
+      "status": "planned"
+    },
+    {
+      "id": 97,
+      "requirementId": "E097",
+      "method": "A",
+      "task": "T8",
+      "status": "planned"
+    }
+  ],
+  "requirementTasks": {
+    "DES-01": [
+      "T1"
+    ],
+    "DES-02": [
+      "T1"
+    ],
+    "DES-03": [
+      "T1",
+      "T7"
+    ],
+    "DES-04": [
+      "T2"
+    ],
+    "DES-05": [
+      "T2"
+    ],
+    "DES-06": [
+      "T2"
+    ],
+    "DES-07": [
+      "T2"
+    ],
+    "DES-08": [
+      "T1",
+      "T2",
+      "T9"
+    ],
+    "EXT-01": [
+      "T4",
+      "T9"
+    ],
+    "EXT-02": [
+      "T3"
+    ],
+    "EXT-03": [
+      "T8"
+    ],
+    "EXT-04": [
+      "T7"
+    ],
+    "FOLLOW-01": [
+      "T0"
+    ],
+    "FOLLOW-02": [
+      "T9"
+    ],
+    "FOLLOW-03": [
+      "T9"
+    ],
+    "FOLLOW-04": [
+      "T9"
+    ],
+    "FOLLOW-05": [
+      "T9"
+    ],
+    "FOLLOW-06": [
+      "T9"
+    ],
+    "FOLLOW-07": [
+      "T9"
+    ],
+    "FOLLOW-08": [
+      "T9"
+    ],
+    "E020": [
+      "T4"
+    ],
+    "E034": [
+      "T5"
+    ],
+    "E039": [
+      "T5"
+    ],
+    "E044": [
+      "T6"
+    ],
+    "E045": [
+      "T6"
+    ],
+    "E051": [
+      "T4"
+    ],
+    "E056": [
+      "T4"
+    ],
+    "E067": [
+      "T4"
+    ],
+    "E068": [
+      "T4"
+    ],
+    "E069": [
+      "T4"
+    ],
+    "E072": [
+      "T3"
+    ],
+    "E075": [
+      "T7"
+    ],
+    "E076": [
+      "T3"
+    ],
+    "E084": [
+      "T3"
+    ],
+    "E086": [
+      "T3"
+    ],
+    "E087": [
+      "T3"
+    ],
+    "E088": [
+      "T3"
+    ],
+    "E090": [
+      "T7"
+    ],
+    "E094": [
+      "T7"
+    ],
+    "E097": [
+      "T8"
+    ]
+  },
+  "reviewReader": {
+    "maxEntries": 200000,
+    "batchEntries": 1000,
+    "batchMs": 4,
+    "maxStateCheckpoints": 320
+  },
+  "presentationStorage": {
+    "key": "presentation.extras.v1",
+    "maxPlayRecords": 32,
+    "maxUtf8Bytes": 32768
+  }
+}
