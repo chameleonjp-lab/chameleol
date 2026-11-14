@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "baseline": "9c1c06fdde1121334f9c0093182f873318e4f57c",
   "date": "2026-11-14",
   "state": "plan-only",
@@ -32,6 +32,16 @@
       "FOLLOW-06",
       "FOLLOW-07",
       "FOLLOW-08"
+    ],
+    "result": [
+      "RES-01",
+      "RES-02",
+      "RES-03",
+      "RES-04",
+      "RES-05",
+      "RES-06",
+      "RES-07",
+      "RES-08"
     ]
   },
   "outline": [
@@ -157,20 +167,6 @@
       "status": "planned"
     },
     {
-      "id": 45,
-      "requirementId": "E045",
-      "method": "A",
-      "task": "T6",
-      "status": "planned"
-    },
-    {
-      "id": 51,
-      "requirementId": "E051",
-      "method": "A",
-      "task": "T4",
-      "status": "planned"
-    },
-    {
       "id": 56,
       "requirementId": "E056",
       "method": "A",
@@ -241,13 +237,6 @@
       "status": "planned"
     },
     {
-      "id": 88,
-      "requirementId": "E088",
-      "method": "A",
-      "task": "T3",
-      "status": "planned"
-    },
-    {
       "id": 90,
       "requirementId": "E090",
       "method": "A",
@@ -259,13 +248,6 @@
       "requirementId": "E094",
       "method": "A",
       "task": "T7",
-      "status": "planned"
-    },
-    {
-      "id": 97,
-      "requirementId": "E097",
-      "method": "A",
-      "task": "T8",
       "status": "planned"
     }
   ],
@@ -346,12 +328,6 @@
     "E044": [
       "T6"
     ],
-    "E045": [
-      "T6"
-    ],
-    "E051": [
-      "T4"
-    ],
     "E056": [
       "T4"
     ],
@@ -382,17 +358,37 @@
     "E087": [
       "T3"
     ],
-    "E088": [
-      "T3"
-    ],
     "E090": [
       "T7"
     ],
     "E094": [
       "T7"
     ],
-    "E097": [
-      "T8"
+    "RES-01": [
+      "T7"
+    ],
+    "RES-02": [
+      "T7"
+    ],
+    "RES-03": [
+      "T3",
+      "T7"
+    ],
+    "RES-04": [
+      "T3",
+      "T7"
+    ],
+    "RES-05": [
+      "T7"
+    ],
+    "RES-06": [
+      "T7"
+    ],
+    "RES-07": [
+      "T7"
+    ],
+    "RES-08": [
+      "T7"
     ]
   },
   "reviewReader": {
@@ -405,5 +401,94 @@
     "key": "presentation.extras.v1",
     "maxPlayRecords": 32,
     "maxUtf8Bytes": 32768
-  }
+  },
+  "revision": 2,
+  "previousDocumentHead": "5753cdb621181761d3d28e08d4e47232f47abce0",
+  "withdrawnEffects": [
+    {
+      "id": 45,
+      "requirementId": "E045",
+      "status": "withdrawn",
+      "reason": "2026-11-14 本人が除外を指定"
+    },
+    {
+      "id": 51,
+      "requirementId": "E051",
+      "status": "withdrawn",
+      "reason": "2026-11-14 本人が除外を指定"
+    },
+    {
+      "id": 88,
+      "requirementId": "E088",
+      "status": "withdrawn",
+      "reason": "2026-11-14 本人が除外を指定"
+    },
+    {
+      "id": 97,
+      "requirementId": "E097",
+      "status": "withdrawn",
+      "reason": "2026-11-14 本人が除外を指定"
+    }
+  ],
+  "acceptedOriginalEffectCount": 96,
+  "resultCard": {
+    "width": 1200,
+    "height": 630,
+    "type": "image/png",
+    "characterCount": 1,
+    "characterChoice": "user-confirmed-best-average-building",
+    "fields": [
+      "bestMatchChameleon",
+      "totalScore",
+      "rankTitle",
+      "bonusAwardCount"
+    ],
+    "preGenerateBeforeTap": true,
+    "sharePath": "native-file-share",
+    "xAttachmentRequiresDeviceVerification": true
+  },
+  "titles": [
+    {
+      "from": 0,
+      "to": 0,
+      "key": "beginning",
+      "ja": "かくれんぼ入門"
+    },
+    {
+      "from": 1,
+      "to": 9,
+      "key": "apprentice",
+      "ja": "見習いカメレオン"
+    },
+    {
+      "from": 10,
+      "to": 19,
+      "key": "alley",
+      "ja": "路地の隠れ上手"
+    },
+    {
+      "from": 20,
+      "to": 29,
+      "key": "expert",
+      "ja": "街の擬態名人"
+    },
+    {
+      "from": 30,
+      "to": 39,
+      "key": "elusive",
+      "ja": "変幻自在の逃走者"
+    },
+    {
+      "from": 40,
+      "to": 49,
+      "key": "phantom",
+      "ja": "幻の宝石泥棒"
+    },
+    {
+      "from": 50,
+      "to": 50,
+      "key": "legend",
+      "ja": "伝説のカメレオン"
+    }
+  ]
 }

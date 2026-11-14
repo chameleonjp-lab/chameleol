@@ -14,9 +14,11 @@
 - [受入試験一覧](docs/acceptance/kamereoru-acceptance.md)：実装後に確認する条件と要件番号の対応。
 - [仕様統合のレビュー記録](docs/reviews/2026-11-07-kamereoru-requirements-review.md)：旧案との整理、補完した境界処理、文書確認の範囲と限界。
 
-## 輪郭・舌のダイヤ・後続20案の計画（2026-11-14）
+## 輪郭・舌のダイヤ・称号と結果画像の計画（2026-11-14改訂）
 
-10棟までは薄く細い縁の線を使い、段階的に濃く太くして40棟から現行の見た目にする計画です。本編の移動10秒ごとの舌・ダイヤ、後続20案、実機確認などの残作業を含めます。こちらは文書のみで、新しいゲーム実装はまだ含みません。
+線の8段階と移動10秒ごとの舌・ダイヤに加え、通過棟数の称号と、最高一致の主人公1体・スコア・称号・ボーナス獲得件数を一枚にした結果画像を計画します。主ボタン「Xでシェア」から画像を端末共有へ渡す設計です。Xへの添付はiPhone実機で確認します。
+
+本人指定で45の軌跡・51の物語・88の再生・97の発見帳を除外し、後続は16案、元の案は合計96採用・4除外です。こちらは文書の改訂で、ゲーム実装や実際の画像共有を完了したものではありません。
 
 - [要件仕様書](docs/superpowers/specs/2026-11-14-chameleol-design-followups-spec.md)と[実装計画書](docs/superpowers/plans/2026-11-14-chameleol-design-followups-plan.md)
 - [Claude向け依頼文・担当組織・エフォート](docs/prompts/2026-11-14-claude-design-followups.md)
@@ -40,7 +42,7 @@
 
 ## 追加演出80要件の計画（2026-11-11）
 
-当初採用した80要件の計画です。PR #12と残る2件を補完したPR #14はmainへ取り込み済みです。[80件の証拠](docs/acceptance/effects80-evidence.md)と[補完2件の記録](docs/acceptance/effects37-85-completion.md)で、自動確認・実機未確認を区別します。後続20案は上の2026-11-14計画で別に扱います。
+当初採用した80要件の計画です。PR #12と残る2件を補完したPR #14はmainへ取り込み済みです。[80件の証拠](docs/acceptance/effects80-evidence.md)と[補完2件の記録](docs/acceptance/effects37-85-completion.md)で、自動確認・実機未確認を区別します。当初除外20案のうち、今回の16採用・4除外は上の改訂計画で扱います。
 
 - [確定仕様書](docs/superpowers/specs/2026-11-11-chameleol-effects80-spec.md)：採用80件・対象外20件、保存・表示・負荷の条件。
 - [実装計画書](docs/superpowers/plans/2026-11-11-chameleol-effects80-plan.md)：工程の順序、変更する場所、接続口、確認手順。
