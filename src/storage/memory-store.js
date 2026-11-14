@@ -1,6 +1,7 @@
 import { mergePresentationStats } from '../presentation/stats.js';
 import { GUIDE_PROGRESS_KEY, normalizeGuideProgress, mergeGuideProgress, claimGroup, updateGroup } from '../guidance/progress.js';
 // IndexedDB を使えない時の代わり（メモリだけ）。再読込で消えるため、ランキング対象のプレイは始めない。
+import { EXTRAS_KEY, normalizeExtras, readDirector, applyBadgeClaim, applyCameoClaim } from './presentation-extras.js';
 import { RUN_SLOT, StaleWriterError } from './store.js';
 
 export class MemoryStore {
@@ -8,6 +9,8 @@ export class MemoryStore {
     this.memory = true;
     this.data = new Map();
     this.kv = new Map();
+    // 試験用：表示用の保存の書込失敗を起こす関数（(storeNames) => Error | null）
+    this.failWrites = null;
   }
 
   bucket(name) {
@@ -78,6 +81,25 @@ export class MemoryStore {
     if (!current || current.status !== 'active' || current.owner !== tabId || current.generation !== generation || current.playId !== options.playId) throw new StaleWriterError();
     const p = mergeGuideProgress(normalizeGuideProgress(this.kv.get(GUIDE_PROGRESS_KEY), options.legacyFlags, options.legacyRun), options.fallbackProgress);
     const result = mutate(p); this.kv.set(GUIDE_PROGRESS_KEY, structuredClone(result.progress ?? result)); return result;
+  }
+  // 表示用の保存（store.js と同じ規則）。読み書きの間に await を挟まないので、同時の取得でも1回だけ通る。
+  extrasTransaction(tabId, generation, playId, apply) {
+    try {
+      if (this.failWrites?.(['runs', 'kv'])) return false;
+      const current = this.bucket('runs').get(RUN_SLOT);
+      if (!current || current.status !== 'active' || current.owner !== tabId || current.generation !== generation || current.playId !== playId) return false;
+      const result = apply(normalizeExtras(this.kv.get(EXTRAS_KEY)));
+      if (!result.claimed) return false;
+      this.kv.set(EXTRAS_KEY, structuredClone(result.extras));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async claimPrecisionBadge({ playId, tabId, generation } = {}) { return this.extrasTransaction(tabId, generation, playId, (extras) => applyBadgeClaim(extras, playId)); }
+  async claimCameoStart({ playId, tabId, generation, state } = {}) { return this.extrasTransaction(tabId, generation, playId, (extras) => applyCameoClaim(extras, playId, state)); }
+  async loadDirector(playId) {
+    try { return readDirector(normalizeExtras(this.kv.get(EXTRAS_KEY)), playId); } catch { return null; }
   }
   initializeGuideProgress(tabId, generation, options) { return this.guideTransaction(tabId, generation, options, p => p); }
   claimGuideGroup(tabId, generation, options) { return this.guideTransaction(tabId, generation, options, p => claimGroup(p, options.group, options.playId)); }
