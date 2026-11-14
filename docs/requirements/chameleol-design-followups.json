@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 2,
-  "baseline": "9c1c06fdde1121334f9c0093182f873318e4f57c",
+  "schemaVersion": 3,
+  "baseline": "ad5c595f54e0a14d604b20a98bf81ac147070940",
   "date": "2026-11-14",
   "state": "plan-only",
   "spec": "../superpowers/specs/2026-11-14-chameleol-design-followups-spec.md",
@@ -402,8 +402,8 @@
     "maxPlayRecords": 32,
     "maxUtf8Bytes": 32768
   },
-  "revision": 2,
-  "previousDocumentHead": "5753cdb621181761d3d28e08d4e47232f47abce0",
+  "revision": 3,
+  "previousDocumentHead": "ad5c595f54e0a14d604b20a98bf81ac147070940",
   "withdrawnEffects": [
     {
       "id": 45,
@@ -456,33 +456,153 @@
     },
     {
       "from": 1,
-      "to": 9,
+      "to": 1,
       "key": "apprentice",
       "ja": "見習いカメレオン"
     },
     {
+      "from": 2,
+      "to": 3,
+      "key": "tier_02_03",
+      "ja": "色合わせの練習生"
+    },
+    {
+      "from": 4,
+      "to": 5,
+      "key": "tier_04_05",
+      "ja": "壁ぎわの隠れ上手"
+    },
+    {
+      "from": 6,
+      "to": 7,
+      "key": "tier_06_07",
+      "ja": "路地の忍び足"
+    },
+    {
+      "from": 8,
+      "to": 9,
+      "key": "tier_08_09",
+      "ja": "追跡かわしの新顔"
+    },
+    {
       "from": 10,
-      "to": 19,
+      "to": 11,
       "key": "alley",
       "ja": "路地の隠れ上手"
     },
     {
+      "from": 12,
+      "to": 13,
+      "key": "tier_12_13",
+      "ja": "裏道のすり抜け役"
+    },
+    {
+      "from": 14,
+      "to": 15,
+      "key": "tier_14_15",
+      "ja": "色変わりの手品師"
+    },
+    {
+      "from": 16,
+      "to": 17,
+      "key": "tier_16_17",
+      "ja": "追手泣かせの隠れ役"
+    },
+    {
+      "from": 18,
+      "to": 19,
+      "key": "tier_18_19",
+      "ja": "壁になりきる役者"
+    },
+    {
       "from": 20,
-      "to": 29,
+      "to": 21,
       "key": "expert",
       "ja": "街の擬態名人"
     },
     {
+      "from": 22,
+      "to": 23,
+      "key": "tier_22_23",
+      "ja": "街角の変装名人"
+    },
+    {
+      "from": 24,
+      "to": 25,
+      "key": "tier_24_25",
+      "ja": "色をまとう怪盗"
+    },
+    {
+      "from": 26,
+      "to": 27,
+      "key": "tier_26_27",
+      "ja": "警察泣かせの怪盗"
+    },
+    {
+      "from": 28,
+      "to": 29,
+      "key": "tier_28_29",
+      "ja": "追跡をかわす達人"
+    },
+    {
       "from": 30,
-      "to": 39,
+      "to": 31,
       "key": "elusive",
       "ja": "変幻自在の逃走者"
     },
     {
+      "from": 32,
+      "to": 33,
+      "key": "tier_32_33",
+      "ja": "気配を消す名手"
+    },
+    {
+      "from": 34,
+      "to": 35,
+      "key": "tier_34_35",
+      "ja": "夜道に溶ける影"
+    },
+    {
+      "from": 36,
+      "to": 37,
+      "key": "tier_36_37",
+      "ja": "包囲を抜ける怪盗"
+    },
+    {
+      "from": 38,
+      "to": 39,
+      "key": "tier_38_39",
+      "ja": "姿なき逃走者"
+    },
+    {
       "from": 40,
-      "to": 49,
+      "to": 41,
       "key": "phantom",
       "ja": "幻の宝石泥棒"
+    },
+    {
+      "from": 42,
+      "to": 43,
+      "key": "tier_42_43",
+      "ja": "月夜の大怪盗"
+    },
+    {
+      "from": 44,
+      "to": 45,
+      "key": "tier_44_45",
+      "ja": "街をあざむく幻"
+    },
+    {
+      "from": 46,
+      "to": 47,
+      "key": "tier_46_47",
+      "ja": "追いつけない残像"
+    },
+    {
+      "from": 48,
+      "to": 49,
+      "key": "tier_48_49",
+      "ja": "伝説目前のカメレオン"
     },
     {
       "from": 50,
@@ -491,167 +611,17 @@
       "ja": "伝説のカメレオン"
     }
   ],
-  "twoBuildingTitleProposals": [
-    {
-      "from": 2,
-      "to": 3,
-      "key": "proposal_02_03",
-      "ja": "色合わせの練習生",
-      "status": "proposal-only"
-    },
-    {
-      "from": 4,
-      "to": 5,
-      "key": "proposal_04_05",
-      "ja": "壁ぎわの隠れ上手",
-      "status": "proposal-only"
-    },
-    {
-      "from": 6,
-      "to": 7,
-      "key": "proposal_06_07",
-      "ja": "路地の忍び足",
-      "status": "proposal-only"
-    },
-    {
-      "from": 8,
-      "to": 9,
-      "key": "proposal_08_09",
-      "ja": "追跡かわしの新顔",
-      "status": "proposal-only"
-    },
-    {
-      "from": 12,
-      "to": 13,
-      "key": "proposal_12_13",
-      "ja": "裏道のすり抜け役",
-      "status": "proposal-only"
-    },
-    {
-      "from": 14,
-      "to": 15,
-      "key": "proposal_14_15",
-      "ja": "色変わりの手品師",
-      "status": "proposal-only"
-    },
-    {
-      "from": 16,
-      "to": 17,
-      "key": "proposal_16_17",
-      "ja": "追手泣かせの隠れ役",
-      "status": "proposal-only"
-    },
-    {
-      "from": 18,
-      "to": 19,
-      "key": "proposal_18_19",
-      "ja": "壁になりきる役者",
-      "status": "proposal-only"
-    },
-    {
-      "from": 22,
-      "to": 23,
-      "key": "proposal_22_23",
-      "ja": "街角の変装名人",
-      "status": "proposal-only"
-    },
-    {
-      "from": 24,
-      "to": 25,
-      "key": "proposal_24_25",
-      "ja": "色をまとう怪盗",
-      "status": "proposal-only"
-    },
-    {
-      "from": 26,
-      "to": 27,
-      "key": "proposal_26_27",
-      "ja": "警察泣かせの怪盗",
-      "status": "proposal-only"
-    },
-    {
-      "from": 28,
-      "to": 29,
-      "key": "proposal_28_29",
-      "ja": "追跡をかわす達人",
-      "status": "proposal-only"
-    },
-    {
-      "from": 32,
-      "to": 33,
-      "key": "proposal_32_33",
-      "ja": "気配を消す名手",
-      "status": "proposal-only"
-    },
-    {
-      "from": 34,
-      "to": 35,
-      "key": "proposal_34_35",
-      "ja": "夜道に溶ける影",
-      "status": "proposal-only"
-    },
-    {
-      "from": 36,
-      "to": 37,
-      "key": "proposal_36_37",
-      "ja": "包囲を抜ける怪盗",
-      "status": "proposal-only"
-    },
-    {
-      "from": 38,
-      "to": 39,
-      "key": "proposal_38_39",
-      "ja": "姿なき逃走者",
-      "status": "proposal-only"
-    },
-    {
-      "from": 42,
-      "to": 43,
-      "key": "proposal_42_43",
-      "ja": "月夜の大怪盗",
-      "status": "proposal-only"
-    },
-    {
-      "from": 44,
-      "to": 45,
-      "key": "proposal_44_45",
-      "ja": "街をあざむく幻",
-      "status": "proposal-only"
-    },
-    {
-      "from": 46,
-      "to": 47,
-      "key": "proposal_46_47",
-      "ja": "追いつけない残像",
-      "status": "proposal-only"
-    },
-    {
-      "from": 48,
-      "to": 49,
-      "key": "proposal_48_49",
-      "ja": "伝説目前のカメレオン",
-      "status": "proposal-only"
-    }
-  ],
-  "titleProposalPolicy": {
-    "status": "proposal-only",
-    "preserveExistingTitles": true,
-    "changeActiveRankRanges": false,
-    "displayAdditionalTitle": false,
-    "existingAnchorValues": [
-      0,
-      1,
-      10,
-      20,
-      30,
-      40,
-      50
-    ],
+  "titlePolicy": {
+    "status": "required-for-implementation",
+    "tierCount": 27,
+    "additionalAdopted": 20,
+    "preserveExistingNamesAndKeys": true,
     "singleValueExceptions": [
       0,
       1,
       50
     ],
-    "addedProposalCount": 20
+    "pairWidth": 2,
+    "singleTitleDisplay": true
   }
 }
