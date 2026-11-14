@@ -1,7 +1,7 @@
 import { mergePresentationStats } from '../presentation/stats.js';
 import { GUIDE_PROGRESS_KEY, normalizeGuideProgress, mergeGuideProgress, claimGroup, updateGroup } from '../guidance/progress.js';
-// IndexedDB を使えない時の代わり（メモリだけ）。再読込で消えるため、ランキング対象のプレイは始めない。
 import { EXTRAS_KEY, normalizeExtras, readDirector, applyBadgeClaim, applyCameoClaim } from './presentation-extras.js';
+// IndexedDB を使えない時の代わり（メモリだけ）。再読込で消えるため、ランキング対象のプレイは始めない。
 import { RUN_SLOT, StaleWriterError } from './store.js';
 
 export class MemoryStore {

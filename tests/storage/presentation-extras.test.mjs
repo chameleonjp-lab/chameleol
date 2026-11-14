@@ -194,6 +194,137 @@ for (const memory of [false, true]) {
   });
 }
 
+async function protectedState(store) {
+  return {
+    run: await store.loadRun(), outbox: await store.getAll('outbox'), local: await store.getAll('localResults'),
+    best: await store.get('localBest'), stats: await store.get('presentation.stats.v1'), extras: await store.get(EXTRAS_KEY),
+  };
+}
+async function seedProtected(store) {
+  await store.set('localBest', { passed: 3 });
+  await store.set('presentation.stats.v1', { version: 1, x: 1 });
+  await store.put('outbox', { playId: 'old', state: 'pending', attempts: 2, score: 7 });
+  await store.put('localResults', { playId: 'old2', score: 9 });
+}
+
+for (const memory of [false, true]) {
+  const label = `memory=${memory}`;
+
+  test(`failed claims leave runs, outbox, localResults and other kv exactly unchanged ${label}`, async () => {
+    const store = await mk(memory);
+    await seedProtected(store);
+    const c = await begin(store, 'p1');
+    assert.equal(await store.claimCameoStart({ ...c, state: st() }), true);
+    const before = await protectedState(store);
+    store.failWrites = failKv;
+    assert.equal(await store.claimPrecisionBadge(c), false);
+    assert.equal(await store.claimCameoStart({ ...c, state: st({ count: 1, lastStartedAt: 20000 }) }), false);
+    store.failWrites = null;
+    assert.equal(await store.claimPrecisionBadge({ ...c, generation: c.generation + 1 }), false, 'stale generation');
+    assert.equal(await store.claimCameoStart({ ...c, tabId: 'other', state: st({ count: 1, lastStartedAt: 20000 }) }), false, 'stale tab');
+    assert.equal(await store.claimCameoStart({ ...c, state: st({ count: 0 }) }), false, 're-initialization refused');
+    assert.deepEqual(await protectedState(store), before);
+    assert.equal(await store.claimPrecisionBadge(c), true, 'claim passes once failures are lifted');
+    store.close?.();
+  });
+
+  test(`badge and cameo state do not overwrite each other ${label}`, async () => {
+    const store = await mk(memory);
+    const c = await begin(store, 'p1');
+    assert.equal(await store.claimCameoStart({ ...c, state: st() }), true);
+    assert.equal(await store.claimPrecisionBadge(c), true);
+    assert.equal(await store.claimCameoStart({ ...c, state: st({ count: 1, lastStartedAt: 20000 }) }), true);
+    const p = (await store.get(EXTRAS_KEY)).plays[0];
+    assert.equal(p.badge, true);
+    assert.equal(p.director.count, 1);
+    store.close?.();
+  });
+}
+
+test('commit-time failures (put throws, abort after put) return false and change nothing', async () => {
+  for (const mode of ['putThrows', 'abortAfterPut']) {
+    const store = await openStore({ indexedDB: new IDBFactory() });
+    await seedProtected(store);
+    const c = await begin(store, 'p1');
+    assert.equal(await store.claimCameoStart({ ...c, state: st() }), true);
+    const before = await protectedState(store);
+    const orig = store.tx.bind(store);
+    store.tx = (names, m) => {
+      const tx = orig(names, m);
+      const os = tx.objectStore.bind(tx);
+      tx.objectStore = (n) => {
+        const s = os(n);
+        if (n === 'kv') {
+          const put = s.put.bind(s);
+          s.put = (...args) => {
+            if (mode === 'putThrows') throw new DOMException('quota', 'QuotaExceededError');
+            const r = put(...args);
+            tx.abort();
+            return r;
+          };
+        }
+        return s;
+      };
+      return tx;
+    };
+    assert.equal(await store.claimPrecisionBadge(c), false, mode);
+    assert.equal(await store.claimCameoStart({ ...c, state: st({ count: 1, lastStartedAt: 20000 }) }), false, mode);
+    store.tx = orig;
+    assert.deepEqual(await protectedState(store), before, mode);
+    assert.equal(await store.claimPrecisionBadge(c), true, `${mode}: passes once the failure is lifted`);
+    assert.equal(await store.claimCameoStart({ ...c, state: st({ count: 1, lastStartedAt: 20000 }) }), true, mode);
+    store.close();
+  }
+});
+
+test('two Store objects on the same DB: stale tab loses, owner wins once', async () => {
+  const idb = new IDBFactory();
+  const a = await openStore({ indexedDB: idb });
+  const b = await openStore({ indexedDB: idb });
+  const genA = await a.beginRun('A', snapOf('p1'));
+  const take = await b.claimRun('B', 'p1');
+  const r = await Promise.all([
+    a.claimPrecisionBadge({ playId: 'p1', tabId: 'A', generation: genA }),
+    b.claimPrecisionBadge({ playId: 'p1', tabId: 'B', generation: take.generation }),
+    b.claimPrecisionBadge({ playId: 'p1', tabId: 'B', generation: take.generation }),
+  ]);
+  assert.deepEqual(r, [false, true, false]);
+  a.close();
+  b.close();
+});
+
+test('two Store objects: claim, takeover and the old tab next claim issued back to back', async () => {
+  const idb = new IDBFactory();
+  const a = await openStore({ indexedDB: idb });
+  const b = await openStore({ indexedDB: idb });
+  const genA = await a.beginRun('A', snapOf('p1'));
+  const ca = { playId: 'p1', tabId: 'A', generation: genA };
+  assert.equal(await a.claimCameoStart({ ...ca, state: st() }), true);
+  const [first, take, late] = await Promise.all([
+    a.claimCameoStart({ ...ca, state: st({ count: 1, lastStartedAt: 20000 }) }),
+    b.claimRun('B', 'p1'),
+    a.claimCameoStart({ ...ca, state: st({ count: 2, lastStartedAt: 40000 }) }),
+  ]);
+  assert.equal(first, true);
+  assert.ok(take);
+  assert.equal(late, false);
+  assert.equal((await b.loadDirector('p1')).count, 1);
+  assert.equal(await b.claimCameoStart({ playId: 'p1', tabId: 'B', generation: take.generation, state: st({ count: 2, lastStartedAt: 40000 }) }), true);
+  a.close();
+  b.close();
+});
+
+test('worst-case 32 plays stay within 32KiB with the default limits', () => {
+  const id = (i) => '\u0001'.repeat(124) + String(i).padStart(4, '0');
+  const plays = Array.from({ length: MAX_PLAYS }, (_, i) => ({
+    playId: id(i), at: -1.2345678901234567e-300 - i * 1e-302, badge: true,
+    director: { count: 6, lastStartedAt: 9999999.123456789, rngState: 4294967295, reservedMidpoint: false, midpointUsed: true },
+  }));
+  const n = normalizeExtras({ version: 1, plays });
+  assert.equal(n.plays.length, MAX_PLAYS);
+  assert.ok(new TextEncoder().encode(JSON.stringify(n)).length <= MAX_BYTES);
+});
+
 test('readDirector, normalizeExtras and boundExtras are pure and strict', () => {
   const play = (i, extra = {}) => ({ playId: `p${i}`, at: 1000 + i, badge: false, director: null, ...extra });
   const n = normalizeExtras({ version: 1, plays: [play(1, { discovered: [1, 2], seen: true }), play(1), play(2, { director: st({ count: 3, lastStartedAt: 5 }) }), play(3, { director: { count: 9 } })] });

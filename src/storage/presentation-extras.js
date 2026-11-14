@@ -1,6 +1,7 @@
 // 表示用の保存（kv の `presentation.extras.v1`）。
 // 持つのは「E044 の通知済み印」と「小芝居の状態（回数・前回開始・抽選状態・中間配達の予約と実施済み印）」だけ。
 // 本編 snapshot・署名 summary・未送信結果・成績には触れない。発見集合・初発見印・図鑑用の項目は持たない。
+// 形を変える時は、このキーの version を上げず、別のキー（presentation.extras.v2）を使う。
 // ここは純関数だけ。取引（所有者・世代の確認、書込）は store.js / memory-store.js が行う。
 
 export const EXTRAS_KEY = 'presentation.extras.v1';

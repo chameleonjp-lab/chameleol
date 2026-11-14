@@ -219,7 +219,7 @@ export class Store {
 
   /**
    * 表示用の保存（presentation.extras.v1）の取引。担当タブ・世代・状態・プレイ番号が一致する時だけ書く。
-   * 失敗（古いタブ・旧プレイ・書込拒否・壊れた値）は例外にせず false。runs 以外は kv のこのキーだけを書く。
+   * 失敗（古いタブ・旧プレイ・書込拒否・壊れた値）は例外にせず false。runs は読むだけ。書くのは kv のこのキーだけ。
    */
   async extrasTransaction(tabId, generation, playId, apply) {
     let tx;
