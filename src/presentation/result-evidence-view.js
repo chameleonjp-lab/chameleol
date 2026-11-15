@@ -74,7 +74,7 @@ export function mountResultPanels({ host, t = (key) => key, state = { status: 'm
     const stage = el('div', 'evidence-wall', null, cell);
     stage.style.background = safeHex(frame.wallHsv) ?? 'transparent';
     const bodyColor = safeHex(frame.bodyHsv);
-    const art = svg('svg', { viewBox: '0 0 128 128', width: 54, height: 54, class: `evidence-silhouette${bodyColor ? '' : ' is-missing'}`, 'aria-hidden': 'true', focusable: 'false' }, stage);
+    const art = svg('svg', { viewBox: '2 16 112 88', width: 58, height: 46, class: `evidence-silhouette${bodyColor ? '' : ' is-missing'}`, 'aria-hidden': 'true', focusable: 'false' }, stage);
     svg('path', { d: SILHOUETTE, fill: bodyColor ?? 'none', stroke: '#24394b', 'stroke-width': 3, 'stroke-linejoin': 'round', ...(bodyColor ? {} : { 'stroke-dasharray': '6 5' }) }, art);
     el('span', 'evidence-police', frame.policeStage, stage);
     const caption = el('figcaption', 'evidence-frame-caption', null, cell);
@@ -141,14 +141,25 @@ export function mountResultPanels({ host, t = (key) => key, state = { status: 'm
       const text = svg('text', { x: xOf(time), y: 130, 'text-anchor': 'middle', 'font-size': 12, fill: '#b9bee6' }, graph);
       text.textContent = String(building);
     }
-    // 線と下の面。始まり（時刻0・警戒0）は規則の初期状態で、点の一覧には含めない。
-    const coords = [[xOf(0), yOf(0)], ...part.points.map((p) => [xOf(p.t), yOf(p.alertUnits)])];
+    // 線と下の面。点の一覧（棟末と終点）に、始まり（時刻0・警戒0、規則の初期状態）と、印・最大警戒の実際の値を通す。
+    const marks = data.alertMarks?.available ? data.alertMarks.marks : [];
+    const byTime = new Map([[0, 0]]);
+    for (const p of part.points) byTime.set(p.t, p.alertUnits);
+    for (const m of marks) byTime.set(m.t, m.alertUnits);
+    byTime.set(part.peakT, part.peakAlertUnits);
+    const coords = [...byTime.entries()].sort((a, b) => a[0] - b[0]).map(([time, units]) => [xOf(time), yOf(units)]);
     const lineD = coords.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join('');
     svg('path', { d: `${lineD}L${coords[coords.length - 1][0].toFixed(1)} ${y1}L${coords[0][0].toFixed(1)} ${y1}Z`, fill: '#ffcc4d', 'fill-opacity': 0.12 }, graph);
     svg('path', { d: lineD, fill: 'none', stroke: '#ffcc4d', 'stroke-width': 2.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, graph);
-    const marks = data.alertMarks?.available ? data.alertMarks.marks : [];
+    // 印の番号。近い印は上へずらして重ならないようにし、本当の位置へ細い線を引く。
+    const placed = [];
     marks.forEach((mark, i) => {
-      const [cx, cy] = [xOf(mark.t), yOf(mark.alertUnits)];
+      const cx = xOf(mark.t);
+      const trueY = yOf(mark.alertUnits);
+      let cy = trueY;
+      while (placed.some((q) => Math.abs(q.cx - cx) < 11 && Math.abs(q.cy - cy) < 11) && cy > y0 - 4) cy -= 11;
+      placed.push({ cx, cy });
+      if (cy !== trueY) svg('line', { x1: cx, x2: cx, y1: trueY, y2: cy, stroke: '#fff', 'stroke-width': 1 }, graph);
       svg('circle', { cx, cy, r: 5, fill: '#fff', stroke: '#14183a', 'stroke-width': 2 }, graph);
       const digit = svg('text', { x: cx, y: cy + 3, 'text-anchor': 'middle', 'font-size': 8, 'font-weight': 700, fill: '#14183a' }, graph);
       digit.textContent = String(i + 1);
