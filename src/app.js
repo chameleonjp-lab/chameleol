@@ -23,6 +23,7 @@ import { buildHomeShareText, buildResultShareText, shareToX } from './ui/share.j
 import { t, setLanguage, getLanguage, formatNumber, formatPercent2, formatMatch, formatSeconds, onLanguageChange } from './i18n/i18n.js';
 import { resolveLanguage } from './i18n/languages.js';
 import { openStore, TAB_ID, StaleWriterError } from './storage/store.js';
+import { normalizeExtras, readDirector, applyBadgeClaim, applyCameoClaim } from './storage/presentation-extras.js';
 import { MemoryStore } from './storage/memory-store.js';
 import { createMixer } from './audio/mixer.js';
 import { createStage, createVisiblePresentationClock } from './scene/stage.js';
@@ -70,6 +71,7 @@ export class App {
     this.playSecrets = new WeakMap();
     this.generation = 0;
     this.memoryOnly = false;
+    this.extrasMemory = { version: 1, plays: [] };
     this.startToken = null;
     this.startAttempt = null;
     this.practiceToken = null;
@@ -782,6 +784,63 @@ export class App {
     this.finishStartAttempt(attempt, 'started');
   }
 
+  /**
+   * 表示用の保存（presentation.extras.v1）の入口。showGame で世代が決まった後に1画面につき1回だけ作る。
+   * 保存先（端末の Store か、このアプリのメモリ）は作る時に決め、途中で切り替えない。
+   * 取得の失敗（false）は成績の保存の状態・警告に影響しない。結果を待って時計・入力・終了の保存を止めない。
+   * 新しい小芝居を止める印は port.disabled（再開で保存値が無い時、または開始枠の取得が false の後）。
+   */
+  createExtrasPort(session, { fresh, generation, current, seed = 1 }) {
+    const app = this;
+    const playId = session.meta.playId;
+    const store = this.store;
+    const memory = !generation || this.memoryOnly || !store;
+    const isFresh = Boolean(fresh || session.meta.debug); // 検証用の開始（debugStart）は新しい時計の開始として扱う
+    const initialState = { count: 0, lastStartedAt: null, rngState: (Number(seed) || 1) >>> 0, reservedMidpoint: true, midpointUsed: false };
+    const memoryClaim = (apply) => {
+      if (!current()) return false;
+      try {
+        const r = apply(normalizeExtras(this.extrasMemory));
+        if (!r.claimed) return false;
+        this.extrasMemory = r.extras;
+        return true;
+      } catch { return false; }
+    };
+    const settle = async (run) => {
+      try { return current() && (await run()) === true && current(); } catch { return false; }
+    };
+    const rawStart = (state) => (memory
+      ? Promise.resolve(memoryClaim((x) => applyCameoClaim(x, playId, state)))
+      : settle(() => store.claimCameoStart({ playId, tabId: TAB_ID, generation, state })));
+    const port = {
+      playId, fresh: isFresh, memory, disabled: false, restored: null, initialState, ready: Promise.resolve(true),
+      async loadDirector() {
+        try {
+          const state = memory ? readDirector(normalizeExtras(app.extrasMemory), playId) : await store.loadDirector(playId);
+          return current() ? state : null;
+        } catch { return null; }
+      },
+      async restore() {
+        port.restored = await port.loadDirector();
+        port.disabled = !port.restored;
+        return port.restored;
+      },
+      async claimCameoStart(state) {
+        const ok = await rawStart(state);
+        if (!ok) port.disabled = true;
+        return ok;
+      },
+      claimPrecisionBadge() {
+        return memory
+          ? Promise.resolve(memoryClaim((x) => applyBadgeClaim(x, playId)))
+          : settle(() => store.claimPrecisionBadge({ playId, tabId: TAB_ID, generation }));
+      },
+    };
+    // 新しいプレイの直後に count:0 を保存する。待たずに進む。失敗しても最初の小芝居は出せる（保存側は count 0/1 を通す）。
+    if (isFresh) port.ready = rawStart(initialState);
+    return port;
+  }
+
   async initializeGuides(session, fresh) {
     const options = { playId: session.meta.playId, legacyFlags: this.flags, legacyRun:fresh?null:session.snapshot(),fallbackProgress:this.guideMemory };
     if (session.meta.debug) return normalizeGuideProgress({version:1,basic:{consumed:true},brightness:{consumed:true}});
@@ -869,6 +928,11 @@ export class App {
     const initialProgress = await this.initializeGuides(session, fresh);
     if (!current()) return;
     const generation = this.generation;
+    const extrasPort = this.createExtrasPort(session, { fresh, generation, current, seed: decorations?.[0]?.sign ?? 1 });
+    if (!extrasPort.fresh) {
+      await extrasPort.restore();
+      if (!current()) return;
+    }
     const local = (await this.safeGet('localBest'))?.[session.meta.name || ''] ?? null;
     const statistics = sanitizeStats(await this.safeGet('presentation.stats.v1'));
     if (!current()) return;
@@ -914,7 +978,7 @@ export class App {
     this.guidance = guidance;
     this.renderGuidance = renderGuide;
     scope.own(()=>{guidance.dispose();if(this.guidance===guidance){this.guidance=null;this.renderGuidance=null;}});
-    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,verification:this.runtime.isVerification});
+    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,verification:this.runtime.isVerification,extrasPort});
     if (!current()) { stageView.dispose(); return; }
     this.stage = stageView;
     stageView.setBestDistance?.(local?.buildings??null);
