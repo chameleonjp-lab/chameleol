@@ -41,7 +41,7 @@ export function createDomStage(container, { course, rules = RULES_V1 } = {}) {
       const W = root.clientWidth * 0.62;
       const playerX = (t / rules.buildingMs) * W;
       const current = Math.floor(t / rules.buildingMs) + 1;
-      applyOutline(presentation?.building ?? current);
+      applyOutline(presentation?.building ?? Math.min(rules.buildingCount, current)); // 立体の舞台と同じく棟は50で止める
       walls.forEach((wall, i) => {
         const index = current - 1 + i;
         const valid = index >= 1 && index <= rules.buildingCount;

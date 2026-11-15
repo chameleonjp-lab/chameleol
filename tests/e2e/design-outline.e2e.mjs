@@ -237,12 +237,17 @@ test('外周線の画素：段階0は明るい灰色、段階7は現行の濃い
     await page.evaluate(() => __kamereoru.debugStart({ atMs: 5000 * 3 + 2500, seed: 1 }));
     const t = 5000 * 3 + 2500;
     const thin = await heroZone(page, { building: 1, t, gray: GRAY[0] });
+    const b11 = await heroZone(page, { building: 11, t, gray: GRAY[1] });
     const mid = await heroZone(page, { building: 26, t, gray: GRAY[4] });
     const thick = await heroZone(page, { building: 40, t, gray: GRAY[7] });
     const again = await heroZone(page, { building: 1, t, gray: GRAY[0] });
-    for (const r of [thin, mid, thick]) assert.ok(r.found, '主人公の体色の画素が見つかる');
+    for (const r of [thin, b11, mid, thick]) assert.ok(r.found, '主人公の体色の画素が見つかる');
     assert.ok(thin.line > 300, `段階0の灰色の線が主人公のまわりに出る (${thin.line})`);
     assert.ok(mid.line > 300, `段階4の線 (${mid.line})`);
+    assert.ok(thick.line > 300, `40棟では 27±4 の現行の線が主人公のまわりに出る (${thick.line})`);
+    // 内部の黒線の証拠：同じ位置で、線の色が45より明るい11棟と26棟を比べる（街の絵の違いが混ざる1棟との比べは使わない）
+    assert.ok(Math.abs(b11.dark - mid.dark) <= b11.dark * 0.005, `11棟と26棟の暗い画素の差は0.5%以下 (${b11.dark} / ${mid.dark})`);
+    assert.ok(thick.dark > mid.dark, `線が45以下になる40棟は26棟より暗い画素が多い (${thick.dark} / ${mid.dark})`);
     assert.ok(thick.dark > thin.dark, '段階7は外周が濃い黒に近いので、暗い画素が段階0より多い');
     assert.ok(thin.dark > 30, `内側の黒線（目の渦・瞳・口）は段階0でも残る (${thin.dark})`);
     assert.equal(again.url, thin.url, '同じ段階へ戻せば同じ画素（前の値を引きずらない）');
@@ -424,4 +429,114 @@ test('簡易表示の画像（3寸法）を残す', async () => {
       }
     } finally { await env.close(); }
   }
+});
+
+test('10→11棟の連続（t=49,900〜50,300）：前の段階へ戻らず、書き込みは1回だけ増える', async () => {
+  const env = await launch({ scale: 2 });
+  const { page } = env;
+  try {
+    await openHome(page, env.url);
+    await page.evaluate(() => __kamereoru.debugStart({ atMs: 9 * 5000, seed: 1 }));
+    const log = await page.evaluate(() => {
+      const a = __kamereoru; const out = [];
+      for (let t = 49900; t <= 50300; t += 100) {
+        const b = Math.floor(t / 5000) + 1;
+        const view = { t, building: b, passed: b - 1, phase: 'grace', color: a.session.state.color, policeStage: 0, running: false, matchState: null, combo: 0, maxCombo: 0 };
+        a.stage.update({ t, color: a.session.state.color, policeStage: 0, walking: false, presentation: view });
+        const o = a.stage.outlineStyle(); out.push({ b, stage: o.stage, thickness: o.thickness, writes: o.writes });
+      }
+      return out;
+    });
+    assert.equal(log.find((e) => e.b === 10).stage, 0);
+    assert.equal(log.find((e) => e.b === 11).stage, 1);
+    assert.equal(log.at(-1).thickness, 0.034);
+    for (let i = 1; i < log.length; i += 1) assert.ok(log[i].stage >= log[i - 1].stage, '前の段階へ戻らない');
+    assert.equal(log.at(-1).writes - log[0].writes, 1, '段階が変わった1回だけ書く');
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
+
+test('終了演出：40棟で始めても線は現行の段階のまま、書き込みは増えない', async () => {
+  const env = await launch({ scale: 2 });
+  const { page } = env;
+  try {
+    await openHome(page, env.url);
+    await page.evaluate(() => __kamereoru.debugStart({ atMs: 39 * 5000 + 2500, seed: 1 }));
+    await page.waitForFunction(() => __kamereoru.stage.outlineStyle().stage === 7, null, { timeout: 20000 });
+    const r = await page.evaluate(async () => {
+      const st = __kamereoru.stage;
+      const before = st.outlineStyle();
+      const during = [];
+      await st.playEnding('detected', { onFrame: () => during.push(st.outlineStyle()) });
+      const after = st.outlineStyle();
+      return { before, during: during.map((o) => [o.stage, o.thickness, o.writes]), after };
+    });
+    assert.equal(r.before.stage, 7);
+    assert.ok(r.during.length > 0, '終了演出の途中の描画がある');
+    for (const [stage, thickness, writes] of r.during) {
+      assert.equal(stage, 7);
+      assert.equal(thickness, 0.085);
+      assert.equal(writes, r.before.writes);
+    }
+    assert.equal(r.after.stage, 7);
+    assert.equal(r.after.writes, r.before.writes);
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
+
+test('比較面（倍率2・402x874）：明るい壁と暗い壁で、段階1の不一致は段階8の数を超えない', async () => {
+  const env = await launch({ width: 402, height: 874, scale: 2 });
+  const { page } = env;
+  try {
+    await openHome(page, env.url);
+    await page.evaluate(() => __kamereoru.debugStart({ atMs: 300, seed: 1 }));
+    const picks = await page.evaluate(() => {
+      const idx = __kamereoru.session.game.course.targets.map((t, i) => ({ i: i + 1, ...t }));
+      return { bright: idx.filter((c) => c.i < 20).sort((a, b) => b.s - a.s)[0].i, dark: idx.filter((c) => c.i >= 20).sort((a, b) => a.v - b.v)[0].i };
+    });
+    for (const index of [picks.bright, picks.dark]) {
+      const t = (index - 1) * 5000 + 2500;
+      const read = (outlineBuilding) => page.evaluate(({ index, t, outlineBuilding }) => {
+        const a = __kamereoru; const color = { ...a.session.game.course.targets[index - 1] };
+        const view = { t, building: outlineBuilding, passed: index - 1, phase: 'grace', color, policeStage: 0, running: false, matchState: null, combo: 0, maxCombo: 0 };
+        for (let i = 0; i < 2; i += 1) a.stage.update({ t, color, policeStage: 0, walking: false, presentation: view });
+        const c = a.stage.checkComparisonSurfaces();
+        return { stage: a.stage.outlineStyle().stage, wm: c.wallMismatches, bm: c.bodyMismatches, wp: c.wallPixels, bp: c.bodyPixels };
+      }, { index, t, outlineBuilding });
+      const thin = await read(1);
+      const thick = await read(40);
+      assert.equal(thin.stage, 0);
+      assert.equal(thick.stage, 7);
+      assert.ok(thin.wp > 500 && thin.bp > 0, `比較面の画素 ${JSON.stringify(thin)}`);
+      assert.ok(thin.wm <= thick.wm, `壁の不一致 ${thin.wm} > ${thick.wm} at ${index}`);
+      assert.ok(thin.bm <= thick.bm, `胴の不一致 ${thin.bm} > ${thick.bm} at ${index}`);
+    }
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
+
+test('簡易表示：presentation が無く t が250,000以上でも、棟は50で止まり段階8のまま', async () => {
+  const env = await launch({ scale: 2 });
+  const { page } = env;
+  try {
+    await openHome(page, env.url);
+    const r = await page.evaluate(async () => {
+      const { createStage } = await import('/src/scene/stage.js');
+      const box = document.createElement('div');
+      box.style.cssText = 'position:fixed;left:0;top:0;width:300px;height:300px';
+      document.body.append(box);
+      const targets = Array.from({ length: 50 }, () => ({ h: 12000, s: 6000, v: 10000 }));
+      const st = await createStage(box, { course: { targets }, forceDom: true });
+      const color = { h: 12000, s: 6000, v: 10000 };
+      const out = {};
+      for (const t of [245000, 249999, 250000, 260000]) {
+        st.update({ t, color, policeStage: 0 });
+        out[t] = st.outlineStyle().stage;
+      }
+      return { kind: st.kind, out };
+    });
+    assert.equal(r.kind, 'dom');
+    assert.deepEqual(r.out, { 245000: 7, 249999: 7, 250000: 7, 260000: 7 });
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
 });
