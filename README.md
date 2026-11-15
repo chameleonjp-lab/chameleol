@@ -14,7 +14,17 @@
 - [受入試験一覧](docs/acceptance/kamereoru-acceptance.md)：実装後に確認する条件と要件番号の対応。
 - [仕様統合のレビュー記録](docs/reviews/2026-11-07-kamereoru-requirements-review.md)：旧案との整理、補完した境界処理、文書確認の範囲と限界。
 
+## Claudeへ渡す現在の計画（2026-11-16）
+
+#24のブラウザ4組並行CIを保持し、#22の作業ブランチに入っていた#23の仕様処理を今回の引継ぎPRへ取り込みます。Claudeは結果画面・舌・街・警察の見た目を担当し、ChatGPTが採点・保存・共有制御と通常起動への最終接続を担当します。画面・実機・公開はまだ完了していません。
+
+- [更新した実装計画書・組織図・モデルとエフォート](docs/superpowers/plans/2026-11-15-chameleol-post-pr21-plan.md)：P0〜P6、担当ファイル、合格条件、G1/G2への引継ぎ。
+- [コピーしてClaudeへ渡す依頼文](docs/prompts/2026-11-15-claude-visual-followups.md)と[実装済み#23の接続票](docs/prompts/2026-11-15-claude-pr23-handoff.md)。依頼文は今回の計画更新PRを本人がmainへマージした後に使います。
+- [今回のレビュー記録](docs/reviews/2026-11-16-claude-execution-plan-review.md)。過去の実装・試験記録は時点付きで残します。
+
 ## PR #21後の対応と担当（2026-11-15）
+
+ChatGPT担当C0〜C4の判定・データ・保存取得・画像共有制御を実装しました。[実装・検証記録](docs/acceptance/chatgpt-pr23-evidence.md)と[Claudeへの受け渡し](docs/prompts/2026-11-15-claude-pr23-handoff.md)を参照してください。描画口と新しい舞台の実接続、V1〜V4の画面・実機・公開は別工程です。
 
 PR [#21](https://github.com/chameleonjp-lab/chameleol/pull/21)は取り込み済みです。輪郭8段階、結果の静止解析と5パネル、表示用保存とappの取得口が入りました。舌とダイヤ、背景・警察の追加、精密札、全27称号の主結果カードと画像共有、実接続と実機確認は残っています。静止解析にもレビューの修正が残ります。PR本文の「T0のみ」は初期の記述です。
 

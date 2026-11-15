@@ -1,6 +1,6 @@
 # カメレオる：PR #21後の担当分担と受け渡し仕様
 
-2026-11-15（日本時間）。これは後続実装の仕様で、製品コードの変更・実機合格・公開の報告ではない。
+2026-11-15初版、2026-11-16引継ぎ追記（日本時間）。#23の処理実装と#24のCIを組み合わせる計画改訂を反映する。Claudeの描画実装、通常起動への最終接続、実機合格、公開の報告ではない。
 
 ## 1. 今回の決定と参照元
 
@@ -9,6 +9,20 @@
 機能の内容は[改訂3の要件](2026-11-14-chameleol-design-followups-spec.md)を引き継ぎ、[PR #21の最終レビュー](../../reviews/2026-11-14-chameleol-design-followups-implementation-review.md)で決まった修正を取り込む。本書は担当と接続口を具体化し、古い計画・依頼文と担当が食い違う場合に優先する。新しい遊び方や配点は追加しない。
 
 基準はPR [#21](https://github.com/chameleonjp-lab/chameleol/pull/21)を取り込んだmain `e6d2e14f65b117e2ea288196f68c38364837cdf5`。実装を始める時は最新mainとの差を確認する。後続工程は[今回の計画書](../plans/2026-11-15-chameleol-post-pr21-plan.md)で管理する。
+
+### 2026-11-16の実装体制と責任の境界
+
+[計画書の実行体制](../plans/2026-11-15-chameleol-post-pr21-plan.md#2026-11-16の開始状態)に、組織図・Opus 5.5／Sonnet 5.5・effort・同時4人の上限・編集ファイル・P0〜P6を追加した。モデル名と設定は役割ごとに指定し、未対応の設定を実行できたと記録しない。
+
+#23は2026-11-16 07:01（日本時間）に#22の作業ブランチへマージされており、#24後のmain `f4206a4`には未反映だった。今回の引継ぎPRで既存の処理をmainへ提出し、#24のCIは保持する。機能の再実装や新しい採点は行わない。
+
+Claude内で`street.js/stage.js`を編集する担当はB、共通CSSと結果のアトラスはA、街の素材と警察の描画部品はCに固定する。共有部分を同時に編集しない。`src/app.js`と仕様処理は引き続きChatGPT担当とする。
+
+Claudeは`result-card-ports.js`の`createResultCardPorts({result,host,scope})`を提供し、`new App(root,{resultCardPorts})`の試験で実データとの接続を確認する。通常の`new App(root)`へ渡す最終の変更と`catalog.js`の96/4切替はG1でChatGPTが行う。ClaudeのPRはその接続例・未接続箇所も含めて引き渡す。Appの処理を変更しないために、固定値の画面を完成として出すことは認めない。
+
+精密札は現在AppからHUDへ転送されていない。Claude Cがボーナス表示の`tick({precisionBadge,...})`に読み取り専用の札を受け取る表示口を追加し、Tが実controllerと明示接続して確認する。G1でChatGPTが舞台更新後の`gameExtrasController.snapshot().precisionBadge`を既存通知へ渡す。`step()`は舞台の1回だけにし、新しい時計・札の条件・得点・効果音を表示側へ増やさない。
+
+No.34/39等の描画はClaude段階では新しい部品へsnapshotや固定姿勢を直接渡して確認する。Appの強制入口の拒否解除、96/4の正式切替、通常起動の本文共有試験の押す先変更はG1でChatGPTが担当する。Claudeは実portsを指定したAppの追加試験で画像共有と代替本文を検査し、通常起動の既存試験を保持する。
 
 ## 2. 守る条件
 
@@ -36,7 +50,7 @@ Claudeは画面内で称号・得点・回数・時刻の条件を作り直さ�
 
 ## 4. 結果のデータと画面の接続口
 
-以下は**新規実装する契約**。既存実装済みの関数と混同しない。`src/presentation/result-card-data.js` はChatGPTが実装する。
+以下の処理側は**#23で実装済みの契約**で、今回の引継ぎPRに含める。描画側の`createResultPortrait`、`drawResultCard`等はClaudeがこれから実装する。実際の関数・ports・Appオプションは[実装後の接続票](../../prompts/2026-11-15-claude-pr23-handoff.md)を照合し、処理を作り直さない。
 
 ```js
 rankForPassed(passed) // -> { rankKey, from, to } | null

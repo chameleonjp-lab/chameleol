@@ -1,6 +1,6 @@
 # カメレオる：PR #21後の後続対応 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 本人指定のClaude／ChatGPT分担を維持する。
+> **For agentic workers:** P0〜P6の役割・編集担当・同時4人の上限に従う。実装はA/B/Cで並行し、複数担当を利用できない場合だけ同じ順序で逐次実行する。古い逐次実行の指示でこの体制を置き換えない。本人指定のClaude／ChatGPT分担を維持する。
 
 **Goal:** PR #21で入った部品を引き継ぎ、残る修正・演出・27称号の結果カード・画像共有を、Claudeの画面実装とChatGPTの仕様処理に分けて完成させる。
 
@@ -10,9 +10,11 @@
 
 **Spec:** [今回の分担・接続仕様](../specs/2026-11-15-chameleol-role-contract.md)、[既存改訂3の要件](../specs/2026-11-14-chameleol-design-followups-spec.md)、[PR #21の実装レビュー](../../reviews/2026-11-14-chameleol-design-followups-implementation-review.md)。Claudeへは[画面実装専用の依頼文](../../prompts/2026-11-15-claude-visual-followups.md)を渡す。
 
-2026-11-15（日本時間）。基準mainは `e6d2e14f65b117e2ea288196f68c38364837cdf5`。本書は実装前の計画であり、以下の実装用チェック欄は未実施。本PRでは文書だけを変更する。
+2026-11-15初版、**2026-11-16（日本時間）Claude実行体制を追記**。今回の開始基準は#24取り込み済みmain `f4206a484d058f02204da9c401361538853f0750`。#23の実装head `38cd3a517581ff76d8252dcbf9364e919bb1828d` は#22の作業ブランチへマージされ、開始時点のmainには未反映だったため、今回のPRでその実装を引き継ぐ。#24の4組並行CIは保持する。
 
-計画の独立レビューと修正は[レビュー記録](../../reviews/2026-11-15-chameleol-post-pr21-plan-review.md)に記載する。
+C0〜C4の節は初回の実装手順を残したもの。現在の進行状況は直下の「2026-11-16の開始状態」を優先し、処理を再実装しない。V1〜V4の画面、G1の通常起動経路への最終接続、G2の実機・公開は未完了。今回のPRには既存#23の処理と本書等の改訂を含むが、新しい画面は実装しない。
+
+初版のレビューは[2026-11-15の記録](../../reviews/2026-11-15-chameleol-post-pr21-plan-review.md)、今回の実行体制の独立レビューと修正は[2026-11-16の記録](../../reviews/2026-11-16-claude-execution-plan-review.md)に記載する。
 
 ## Global Constraints
 
@@ -34,6 +36,119 @@
 | 旧版・不正な棟数・ベスト棟だけ実色欠損・壊れたボーナス | C2：確認中／記録なしを出し、次点や壁色から埋めない |
 | 取得が遅い・複数タブ・中間配達の期限をまたぐ | C4/V3：取得成功前には描かず、成績・再開・入力を止めない |
 | 短い縦画面・横画面・警察1人の振り向き・画像保存表示 | V2/V4/G1：比較面・操作領域・8px余白・16MiBを守る |
+
+## 2026-11-16の開始状態
+
+| 対象 | 今回のPRで引き継ぐ状態 | 次に行うこと |
+| --- | --- | --- |
+| #22の仕様と計画 | mainへ反映済み | 要件とChatGPT／Claudeの分担を保持 |
+| #23 C0〜C4 | 実装headを本PRへ取り込む。既存の判定・共有制御・保存口・15言語を使用 | Claudeはこの処理を呼び出す画面を作る。処理自体を作り直さない |
+| #24 CI | mainへ反映済み。checks＋ブラウザ4組＋最後のtest | 途中は対象試験、提出前はこのCIを1回完了。新規のe2eファイルも自動対象 |
+| V1〜V4 | 未実装。#23は描画部品の接続口まで | 本節の実行体制で実装・画像確認・PR提出 |
+| G1 | ChatGPT担当として残る | 結果の通常起動への接続と96採用／4除外への切替、実データでの全体検証 |
+| G2 | 実機・公開確認は残る | iPhoneで開ける候補と確認手順、配布差分を用意。公開は別の依頼・計画と照合 |
+
+#23単独の最終CIは単体530成功／失敗0／DB専用skip31、サーバー処理32/32、ブラウザ209/209を記録している（[実装証拠](../../acceptance/chatgpt-pr23-evidence.md)）。#24単独の実測19分19秒→7分34秒は、その当時の207件の比較である。今回の組合せの結果は今回のPRのCIで確認し、過去の件数・時間で代用しない。
+
+### 実装組織とモデル・エフォート
+
+エフォートは、モデルが検討に使う深さの設定。以下は今回の作業への指定であり、公式の一律推奨値ではない。**統括と設計はOpus 5.5、製品コードと試験の実装はSonnet 5.5**を使う。独立レビューは実装者と別の担当・新しい文脈で行う。
+
+| 役割 | 指定モデル | effort | 責任と成果物 |
+| --- | --- | --- | --- |
+| O：統括・競合整理 | `claude-opus-5-5` | `high` | 要件・優先順位、担当範囲、進行表、共通ファイルの編集順、PRと残件 |
+| D：見た目・画面の設計 | `claude-opus-5-5` | `xhigh` | 配色・構図・動作・余白・3寸法・長い翻訳・資源配分を先に決め、A/B/Cへ渡す。製品コードは書かない |
+| A：結果パネルと結果カードの実装 | `claude-sonnet-5-5` | `high` | V1→V4、Canvas描画・主人公撮影・模型・回転パネル・共有/保存の画面・共通CSS |
+| B：主人公の舌と舞台側の描画接続 | `claude-sonnet-5-5` | `high` | V2、舌・ダイヤ・姿勢、street/stageの描画側接続、Cの描画部品を舞台へ組み込む |
+| C：街・警察・精密札の実装 | `claude-sonnet-5-5` | `high` | V3、街の素材・警察動作・通知の見た目。舞台へ渡す独立した描画部品と配置可否 |
+| T：試験の実装・画像/数値の記録 | `claude-sonnet-5-5` | `high` | 条件別の試験、3寸法の画像、比較色・余白・資源数、旧版・共有・停止の証拠 |
+| R：独立した設計/実装レビュー | `claude-opus-5-5` | `xhigh` | 重要な欠落・競合・値の二重判定・描画負荷・画像と操作の不一致を検査。製品コードは変更せず、指摘を実装担当へ返す |
+| W：証拠の整理と引継ぎ | `claude-sonnet-5-5` | `medium` | 要件ID→ファイル→試験→画像の対応、実機/未接続/未公開の区別、ChatGPTへの受け渡し票 |
+
+```mermaid
+flowchart TD
+  O["O 統括 / Opus 5.5 / high"] --> D["D 見た目の設計 / Opus 5.5 / xhigh"]
+  D --> A["A 結果画面 / Sonnet 5.5 / high"]
+  D --> B["B 舌・舞台 / Sonnet 5.5 / high"]
+  D --> C["C 街・警察 / Sonnet 5.5 / high"]
+  A --> T["T 試験と画像 / Sonnet 5.5 / high"]
+  B --> T
+  C --> T
+  T --> R["R 独立レビュー / Opus 5.5 / xhigh"]
+  R --> W["W 引継ぎ / Sonnet 5.5 / medium"]
+  W --> G["G1 ChatGPTが通常起動へ接続"]
+```
+
+役割の数だけ同時に起動しない。**統括を含め同時4人まで**。最初はO＋D、設計が定まったらO＋A＋B＋Cで並行する。終了した実装担当の枠をT、次にR、Wへ回す。T/R/Wを追加して上限を超えない。独立レビューの指摘修正はSonnetの元の実装担当へ返し、変更した範囲を再確認する。
+
+同じ担当者の自己点検を独立レビューと書かない。利用環境が複数担当を起動できない場合は、実際に利用できるモデルと設定を記録したうえで同じ役割順に実行する。指定モデルが使えない場合や設定が制限されている場合は、その事実と候補を返し、使ったことにしない。追加課金や別の外部APIを起動して補わない。
+
+### モデル設定の方法と出典
+
+2026-11-16に[モデル一覧](https://platform.claude.com/docs/en/models/overview)、[Claude Codeのモデルとeffort](https://code.claude.com/docs/en/model-config)、[サブエージェントのmodel/effort](https://code.claude.com/docs/en/sub-agents)を確認した。モデルIDは上表を固定値にし、版が変わり得る`opus`/`sonnet`の別名だけで記録しない。
+
+Claude Codeを起動できる環境での統括の設定例は `claude --model claude-opus-5-5 --effort high`。各担当にはモデルIDとeffortを個別に指定する。定義ファイルを使う場合は、そのファイルの冒頭に次のように記述する。
+
+```yaml
+---
+name: chameleol-result-visual-implementer
+description: カメレオるのV1とV4の画面実装を担当する
+model: claude-sonnet-5-5
+effort: high
+---
+```
+
+モデルを変えると親のeffortがそのまま引き継がれるとは限らない。`CLAUDE_CODE_EFFORT_LEVEL`がある場合は個別指定より優先されるため、値の有無と実際に適用された設定を記録する。環境変数や組織の設定を勝手に書き換えない。個別設定を使える機能はClaude Codeの版で異なるため、認識された設定を確認する。本文にモデル名を書くことだけで切替済みと扱わない。ブラウザ版等で同じ操作ができない場合も、利用できた機能だけを記録する。
+
+### 編集するファイルを分ける
+
+| 編集場所 | Claude内の担当 | 同時編集を避ける方法 |
+| --- | --- | --- |
+| `result-evidence-view.js`、結果の新規描画4ファイル、`presentation.css`、結果アトラス | A | CSSと結果アトラスはAだけ。Cの通知用CSSは追加する規則をAへ渡す |
+| `tongue-rig.js`、`travel-tongue.js`、`showcase-tongue.js`、`street.js`、`stage.js` | B | `street.js`と`stage.js`はBだけ。Cの描画呼出・配置可否をBが取り込む |
+| `street-accents.js`、`actor-reactions.js`、`characters.js`、`hud-view.js`、`bonus-view.js`、街アトラス | C | Bの主人公姿勢との変更箇所を先に共有し、同じ関数へ同時に修正を入れない |
+| 各対象の試験 | 実装担当→T | 実装担当が対象ファイルを返してからTが追加する。試験ファイルの二重編集をしない |
+| `src/app.js`、C1〜C4の処理、15辞書、`catalog.js`の採否、保存・通信・規則 | ChatGPT | Claudeは変更しない。必要な接続差分や翻訳キーは受け渡し票へ記す |
+
+同時作業は別の作業コピーで行い、Oが取り込み前に差分を照合する。作業コピーを作る機能が既定ブランチから開始する場合もあるため、全担当の開始commitがこの計画更新PRを含む同じcommitであることを確認する。
+
+### Claudeの実行工程と合格条件
+
+| 工程 | 担当・開始条件 | 実装と合格条件 |
+| --- | --- | --- |
+| P0 最新状態の照合 | O／この計画更新PRを本人がmainへマージ後 | #23の処理ファイル、#24の4組CI、現行の計画・分担仕様・接続票を確認。C0〜C4を再実装しない |
+| P1 見た目を決める | D／P0後 | No.28、既存の輪郭・街・結果の見た目を引き継ぐ。3寸法と15言語、カード1体、描画と画像の上限を満たす配置と姿勢をA/B/Cへ渡す |
+| P2 並行して実装 | A＝V1→V4、B＝V2、C＝V3／P1後 | 下記V節の全条件を実装。計算は#23の処理を呼び、結果の実色や称号、舌の時刻、抽選、精密札を画面側で再判定しない |
+| P3 描画側を組み合わせる | BがCを舞台へ、Aが結果を組合せ／各部品後 | `stageFactory`に渡る`gameExtrasController`を既存の描画フレーム内で1回だけ呼ぶ。`args.presentation.t`を使用し、sceneTと混同しない。旧directorとの二重抽選をしない |
+| P4 実際のAppと接続試験 | A/B＋T／P3後 | 結果は`new App(root,{resultCardPorts})`を使う試験経路で実際の値と接続し、描画用モックだけで合格にしない。通常起動が`new App(root)`のままである点はG1未接続として明記 |
+| P5 独立レビューと修正 | R→A/B/C→T／P4後 | 3寸法の画像・15言語・旧版・欠損・再プレイ・警告/ガイド・停止・共有取消・資源数を照合。重要指摘は修正と再確認後にPRへ含める |
+| P6 ChatGPTへ提出 | O＋W／P5後 | 変更ファイル、実際のexport、ports生成と呼出例、対象commit、試験・画像・測定、未接続一覧を1枚の受け渡し票にまとめる。G1用PRとして提出し、マージは本人へ委ねる |
+
+精密札には結果portsとは別の接続が必要。現在のAppはcontrollerを舞台へ渡すだけで、HUDやボーナス表示へ`precisionBadge`を渡していない。Cは`mountBonusPresentation`が返す`tick({precisionBadge,...})`で読み取り専用の札を受け取り、既存通知の一行へ統合する表示口を追加する。札の判定・保存・得点・新しい効果音を追加しない。Tは実際のcontrollerのsnapshotをその表示口へ明示接続して確認する。通常Appの接続はG1でChatGPTが`gameExtrasController.snapshot().precisionBadge`を既存通知へ渡す。ゲーム側の`step()`は舞台の1回だけとし、通知のためにもう一度呼ばない。同じ描画フレームの既存通知更新へ接続し、新しいタイマーを増やさない。
+
+V3のNo.34/39等は、実controllerのsnapshotまたは固定姿勢を新しい描画部品へ直接渡して検査する。現在のAppの`debugPresentation()`はこれらのIDを拒否するので、Claudeはこの拒否や採否を変えない。Appの強制入口と全16案の正式な採否切替はG1に残す。通常起動の本文共有試験もClaude段階では保持し、画像共有と代替本文ボタンは実portsを指定したAppで別に確認する。
+
+P4までの実接続試験と、G1の通常起動への接続を分ける。Claudeの新規ファイルとして`src/presentation/result-card-ports.js`を用意し、`createResultCardPorts({result,host,scope})`から描画・撮影・mount・panels等を返す。App側へインポートして標準起動へ渡す変更はChatGPTがG1で行う。舞台は既存の`gameExtrasController`オプションを使えるが、#23に存在しない呼出形を独自に仮定しない。必要な変更が処理へ及ぶ時は、具体的な入力・期待値・最小の差分案をChatGPTへ返す。
+
+#### 今回の必須確認を工程へ割り当てる
+
+| 条件 | 確認する工程と証拠 |
+| --- | --- |
+| 旧C工程のやり直し、mainにない処理をあるものとして使う | P0：ファイル・export・接続票と#23の実装を照合 |
+| 共通CSS・street/stage・アトラスが別担当に上書きされる | P2/P3：担当表、同じ開始commit、取り込み前の差分照合 |
+| pending解析中の再プレイ、遅い画像、同点の確認状態変更、言語だけの変更 | P4/P5：旧Fileの無効化、画面が戻らない、主人公の撮り直し回数を検査 |
+| モデルを見られるパネルとカード撮影が同時に描画器を持つ | P4/P5：同時1個、優先解除、閉じた後の資源数を測定 |
+| 固定入力やPNGだけでiPhone/X/通常起動も完成と記載する | P6：自動確認、G1未接続、iPhone未確認、未公開を別欄に記載 |
+
+### テストを必要な範囲で進める
+
+製品コードを変える工程は、要件に対応する失敗を確認してから直し、その工程の対象試験を実行する。工程の途中に毎回全件を繰り返さない。V1〜V4の対象試験は下の各節に記載する。新しいテストは既存の`tests/<分類>/*.test.mjs`と`tests/e2e/*.e2e.mjs`に置く。
+
+最後の製品コード変更後は#24のCIでchecks、4組のブラウザ、最終testとビルドを一度成功させる。4組それぞれの成功記録を確かめる最終判定を残し、テストの削除・skipの追加・上限の緩和で短くしない。失敗時は原因を直し、変更に必要な確認だけをやり直す。画面に関わる新しい変更が無い文書修正では、同じ全件を手動で追加実行しない。
+
+### 提出する記録
+
+提出先は`docs/acceptance/claude-visual-handoff.md`。工程ID、要件ID、実装ファイル、公開関数、モデルIDと実effort、対象commit、固定入力と実Appの入力、3寸法の画像、試験名と結果、色の画素・8px余白・遮蔽率・形/描画/画像/メモリの測定、G1用の接続例、未確認事項を記載する。実機の性能目標はG2で扱い、自動ブラウザの数値を実機合格へ読み替えない。
 
 ## 1. PR #21後に確認した状態
 
@@ -89,14 +204,14 @@ T1-05・T8-04の設計記録の修正、P01〜P28の未実装部分も今回の�
 
 ## 3. 実装順と編集するファイル
 
-C0の後にC1→C2→C3、C4を進める。Claudeは契約が確定した部分からV1→V2→V3→V4を進める。V1はC1の文言、V2/V3はC4、V4はC2/C3に依存する。C3とV1のように編集ファイルが分かれる作業は同時に進めてよい。部品完成→接続→実データ確認を各工程で区別する。
+初回のC0〜C4は#23で実装済みで、今回のPRへ引き継ぐ。今からは上記P0〜P6に従い、AのV1→V4、BのV2、CのV3を編集範囲を分けて並行する。部品完成→Appオプション等からの接続試験→G1の通常起動への接続を区別する。下のC節は初回の実装・回帰条件の記録として残し、新規作業の指示には使わない。
 
 | 担当 | 主に新規作成するファイル | 既存で編集する主なファイル |
 | --- | --- | --- |
 | ChatGPT C1 | なし | `src/presentation/result-evidence.js`、`tests/e2e/result-evidence.e2e.mjs`、15辞書 |
-| ChatGPT C2 | `src/presentation/result-card-data.js`、`result-miniature-data.js`、対応する `tests/presentation/result-card-data.test.mjs`、`result-miniature-data.test.mjs` | `src/presentation/result-data.js` は互換修正が必要な部分だけ |
+| ChatGPT C2 | `src/presentation/result-card-data.js`、`result-miniature-data.js`、`result-titles.js`、対応する `tests/presentation/result-card-data.test.mjs`、`result-miniature-data.test.mjs` | `src/presentation/result-data.js` は互換修正が必要な部分だけ |
 | ChatGPT C3 | `src/presentation/result-card-controller.js`、`result-renderer-owner.js`、`src/ui/share-card.js` と各単体試験 | `src/app.js`、`src/ui/share.js` の既存ホーム経路は保持 |
-| ChatGPT C4 | `src/presentation/game-extras-controller.js`、`cameo-reservations.js`、`precision-badge.js`、`police-extras.js`、`src/scene/travel-tongue-motion.js` と各単体試験 | `src/app.js`、`catalog.js`。保存ファイルは必要な互換修正だけ |
+| ChatGPT C4 | `src/presentation/game-extras-controller.js`、`cameo-reservations.js`、`precision-badge.js`、`police-extras.js`、`evaluation-segments.js`、`src/scene/travel-tongue-motion.js` と各単体試験 | `src/app.js`、`catalog.js`。保存ファイルは必要な互換修正だけ |
 | Claude V1 | 必要な画像証拠 | `result-evidence-view.js`、`presentation.css`、対応する画面・配置試験 |
 | Claude V2 | `src/scene/tongue-rig.js`、`travel-tongue.js`、描画試験 | `showcase-tongue.js`、`scene/street.js`、`scene/stage.js` |
 | Claude V3 | 追加素材と描画試験 | `street-accents.js`、`actor-reactions.js`、`scene/characters.js`、`hud-view.js`、`bonus-view.js`、`scripts/render-street-atlas.mjs` とアトラス |
@@ -199,13 +314,13 @@ C0の後にC1→C2→C3、C4を進める。Claudeは契約が確定した部分�
 
 - [ ] 変更前の制作スクリプトで街アトラスを再生成し、既存画像との差を数値で残す。拡張後も既存61枠を比較し、格子座標の参照をまとめて更新する。
 - [ ] 踏切の閉鎖→列車→開放、水源と渦、ロボットの塗装→足→見下ろす、鳥と荷物の上下、機体と旗、足跡を見る→迷う、聞き込みの接地を固定姿勢で確認する。
-- [ ] 旧小芝居も新予約へ接続し、取得前非表示・期限切れ静止旗・棟枠再利用・停止・画面離脱を画面試験で確かめる。精密札は既存ボーナスと一つの表示にまとめる。
+- [ ] 旧小芝居も新予約へ接続し、取得前非表示・期限切れ静止旗・棟枠再利用・停止・画面離脱を画面試験で確かめる。精密札は既存ボーナスと一つの表示にまとめる。`mountBonusPresentation().tick({precisionBadge,...})`へcontrollerの読み取り専用snapshotを受け取る表示口を作り、実controllerと明示接続して検査する。通常Appからの転送はG1へ渡し、追加の`step()`は呼ばない。
 - [ ] `tests/e2e/extended-street.e2e.mjs`、`police-investigation.e2e.mjs`、`precision-badge.e2e.mjs` を追加し、対象単体と既存 `actor-reactions.test.mjs`、`hud.test.mjs`、`bonus.e2e.mjs`、`presentation.e2e.mjs` を確認する。警察1→0/1→2の後に補正が残らないことを検査する。
 - [ ] 合計の装飾・粒子・小芝居・描画呼出・形・画像を測って3寸法の画像とcommitを渡す。E069の条件付き非表示と警察原画の不足は明記する。
 
 ## V4：主結果カード・画像・任意パネルを作る（Claude）
 
-**Files:** `result-card-view.js`、`result-portrait.js`、`result-model.js`、`result-miniature.js`、`result-view.js`、`presentation.css`、結果アトラスのスクリプトと定義。新規描画単体と `tests/e2e/result-card.e2e.mjs`。
+**Files:** `result-card-view.js`、`result-portrait.js`、`result-model.js`、`result-miniature.js`、`result-card-ports.js`、`result-view.js`、`presentation.css`、結果アトラスのスクリプトと定義。新規描画単体と `tests/e2e/result-card.e2e.mjs`。
 
 **Interfaces:** C2のmodel、C3のcontroller/ports。`drawResultCard` は画面・PNG共通。E075/E090は最初のpanels登録から接続する。appへの最終接続はChatGPTへ渡す。
 
@@ -216,7 +331,7 @@ C0の後にC1→C2→C3、C4を進める。Claudeは契約が確定した部分�
 - [ ] pending・missing・描画失敗・確認中・共有非対応をそれぞれ表示する。画像外にも読み上げ可能な文字を置き、再プレイは画像生成を待たせない。ボタンは黒地・白字の「Xでシェア」。保存用img、本文で開く、作り直すもC3の状態へ接続する。
 - [ ] E075は通過/到達/未到達を分け、到達棟の色が無い時は白などの欠損表示にする。E090の横8px・縦スクロール・取消を確認し、カードとは独立させる。対象データが無い時はモデルを推測しない。
 - [ ] パネルなし/E075/E090/保存用imgの同時保持量を測り16MiB以下にする。記録なしの文が細い列に入る場合は `.result-colors-unavailable` を全列へ広げる。
-- [ ] 新規対象と `result-actions.e2e.mjs`、`i18n.e2e.mjs`、`bonus.e2e.mjs`、`effects37-85.e2e.mjs` を通す。本文共有の既存試験は押す先だけ代替ボタンへ変え、本文検査は残す。画像とcommitを渡す。
+- [ ] 新規対象と `result-actions.e2e.mjs`、`i18n.e2e.mjs`、`bonus.e2e.mjs`、`effects37-85.e2e.mjs` を通す。通常起動の本文共有の既存試験はClaude段階では保持する。実portsを指定したAppの追加試験で画像共有と代替本文ボタンを検査し、文字列・名前・不正値の条件も維持する。通常起動の押す先の変更はG1でChatGPTが接続と同時に行う。画像とcommitを渡す。
 
 ## G1：接続・採否・互換を確認する（ChatGPTが統合、Claudeが画面修正）
 
@@ -224,8 +339,8 @@ C0の後にC1→C2→C3、C4を進める。Claudeは契約が確定した部分�
 
 **Interfaces:** Claudeの実portsを接続し、試験用の代用品を製品経路に残さない。証拠は `commit/requirementId/evidence/automated/device/published/blockedReason`。
 
-- [ ] appで結果controller・表示・保存用imgを接続し、通常終了/保存失敗/v1〜v4途中再開/過去結果/言語変更/公式訂正/再プレイを実経路で確認する。C4のcontrollerが実舞台に入り、extrasPortが利用されることも確認する。
-- [ ] 元80を維持した96採用・4除外へcatalogと試験を統合する。No.34/39の強制入口はV3時点、それ以外の80→96/20→4は全16案が入った後の統合commitで変更する。旧80件資料は当時の記録として残す。
+- [ ] appで結果controller・表示・保存用imgを接続し、通常終了/保存失敗/v1〜v4途中再開/過去結果/言語変更/公式訂正/再プレイを実経路で確認する。C4のcontrollerが実舞台に入り、extrasPortが利用されることも確認する。舞台が更新した`gameExtrasController.snapshot().precisionBadge`をCの通知表示口へ渡し、通知側で`step()`を重ねて呼ばない。通常起動の本文共有試験を新しい代替本文ボタンへ切り替え、既存の文言・名前・不正値の条件を保つ。
+- [ ] 元80を維持した96採用・4除外へcatalogと試験を統合する。V3は新しい描画部品へsnapshotや固定姿勢を直接渡して検査する。AppのNo.34/39を含む強制入口の拒否解除と80→96/20→4の切替は、全16案が揃ったG1の同じ統合commitでChatGPTが変更する。旧80件資料は当時の記録として残す。
 - [ ] 意図した期待値変更はPR差分に理由を書く。除外4件の拒否、1〜100の集合、既存機能の実表示、描画上限、比較色、同入力の成績・履歴・送信本文一致の検査を弱めない。
 - [ ] 最後の製品コード変更後に `npm test`、`npm run test:sql`（使い捨てDB）、`npm run check:engines`、`npm run test:e2e`、`npm run build` を一度完了する。工程途中は対象試験に絞り、文書だけの変更で全件を再実行しない。既存CIは弱めない。
 - [ ] 4ガイド、20/40/50棟、危険、停止/復帰、通常練習、簡易表示、動きを減らす、3寸法の結果全体を確認する。色が壁と異なる実プレイでもカードの体色が入力色になることを検査する。
@@ -248,6 +363,6 @@ C0の後にC1→C2→C3、C4を進める。Claudeは契約が確定した部分�
 
 ## 4. 提出物と完了の区切り
 
-この文書PRの完了は、現行コードとの照合、分担・接続口・実装順・試験・不足の明文化、計画のレビュー修正、GitHub上のPR確認まで。ゲーム機能を完成したという報告にはしない。
+今回のPRの完了は、#23実装の引継ぎ、#24 CIの保持、組織図・モデル/effort・編集範囲・実装工程・接続先の改訂、レビュー修正、組合せ後のCI成功、コピーして使える依頼文の用意まで。ClaudeのV工程、通常起動のG1、実機・公開のG2を完成したという報告にはしない。
 
 後続の実装は、C/V工程の部品実装だけで終了せずG1の実接続と自動確認まで進める。G2の実機・原画・公開は、取得した証拠と不足を明示して別に管理する。外部の端末や公開判断が必要でも、独立して進められる実装を止めない。
