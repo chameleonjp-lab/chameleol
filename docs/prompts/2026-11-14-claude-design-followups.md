@@ -1,5 +1,7 @@
 # Claude依頼文：カメレオるの輪郭・舌・称号と結果画像
 
+> **2026-11-15追記：この依頼文の全面実装の担当構成は更新済みです。** 後続は[画面実装専用の依頼](2026-11-15-claude-visual-followups.md)と[分担仕様](../superpowers/specs/2026-11-15-chameleol-role-contract.md)を優先してください。Claudeはビジュアル・画面、ChatGPTは仕様処理を担当します。以下は旧依頼の履歴です。
+
 以下は2026-11-14改訂3の実装依頼です。2棟刻みの追加20称号は正式な実装対象で、既存7名称と合わせて全27区分を実装します。旧文書の候補・保留の指示より本改訂を優先してください。
 
 ---
@@ -142,3 +144,4 @@ FOLLOW-01〜08として、古い文書、実機候補、iPhoneの縦横・音・
 ---
 
 モデル設定の根拠：[モデル一覧](https://platform.claude.com/docs/en/models/overview)、[effort](https://platform.claude.com/docs/en/build-with-claude/effort)、[モデル設定](https://code.claude.com/docs/en/model-config)、[子担当設定](https://code.claude.com/docs/en/sub-agents)。役割と並行数は本件の設計判断です。共有の根拠：[W3C](https://www.w3.org/TR/web-share/)、[WebKit](https://webkit.org/blog/13862/the-user-activation-api/)。特定端末でのX添付は別途実機確認します。
+
