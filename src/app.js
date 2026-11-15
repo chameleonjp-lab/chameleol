@@ -34,6 +34,8 @@ import { mountBonusPresentation, mountEndingBonus } from './presentation/bonus-v
 import { choosePassCue } from './presentation/bonus-audio.js';
 import { buildResultData } from './presentation/result-data.js';
 import { mountResultPresentation } from './presentation/result-view.js';
+import { captureEvidenceBase, releaseResultEvidence, resolveResultEvidence, startResultEvidence } from './presentation/result-evidence.js';
+import { mountResultPanels } from './presentation/result-evidence-view.js';
 import { sanitizeStats } from './presentation/stats.js';
 import { mountPresentationHud } from './presentation/hud-view.js';
 import { normalizeGuideProgress, claimGroup, GUIDE_PROGRESS_KEY } from './guidance/progress.js';
@@ -283,6 +285,7 @@ export class App {
 
   showHome() {
     this.session = null;
+    releaseResultEvidence(this.lastResult); // 結果を離れる：解析を止めて、表示専用の入力を手放す
     this.disposeStage();
     const showOnline = this.runtime.isVerification || this.api.configured;
     const field = showOnline ? nameField({
@@ -646,6 +649,7 @@ export class App {
       const session=new GameSession({playId:uuid(),seed:1,debug:true,name:'',ranked:false});
       for(let b=1;b<=50;b++){const target=session.game.course.targets[b-1];session.apply({type:'color',t:(b-1)*5000+1400,...target});}
       session.apply({type:'tick',t:250000});
+      releaseResultEvidence(this.lastResult);
       this.lastResult={playId:session.meta.playId,name:'',summary:session.summary(),newBest:true,firstClearNow:true,firstClearAt:Date.now(),previous:{playId:'previous',buildings:40,rankAverage:9500,maxCombo:10,endedAt:1},targets:session.game.course.targets.map(c=>({...c})),arrivedBuilding:50,ranked:false};
       this.session=null;this.showResult();
       if(effectId===96)this.resultPresentation.updateRank({state:'official',rank:1,label:'current'});
@@ -861,6 +865,7 @@ export class App {
 
   async showGame(session, { fresh }) {
     this.session = session;
+    releaseResultEvidence(this.lastResult);
     this.setMenuMusic(null); // 本編の曲は、時計が動き始めた時に流す
     const rules = session.rules;
     const decorations = makeDecorations(session.meta.seed);
@@ -1466,10 +1471,13 @@ export class App {
     this.controls?.setEnabled(false);
     this.audio.stopGameAudio();
     const targets=session.game.course.targets.slice(0,50).map(c=>({...c}));
+    // 結果の静止資料用の入力を、session を手放す前（await の前）に確保する。履歴は参照だけで、大量のコピーは作らない。
+    const evidenceBase=captureEvidenceBase(session,targets);
     const { result, saved, stale, newBest = false, previous=null, firstClearNow=false, firstClearAt=null } = await this.persistEnd(session, this.generation, { takenOver: this.takenOver });
     if (!current()) return;
     const summary = result?.summary??session.summary();
     const endingBonus=buildEndingBonus(summary);
+    releaseResultEvidence(this.lastResult);
     this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary,saved,stale,newBest,previous,firstClearNow,firstClearAt,targets,arrivedBuilding:Math.min(50,Math.floor(session.state.t/session.rules.buildingMs)+1),netState: session.meta.ranked ? 'pending' : null };
     if (!saved && !stale && result?.ranked) {
       // 端末へ保存できなかった：メモリ上の結果を可能なら直接送る（再読込で失われ得ることは画面で伝える）
@@ -1490,6 +1498,8 @@ export class App {
       this.startFlow(this.nameRaw);
       return;
     }
+    // 結果を見せる時だけ、表示専用の入力を結果へ渡す（解析は showResult で始める。中断では付けない）
+    if (evidenceBase) this.lastResult.evidenceInput = Object.freeze({ ...evidenceBase, originalSummary: summary });
     this.audio.play(reason === 'detected' ? 'detected' : reason === 'cleared' ? (endingBonus?.allSuccessPoints?'bonusAllSuccess':'clear') : 'back');
     const ctrl = new AbortController();
     scope.own(() => ctrl.abort());
@@ -1639,6 +1649,16 @@ export class App {
     const scope = createPresentationScope({ id: scopeId, kind: 'result' });
     this.presentationScope = scope;
     const resultHost=h('div',{class:'result-supplement'});el.querySelector('.result-actions').after(resultHost);
+    // 任意のふり返りパネル。解析は lastResult の持ち物で、言語の描き直しでは始め直さない。
+    const evidence=startResultEvidence(r);
+    const evidenceHost=h('div',{class:'result-evidence-host'});el.querySelector('.result-actions').after(evidenceHost);
+    const panels=mountResultPanels({host:evidenceHost,t,state:resolveResultEvidence(r)});
+    if(r.evidencePanelId)panels.open(r.evidencePanelId);
+    const refreshEvidence=()=>{if(!resultCurrent())return;panels.update(resolveResultEvidence(r));r.evidencePanelId=panels.openId;};
+    const evidenceUnsubscribe=evidence?.subscribe(refreshEvidence);
+    panels.element.addEventListener('click',()=>{r.evidencePanelId=panels.openId;});
+    this.resultPanels=panels;this.refreshResultEvidence=refreshEvidence;
+    scope.own(()=>{evidenceUnsubscribe?.();panels.dispose();if(this.resultPanels===panels)this.resultPanels=null;if(this.refreshResultEvidence===refreshEvidence)this.refreshResultEvidence=null;});
     resultPresentation=mountResultPresentation({host:resultHost,data:displayData,scope,t});
     el.querySelector('.result-main').before(resultPresentation.sceneElement);
     this.resultPresentation=resultPresentation;
@@ -1646,7 +1666,7 @@ export class App {
     if(r.presentationPlayed)resultPresentation.finishNow();
     r.presentationPlayed=true;
     let scoreSignature=JSON.stringify(r.verifiedScore??null);
-    const renderResultScore=()=>{if(!resultCurrent())return;const signature=JSON.stringify(r.verifiedScore??null);if(signature===scoreSignature)return;scoreSignature=signature;const data=buildResultData(r);resultPresentation.updateData(data);el.querySelector('[data-testid="result-max-combo"]').textContent=formatNumber(data.maxCombo);};
+    const renderResultScore=()=>{if(!resultCurrent())return;const signature=JSON.stringify(r.verifiedScore??null);if(signature===scoreSignature)return;scoreSignature=signature;const data=buildResultData(r);resultPresentation.updateData(data);el.querySelector('[data-testid="result-max-combo"]').textContent=formatNumber(data.maxCombo);refreshEvidence();};
     this.renderResultScore=renderResultScore;
     scope.own(()=>{if(this.renderResultScore===renderResultScore)this.renderResultScore=null;});
     if(r.ranked)this.store.getOne('records',r.playId).then(rec=>{if(!resultCurrent()||!rec?.verifiedScore)return;r.verifiedScore=rec.verifiedScore;renderResultScore();}).catch(()=>{});
