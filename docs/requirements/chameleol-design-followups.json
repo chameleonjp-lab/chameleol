@@ -623,5 +623,15 @@
     ],
     "pairWidth": 2,
     "singleTitleDisplay": true
+  },
+  "roleSplit": {
+    "spec": "../superpowers/specs/2026-11-15-chameleol-role-contract.md",
+    "plan": "../superpowers/plans/2026-11-15-chameleol-post-pr21-plan.md",
+    "logic": "ChatGPT",
+    "visual": "Claude",
+    "logicEvidence": "../acceptance/chatgpt-pr23-evidence.md",
+    "logicState": "implemented",
+    "visualState": "pending",
+    "handoff": "../prompts/2026-11-15-claude-pr23-handoff.md"
   }
 }
