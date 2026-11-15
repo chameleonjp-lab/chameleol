@@ -23,6 +23,7 @@ import { buildHomeShareText, buildResultShareText, shareToX } from './ui/share.j
 import { t, setLanguage, getLanguage, formatNumber, formatPercent2, formatMatch, formatSeconds, onLanguageChange } from './i18n/i18n.js';
 import { resolveLanguage } from './i18n/languages.js';
 import { openStore, TAB_ID, StaleWriterError } from './storage/store.js';
+import { normalizeExtras, readDirector, applyBadgeClaim, applyCameoClaim } from './storage/presentation-extras.js';
 import { MemoryStore } from './storage/memory-store.js';
 import { createMixer } from './audio/mixer.js';
 import { createStage, createVisiblePresentationClock } from './scene/stage.js';
@@ -33,6 +34,8 @@ import { mountBonusPresentation, mountEndingBonus } from './presentation/bonus-v
 import { choosePassCue } from './presentation/bonus-audio.js';
 import { buildResultData } from './presentation/result-data.js';
 import { mountResultPresentation } from './presentation/result-view.js';
+import { captureEvidenceBase, releaseResultEvidence, resolveResultEvidence, startResultEvidence } from './presentation/result-evidence.js';
+import { mountResultPanels } from './presentation/result-evidence-view.js';
 import { sanitizeStats } from './presentation/stats.js';
 import { mountPresentationHud } from './presentation/hud-view.js';
 import { normalizeGuideProgress, claimGroup, GUIDE_PROGRESS_KEY } from './guidance/progress.js';
@@ -70,6 +73,7 @@ export class App {
     this.playSecrets = new WeakMap();
     this.generation = 0;
     this.memoryOnly = false;
+    this.extrasMemory = { version: 1, plays: [] };
     this.startToken = null;
     this.startAttempt = null;
     this.practiceToken = null;
@@ -281,6 +285,7 @@ export class App {
 
   showHome() {
     this.session = null;
+    releaseResultEvidence(this.lastResult); // 結果を離れる：解析を止めて、表示専用の入力を手放す
     this.disposeStage();
     const showOnline = this.runtime.isVerification || this.api.configured;
     const field = showOnline ? nameField({
@@ -644,6 +649,7 @@ export class App {
       const session=new GameSession({playId:uuid(),seed:1,debug:true,name:'',ranked:false});
       for(let b=1;b<=50;b++){const target=session.game.course.targets[b-1];session.apply({type:'color',t:(b-1)*5000+1400,...target});}
       session.apply({type:'tick',t:250000});
+      releaseResultEvidence(this.lastResult);
       this.lastResult={playId:session.meta.playId,name:'',summary:session.summary(),newBest:true,firstClearNow:true,firstClearAt:Date.now(),previous:{playId:'previous',buildings:40,rankAverage:9500,maxCombo:10,endedAt:1},targets:session.game.course.targets.map(c=>({...c})),arrivedBuilding:50,ranked:false};
       this.session=null;this.showResult();
       if(effectId===96)this.resultPresentation.updateRank({state:'official',rank:1,label:'current'});
@@ -782,6 +788,63 @@ export class App {
     this.finishStartAttempt(attempt, 'started');
   }
 
+  /**
+   * 表示用の保存（presentation.extras.v1）の入口。showGame で世代が決まった後に1画面につき1回だけ作る。
+   * 保存先（端末の Store か、このアプリのメモリ）は作る時に決め、途中で切り替えない。
+   * 取得の失敗（false）は成績の保存の状態・警告に影響しない。結果を待って時計・入力・終了の保存を止めない。
+   * 新しい小芝居を止める印は port.disabled（再開で保存値が無い時、または開始枠の取得が false の後）。
+   */
+  createExtrasPort(session, { fresh, generation, current, seed = 1 }) {
+    const app = this;
+    const playId = session.meta.playId;
+    const store = this.store;
+    const memory = !generation || this.memoryOnly || !store;
+    const isFresh = Boolean(fresh || session.meta.debug); // 検証用の開始（debugStart）は新しい時計の開始として扱う
+    const initialState = { count: 0, lastStartedAt: null, rngState: (Number(seed) || 1) >>> 0, reservedMidpoint: true, midpointUsed: false };
+    const memoryClaim = (apply) => {
+      if (!current()) return false;
+      try {
+        const r = apply(normalizeExtras(this.extrasMemory));
+        if (!r.claimed) return false;
+        this.extrasMemory = r.extras;
+        return true;
+      } catch { return false; }
+    };
+    const settle = async (run) => {
+      try { return current() && (await run()) === true && current(); } catch { return false; }
+    };
+    const rawStart = (state) => (memory
+      ? Promise.resolve(memoryClaim((x) => applyCameoClaim(x, playId, state)))
+      : settle(() => store.claimCameoStart({ playId, tabId: TAB_ID, generation, state })));
+    const port = {
+      playId, fresh: isFresh, memory, disabled: false, restored: null, initialState, ready: Promise.resolve(true),
+      async loadDirector() {
+        try {
+          const state = memory ? readDirector(normalizeExtras(app.extrasMemory), playId) : await store.loadDirector(playId);
+          return current() ? state : null;
+        } catch { return null; }
+      },
+      async restore() {
+        port.restored = await port.loadDirector();
+        port.disabled = !port.restored;
+        return port.restored;
+      },
+      async claimCameoStart(state) {
+        const ok = await rawStart(state);
+        if (!ok) port.disabled = true;
+        return ok;
+      },
+      claimPrecisionBadge() {
+        return memory
+          ? Promise.resolve(memoryClaim((x) => applyBadgeClaim(x, playId)))
+          : settle(() => store.claimPrecisionBadge({ playId, tabId: TAB_ID, generation }));
+      },
+    };
+    // 新しいプレイの直後に count:0 を保存する。待たずに進む。失敗しても最初の小芝居は出せる（保存側は count 0/1 を通す）。
+    if (isFresh) port.ready = rawStart(initialState);
+    return port;
+  }
+
   async initializeGuides(session, fresh) {
     const options = { playId: session.meta.playId, legacyFlags: this.flags, legacyRun:fresh?null:session.snapshot(),fallbackProgress:this.guideMemory };
     if (session.meta.debug) return normalizeGuideProgress({version:1,basic:{consumed:true},brightness:{consumed:true}});
@@ -802,6 +865,7 @@ export class App {
 
   async showGame(session, { fresh }) {
     this.session = session;
+    releaseResultEvidence(this.lastResult);
     this.setMenuMusic(null); // 本編の曲は、時計が動き始めた時に流す
     const rules = session.rules;
     const decorations = makeDecorations(session.meta.seed);
@@ -869,6 +933,11 @@ export class App {
     const initialProgress = await this.initializeGuides(session, fresh);
     if (!current()) return;
     const generation = this.generation;
+    const extrasPort = this.createExtrasPort(session, { fresh, generation, current, seed: decorations?.[0]?.sign ?? 1 });
+    if (!extrasPort.fresh) {
+      await extrasPort.restore();
+      if (!current()) return;
+    }
     const local = (await this.safeGet('localBest'))?.[session.meta.name || ''] ?? null;
     const statistics = sanitizeStats(await this.safeGet('presentation.stats.v1'));
     if (!current()) return;
@@ -914,7 +983,7 @@ export class App {
     this.guidance = guidance;
     this.renderGuidance = renderGuide;
     scope.own(()=>{guidance.dispose();if(this.guidance===guidance){this.guidance=null;this.renderGuidance=null;}});
-    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,verification:this.runtime.isVerification});
+    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,verification:this.runtime.isVerification,extrasPort});
     if (!current()) { stageView.dispose(); return; }
     this.stage = stageView;
     stageView.setBestDistance?.(local?.buildings??null);
@@ -1121,7 +1190,7 @@ export class App {
       const selected=choosePassCue({batch:suppressed?null:batch,cues:candidates});
       cueCandidates=[];pendingBonus=null;
       if(selected&&!document.hidden)this.audio.play(selected.name,selected.opts);
-      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step)}});
+      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step),moving:session.running&&!guideView.stationary,warningActive:activeNotice}});
       this.raf = requestAnimationFrame(loop);
     };
 
@@ -1402,10 +1471,13 @@ export class App {
     this.controls?.setEnabled(false);
     this.audio.stopGameAudio();
     const targets=session.game.course.targets.slice(0,50).map(c=>({...c}));
+    // 結果の静止資料用の入力を、session を手放す前（await の前）に確保する。履歴は参照だけで、大量のコピーは作らない。
+    const evidenceBase=captureEvidenceBase(session,targets);
     const { result, saved, stale, newBest = false, previous=null, firstClearNow=false, firstClearAt=null } = await this.persistEnd(session, this.generation, { takenOver: this.takenOver });
     if (!current()) return;
     const summary = result?.summary??session.summary();
     const endingBonus=buildEndingBonus(summary);
+    releaseResultEvidence(this.lastResult);
     this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary,saved,stale,newBest,previous,firstClearNow,firstClearAt,targets,arrivedBuilding:Math.min(50,Math.floor(session.state.t/session.rules.buildingMs)+1),netState: session.meta.ranked ? 'pending' : null };
     if (!saved && !stale && result?.ranked) {
       // 端末へ保存できなかった：メモリ上の結果を可能なら直接送る（再読込で失われ得ることは画面で伝える）
@@ -1426,6 +1498,8 @@ export class App {
       this.startFlow(this.nameRaw);
       return;
     }
+    // 結果を見せる時だけ、表示専用の入力を結果へ渡す（解析は showResult で始める。中断では付けない）
+    if (evidenceBase) this.lastResult.evidenceInput = Object.freeze({ ...evidenceBase, originalSummary: summary });
     this.audio.play(reason === 'detected' ? 'detected' : reason === 'cleared' ? (endingBonus?.allSuccessPoints?'bonusAllSuccess':'clear') : 'back');
     const ctrl = new AbortController();
     scope.own(() => ctrl.abort());
@@ -1575,6 +1649,16 @@ export class App {
     const scope = createPresentationScope({ id: scopeId, kind: 'result' });
     this.presentationScope = scope;
     const resultHost=h('div',{class:'result-supplement'});el.querySelector('.result-actions').after(resultHost);
+    // 任意のふり返りパネル。解析は lastResult の持ち物で、言語の描き直しでは始め直さない。
+    const evidence=startResultEvidence(r);
+    const evidenceHost=h('div',{class:'result-evidence-host'});el.querySelector('.result-actions').after(evidenceHost);
+    const panels=mountResultPanels({host:evidenceHost,t,state:resolveResultEvidence(r)});
+    if(r.evidencePanelId)panels.open(r.evidencePanelId);
+    const refreshEvidence=()=>{if(!resultCurrent())return;panels.update(resolveResultEvidence(r));r.evidencePanelId=panels.openId;};
+    const evidenceUnsubscribe=evidence?.subscribe(refreshEvidence);
+    panels.element.addEventListener('click',()=>{r.evidencePanelId=panels.openId;});
+    this.resultPanels=panels;this.refreshResultEvidence=refreshEvidence;
+    scope.own(()=>{evidenceUnsubscribe?.();panels.dispose();if(this.resultPanels===panels)this.resultPanels=null;if(this.refreshResultEvidence===refreshEvidence)this.refreshResultEvidence=null;});
     resultPresentation=mountResultPresentation({host:resultHost,data:displayData,scope,t});
     el.querySelector('.result-main').before(resultPresentation.sceneElement);
     this.resultPresentation=resultPresentation;
@@ -1582,7 +1666,7 @@ export class App {
     if(r.presentationPlayed)resultPresentation.finishNow();
     r.presentationPlayed=true;
     let scoreSignature=JSON.stringify(r.verifiedScore??null);
-    const renderResultScore=()=>{if(!resultCurrent())return;const signature=JSON.stringify(r.verifiedScore??null);if(signature===scoreSignature)return;scoreSignature=signature;const data=buildResultData(r);resultPresentation.updateData(data);el.querySelector('[data-testid="result-max-combo"]').textContent=formatNumber(data.maxCombo);};
+    const renderResultScore=()=>{if(!resultCurrent())return;const signature=JSON.stringify(r.verifiedScore??null);if(signature===scoreSignature)return;scoreSignature=signature;const data=buildResultData(r);resultPresentation.updateData(data);el.querySelector('[data-testid="result-max-combo"]').textContent=formatNumber(data.maxCombo);refreshEvidence();};
     this.renderResultScore=renderResultScore;
     scope.own(()=>{if(this.renderResultScore===renderResultScore)this.renderResultScore=null;});
     if(r.ranked)this.store.getOne('records',r.playId).then(rec=>{if(!resultCurrent()||!rec?.verifiedScore)return;r.verifiedScore=rec.verifiedScore;renderResultScore();}).catch(()=>{});
@@ -1709,7 +1793,7 @@ export class App {
     const loop=now=>{
       if(!current())return;
       const frame=clock(now,document.hidden||paused);const v=practice.tick(frame.dt*1000);scope.tick(v.elapsed);
-      if(!document.hidden){if(v.stationary)stage.renderPractice(v.color,v.target);else stage.update({t:(v.building-1)*5000+v.elapsed,color:v.color,walking:!paused&&!v.complete,presentation:{...v,t:v.elapsed,phase:'grace',running:!paused&&!v.complete,guidanceActive:true,policeStage:0,passed:0,combo:0,matchState:null}});}
+      if(!document.hidden){if(v.stationary)stage.renderPractice(v.color,v.target,{building:v.building});else stage.update({t:(v.building-1)*5000+v.elapsed,color:v.color,walking:!paused&&!v.complete,presentation:{...v,t:v.elapsed,phase:'grace',running:!paused&&!v.complete,guidanceActive:true,policeStage:0,passed:0,combo:0,matchState:null}});}
       render();this.raf=requestAnimationFrame(loop);
     };
     render();this.raf=requestAnimationFrame(loop);return practice;

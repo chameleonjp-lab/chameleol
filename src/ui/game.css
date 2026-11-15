@@ -807,12 +807,15 @@ h3 {
 .dom-hero {
   position: absolute;
   left: 32%;
-  bottom: 18%;
-  width: 64px;
-  height: 80px;
-  margin-left: -32px;
+  /* 色の面は 58×74 のまま。輪郭の幅 --w（整数px）だけが段階で変わり、その分だけ外形と位置を補う。
+     段階 8（--outline-w:3px、色 27 27 27）は従来の 64×80・3px・#1b1b1b と同じ。 */
+  --w: var(--outline-w, 3px);
+  width: calc(58px + 2 * var(--w));
+  height: calc(74px + 2 * var(--w));
+  margin-left: calc(-29px - var(--w));
+  bottom: calc(18% + 3px - var(--w));
   border-radius: 45% 55% 40% 40%;
-  border: 3px solid #1b1b1b;
+  border: var(--w) solid rgb(var(--outline-rgb, 27 27 27));
 }
 .dom-hero-eye {
   position: absolute;

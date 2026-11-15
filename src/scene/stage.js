@@ -1,6 +1,7 @@
 // 描画の入口。WebGLが使えれば Three.js の街、使えなければ仮の図形（DOM）で同じ判定・同じ色を見せる。
 import { RULES_V1, hsvToHex } from '../rules/v1/index.js';
 import { h } from '../ui/dom.js';
+import { outlineForBuilding } from './chameleon-outline.js';
 
 export { createGamePresentationClock, createVisiblePresentationClock } from './presentation-clock.js';
 
@@ -21,12 +22,26 @@ export function createDomStage(container, { course, rules = RULES_V1 } = {}) {
   const root = h('div', { class: 'dom-stage' }, [...walls, ...police, hero]);
   container.append(root);
   let target = null;
+  // 簡易表示の輪郭も同じ段階表を使う。段階が変わった時だけ CSS 変数を書く。
+  let outlineInfo = null;
+  const applyOutline = (building) => {
+    const o = outlineForBuilding(building);
+    if (o === outlineInfo) return;
+    outlineInfo = o;
+    // 枠は整数のCSS画素にそろえる（ブラウザが小数の枠を切り捨てても、色の面が58x74のまま動かない）。最も細い段階も1px以上
+    hero.style.setProperty('--outline-w', `${Math.max(1, Math.floor((o.thickness / 0.085) * 3))}px`);
+    hero.style.setProperty('--outline-rgb', o.rgb.map((c) => Math.round(c * 255)).join(' '));
+    hero.dataset.outlineStage = String(o.stage);
+  };
+  applyOutline(1);
   return {
     kind: 'dom',
-    update({ t, color, policeStage = 0 }) {
+    outlineStyle: () => ({ stage: outlineInfo.stage, thickness: outlineInfo.thickness, rgb: [...outlineInfo.rgb] }),
+    update({ t, color, policeStage = 0, presentation }) {
       const W = root.clientWidth * 0.62;
       const playerX = (t / rules.buildingMs) * W;
       const current = Math.floor(t / rules.buildingMs) + 1;
+      applyOutline(presentation?.building ?? Math.min(rules.buildingCount, current)); // 立体の舞台と同じく棟は50で止める
       walls.forEach((wall, i) => {
         const index = current - 1 + i;
         const valid = index >= 1 && index <= rules.buildingCount;
@@ -42,7 +57,8 @@ export function createDomStage(container, { course, rules = RULES_V1 } = {}) {
     showPractice(tg) {
       target = tg;
     },
-    renderPractice(color, tg) {
+    renderPractice(color, tg, { building = 1 } = {}) {
+      applyOutline(building);
       walls.forEach((wall, i) => {
         wall.style.display = i === 0 ? 'block' : 'none';
         wall.style.background = hsvToHex(tg ?? target);

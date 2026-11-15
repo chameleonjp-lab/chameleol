@@ -1,5 +1,6 @@
 import { mergePresentationStats } from '../presentation/stats.js';
 import { GUIDE_PROGRESS_KEY, normalizeGuideProgress, mergeGuideProgress, claimGroup, updateGroup } from '../guidance/progress.js';
+import { EXTRAS_KEY, normalizeExtras, readDirector, applyBadgeClaim, applyCameoClaim } from './presentation-extras.js';
 // 端末保存（IndexedDB）。複数の値を1つの取引（トランザクション）で一緒に書き、途中で落ちても片方だけ残らないようにする。
 //
 // 本編の欄（runs/main）は「書込担当のタブ」と「世代」で守る：
@@ -214,6 +215,58 @@ export class Store {
     kv.put(result.progress ?? result, GUIDE_PROGRESS_KEY);
     await completion;
     return result;
+  }
+
+  /**
+   * 表示用の保存（presentation.extras.v1）の取引。担当タブ・世代・状態・プレイ番号が一致する時だけ書く。
+   * 失敗（古いタブ・旧プレイ・書込拒否・壊れた値）は例外にせず false。runs は読むだけ。書くのは kv のこのキーだけ。
+   */
+  async extrasTransaction(tabId, generation, playId, apply) {
+    let tx;
+    try {
+      tx = this.tx(['runs', 'kv'], 'readwrite');
+      const completion = done(tx);
+      completion.catch(() => {});
+      const current = await req(tx.objectStore('runs').get(RUN_SLOT));
+      if (!current || current.status !== 'active' || current.owner !== tabId || current.generation !== generation || current.playId !== playId) {
+        tx.abort();
+        await completion.catch(() => {});
+        return false;
+      }
+      const kv = tx.objectStore('kv');
+      const result = apply(normalizeExtras(await req(kv.get(EXTRAS_KEY))));
+      if (!result.claimed) {
+        tx.abort();
+        await completion.catch(() => {});
+        return false;
+      }
+      kv.put(result.extras, EXTRAS_KEY);
+      await completion;
+      return true;
+    } catch {
+      try {
+        tx?.abort();
+      } catch {
+        /* already finished */
+      }
+      return false;
+    }
+  }
+
+  claimPrecisionBadge({ playId, tabId, generation } = {}) {
+    return this.extrasTransaction(tabId, generation, playId, (extras) => applyBadgeClaim(extras, playId));
+  }
+
+  claimCameoStart({ playId, tabId, generation, state } = {}) {
+    return this.extrasTransaction(tabId, generation, playId, (extras) => applyCameoClaim(extras, playId, state));
+  }
+
+  async loadDirector(playId) {
+    try {
+      return readDirector(normalizeExtras(await this.get(EXTRAS_KEY)), playId);
+    } catch {
+      return null;
+    }
   }
 
   initializeGuideProgress(tabId, generation, options) {
