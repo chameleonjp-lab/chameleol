@@ -1,0 +1,40 @@
+import test,{afterEach} from 'node:test';
+import assert from 'node:assert/strict';
+import {parseHTML} from 'linkedom';
+import {readFileSync} from 'node:fs';
+import {App} from '../../src/app.js';
+import {MemoryStore} from '../../src/storage/memory-store.js';
+import {setLanguage} from '../../src/i18n/i18n.js';
+const summary=JSON.parse(readFileSync(new URL('../replay/fixtures/bonus-v3-clear.json',import.meta.url))).expected;
+let app;const frames=new Map();let id=0;
+const settle=async()=>{for(let i=0;i<12;i++)await new Promise(r=>setImmediate(r));};
+function setup(){
+ const {window,document}=parseHTML('<html><body><main id="root"></main></body></html>');
+ Object.assign(globalThis,{document,Node:window.Node,requestAnimationFrame:fn=>(frames.set(++id,fn),id),cancelAnimationFrame:id=>frames.delete(id),addEventListener:()=>{}});
+ const audio={settings:{},setMusic(){},setSettings(){},stopSfx(){},stopGameAudio(){},async suspend(){},play(){}};
+ let portraits=0,disposed=0;const nativeShares=[];
+ const ports={waitForPresentation:async()=>{},createCanvas:()=>({}),createRenderer:()=>({}),destroyRenderer(){},createResultPortrait:async()=>{portraits++;return {image:{width:320,height:480},dispose:()=>disposed++};},drawResultCard:(c,{model})=>c.model=model,encodePng:async c=>new Blob([JSON.stringify(c.model)],{type:'image/png'}),navigator:{canShare:()=>true},shareImpl:async payload=>nativeShares.push(payload)};
+ app=new App(document.querySelector('#root'),{audio,resultCardPorts:ports});app.store=new MemoryStore();app.api={configured:false};
+ app.lastResult={playId:'p',summary:structuredClone(summary),ranked:true,netState:'pending',arrivedBuilding:50};
+ return {document,nativeShares,counts:()=>({portraits,disposed})};
+}
+afterEach(()=>{app?.showHome();app?.disposeStage();app=null;frames.clear();});
+test('the existing result share action uses the prepared file synchronously when visual ports are installed',async()=>{
+ const {nativeShares}=setup();app.showResult();await settle();
+ const sharing=app.shareResult();assert.equal(nativeShares.length,1);assert.equal(nativeShares[0].files.length,1);assert.equal(nativeShares[0].files[0].type,'image/png');assert.equal(await sharing,'shared');
+});
+test('result state-only updates invalidate its file before score early-return and language redraw reuses the portrait',async()=>{
+ const {counts}=setup();app.showResult();await settle();
+ assert.equal(app.resultCardController.snapshot().state,'ready');const first=app.resultCardController.snapshot().revision;
+ app.lastResult.netState='official';app.renderResultScore();
+ assert.equal(app.resultCardController.snapshot().prepared,null);assert.ok(app.resultCardController.snapshot().revision>first);await settle();
+ assert.equal(app.resultCardController.snapshot().model.verificationState,'official');
+ for(const lang of ['en','ja','de','th']){setLanguage(lang);app.showResult();await settle();}
+ assert.equal(counts().portraits,1);app.showHome();assert.equal(counts().disposed,1);
+});
+test('outbox status-only updates reach the image controller even when online UI is hidden',async()=>{
+ setup();app.showResult();await settle();const before=app.resultCardController.snapshot().revision;
+ app.onOutboxUpdate({playId:'p',state:'pending_review'});
+ assert.ok(app.resultCardController.snapshot().revision>before);assert.equal(app.resultCardController.snapshot().prepared,null);await settle();
+ assert.equal(app.resultCardController.snapshot().model.verificationState,'pending_review');
+});

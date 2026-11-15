@@ -64,6 +64,65 @@ async function playToResult(page, { saveFails = false } = {}) {
   await page.waitForSelector(id('result-again'));
 }
 
+test('replay remains available while evidence is pending and discards late work', async () => {
+  const env = await launch();
+  try {
+    const { page } = env;
+    await openHome(page, env.url);
+    await clock(page);
+    await playToResult(page);
+    const oldId = await page.evaluate(() => {
+      const r = __kamereoru.lastResult;
+      globalThis.__pendingResult = { result: r, signal: r.evidence.controller.signal };
+      if (r.evidence.status !== 'pending') throw new Error('fixture must hold analysis pending');
+      return r.playId;
+    });
+    assert.equal(await page.locator(id('result-buildings')).isVisible(), true);
+    await page.locator(id('result-again')).dispatchEvent('click');
+    await page.waitForFunction(pid => __kamereoru.session?.meta.playId && __kamereoru.session.meta.playId !== pid, oldId);
+    assert.deepEqual(await page.evaluate(() => ({
+      aborted: __pendingResult.signal.aborted,
+      evidence: __pendingResult.result.evidence,
+      input: __pendingResult.result.evidenceInput,
+    })), { aborted: true, evidence: null, input: null });
+    await page.clock.runFor(300);
+    assert.equal(await page.evaluate(pid => !!__kamereoru.session && __kamereoru.session.meta.playId !== pid, oldId), true);
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
+
+test('normal result preserves actual colors in two passed buildings instead of substituting walls', async () => {
+  const env = await launch();
+  try {
+    const { page } = env;
+    await openHome(page, env.url);
+    await clock(page);
+    await page.evaluate(() => __kamereoru.debugStart({ atMs: 60000, seed: 17 }));
+    await page.evaluate(() => {
+      const s = __kamereoru.session;
+      globalThis.__actualColors = [13,14].map(b => {
+        const wall = s.game.course.targets[b - 1];
+        const color = { h: (wall.h + 150) % 36000, s: wall.s, v: 10000 };
+        s.apply({ type: 'color', t: (b - 1) * 5000 + 100, ...color });
+        return { building:b, hsv:color };
+      });
+      s.apply({ type: 'tick', t: 70000 });
+      s.quit();
+    });
+    await page.waitForSelector(id('skip-ending'));
+    await page.locator(id('skip-ending')).dispatchEvent('click');
+    await page.waitForSelector(id('result-again'));
+    assert.equal(await settleEvidence(page), 'ready');
+    const colors = await page.evaluate(async () => {
+      const { resolveResultEvidence } = await import('/src/presentation/result-evidence.js');
+      const r = __kamereoru.lastResult;
+      return __actualColors.map(expected => ({ expected, actual:resolveResultEvidence(r).data.visualSamples.find(s=>s.building===expected.building)?.hsv, wall:r.targets[expected.building-1] }));
+    });
+    for (const c of colors) { assert.deepEqual(c.actual,c.expected.hsv); assert.notDeepEqual(c.actual,c.wall); }
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
+
 /** v1/v2 の履歴を端末へ保存してから、途中再開して終わらせる。 */
 async function resumeLegacyToResult(page, rulesVersion) {
   const playId = await page.evaluate(async (version) => {

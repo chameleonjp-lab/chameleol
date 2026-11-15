@@ -16,7 +16,7 @@
 
 ## PR #21後の対応と担当（2026-11-15）
 
-ChatGPT担当C0〜C4の実装とClaudeへの受け渡しは[実装・検証記録](docs/acceptance/chatgpt-pr23-evidence.md)で管理します。画面の完成・実機・公開とは分けて記録します。
+ChatGPT担当C0〜C4の判定・データ・保存取得・画像共有制御を実装しました。[実装・検証記録](docs/acceptance/chatgpt-pr23-evidence.md)と[Claudeへの受け渡し](docs/prompts/2026-11-15-claude-pr23-handoff.md)を参照してください。描画口と新しい舞台の実接続、V1〜V4の画面・実機・公開は別工程です。
 
 PR [#21](https://github.com/chameleonjp-lab/chameleol/pull/21)は取り込み済みです。輪郭8段階、結果の静止解析と5パネル、表示用保存とappの取得口が入りました。舌とダイヤ、背景・警察の追加、精密札、全27称号の主結果カードと画像共有、実接続と実機確認は残っています。静止解析にもレビューの修正が残ります。PR本文の「T0のみ」は初期の記述です。
 
