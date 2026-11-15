@@ -1,4 +1,5 @@
 # PR とメインブランチで、判定・保存・通信・データベース・画面の試験を流す。
+# ブラウザ試験は4つの独立した環境へ分け、各環境内は従来どおり1ファイルずつ実行する。
 # 本番の Supabase には接続しない（使い捨ての PostgreSQL サービスを使う）。配備は行わない。
 name: CI
 
@@ -15,9 +16,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  checks:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 10
     services:
       postgres:
         image: postgres:16
@@ -45,12 +46,81 @@ jobs:
         run: npm run test:sql
       - name: 別の JavaScript エンジン（QuickJS）での照合
         run: npm run check:engines
+
+  browser:
+    name: browser (${{ matrix.shard }}/4)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      shard_1: ${{ steps.completed.outputs.shard_1 }}
+      shard_2: ${{ steps.completed.outputs.shard_2 }}
+      shard_3: ${{ steps.completed.outputs.shard_3 }}
+      shard_4: ${{ steps.completed.outputs.shard_4 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      KAMEREORU_TEST_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - name: 自動ブラウザの準備
         run: |
           npm install --no-save playwright@1.63.0
           npx playwright install --with-deps chromium
-      - name: 自動ブラウザの通し試験
-        run: npm run test:e2e
+      - name: 自動ブラウザの通し試験（${{ matrix.shard }}/4）
+        # Node が対象全ファイルを重複・欠落なく分割する。新しい試験ファイルも自動で対象になる。
+        run: node --test --test-concurrency=1 --test-shard=${{ matrix.shard }}/4 tests/e2e/*.e2e.mjs
+      - name: この組の成功を記録
+        id: completed
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: echo "shard_${SHARD}=success" >> "$GITHUB_OUTPUT"
+
+  # 既存の必須チェック名 test を維持する。失敗・取消・スキップ時も必ず不合格にする。
+  test:
+    if: ${{ always() }}
+    needs: [checks, browser]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: 全テストの成功を確認
+        env:
+          CHECKS_RESULT: ${{ needs.checks.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+          SHARD_1: ${{ needs.browser.outputs.shard_1 }}
+          SHARD_2: ${{ needs.browser.outputs.shard_2 }}
+          SHARD_3: ${{ needs.browser.outputs.shard_3 }}
+          SHARD_4: ${{ needs.browser.outputs.shard_4 }}
+        run: |
+          test "$CHECKS_RESULT" = success
+          test "$BROWSER_RESULT" = success
+          for result in "$SHARD_1" "$SHARD_2" "$SHARD_3" "$SHARD_4"; do
+            test "$result" = success
+          done
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - name: 単独動作の公開候補をビルド（配備しない）
         run: npm run build
         env:
