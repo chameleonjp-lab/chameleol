@@ -141,7 +141,7 @@ test('本編の静止ガイド step3 は20棟の段階（アプリ全体で）',
   try {
     await openHome(page, env.url);
     await startAnonymous(page);
-    const r = await page.evaluate(async () => {
+    await page.evaluate(() => {
       const a = __kamereoru; const s = a.session; const rules = s.rules;
       for (let i = 1; i <= 19; i += 1) {
         const tEval = (i - 1) * rules.buildingMs + rules.evalStartMs - 100;
@@ -149,7 +149,11 @@ test('本編の静止ガイド step3 は20棟の段階（アプリ全体で）',
         s.apply({ type: 'color', t: Math.max(s.state.t, tEval), h: target.h, s: target.s, v: i >= rules.brightnessUnlockBuilding ? target.v : rules.valMax });
       }
       s.apply({ type: 'tick', t: 95000 });
-      for (let k = 0; k < 30 && a.guidance.view().step !== 3; k += 1) await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+    // 明るさガイドの取得が遅い環境でも、固定の待ち時間ではなく状態で待つ
+    await page.waitForFunction(() => globalThis.__kamereoru.guidance.view().step === 3, null, { timeout: 20000 });
+    const r = await page.evaluate(async () => {
+      const a = __kamereoru; const s = a.session;
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const g = a.guidance.view();
       return { step: g.step, building: g.building, sceneT: g.sceneT, t: s.state.t, outline: a.stage.outlineStyle() };
@@ -215,7 +219,8 @@ test('保存からの再開：最初に描いた画面から当該棟の線（31
       globalThis.__watchDraws = true;
       await __kamereoru.debugStart({ atMs: 30 * 5000 + 1000, seed: 1 }); // 31棟目（保存から再開する経路）
     });
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => globalThis.__outlineAtDraw.length > 0, null, { timeout: 20000 });
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))); // 続く描画も記録させる
     const seen = await page.evaluate(() => globalThis.__outlineAtDraw);
     assert.ok(seen.length > 0, '新しい舞台が描かれた');
     assert.equal(seen[0], 5, `最初に描いた画面から31棟の段階。実際の並び: ${JSON.stringify(seen)}`);
@@ -340,7 +345,7 @@ test('画像（倍率3）：最も細い段階（1棟）と現行の段階（40�
     await openHome(page, env.url);
     await page.evaluate(() => __kamereoru.debugStart({ atMs: 300, seed: 1 }));
     await page.evaluate(() => __kamereoru.stage.update); // 本編のループが同じ棟を描き続ける状態で撮る
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => globalThis.__kamereoru.stage?.outlineStyle?.().stage === 0, null, { timeout: 20000 });
     const r1 = await drawAs(page, { t: 2500, building: 1, shot: true });
     assert.equal(r1.outline.stage, 0);
     await save('t1-402x874-scale3-b01', r1.url);
