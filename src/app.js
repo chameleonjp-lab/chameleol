@@ -1185,7 +1185,7 @@ export class App {
       const activeNotice=[...banner.querySelectorAll('.toast-warn')].some(node=>!node.hidden);
       const quiet=Boolean(guideView.step)||stage>0||activeNotice;
       stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step),guideActive:Boolean(guideView.step),moving:session.running&&!guideView.stationary,warningActive:activeNotice,hidden:!!document.hidden,evaluationSegments:evaluationCollector.drain()}});
-      bonusPresentation.tick({activeMs:s.t,phase:playView.phase,guideActive:Boolean(guideView.step),warningActive:stage>0||activeNotice,running:session.running,precisionBadge:gameExtrasController.snapshot().precisionBadge});
+      bonusPresentation.tick({activeMs:s.t,phase:playView.phase,guideActive:Boolean(guideView.step),warningActive:stage>0||activeNotice,running:session.running,precisionBadge:quiet||session.meta.effects===false?null:gameExtrasController.snapshot().precisionBadge});
       const batch=pendingBonus;
       if(batch)bonusPresentation.show(batch,s.t,{quiet});
       const bonusVisible=bonusPresentation.stats().visible;
@@ -1672,7 +1672,8 @@ export class App {
     // Optional E090 can open during the portrait's initial presentation delay.
     // Its lease and the later card capture must share the same owner from first render.
     r.resultRendererOwner??=createResultRendererOwner({createRenderer:cardPorts.createRenderer,destroyRenderer:cardPorts.destroyRenderer});
-    const resultLayoutKey=()=>cardPorts.getLayoutKey?.()??`${globalThis.innerWidth??this.root.clientWidth??0}:${globalThis.innerHeight??this.root.clientHeight??0}`;
+    // A fixed PNG drawing layout must not mask viewport changes and keep an old File shareable.
+    const resultLayoutKey=()=>JSON.stringify([cardPorts.getLayoutKey?.()??null,globalThis.innerWidth??this.root.clientWidth??0,globalThis.innerHeight??this.root.clientHeight??0]);
     cardController=createResultCardController({result:r,locale:getLanguage(),layoutKey:resultLayoutKey(),ports:{...cardPorts,
       getPublicUrl:()=>this.runtime.publicUrl,
       onChange:snapshot=>{if(resultCurrent()){this.resultCardSnapshot=snapshot;cardPorts.onChange?.(snapshot);}},

@@ -1,6 +1,6 @@
 # カメレオる：共有PR受渡し票
 
-本票は2026-11-16のCG00→CG02先行実装を記録する。正本は[全体要件](../superpowers/specs/2026-11-16-chameleol-final-requirements.md)、[全体計画](../superpowers/plans/2026-11-16-chameleol-master-plan.md)の契約v1.1。過去の記録を初期化しない（本票は今回新規）。
+本票は2026-11-16のCG00→CG02先行実装を記録する。正本は[全体要件](../superpowers/specs/2026-11-16-chameleol-final-requirements.md)、[全体計画](../superpowers/plans/2026-11-16-chameleol-master-plan.md)の契約v1.2。過去の記録を初期化しない（本票は今回新規）。
 
 ## 共有ブランチ・現在地
 
@@ -11,11 +11,21 @@
 | 作業ブランチ | `work/chatgpt-cg00-cg02-20261116` |
 | 共有PR番号・URL | [#26（ドラフト）](https://github.com/chameleonjp-lab/chameleol/pull/26) |
 | CG02準備commit／Claude開始点 | `7d551ed624cde7b61ff2ef33cf434945706b7919` |
-| 最新commit識別値（文書追記前に確認したhead） | `7d551ed624cde7b61ff2ef33cf434945706b7919`。後続は文書のみ、最新headの識別値/CIはPR本文と下記ブランチ履歴を参照 |
-| 現在の担当 | CG-O/T：PR/CI/文書確認。CG-S製品書込停止、CG-R独立レビュー完了。次の予定された描画追加はClaude CL-O管理 |
-| 状態 | CG00/CG01/CG02対象実装・試験済み、独立レビューで製品P0〜P2指摘なし。通常起動legacy80、catalog80/20を維持 |
+| 今回のCG02補足の開始head | `90473ee5c4367d784c8a4579e302b37a652964ab`（CL01設計追加済み）。補足後は製品変更を含む。最新head/CIはPR本文とブランチ履歴を正とする |
+| 現在の担当 | ChatGPT：CG02補足の製品/文書/試験を完了してCIを確認し、Claudeの予定されたCL02〜06へ引渡す。通常接続と翻訳は後続ChatGPT |
+| 状態 | CG00/CG01/CG02とCL01不足へのCG02補足を実装。通常起動legacy80、catalog80/20を維持。過去の独立レビュー結果と今回の結果を区別して下記へ記録 |
 
-## 実行体制と書込ロック
+## CG02補足：今回の引渡し
+
+[対応範囲・確定回答・API例・翻訳の後送り](chameleol-chatgpt-unblock-20261116.md)を参照。N01/N03とQ01/Q03〜06を解消。N02/Q02は本人の指示で両者実装完了後のCG05前段へ移し、今は辞書を変更しない。CL01設計票・全体要件・3計画・コピー依頼文へ反映した。Claudeは最新headを取得し、この補足を共通baseへ含めてCL02〜CL06へ進める。
+
+今回のChatGPT製品編集はsrc/app.js、src/presentation/result-card-controller.jsと対応試験。予定されたClaudeの描画/CSS/素材は編集していない。実装・試験は統括セッションが行い、最終独立レビューだけ別文脈を使う。モデルのホスト実測ができたとは記載しない。下のCG00〜CG02の実行体制とCIは先行準備時の履歴であり、今回の実績へ流用しない。
+
+開始時npm testは543成功/失敗0・既存SQL専用31件skip。対象20試験で5件のREDを確認し、製品修正後20/20 GREEN・skip0。最終npm testは580件中549成功/失敗0・既存SQL専用31件skip。standalone buildは102ファイル成功、相対リンク32件/差分の空白検査も成功。
+
+CG-Rの別文脈（gpt-6-astra/xhighを明示指定）で補足の全13ファイルを独立レビューし、Critical/Importantなし。対象20試験と空白検査も独立に成功。Minorの契約版参照1件は設計票6行目をv1.2へ統一して反映した。独立レビューが全体npm/buildを再実行したとは扱わない。最新headのGitHub CIはPR本文を正とし、開始だけを成功と記載しない。翻訳、Claudeの実描画、通常接続、全体合格、iPhone実機、公開は未完了である。
+
+## 先行準備時の実行体制と書込ロック（履歴）
 
 | 役割 | 要求model / effort | 実際の指定・確認可能性 | 今回の編集対象 |
 | --- | --- | --- | --- |
@@ -80,7 +90,7 @@ node --test tests/presentation/game-extras-compat.test.mjs tests/presentation/ga
 
 - 2026-11-16 01:00 UTC、ChatGPTがドラフトPR #26を作成。準備commitは`7d551ed624cde7b61ff2ef33cf434945706b7919`。これは最新の製品変更commitであり、後続の本票/依頼文の文書commitでも保持する。文書を含む最新headは[共有ブランチ](https://github.com/chameleonjp-lab/chameleol/commits/work/chatgpt-cg00-cg02-20261116)で照合できる。
 - コピー用[Claude依頼文](../prompts/2026-11-16-claude-shared-pr26-handoff.md)を作成。**Claudeへ実送信していない。** 新規PRは作らず、この同じブランチの最新head（準備commitを含む）へ追加する。
-- ChatGPTは製品ファイルへの書込を止め、予定されたCL-A/B/Cの範囲を解放する。今はCIと文書だけChatGPTが所有。Claudeは最新head/開始点とロックを確認して着手する。CI等の修正が必要になれば、対象ファイルだけChatGPTへ一時移管して直接修正する。
+- ChatGPTは製品ファイルへの書込を止め、予定されたCL-A/B/Cの範囲を解放する。この段階ではCIと文書だけChatGPTが所有していた。今回のCG02補足は上記のとおりApp/controllerをChatGPTが変更したため、Claudeは補足を含む最新head/開始点とロックを確認して着手する。CI等の修正が必要になれば、対象ファイルだけChatGPTへ一時移管して直接修正する。
 - 受入対象はCG00〜CG02の接続準備。CL02〜CL05の実描画・実App検査、G2全体の部品受入はまだ完了していない。全体統合までドラフトを維持する。
 
 呼出例（描画はClaudeが実装する）：

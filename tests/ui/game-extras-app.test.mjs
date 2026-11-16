@@ -8,7 +8,7 @@ let app;const frames=new Map();let seq=0;
 const settle=async()=>{for(let i=0;i<5;i++)await new Promise(r=>setImmediate(r));};
 afterEach(()=>{app?.disposeStage();frames.clear();app=null;});
 
-function setup(presentationSet){
+function setup(presentationSet,{drawable=true}={}){
  const {window,document}=parseHTML('<html><body><main id="root"></main></body></html>');
  Object.assign(globalThis,{document,Node:window.Node,requestAnimationFrame:fn=>(frames.set(++seq,fn),seq),cancelAnimationFrame:n=>frames.delete(n),addEventListener:()=>{}});
  const audio={settings:{},setMusic(){},setSettings(){},setBuilding(){},setArea(){},setFinale(){},setPoliceStage(){},setDanger(){},startGameAudio(){},stopGameAudio(){},stopSfx(){},async suspend(){},play(){}};
@@ -25,7 +25,7 @@ function setup(presentationSet){
   controller.event=input=>{controllerEvents.push(structuredClone(input));return event(input);};
   return {dispose(){},resize(){},presentationEvent:event=>stageEvents.push(structuredClone(event)),setBestDistance(){},fx(){},update(args){
    order.push('stage');lastView=args.presentation;
-   if(opts.presentationSet==='extended96')controller.step({...args.presentation,actorBusy:{hero:false,police:false},drawable:true,placements:{}});
+   if(opts.presentationSet==='extended96')controller.step({...args.presentation,actorBusy:{hero:false,police:false},drawable,placements:{}});
   }};
  }});
  app.store=new MemoryStore();app.flags={openingSeen:true,alertGuideSeen:true};app.initializeGuides=async()=>({version:1,basic:{consumed:true},brightness:{consumed:true}});app.api={configured:false};
@@ -76,4 +76,30 @@ test('synthetic instantSuccess reaches the real extras controller and legacy sta
  const expected=[{type:'instantSuccess',t:2200,building:1}];
  assert.deepEqual(view.controllerEvents.filter(event=>event.type==='instantSuccess'),expected);
  assert.deepEqual(view.stageEvents.filter(event=>event.type==='instantSuccess'),expected);
+});
+test('effects off keeps evaluation processing but never forwards a decorative precision badge',async()=>{
+ const view=setup('extended96',{drawable:false});const s=new GameSession({playId:'effects-off',seed:17,effects:false});
+ await app.showGame(s,{fresh:true});view.observeBonus();
+ s.running=false;s.apply({type:'color',t:100,...s.game.course.targets[0]});s.apply({type:'tick',t:2000});await frame();
+ s.apply({type:'tick',t:2100});const before=inspect(s);await frame();
+ assert.equal(view.controller.snapshot().precisionBadge.kind,'nearPerfect','the real evaluation and one-time claim still run');
+ assert.equal(view.ticks.at(-1).precisionBadge,null,'effects off suppresses only its display');
+ assert.equal(view.stepCalls,2);assert.equal(inspect(s),before);
+});
+test('the simple stage may still forward a badge when effects are enabled',async()=>{
+ const view=setup('extended96',{drawable:false});const s=new GameSession({playId:'simple-stage',seed:17});
+ await app.showGame(s,{fresh:true});view.observeBonus();
+ s.running=false;s.apply({type:'color',t:100,...s.game.course.targets[0]});s.apply({type:'tick',t:2000});await frame();
+ s.apply({type:'tick',t:2100});await frame();
+ assert.equal(view.ticks.at(-1).precisionBadge.kind,'nearPerfect');assert.equal(view.stepCalls,2);
+});
+test('one police officer keeps the existing warning priority over a precision badge',async()=>{
+ const view=setup('extended96');const s=new GameSession({playId:'police-badge',seed:17});
+ await app.showGame(s,{fresh:true});view.observeBonus();
+ s.running=false;s.apply({type:'color',t:100,...s.game.course.targets[0]});s.apply({type:'tick',t:2000});await frame();
+ s.apply({type:'tick',t:2100});s.state.alert=s.rules.alert.stages[0].enterAt;await frame();
+ assert.equal(view.lastView.policeStage,1);assert.equal(view.controller.snapshot().precisionBadge.kind,'nearPerfect');
+ assert.equal(view.ticks.at(-1).warningActive,true);assert.equal(view.ticks.at(-1).precisionBadge,null);
+ s.state.alert=0;s.apply({type:'tick',t:2200});await frame();
+ assert.equal(view.ticks.at(-1).precisionBadge.elapsedMs,200,'returning from warning never restarts its lifetime');
 });

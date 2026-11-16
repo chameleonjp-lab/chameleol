@@ -1,7 +1,9 @@
 # CL01 設計票：全体の見た目と部品の契約
 
+**2026-11-16 ChatGPT補足反映：** 契約v1.2と[CG02補足受渡し](../acceptance/chameleol-chatgpt-unblock-20261116.md)を正とする。N01/N03/Q01/Q03〜06は下表のとおり確定。N02/Q02の翻訳は、両者の実装完了後にChatGPTがまとめて行う。§1.4の行番号は補足前90473eeの調査記録であり、現在の行番号ではない。
+
 2026-11-16。担当 CL-D（見た目の設計）。製品コード・試験コードは書いていない。
-正本は[全体要件](../superpowers/specs/2026-11-16-chameleol-final-requirements.md)F01〜F14 と[全体計画](../superpowers/plans/2026-11-16-chameleol-master-plan.md)の契約 IF01〜IF11 v1.1。本票は CL02（A）・CL03（B）・CL04（C）・CL05 の実装の手引き。
+正本は[全体要件](../superpowers/specs/2026-11-16-chameleol-final-requirements.md)F01〜F14 と[全体計画](../superpowers/plans/2026-11-16-chameleol-master-plan.md)の契約 IF01〜IF11 v1.2。本票は CL02（A）・CL03（B）・CL04（C）・CL05 の実装の手引き。
 数値はすべて**初期値**で、実画像を見て調整してよい。「確認済み」はこの票の作成時に自分でソースを開いて確かめた事実だけ。確かめていないことは「未確認」と書く。
 除外4件（E045/E051/E088/E097）は設計しない。App・規則・保存・通信・共有制御・15辞書・catalog 採否を Claude が編集する設計にしない。足りない物は「不足（処理側へ依頼）」として挙げる。
 前回の設計メモ（scratchpad の `team/design-visual.md`、以下「旧メモ」）の数値を土台にし、時間・抽選・件数を描画側で持っていた箇所を新しい契約へ合わせて書き直した。
@@ -43,7 +45,7 @@ ports 本体（`result-card-ports.js`）、主カードの描画、主人公の�
 | 番号 | 資料の記述 | 現行ソースの実際（確認済み） | 扱い |
 | --- | --- | --- | --- |
 | D01 | ports は「createResultPortrait/drawResultCard/createRenderer/destroyRenderer/mount/onChange/panels」 | App は `{...cardPorts, getPublicUrl, onChange}` を controller へ広げて渡す（`app.js:1676-1679`）。controller は ports から `createCanvas`・`encodePng`・`waitForPresentation`・`urlApi`・`focusTarget`・`visibilityTarget`・`navigator`・`shareImpl` も読む（`result-card-controller.js:28-31,49,64,68,113`）。`getLayoutKey` は App が読む（`app.js:1675`） | 製品の ports は `navigator`・`shareImpl`・`urlApi`・`waitForPresentation`・`focusTarget`・`visibilityTarget` を**定義しない**（定義すると本物を上書きする。試験の代用品だけが使う） |
-| D02 | 「主カードと PNG を同じ描画元」 | controller は自分で作った canvas に `drawResultCard` して PNG にした後、`width=height=0` にして捨てる（`:35,64-75`）。snapshot に主人公の画像は無い（`:32`） | 画面のカードは ports が別の canvas に同じ `drawResultCard` で描く。主人公画像は `result.resultPortrait?.portrait?.image` から読む（下の不足 N01） |
+| D02 | 「主カードと PNG を同じ描画元」 | controller は自分で作った canvas に `drawResultCard` して PNG にした後、`width=height=0` にして捨てる（`:35,64-75`）。補足前はsnapshotに主人公の画像が無かった。v1.2でportraitImageを追加済み | 画面のカードは ports が別の canvas に同じ `drawResultCard` で描く。主人公画像は `snapshot.portraitImage` から借りる（N01解消） |
 | D03 | share の結果を見て案内を出す | `share()` は shared と cancelled のどちらも state を `'ready'` に戻す（`:117`）。準備前のタップは `'unavailable'` を返すだけで onChange を呼ばない（`:107`） | 画面は sharing→ready の遷移で `card.shareClosed`（「共有を終了しました」）を出す。タップ時の state を記録して準備中の案内を出す（§3.5） |
 | D04 | 舌の段階名 | `'prepare','extend','hold','retract','store'`、各 150/250/350/450/200ms。枠は `{id,startedAt,elapsedMs,building,phase,phaseProgress,jewelVisible}`。`jewelVisible` は extend/hold/retract で true（`travel-tongue-motion.js:2,27`） | 旧メモの anticipate/settle は使わない |
 | D05 | E020/E067/E068/E069 の長さ（旧メモ 2600/2000/2400/2200ms） | 4案とも 2000ms（`catalog.js:32`）。E056 は 1500ms（`cameo-reservations.js:55`） | 時間表を 2000ms・1500ms に詰め直した（§5） |
@@ -62,9 +64,9 @@ ports 本体（`result-card-ports.js`）、主カードの描画、主人公の�
 
 | 番号 | 不足 | 依頼 |
 | --- | --- | --- |
-| N01 | 画面のカードが主人公画像を読む口が契約に無い（D02） | `result.resultPortrait.portrait.image` を ports から読んでよいことの確認、または snapshot へ主人公画像を足す |
-| N02 | 新しい文言キー（§3.12 の表） | 15辞書へ追加。足りない間は §3.12 の代わりの表示を使う |
-| N03 | 効果無効（`effects:false`）の extended96 で札を出すか（D15） | App 側で決める（§8 Q04） |
+| N01 | 画面のカードが主人公画像を読む口（D02） | 解消済み。snapshot.portraitImageを追加。画像の所有/解放はcontrollerとresult側のまま |
+| N02 | 新しい文言キー（§3.12 の表） | 翻訳は両者の実装完了後にChatGPTが一括対応。今回は15辞書を編集せず§3.12の控えで進める |
+| N03 | 効果無効（`effects:false`）のextended96の札（D15） | 解消済み。stepは1回続け、Appが通知値をnullにして表示を止める。簡易DOMだけなら止めない |
 
 ## 2. 共通の約束
 
@@ -155,7 +157,7 @@ ports = {
   destroyRenderer(renderer),              // 冪等。dispose → forceContextLoss → canvas を 0×0 → DOM から外す
   async createResultPortrait({hero, signal, rendererLease}), // -> {image, dispose}（§3.4）
   drawResultCard(canvas, {model, portrait, locale}),          // 同期。画面と PNG の共通の描画元（§3.3）
-  getLayoutKey(),                         // -> 'card-1200x630-v1'（定数。§8 Q05）
+  getLayoutKey(),                         // -> 'card-1200x630-v1'（構図版。Appが画面寸法を合成。§8 Q05）
   onChange(snapshot),                     // 最新を保持し、mount 済みならカードと開いたパネルへ流す
   mount({host, controller, scope, onTextShare}), // -> {dispose}（§3.5）
   panels: [MODEL_PANEL, TURN_PANEL],      // E075・E090。初回だけ登録（§3.8・§3.9）
@@ -245,7 +247,7 @@ App.showResult()
 | `failed` で prepared あり（共有失敗） | 1200×630 | 実色 | 有効 | `card.shareFailed`（不足 N02。届くまでは文なしで小ボタン行の枠を 2px `#ffcc4d`） | 隠す |
 | `unavailable` | prepared があれば 1200×630、無ければ 600×315 | 同左 | 有効（押すと案内だけ） | `card.shareUnavailable`、フォーカスを「画像を保存」へ | 隠す |
 
-- 主人公の切り抜きを使うのは `snapshot.prepared?.revision===snapshot.revision` の時だけ（その時 `result.resultPortrait` は今の主人公。D02・N01）。
+- 主人公の切り抜きは`snapshot.portraitImage`から借りる。現在のheroと一致しない画像、撮影前、dispose後はnull。画像を変更/解放しない。共有可能かどうかは従来どおり`prepared?.revision===revision`で判断する（D02・N01）。
 - 主成績と「もう一度」は最初から使える（カードの状態を待たない）。
 - `missing`（一致度の記録なし）は既定色の主人公で PNG を作れるので共有できる。pending の仮の絵は PNG にならない（controller が作らない）。
 
@@ -409,7 +411,7 @@ CSS（`presentation.css`、A だけが書く。初期値）：
 | `evidence.turn.title`／`.hint`／`.left`／`.right`／`.alt` | 回して見る／左右になぞると回ります／左へ回す／右へ回す／今回の主人公。左右に回して見られます | 同上 |
 | `presentation.nearPerfect` | ほぼ完全一致！ | C が使う。§5.9 |
 
-控えの英語は ports を明示した試験（CL05）でだけ見える。G4 で辞書が揃うまで「15言語の文言」は未完了として票に残す。
+控えはCL05の明示接続とCG03の統合実装でだけ使い、本番公開へ持ち込まない。本人の追加指示により、両者の実装完了後にCG05前段でChatGPTが15辞書へまとめて翻訳し控えを外す。それまでは「15言語の文言」は未完了として票に残し、Claudeの実装開始を止めない。
 
 ## 4. CL-B（CL03）舌と舞台
 
@@ -426,7 +428,7 @@ controller が渡されただけでは新経路にしない（App は常に cont
 | --- | --- | --- | --- | --- |
 | WebGL | legacy80（既定） | 今のまま動かす | 呼ばない | 今のまま（舌・新5案・警察2案は出ない） |
 | WebGL | extended96、効果あり | 止める（accents を `mode:'extended96'` で作る） | 毎フレーム1回 | 舌・ダイヤ（B）、小芝居と警察2案（C の部品） |
-| WebGL | extended96、`presentationEnabled:false` | accents が無い | 毎フレーム1回、`drawable:false`・配置すべて false | 何も足さない（札の扱いは §8 Q04） |
+| WebGL | extended96、`presentationEnabled:false` | accents が無い | 毎フレーム1回、`drawable:false`・配置すべて false | 何も足さない。札はAppがnullにして抑止（Q04確定） |
 | DOM（簡易） | extended96 | 無い | 毎フレーム1回、`drawable:false`・配置すべて false | 何も足さない |
 | 練習・ホーム・検証の舞台 | controller 無し | — | 呼ばない | 今のまま |
 
@@ -714,7 +716,7 @@ App は毎フレーム `bonusPresentation.tick({activeMs:s.t, phase, guideActive
 ### 6.3 順序
 
 ```
-共通 base（cae3efc。7d551ed を含む）
+共通base（CG02補足を含むPR #26最新head。7d551edと90473eeを保持し、CL-Oが開始SHAを記録）
  ├ A（CL02）: ①札の CSS と結果アトラス詰め直し → ②カード描画・撮影 → ③ports と mount → ④E075/E090・保存画面 → ⑤5パネルの直し
  ├ B（CL03）: ①tongue-rig と showcase の薄い包み（ホーム不変） → ②travel-tongue（姿勢・ダイヤ） → ③stage/street の mode 分岐・step・DOM 簡易舞台
  │           （C の関数は存在確認で分け、無ければ false・0 で進める）
@@ -739,7 +741,7 @@ const app = new App(document.getElementById('test-root'), {   // id を 'app' �
 globalThis.__kamereoru = app; await app.boot();
 ```
 - `importmap`（`three`）と `game.css` は `index.html` と同じに書く。CG02 の試験用の代用品（`tests/ui/*-app.test.mjs` の renderer/stage）は使わない。
-- 通常起動を変えていないことの確かめ：`git diff cae3efc -- src/app.js index.html src/presentation/catalog.js src/i18n` が空、既存の `tests/ui/game-extras-app.test.mjs`（legacy80 で step 0回）と `tests/e2e/presentation.e2e.mjs`（80/20）が変えずに通る、通常の `index.html` で `__kamereoru.stage.presentationStats().mode==='legacy80'`。
+- 通常起動を変えていないことの確かめ：`git diff "$CG_BASE" -- src/app.js index.html src/presentation/catalog.js src/i18n`（CG_BASEはCG02補足を含むCL開始時の固定SHA） が空、既存の `tests/ui/game-extras-app.test.mjs`（legacy80 で step 0回）と `tests/e2e/presentation.e2e.mjs`（80/20）が変えずに通る、通常の `index.html` で `__kamereoru.stage.presentationStats().mode==='legacy80'`。
 
 ## 7. 試験と測定の一覧
 
@@ -772,7 +774,7 @@ globalThis.__kamereoru = app; await app.boot();
 
 ### 7.4 CL05
 
-実 App の明示接続（§6.4）で A/B/C を通しで：1プレイの中で舌・小芝居・警察・札、終了→結果カード→共有→保存→もう一度。15言語×3寸法の結果画面の画像。通常起動の不変（§6.4 の確かめ）。CL-R の提出前レビュー。
+実 App の明示接続（§6.4）で A/B/C を通しで：1プレイの中で舌・小芝居・警察・札、終了→結果カード→共有→保存→もう一度。既存15言語×3寸法の結果画面の配置画像（新文言の翻訳は両者実装後のChatGPT担当として未完了を記録）。通常起動の不変（§6.4 の確かめ）。CL-R の提出前レビュー。
 
 ### 7.5 iPhone 実機でしか確かめられない項目（自動ブラウザで合格にしない）
 
@@ -782,12 +784,12 @@ X の投稿画面への PNG 1枚の添付（Web Share の files）、`img` の�
 
 | 番号 | 内容 | この票の仮の決め | 判断する人 |
 | --- | --- | --- | --- |
-| Q01 | 画面カードが主人公画像を `result.resultPortrait` から読む（N01） | 読む。snapshot へ足すなら ports を合わせる | 処理側（ChatGPT） |
-| Q02 | 新しい文言キー（§3.12）。届くまで英語の控え・代わりの表示 | 控えで進め、15言語は未完了として残す | 処理側 |
-| Q03 | bonus tick の `warningActive` が警察1人以上で true（D09）。そのため警察がいる間は札が出ない | tick の値どおり抑止（描画側で判定し直さない） | 処理側・本人 |
-| Q04 | 効果無効（`effects:false`）の extended96 で step を呼ぶか、札を出すか（D15） | step は `drawable:false` で呼ぶ。札を出すかは App 側で決める | 処理側 |
-| Q05 | `getLayoutKey` を定数にする（画面の回転・大きさの変化で PNG を作り直さない） | 定数 `'card-1200x630-v1'` | 処理側 |
-| Q06 | mount が App の `.result-actions` と共有ボタンの位置を DOM で動かす（App のコードは変えない） | 動かす。CG03 で App 側が並びを持つなら mount の移動をやめる | 処理側 |
+| Q01 | 画面カードの主人公画像（N01） | 確定・実装済み。snapshot.portraitImageを借用し、内部result.resultPortraitを直接読まない | ChatGPT対応済み、CL-Aが消費 |
+| Q02 | 新しい文言キー（§3.12） | 時期確定。控えで実装を進め、両者の実装完了後にChatGPTが15言語をまとめて対応 | 後続ChatGPT。Claudeの開始待ちにしない |
+| Q03 | 警察1人以上の時の札（D09） | 確定。既存警告優先を維持し、Appが通知値をnullにする。抑止分の再取得や期限延長なし | ChatGPT対応済み |
+| Q04 | 演出オフと簡易DOMの札（D15） | 確定。drawable:falseでもstepを1回。演出オフはAppが札をnullにする。簡易DOMだけなら札を維持 | App対応済み、CL-B/Cが描画 |
+| Q05 | getLayoutKeyと画面回転 | 確定・実装済み。getLayoutKeyは構図版の定数でよいが、Appが画面幅/高さを合成する。回転/寸法変更で旧Fileを即無効化し、主人公は再利用してPNGを再準備 | ChatGPT対応済み |
+| Q06 | mountによる既存操作の配置 | 確定。既存.result-actionsと中のボタンを同じノードのまま移動することを認める。ボタンの複製/置換や既存click処理の二重登録をしない。追加の保存/本文/再作成ボタンだけmountが所有 | CL-Aの配置、Appの既存操作処理はChatGPT |
 | Q07 | E067 は 402×874 で出ない見込み、E069 は屋根の高い棟で出ない（条件付き表示）。新しい絵の「端8px」を、画面外から流れ込む世界の絵にも当てるか | 置く時の判定は画面内8px、流れて出入りするのは可 | 本人 |
 | Q08 | 中間旗・足跡が警察1人目の足元と画面で重なることがある（比較面ではない） | 可とし、画像で判定 | 本人 |
 | Q09 | 警察1人で頭が振り向いている時に舌が出る見た目（§2.3） | 測る。悪ければ「頭の振り向きが 0.3rad 以下の時だけ描く」は描画側でできないので、処理側の開始条件の変更として依頼する | 本人・処理側 |
