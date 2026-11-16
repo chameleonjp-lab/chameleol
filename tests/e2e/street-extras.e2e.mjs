@@ -142,3 +142,86 @@ for (const layout of LAYOUTS) {
     } finally { await env.close(); }
   });
 }
+
+test('E034 / E039 police poses render with the real actors (pose sheet, no page errors)', async () => {
+  const env = await launch({width: 402, height: 700});
+  try {
+    await openHome(env.page, env.url);
+    const frames = await env.page.evaluate(async () => {
+      const THREE = await import('three');
+      THREE.ColorManagement.enabled = false;
+      const {createChameleon, createFerret} = await import('/src/scene/characters.js');
+      const {createActorReactions} = await import('/src/presentation/actor-reactions.js');
+      const renderer = new THREE.WebGLRenderer({antialias: true, alpha: false, preserveDrawingBuffer: true, stencil: true});
+      renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+      renderer.setSize(300, 230, false);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x8fa3b8);
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 12), new THREE.MeshBasicMaterial({color: 0x5b5d66}));
+      ground.rotation.x = -Math.PI / 2; ground.position.set(0, 0.22, 2.5); scene.add(ground);
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(60, 10), new THREE.MeshBasicMaterial({color: 0xe66cf0}));
+      wall.position.set(0, 5.2, 0); scene.add(wall);
+      const hero = createChameleon(), ferret = createFerret();
+      hero.group.position.set(0, 0.22, 2.5); scene.add(hero.group);
+      ferret.group.scale.setScalar(0.9); ferret.group.rotation.y = -0.36; scene.add(ferret.group);
+      const reactions = createActorReactions({hero, police: [ferret]});
+      const camera = new THREE.PerspectiveCamera(40, 300 / 230, 0.5, 100);
+      camera.position.set(-1.6, 3.6, 12); camera.lookAt(-1.6, 2.1, 0);
+      const baseX = -2.9;
+      const out = {inquiry: [], footprints: []};
+      for (const kind of ['inquiry', 'footprints']) {
+        const duration = kind === 'inquiry' ? 1200 : 1500;
+        for (const ms of kind === 'inquiry' ? [0, 300, 450, 700, 1000, 1150] : [0, 300, 600, 900, 1200, 1400]) {
+          for (let i = 0; i < 4; i++) { hero.animate(0.016, {walking: true}); ferret.animate(0.016, {walking: true, mode: 'run'}); }
+          const view = {playId: 'p', t: 30000 + ms, running: true, phase: 'grace', policeStage: 1, combo: 0, passed: 3, building: 7, matchState: null, lastEvalSuccess: false};
+          reactions.tick(view);
+          const {dx} = reactions.applyPoliceExtra({id: kind === 'inquiry' ? 34 : 39, kind, startedAt: 30000, elapsedMs: ms, durationMs: duration, building: 7, phase: 'investigate'}, view);
+          ferret.group.position.set(baseX + dx, 0.22, 2.7);
+          renderer.render(scene, camera);
+          out[kind].push({ms, dx, image: renderer.domElement.toDataURL('image/png')});
+        }
+      }
+      reactions.dispose(); hero.dispose(); ferret.dispose(); renderer.dispose();
+      return out;
+    });
+    for (const kind of ['inquiry', 'footprints']) {
+      assert.equal(frames[kind].length, 6);
+      frames[kind].forEach(f => save(`police-${kind}-${String(f.ms).padStart(4, '0')}.png`, f.image));
+      assert.ok(frames[kind].some(f => f.dx < -0.5), `${kind} shifts the officer`);
+      assert.ok(Math.abs(frames[kind][0].dx) < 1e-9);
+    }
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
+
+test('street atlas: the 61 existing cells decode to exactly the pixels of the first sheet, new cells have art', async () => {
+  const env = await launch({width: 402, height: 700});
+  try {
+    await openHome(env.page, env.url);
+    const r = await env.page.evaluate(async () => {
+      const load = async url => { const img = new Image(); img.src = url; await img.decode(); const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const g = c.getContext('2d', {willReadFrequently: true}); g.drawImage(img, 0, 0); return {w: c.width, h: c.height, g}; };
+      const base = await load('/scripts/street-atlas-v1-base.webp'), now = await load('/src/presentation/assets/atlas.webp');
+      let worst = 0, differing = 0;
+      for (let i = 0; i < 61; i++) {
+        const x = (i % 8) * 128, y = Math.floor(i / 8) * 128;
+        const a = base.g.getImageData(x, y, 128, 128).data, b = now.g.getImageData(x, y, 128, 128).data;
+        let cell = 0;
+        for (let k = 0; k < a.length; k++) { const d = Math.abs(a[k] - b[k]); if (d > cell) cell = d; }
+        if (cell) differing++;
+        worst = Math.max(worst, cell);
+      }
+      const opaque = [];
+      for (let i = 61; i < 80; i++) {
+        const x = (i % 8) * 128, y = Math.floor(i / 8) * 128, d = now.g.getImageData(x, y, 128, 128).data;
+        let n = 0; for (let k = 3; k < d.length; k += 4) if (d[k] > 200) n++;
+        opaque.push(n);
+      }
+      return {base: [base.w, base.h], now: [now.w, now.h], worst, differing, opaque};
+    });
+    assert.deepEqual(r.base, [1024, 1024]);
+    assert.deepEqual(r.now, [1024, 1536]);
+    assert.equal(r.differing, 0, `61 cells: ${r.differing} differ, worst channel difference ${r.worst}`);
+    assert.ok(r.opaque.every(n => n > 400), `every new cell has opaque art ${r.opaque}`);
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
