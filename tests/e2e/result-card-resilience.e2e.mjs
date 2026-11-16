@@ -137,7 +137,16 @@ test('eight repeated save/model/regenerate/remount cycles release old URLs, cont
       }
       await page.locator('[data-panel="turn"]').click();
       assert.equal(await advanceUntil(page,async()=>await liveWebgl(page)===0),true);
-      await page.evaluate(()=>__kamereoru.resultCardController.retry());await toReady(page);
+      const regenerating=await page.evaluate((cycle)=>{
+        __kamereoru.resultCardController.retry();
+        const snapshot=__kamereoru.resultCardController.snapshot();
+        return {cycle,state:snapshot.state,pendingEncodes:__pendingEncodes,portrait:[snapshot.portraitImage?.width,snapshot.portraitImage?.height]};
+      },i+1);
+      t.diagnostic(`native PNG regeneration: ${JSON.stringify(regenerating)}`);
+      assert.equal(regenerating.state,'pending');assert.equal(regenerating.pendingEncodes,1,'a cached portrait starts one native PNG encode');
+      // toBlob uses the browser's real task queue, not the paused presentation clock.
+      await page.waitForFunction(()=>__pendingEncodes===0);
+      await toReady(page);
       assert.ok((await heldBytes(page)).total<=BUDGET);
       assert.equal(await page.locator('.result-card').count(),1);
     }
