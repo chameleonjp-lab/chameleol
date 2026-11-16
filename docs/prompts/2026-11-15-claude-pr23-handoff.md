@@ -2,11 +2,17 @@
 
 PR #22の計画に沿い、ChatGPTがC0〜C4の処理を実装した。ClaudeはV1〜V4のビジュアル・画面を担当する。この文書のコード例は接続方法の説明で、未実装の描画部品が本編へ接続済みという意味ではない。
 
+## 現在の計画と契約
+
+この票は#23時点の処理/APIの説明であり、ここで未接続だった箇所の最終担当と追加契約は[①全体実装計画書](../superpowers/plans/2026-11-16-chameleol-master-plan.md)v1.1を優先する。[②ChatGPT](../superpowers/plans/2026-11-16-chameleol-chatgpt-plan.md)が通常接続・全体検証を、[③Claude](../superpowers/plans/2026-11-16-chameleol-claude-plan.md)が描画部品と提出前確認を担当する。
+
+**PR後の失敗・不具合・レビュー修正・コンフリクトは、作成者に関係なくChatGPTが直接解消する。** Claudeの提出後は書込担当を移管する。末尾の旧V工程の説明だけで新しい工程や分担を決めない。
+
 ## まず維持すること
 
 `src/rules`、サーバーとの共有規則、署名summary、本編保存と送信内容は変更していない。表と保存の版・既存スコア・識別値を維持する。称号と配点、実色、精密札の条件を画面側で再計算しない。
 
-既存80件の画面と強制検査を維持するため、`catalog.js` の旧採用80/除外20と旧directorはまだ切り替えていない。全16案が揃ったG1で96/4へ更新する。今回の `EXTENDED_CAMEOS` と `selectExtendedCameo` は新controller用で、旧directorと同時に抽選しない。
+既存80件の画面と強制検査を維持するため、`catalog.js` の旧採用80/除外20と旧directorはまだ切り替えていない。全16案が揃った旧G1（新しい全体計画ではG4）で96/4へ更新する。今回の `EXTENDED_CAMEOS` と `selectExtendedCameo` は新controller用で、旧directorと同時に抽選しない。
 
 ## 結果のデータ
 

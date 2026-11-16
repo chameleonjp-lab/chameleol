@@ -14,13 +14,17 @@
 - [受入試験一覧](docs/acceptance/kamereoru-acceptance.md)：実装後に確認する条件と要件番号の対応。
 - [仕様統合のレビュー記録](docs/reviews/2026-11-07-kamereoru-requirements-review.md)：旧案との整理、補完した境界処理、文書確認の範囲と限界。
 
-## Claudeへ渡す現在の計画（2026-11-16）
+## 現在の全体要件と3つの実装計画（2026-11-16）
 
-#24のブラウザ4組並行CIを保持し、#22の作業ブランチに入っていた#23の仕様処理を今回の引継ぎPRへ取り込みます。Claudeは結果画面・舌・街・警察の見た目を担当し、ChatGPTが採点・保存・共有制御と通常起動への最終接続を担当します。画面・実機・公開はまだ完了していません。
+完成形を先に[全体要件](docs/superpowers/specs/2026-11-16-chameleol-final-requirements.md)で定め、以下の3計画へ分けました。全体組織・モデル/effort・担当・契約v1.1と受渡し・合格の責任は①が正本です。
 
-- [更新した実装計画書・組織図・モデルとエフォート](docs/superpowers/plans/2026-11-15-chameleol-post-pr21-plan.md)：P0〜P6、担当ファイル、合格条件、G1/G2への引継ぎ。
-- [コピーしてClaudeへ渡す依頼文](docs/prompts/2026-11-15-claude-visual-followups.md)と[実装済み#23の接続票](docs/prompts/2026-11-15-claude-pr23-handoff.md)。依頼文は今回の計画更新PRを本人がmainへマージした後に使います。
-- [今回のレビュー記録](docs/reviews/2026-11-16-claude-execution-plan-review.md)。過去の実装・試験記録は時点付きで残します。
+1. [①全体実装計画書](docs/superpowers/plans/2026-11-16-chameleol-master-plan.md)
+2. [②ChatGPT実装計画書](docs/superpowers/plans/2026-11-16-chameleol-chatgpt-plan.md)
+3. [③Claude実装計画書](docs/superpowers/plans/2026-11-16-chameleol-claude-plan.md)
+
+**どちらがPRを作っても、提出後の失敗・不具合・レビュー修正・コンフリクトはChatGPTが直接解消します。** Claudeは描画部品と提出前の確認、ChatGPTは仕様処理・通常接続・全体検証とPR後対応を担当します。
+
+#24の4組CIを維持し、mainへ未反映だった#23の処理を今回のPRへ引き継ぎます。新しい画面・実機・公開は未完了です。[Claudeへコピーする依頼文](docs/prompts/2026-11-15-claude-visual-followups.md)は#25のマージ後に使います。[敵対的検証と反映記録](docs/reviews/2026-11-16-chameleol-three-plans-review.md)も併せて確認してください。
 
 ## PR #21後の対応と担当（2026-11-15）
 
