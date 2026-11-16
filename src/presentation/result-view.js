@@ -1,4 +1,4 @@
-import {PORTRAIT_BOUNDS} from './assets/result-atlas-bounds.js';
+import {PORTRAIT_BOUNDS,RESULT_ATLAS} from './assets/result-atlas-bounds.js';
 import {formatRankAverage} from '../rules/v1/engine.js';
 import {getLanguage} from '../i18n/i18n.js';
 import {getLanguageLocale} from '../i18n/languages.js';
@@ -8,10 +8,11 @@ export function mountResultPresentation({host,data,scope,t=(key)=>key}){
  const doc=host.ownerDocument,root=doc.createElement('section');root.className='result-presentation';let disposed=false,finished=false,now=0,rankSignature='';
  const el=(tag,cls,text,parent=root)=>{const node=doc.createElement(tag);node.className=cls;if(text!=null)node.textContent=String(text);parent.append(node);return node;};
  const tr=(key,fallback,params={})=>{const value=t(key,params);return String(!value||value===key?fallback:value).replace(/\{(\w+)\}/g,(all,key)=>params[key]??all)};
- const sprite=(node,rect)=>{node.style.backgroundImage=`url("${ATLAS}")`;node.style.backgroundSize=`${2048/rect[2]*100}% ${2048/rect[3]*100}%`;node.style.backgroundPosition=`${rect[0]/(2048-rect[2])*100}% ${rect[1]/(2048-rect[3])*100}%`;};
- const scene=el('div','result-scene result-photo');sprite(scene,[([1,20,23,30,40].indexOf(data.backgroundId)%3)*640,Math.floor([1,20,23,30,40].indexOf(data.backgroundId)/3)*400,640,400]);
- const portrait=el('button','result-portrait',null,scene);portrait.type='button';portrait.setAttribute('aria-label',tr('resultPortraitReaction','Greet the chameleon'));sprite(portrait,[['clear','detected','quit','proud'].indexOf(data.portraitId)*480,960,480,720]);
- const restingPortraitRect=[['clear','detected','quit','proud'].indexOf(data.portraitId)*480,960,480,720];
+ const sprite=(node,rect)=>{node.style.backgroundImage=`url("${ATLAS}")`;node.style.backgroundSize=`${RESULT_ATLAS.width/rect[2]*100}% ${RESULT_ATLAS.height/rect[3]*100}%`;node.style.backgroundPosition=`${rect[0]/(RESULT_ATLAS.width-rect[2])*100}% ${rect[1]/(RESULT_ATLAS.height-rect[3])*100}%`;};
+ const bgRect=id=>(RESULT_ATLAS.backgrounds.find(b=>b.id===id)??RESULT_ATLAS.backgrounds[0]).rect,portraitRect=id=>(RESULT_ATLAS.portraits.find(p=>p.id===id)??RESULT_ATLAS.portraits[0]).rect;
+ const scene=el('div','result-scene result-photo');sprite(scene,bgRect(data.backgroundId));
+ const portrait=el('button','result-portrait',null,scene);portrait.type='button';portrait.setAttribute('aria-label',tr('resultPortraitReaction','Greet the chameleon'));sprite(portrait,portraitRect(data.portraitId));
+ const restingPortraitRect=portraitRect(data.portraitId);
  const report=el('div','result-report result-details');
  const score=el('div','result-score',null,report);
  el('span','result-total-label',tr('result.total','Total score'),score);
@@ -55,7 +56,7 @@ export function mountResultPresentation({host,data,scope,t=(key)=>key}){
  }
  const badges=el('div','result-badges',null,report);for(const b of data.badges)el('span','result-badge',tr('resultBadge'+b,b),badges);
  el('p','result-speech',tr(data.speechKey,{resultSpeechClear:'We escaped!',resultSpeechBest:'A new personal best!',resultSpeechCombo:'What a streak!',resultSpeechOther:'Every street is another chance.'}[data.speechKey]),report);
- const cards=el('div','result-districts',null,report);for(const d of data.districts){const card=el('article','result-district',null,cards);const districtIndex=[1,20,23,30,40].indexOf(d.from);sprite(card,[(districtIndex%3)*640,Math.floor(districtIndex/3)*400,640,400]);el('span','result-district-range',`${d.from}–${d.to}`,card);el('strong','result-district-average',d.rankAverage===null?tr('resultNoData','No results for this district yet.'):`${formatRankAverage(d.rankAverage)}%`,card)}
+ const cards=el('div','result-districts',null,report);for(const d of data.districts){const card=el('article','result-district',null,cards);sprite(card,bgRect(d.from));el('span','result-district-range',`${d.from}–${d.to}`,card);el('strong','result-district-average',d.rankAverage===null?tr('resultNoData','No results for this district yet.'):`${formatRankAverage(d.rankAverage)}%`,card)}
  const colors=el('div','result-colors',null,report);if(!data.colors.length)el('p','result-colors-unavailable',tr('resultColorsUnavailable','Colors for this run are unavailable.'),colors);
  for(const c of data.colors){const n=el('span',`result-color${c.reached?' is-reached':''}`,null,colors);n.style.backgroundColor=c.hex;n.title=String(c.building)}
  if(data.comparison){el('p','result-comparison-label',tr('resultPreviousDevice','Compared with the previous run on this device (all names)'),report);for(const key of ['buildings','rankAverage','maxCombo']){const n=data.comparison[key];el('span','result-comparison',`${tr('resultCompare'+key,key)}: ${n==null?'—':n===0?'±0':`${n>0?'+':''}${key==='rankAverage'?(n/100).toFixed(2):n}`}`,report)}}
@@ -63,7 +64,7 @@ export function mountResultPresentation({host,data,scope,t=(key)=>key}){
  const reduced=doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
  function finishNow(){if(disposed)return;finished=true;root.closest('.screen.result')?.classList.add('presentation-complete');root.classList.add('is-complete');scene.classList.add('is-complete');visualScore.textContent=String(data.summary.score.total)}
  function tick(activeMs){if(disposed)return;now=Math.max(now,Number.isFinite(activeMs)?activeMs:now);if(!finished){visualScore.textContent=String(Math.round((data.summary.score.total||0)*Math.min(1,now/600)));if(now>=600)finishNow()}}
- const skip=()=>finishNow(),react=(event)=>{event.stopPropagation();finishNow();root.classList.remove('is-reacting');scene.classList.remove('is-reacting');sprite(portrait,[0,1680,240,360]);void portrait.offsetWidth;root.classList.add('is-reacting');scene.classList.add('is-reacting');scope.schedule('result-reaction',400,()=>{root.classList.remove('is-reacting');scene.classList.remove('is-reacting');sprite(portrait,restingPortraitRect)})};
+ const skip=()=>finishNow(),react=(event)=>{event.stopPropagation();finishNow();root.classList.remove('is-reacting');scene.classList.remove('is-reacting');sprite(portrait,RESULT_ATLAS.reaction.rect);void portrait.offsetWidth;root.classList.add('is-reacting');scene.classList.add('is-reacting');scope.schedule('result-reaction',400,()=>{root.classList.remove('is-reacting');scene.classList.remove('is-reacting');sprite(portrait,restingPortraitRect)})};
  root.addEventListener('pointerdown',skip);scene.addEventListener('pointerdown',skip);portrait.addEventListener('click',react);
  const visibility=()=>{root.closest('.screen.result')?.classList.toggle('is-paused',doc.hidden);root.classList.toggle('is-paused',doc.hidden);scene.classList.toggle('is-paused',doc.hidden)};doc.addEventListener('visibilitychange',visibility);visibility();
  function dispose(){if(disposed)return;disposed=true;root.removeEventListener('pointerdown',skip);scene.removeEventListener('pointerdown',skip);portrait.removeEventListener('click',react);doc.removeEventListener('visibilitychange',visibility);scene.remove();score.remove();report.remove();root.remove()}
@@ -77,7 +78,7 @@ export function mountResultPresentation({host,data,scope,t=(key)=>key}){
   badges.textContent='';for(const b of data.badges)el('span','result-badge',tr('resultBadge'+b,b),badges);
   report.querySelector('.result-speech').textContent=tr(data.speechKey,{resultSpeechClear:'We escaped!',resultSpeechBest:'A new personal best!',resultSpeechCombo:'What a streak!',resultSpeechOther:'Every street is another chance.'}[data.speechKey]);
   cards.textContent='';
-  for(const d of data.districts){const card=el('article','result-district',null,cards);const index=[1,20,23,30,40].indexOf(d.from);sprite(card,[(index%3)*640,Math.floor(index/3)*400,640,400]);el('span','result-district-range',`${d.from}–${d.to}`,card);el('strong','result-district-average',d.rankAverage===null?tr('resultNoData','No results for this district yet.'):`${formatRankAverage(d.rankAverage)}%`,card);}
+  for(const d of data.districts){const card=el('article','result-district',null,cards);sprite(card,bgRect(d.from));el('span','result-district-range',`${d.from}–${d.to}`,card);el('strong','result-district-average',d.rankAverage===null?tr('resultNoData','No results for this district yet.'):`${formatRankAverage(d.rankAverage)}%`,card);}
   if(data.comparison)for(const [i,key] of ['buildings','rankAverage','maxCombo'].entries()){const n=data.comparison[key];report.querySelectorAll('.result-comparison')[i].textContent=`${tr('resultCompare'+key,key)}: ${n==null?'—':n===0?'±0':`${n>0?'+':''}${key==='rankAverage'?(n/100).toFixed(2):n}`}`;}
   finishNow();
  }

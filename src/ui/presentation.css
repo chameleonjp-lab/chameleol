@@ -39,7 +39,7 @@
 .result-scene.result-photo{position:relative;inset:auto;z-index:auto;opacity:1;width:100%;max-width:640px;height:170px;flex:none;margin:0 auto 10px;border:4px solid #eee8d4;border-bottom-width:12px;border-radius:5px;background-color:#34446d;background-repeat:no-repeat;box-shadow:0 4px 12px #0005;overflow:hidden}
 .result-scene .result-portrait{position:absolute;bottom:-3px;left:50%;margin:0 0 0 -48px;transform-origin:center bottom}
 .result-scene.is-paused *{animation-play-state:paused!important}
-.ending-comic{pointer-events:none;position:absolute;z-index:12;top:calc(var(--safe-top,0px) + 80px);right:max(18px,var(--safe-right,0px));width:112px;height:168px;overflow:hidden;border:4px solid #fff4c9;border-radius:11px;box-shadow:4px 4px 0 #10142d,0 0 0 2px #10142d;background-color:#ffe694;background-image:url('../presentation/assets/result-atlas.webp');background-size:426.666667% 284.444444%;background-position:30.612245% 72.289157%;background-repeat:no-repeat;color:transparent;font-size:0;transform:rotate(5deg)}
+.ending-comic{pointer-events:none;position:absolute;z-index:12;top:calc(var(--safe-top,0px) + 80px);right:max(18px,var(--safe-right,0px));width:112px;height:168px;overflow:hidden;border:4px solid #fff4c9;border-radius:11px;box-shadow:4px 4px 0 #10142d,0 0 0 2px #10142d;background-color:#ffe694;background-repeat:no-repeat;color:transparent;font-size:0;transform:rotate(5deg)}
 .ending-comic::after{content:'';position:absolute;inset:0;border:2px solid #161b34;border-radius:5px;pointer-events:none}
 @media(max-height:740px){.result-scene.result-photo{height:125px}.result-scene .result-portrait{width:80px;height:120px;margin-left:-40px}.ending-comic{top:calc(var(--safe-top,0px) + 72px);width:88px;height:132px}}
 @media(orientation:landscape) and (max-height:500px){.result-scene.result-photo{height:105px;max-width:420px;margin-bottom:6px}.result-scene .result-portrait{width:68px;height:102px;margin-left:-34px}.ending-comic{top:24px;right:20px;width:76px;height:114px}}
@@ -151,9 +151,81 @@
 .evidence-film{overflow-x:auto;scroll-snap-type:x mandatory;border-radius:6px;background:#10142d;-webkit-overflow-scrolling:touch}
 .evidence-film:focus-visible{outline:2px solid #fff0a0;outline-offset:2px}
 .evidence-film-track{display:flex;gap:6px;width:max-content;padding:16px 8px;background:repeating-linear-gradient(90deg,#ffffff33 0 8px,transparent 8px 16px) top 4px left 0/100% 6px no-repeat,repeating-linear-gradient(90deg,#ffffff33 0 8px,transparent 8px 16px) bottom 4px left 0/100% 6px no-repeat}
-.evidence-film-frame{flex:none;width:44px;margin:0;scroll-snap-align:start}
+.evidence-film-frame{flex:none;width:38px;margin:0;scroll-snap-align:start}
 .evidence-film-wall{display:block;height:34px;border-radius:3px 3px 0 0}
 .evidence-film-body{display:block;height:22px;border-top:2px solid #0a0c1e;border-radius:0 0 3px 3px}
 .evidence-film-body.is-missing{border:1px dashed #ffffff55;border-top:2px solid #0a0c1e;background:transparent}
 .evidence-film-frame figcaption{margin-top:2px;font-size:12px;line-height:1.2;text-align:center;color:#b9bee6}
 @media(orientation:landscape) and (max-height:500px){.result-evidence{max-width:600px}}
+
+/* 精密札だけを出す時のカード（ボーナスの束が無い評価中）。中央寄せは translate で行い、出入りの transform と重ねない。 */
+.bonus-card.is-badge-only .bonus-card-title,.bonus-card.is-badge-only .bonus-card-points,
+.bonus-card.is-badge-only .bonus-awards,.bonus-card.is-badge-only .bonus-card-detail{display:none}
+.bonus-card.is-badge-only{right:auto;left:50%;translate:-50% 0;margin:0;padding:5px 12px;max-width:calc(100% - 20px)}
+.bonus-card.is-badge-only .bonus-card-notices{margin:0}
+.bonus-card-badge{color:#ffe694;white-space:nowrap}
+
+/* ---- 結果の主カード（1200×630）と主操作。写真と成績は order で主操作の下へ入れ替える（DOM の順は変えない）。---- */
+.screen.result.has-result-card{display:flex;flex-direction:column}
+.screen.result.has-result-card>*{order:10}
+.screen.result.has-result-card>.result-title{order:1}
+.screen.result.has-result-card>.result-card{order:2;margin:0 0 4px}
+.screen.result.has-result-card>.result-actions{order:3}
+.screen.result.has-result-card>.result-evidence-host{order:4}
+.screen.result.has-result-card>.result-main{order:5}
+.screen.result.has-result-card>.result-scene{order:6;margin-top:10px}
+.result-card-canvas{display:block;width:100%;height:auto;aspect-ratio:1200/630;border-radius:10px;box-shadow:0 4px 12px #0006}
+.result-card-summary{margin:6px 0 0;font-size:16px;font-weight:700;line-height:1.3;color:#fff6d6;text-align:center;overflow-wrap:anywhere}
+.result-card-secondary{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px;border-radius:12px}
+.result-card-secondary.is-share-failed{outline:2px solid #ffcc4d;outline-offset:3px}
+.result-card-secondary .btn{flex:1 1 140px;width:auto;min-height:40px;margin:0;font-size:.9rem}
+.result-card-secondary .btn[hidden]{display:none}
+.result-card-status{flex-basis:100%;margin:0;font-size:14px;line-height:1.4;color:#fff0a0}
+.result-card-status:empty{display:none}
+.result-actions [aria-disabled=true]{opacity:.6}
+@media(orientation:landscape) and (max-height:500px){
+ .screen.result.has-result-card{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);column-gap:14px;align-items:start}
+ .screen.result.has-result-card>*{grid-column:1/-1}
+ .screen.result.has-result-card>.result-card{grid-column:1;grid-row:1/span 2}
+ .screen.result.has-result-card>.result-title{grid-column:2;grid-row:1;font-size:1.6rem;margin:0 0 4px}
+ .screen.result.has-result-card>.result-actions{grid-column:2;grid-row:2}
+}
+
+/* ---- 画像の保存画面（img を長押しで保存。canvas の長押しは使わない）---- */
+.result-card-viewer{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:calc(var(--safe-top,0px) + 14px) 16px calc(var(--safe-bottom,0px) + 14px);background:#14183a;color:#fff6d6;overflow:auto;box-sizing:border-box}
+.result-card-viewer *{box-sizing:border-box}
+.result-card-viewer-title{margin:0;padding-right:96px;font-size:1.05rem;font-weight:800;color:#fff0a0}
+.result-card-viewer-close{position:absolute;top:calc(var(--safe-top,0px) + 10px);right:16px;min-height:44px}
+.result-card-viewer-image{display:block;width:100%;max-width:640px;height:auto;margin:0 auto;border:1px solid #ffffff33;border-radius:16px;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+.result-card-viewer-hint{margin:0;text-align:center;font-size:14px;line-height:1.4}
+.result-card-viewer-download{width:100%;max-width:640px;margin:0 auto;text-align:center;text-decoration:none}
+@media(orientation:landscape) and (max-height:500px){
+ .result-card-viewer{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:center}
+ .result-card-viewer-title{flex:1 0 100%}
+ .result-card-viewer-image{width:auto;max-width:60%;max-height:calc(100vh - 100px)}
+ .result-card-viewer-hint{flex:1 1 30%}
+ .result-card-viewer-download{flex:1 1 30%}
+}
+
+/* ---- E075 街の模型 ---- */
+.result-miniature{display:grid;gap:8px}
+.result-miniature-svg{display:block;width:100%;height:auto;border-radius:10px;background:#10142d}
+.result-miniature-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin:0;padding:0;list-style:none;font-size:14px;line-height:1.3}
+.result-miniature-legend li{display:flex;align-items:center;gap:6px}
+.result-miniature-chip{display:inline-block;width:16px;height:12px;border:1.5px solid #24394b;border-radius:2px;background:#d8cfb4}
+.result-miniature-chip.is-arrived{border:2px dashed #ff8a8a;background:#d8cfb4;position:relative}
+.result-miniature-chip.is-arrived::after{content:'';position:absolute;right:-3px;top:-8px;border-left:6px solid #ff5a5f;border-top:4px solid transparent;border-bottom:4px solid transparent}
+.result-miniature-chip.is-unreached{border:1.5px dashed #ffffff66;background:#ffffff14}
+.result-miniature-chip.is-missing{border:1.5px dotted #ffffffaa;background:transparent}
+
+/* ---- E090 回して見る ---- */
+.result-turn{display:grid;gap:8px;justify-items:center}
+.result-turn-stage{position:relative;width:100%;max-width:300px;aspect-ratio:1;border-radius:14px;overflow:hidden;touch-action:pan-y;background:radial-gradient(circle at 50% 54%,#ffffff38 0,#ffffff00 62%),#14183a;border:1px solid #ffffff33}
+.result-turn-stage::after{content:'';position:absolute;left:50%;bottom:17%;width:46%;height:7%;transform:translateX(-50%);border-radius:50%;background:#cbb9a4;border:2px solid #24394b;z-index:0}
+.result-turn-canvas{position:absolute;inset:0;width:100%!important;height:100%!important;z-index:1;touch-action:pan-y}
+.result-turn-step{position:absolute;top:50%;z-index:2;width:44px;height:44px;margin-top:-22px;padding:0;border:1px solid #ffffff55;border-radius:50%;background:#14183acc;color:#fff;font-size:18px;line-height:1;cursor:pointer}
+.result-turn-left{left:6px}.result-turn-right{right:6px}
+.result-turn-note{margin:0;font-size:14px;line-height:1.4;text-align:center;min-height:0}
+.result-turn-note:empty{display:none}
+.result-turn-hint{margin:0;font-size:14px;line-height:1.4;text-align:center;color:#d7e5ff}
+@media(orientation:landscape) and (max-height:500px){.result-turn-stage{max-width:220px}}
