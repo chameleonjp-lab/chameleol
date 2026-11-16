@@ -21,7 +21,9 @@ import { createChameleon, createFerret, createJewelryShop } from './characters.j
 import { outlineForBuilding } from './chameleon-outline.js';
 import { SKY, TOD, rgbFloat } from './palette-colors.js';
 import { createEffects } from './effects.js';
-import { createGamePresentationClock, createVisiblePresentationClock } from './stage.js';
+import { createGamePresentationClock, createVisiblePresentationClock, resolvePresentationMode, createExtendedStepper, NO_PLACEMENTS, IDLE_BUSY } from './stage.js';
+import { createTravelTongue } from './travel-tongue.js';
+import { CAMEOS } from '../presentation/catalog.js';
 import { createPresentationScope } from '../presentation/scope.js';
 import { createStreetAccents } from '../presentation/street-accents.js';
 import { createActorReactions } from '../presentation/actor-reactions.js';
@@ -76,7 +78,10 @@ function canvasOf(w, h, draw) {
   return canvas;
 }
 
-export function createThreeStage(container, { course, decorations, rules = RULES_V1, showOpeningShop = false, presentationEnabled=true,verification=false }={}) {
+export function createThreeStage(container, { course, decorations, rules = RULES_V1, showOpeningShop = false, presentationEnabled=true,verification=false,presentationSet,gameExtrasController }={}) {
+  // 演出の組（IF01）。既定は旧経路。extended96 は明示と controller の両方がある時だけ。
+  const mode = resolvePresentationMode({ presentationSet, gameExtrasController });
+  const extended = mode === 'extended96';
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true, stencil: true });
   // 色をそのまま出す：色管理・トーンマッピングを使わない。
   THREE.ColorManagement.enabled = false;
@@ -792,8 +797,22 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   const reducedMotion = !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   fx.setEnabled(!reducedMotion); // 動きを減らす設定では粒を出さない（「！」「？」の記号は出す）
   const presentationScope=createPresentationScope({id:'street',kind:'game'});
-  const accents=presentationEnabled?createStreetAccents({scene,camera,slots,scope:presentationScope,seed:decorations?.[0]?.sign??1,reducedMotion}):null;
+  const accents=presentationEnabled?createStreetAccents({scene,camera,slots,scope:presentationScope,seed:decorations?.[0]?.sign??1,reducedMotion,mode}):null;
   const reactions=presentationEnabled?createActorReactions({hero,police:ferrets,scope:presentationScope,reducedMotion}):null;
+  // extended96：舌とダイヤは効果ありの時だけ。step は効果なしでも1フレーム1回（drawable:false）。
+  const travelTongue=extended&&presentationEnabled?createTravelTongue(hero):null;
+  // 「動きを減らす」の途中変更は、舌をすぐ収納して取り消す（購読は dispose で外す）。
+  const stepper=extended?createExtendedStepper({controller:gameExtrasController,onReducedMotionChange:matches=>{if(matches&&travelTongue){travelTongue.cancel();drawFrame();}}}):null;
+  presentationScope.own(()=>stepper?.dispose());
+  // 描画の喪失中は描けないので step へ drawable:false を渡し、舌はすぐ戻す。
+  let contextLost=false;
+  const onContextLost=()=>{contextLost=true;travelTongue?.cancel();};
+  const onContextRestored=()=>{contextLost=false;};
+  if(extended){
+    renderer.domElement.addEventListener('webglcontextlost',onContextLost);
+    renderer.domElement.addEventListener('webglcontextrestored',onContextRestored);
+    presentationScope.own(()=>{renderer.domElement.removeEventListener('webglcontextlost',onContextLost);renderer.domElement.removeEventListener('webglcontextrestored',onContextRestored);});
+  }
   const ringMaterial=new THREE.MeshBasicMaterial({color:0xffed82,side:THREE.DoubleSide,fog:false});
   maskAvoid(ringMaterial);
   const successRing=new THREE.Mesh(new THREE.RingGeometry(.75,.84,32),ringMaterial);
@@ -806,6 +825,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   let sweatClock = 0;
   let lastPoliceStage = 0;
   const ferretMode = ['run', 'run'];
+  const ferretArrived = [false, false]; // 立ち位置に着いたか（警察の追加動作の開始条件。見た目の値を外へ渡すだけ）
   const HERO_ICON = 2;
 
   // 発見演出：カメラに付けた暗幕（中心だけ抜ける）と、主人公に集まる探照灯
@@ -831,6 +851,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
   // ---- 画面・カメラ ----
   let viewW = 1;
   let viewH = 1;
+  let hudBottom = 76;
   let playerX = 0;
   let refX = 0; // カメラが追う位置
   const gameTick = createGamePresentationClock();
@@ -859,6 +880,12 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     const rect = container.getBoundingClientRect();
     viewW = Math.max(1, rect.width);
     viewH = Math.max(1, rect.height);
+    if (extended) {
+      // 舞台の上に重なる HUD の下端（舞台の上端から測る）。読むだけで、見つからなければ 76。
+      const hud = container.closest?.('.stage-wrap')?.querySelector?.('.hud');
+      const hudRect = hud?.getBoundingClientRect?.();
+      hudBottom = hudRect && hudRect.height > 0 ? Math.max(0, hudRect.bottom - rect.top) : 76;
+    }
     renderer.setSize(viewW, viewH, false);
     const aspect = viewW / viewH;
     // 縦長で狭いときは視野を広げ、横に約1棟ぶんが入るようにする
@@ -1048,6 +1075,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const m = active ? mode : 'run';
       // 立ち位置に着いてから状態が変わった時に、頭の上に記号を出す（走り込みの「！」とは重ねない）
       const arrived = active && Math.abs(target - ferretRel[i]) < 1.2;
+      ferretArrived[i] = arrived;
       if (!arrived) {
         ferretMode[i] = 'run';
       } else if (m !== ferretMode[i]) {
@@ -1195,6 +1223,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     beams.forEach(show);
     show(darkPlane);
     show(hero.jewel);
+    if (travelTongue) { show(travelTongue.mesh); show(travelTongue.diamond); }
     show(halos);
     show(pools);
     show(farGlow);
@@ -1205,13 +1234,69 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     restore.reverse().forEach(([o, v]) => (o.visible = v));
   }
 
+  // ---- extended96：step へ渡す値の観測（抑止・抽選・時計は controller。ここは配置と見た目の事実だけ） ----
+  const frameWorld = new THREE.Vector3();
+  const screenX = (x, y, z) => {
+    frameWorld.set(x, y, z).project(camera);
+    return ((frameWorld.x + 1) / 2) * viewW;
+  };
+  /** C の部品へ渡す、画面上の位置の事実（CSS 画素）。 */
+  function frameInfo() {
+    heroRoot.updateMatrixWorld(true);
+    return {
+      viewport: { width: viewW, height: viewH },
+      hudBottom,
+      heroX: screenX(heroRoot.position.x, heroRoot.position.y + 1.5, heroRoot.position.z),
+      policeX: ferretRoots.map((r) => screenX(r.position.x, SIDEWALK_Y + 1.5, r.position.z)),
+      policeVisible: ferretRoots.map((r) => r.visible),
+    };
+  }
+  const existingOff = Object.fromEntries(CAMEOS.map((c) => [c.id, false]));
+  /** 開始演出・終了演出の時の step（描かない。評価区間と一度だけの取得処理を続ける）。 */
+  function stepIdle(args) {
+    travelTongue?.cancel();
+    if (stepper && args.presentation) stepper.step(args.presentation, { drawable: false, actorBusy: IDLE_BUSY, placements: NO_PLACEMENTS });
+  }
+
+  /**
+   * extended96 の1フレーム：controller を1回だけ step し、その出力を描く。
+   * C の部品（placements・busy・applyPoliceExtra・tick の第2引数）は、存在すれば使い、無ければ false・0・何もしない。
+   */
+  function stepExtended(args, view) {
+    const drawable = !contextLost && presentationEnabled;
+    const info = drawable && accents?.placements ? frameInfo() : null;
+    let extra = null;
+    if (stepper && args.presentation) {
+      const placements = drawable
+        ? { ...NO_PLACEMENTS, existing: existingOff, ...(info ? accents.placements(view, info) : null), policeSettled: view.policeStage === 1 && ferretArrived[0] }
+        : NO_PLACEMENTS;
+      let busy = IDLE_BUSY;
+      if (reactions?.busy) busy = reactions.busy();
+      else if (reactions) { const st = reactions.stats(); busy = { hero: st.hero != null, police: st.police != null }; }
+      extra = stepper.step(args.presentation, { drawable, actorBusy: busy, placements });
+    }
+    if (accents) {
+      // C の部品が無い間は、旧 director の抽選を止めるため優先扱いで進める（取得済みの新演出は C の部品が描く）。
+      if (accents.placements) accents.tick(view, { cameo: extra?.cameo ?? null, policeExtra: extra?.policeExtra ?? null, actors: info ?? frameInfo() });
+      else accents.tick({ ...view, priority: 'guidance' });
+    }
+    const dx = reactions?.applyPoliceExtra ? (reactions.applyPoliceExtra(extra?.policeExtra ?? null, view)?.dx ?? 0) : 0;
+    if (dx) {
+      ferretRoots[0].position.x += dx;
+      ferretShadows[0].position.x += dx;
+      fx.placeIcon(0, ferretRoots[0].position.x + 0.35, SIDEWALK_Y + 3.6 * FERRET_SCALE + ferrets[0].hop * FERRET_SCALE + 0.75, ferretRoots[0].position.z);
+    }
+    travelTongue?.apply(extra?.travelTongue ?? null);
+  }
+
   const api = {
     kind: 'three',
     renderer,
     /** 毎フレーム。t はゲーム内時刻、color は体色（HSV整数）、policeStage は警察の人数、matchState は今の一致の段階。 */
     update(args, cutsceneFrame = null) {
-      if (disposed || opening) return;
-      if (ending && !cutsceneFrame) { lastArgs = args; return; }
+      if (disposed) return;
+      if (opening) { stepIdle(args); return; }
+      if (ending && !cutsceneFrame) { lastArgs = args; stepIdle(args); return; }
       lastArgs = args;
       const { t, color, policeStage = 0, searching = false, nervous = 0, walking = true, matchState = null } = args;
       const dt = cutsceneFrame?.dt ?? (ending ? 0 : gameTick(args.presentation?.t ?? t, args.presentation?.running ?? args.running ?? true));
@@ -1231,9 +1316,11 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       hero.setColor(rgbFloat(color));
       if (ending) {
         successRing.visible=false;
+        travelTongue?.cancel();
         accents?.ending(ending.kind,now);
         applyEnding(dt, now);
       } else {
+        travelTongue?.prepareBase(); // 前フレームに舌が足した姿勢だけを戻してから、基本の動き
         if(view.running)hero.animate(dt,{walking,nervous});
         // 警察：通常は画面外。段階に応じて主人公の後ろ（同じ歩道の並び）へ走り込み、回復で後退する
         if (policeStage > lastPoliceStage) {
@@ -1247,7 +1334,8 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         updatePolice(dt,policeStage,mode,{walking,freeze:!view.running});
         presentationScope.tick(view.t);
         reactions?.tick(view);
-        accents?.tick(view);
+        if (extended) stepExtended(args, view);
+        else accents?.tick(view);
         successRing.visible=presentationEnabled&&(forcedRing||view.t<ringUntil);
         successRing.position.set(playerX,SIDEWALK_Y+.035,HERO_Z);
         if (walking) {
@@ -1286,8 +1374,8 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       reactions?.event(event);accents?.event(event);
       if(event.type==='instantSuccess')ringUntil=event.t+450;
     },
-    setBestDistance(value){accents?.setBestDistance(value);},
-    presentationStats(){const a=accents?.stats()??{},r=reactions?.stats()??{};return {...a,actors:r,activeIds:[...(a.activeIds??[]),...(r.activeIds??[]),...(successRing.visible?[41]:[])],successRings:successRing.visible?1:0,enabled:presentationEnabled};},
+    setBestDistance(value){accents?.setBestDistance(value);stepper?.setBestDistance(value);},
+    presentationStats(){const a=accents?.stats()??{},r=reactions?.stats()??{};return {...a,mode,tongue:travelTongue?.stats()??null,actors:r,activeIds:[...(a.activeIds??[]),...(r.activeIds??[]),...(successRing.visible?[41]:[])],successRings:successRing.visible?1:0,enabled:presentationEnabled};},
     forcePresentationEffect(id){
       if(!verification||!lastPresentation)return false;
       if(id===41){forcedRing=true;successRing.visible=true;drawFrame();return true;}
@@ -1356,6 +1444,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const currentEnding = { kind, duration, done: {} };
       ending = currentEnding;
       reactions?.reset();
+      travelTongue?.cancel();
       hero.jewel.position.copy(jewelHome); // 宝石は常に尻尾の元の位置から出す（開始演出を飛ばしても胸からは出さない）
       return new Promise((resolve) => {
         let frameId = null;
@@ -1661,9 +1750,85 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     },
     /** 主人公の外周線の今の段階（試験・確認用）。 */
     outlineStyle: () => hero.getOutlineStyle(),
+    /**
+     * 検証用（verification の時だけ）：主人公の胴・舌・ダイヤ・警察の、画面上の外接枠（舞台 canvas の CSS 画素、上が 0）。
+     * 舌は輪郭の厚みまで含めた全頂点、ダイヤは全頂点を投影する。表示中でない物は null。
+     */
+    presentationGeometry() {
+      if (!verification || disposed) return null;
+      camera.updateMatrixWorld(true);
+      heroRoot.updateMatrixWorld(true);
+      const add = (b, p) => {
+        p.project(camera);
+        const x = ((p.x + 1) / 2) * viewW;
+        const y = ((1 - p.y) / 2) * viewH;
+        b.x0 = Math.min(b.x0, x); b.x1 = Math.max(b.x1, x); b.y0 = Math.min(b.y0, y); b.y1 = Math.max(b.y1, y);
+        (b.points ??= []).push([x, y]);
+      };
+      // 投影した点の凸包（外接枠より実際の形に近い。胴・舌・ダイヤの距離の確認用）。
+      const hull = (pts) => {
+        if (!pts || pts.length < 3) return pts ?? null;
+        const sorted = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+        const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+        const half = (list) => { const h = []; for (const p of list) { while (h.length >= 2 && cross(h[h.length - 2], h[h.length - 1], p) <= 0) h.pop(); h.push(p); } h.pop(); return h; };
+        return [...half(sorted), ...half(sorted.reverse())];
+      };
+      const done = (b) => (b && Number.isFinite(b.x0) ? { x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1, hull: hull(b.points) } : null);
+      // 胴：比較用の材質を使う面のうち、判定点（comparePoint）に最も近い楕円体。頭・手足は含めない。
+      const body = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+      const cmp = comparisonMats();
+      const compareAt = hero.comparePoint ? hero.comparePoint.getWorldPosition(new THREE.Vector3()) : heroWorldPoint(new THREE.Vector3());
+      let torso = null;
+      let torsoDistance = Infinity;
+      hero.group.traverse((o) => {
+        if (!o.isMesh || !cmp.includes(o.material)) return;
+        const d = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()).distanceTo(compareAt);
+        if (d < torsoDistance) { torsoDistance = d; torso = o; }
+      });
+      if (torso) {
+        // 胴の楕円体の全頂点を投影した枠と凸包（箱の隅ではなく、実際の面の頂点）。
+        const bp = torso.geometry.attributes.position;
+        const q = new THREE.Vector3();
+        for (let i = 0; i < bp.count; i++) add(body, q.fromBufferAttribute(bp, i).applyMatrix4(torso.matrixWorld));
+      }
+      let tongue = null;
+      let diamond = null;
+      if (travelTongue?.mesh.visible) {
+        const mesh = travelTongue.mesh;
+        const pos = mesh.geometry.attributes.position;
+        const nor = mesh.geometry.attributes.normal;
+        const thick = mesh.children[0].material.uniforms?.uThick?.value ?? 0.085;
+        tongue = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+        const p = new THREE.Vector3();
+        const n = new THREE.Vector3();
+        for (let i = 0; i < pos.count; i++) {
+          p.fromBufferAttribute(pos, i);
+          n.fromBufferAttribute(nor, i);
+          p.addScaledVector(n, thick).applyMatrix4(mesh.matrixWorld);
+          add(tongue, p);
+        }
+        if (travelTongue.diamond.visible) {
+          const d = travelTongue.diamond;
+          const dp = d.geometry.attributes.position;
+          diamond = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+          for (let i = 0; i < dp.count; i++) add(diamond, p.fromBufferAttribute(dp, i).applyMatrix4(d.matrixWorld));
+        }
+      }
+      const police = ferretRoots.map((r) => {
+        if (!r.visible) return null;
+        const b = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+        const bb = new THREE.Box3().setFromObject(r);
+        for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) add(b, new THREE.Vector3(x, y, z));
+        return done(b);
+      });
+      return { canvas: { width: viewW, height: viewH }, hudBottom, body: done(body), tongue: done(tongue), diamond: done(diamond), police };
+    },
+    /** 検証用（verification の時だけ）：主人公のモデル（警察1人の最大振り向きなど、姿勢を固定した描画の確認用）。 */
+    verificationHero: () => (verification && !disposed ? hero : null),
     resize,
     dispose() {
       if(disposed)return;
+      travelTongue?.dispose();
       presentationScope.dispose();
       successRing.geometry.dispose();ringMaterial.dispose();
       for (const finish of cutsceneCleanups) finish();
