@@ -40,6 +40,16 @@ test('same-condition retry recovers failed encoding without automatically sharin
   const c=createResultCardController({result:r,ports:p});await settle();assert.equal(c.snapshot().state,'failed');const old=c.snapshot().revision;
   c.retry();await settle();assert.equal(c.snapshot().state,'ready');assert.ok(c.snapshot().revision>old);assert.equal(p.count.portraits,1);assert.equal(p.count.shares.length,0);releaseResultCardResources(r);
 });
+test('ready subscribers never overlap their full-size views with the PNG generation canvas',async()=>{
+  const p=ports(),r=result(),sizes=[];let canvas;
+  p.createCanvas=()=>canvas={};
+  p.onChange=snapshot=>{if(snapshot.state==='ready')sizes.push([canvas.width,canvas.height]);};
+  const c=createResultCardController({result:r,ports:p});await settle();
+  r.netState='official';c.refresh();await settle();
+  assert.equal(c.snapshot().state,'ready');assert.ok(c.snapshot().prepared.file.size>0);
+  assert.deepEqual(sizes,[[0,0],[0,0]],'clients may expand the screen and E090 during ready notification');
+  releaseResultCardResources(r);
+});
 test('screen snapshots borrow the same portrait as the PNG without another image allocation',async()=>{
   const p=ports(),r=result();let pngPortrait;
   const draw=p.drawResultCard;p.drawResultCard=(canvas,args)=>{pngPortrait=args.portrait;draw(canvas,args);};

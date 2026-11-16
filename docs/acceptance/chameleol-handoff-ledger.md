@@ -1,6 +1,6 @@
 # カメレオる：共有PR受渡し票
 
-本票は2026-11-16のCG00→CG02先行実装を記録する。正本は[全体要件](../superpowers/specs/2026-11-16-chameleol-final-requirements.md)、[全体計画](../superpowers/plans/2026-11-16-chameleol-master-plan.md)の契約v1.2。過去の記録を初期化しない（本票は今回新規）。
+本票はCG00→CG02先行実装と2026-11-17のCL02受入レビュー/修正を記録する。正本は[全体要件](../superpowers/specs/2026-11-16-chameleol-final-requirements.md)、[全体計画](../superpowers/plans/2026-11-16-chameleol-master-plan.md)の契約v1.2。過去の記録を初期化しない（本票は今回新規）。
 
 ## 共有ブランチ・現在地
 
@@ -12,10 +12,23 @@
 | 共有PR番号・URL | [#26（ドラフト）](https://github.com/chameleonjp-lab/chameleol/pull/26) |
 | CG02準備commit／Claude開始点 | `7d551ed624cde7b61ff2ef33cf434945706b7919` |
 | 今回のCG02補足の開始head | `90473ee5c4367d784c8a4579e302b37a652964ab`（CL01設計追加済み）。補足後は製品変更を含む。最新head/CIはPR本文とブランチ履歴を正とする |
-| 現在の担当 | ChatGPT：CG02補足の製品/文書/試験を完了してCIを確認し、Claudeの予定されたCL02〜06へ引渡す。通常接続と翻訳は後続ChatGPT |
-| 状態 | CG00/CG01/CG02とCL01不足へのCG02補足を実装。通常起動legacy80、catalog80/20を維持。過去の独立レビュー結果と今回の結果を区別して下記へ記録 |
+| 現在の担当 | ChatGPT：CL02追加分の独立レビュー・PR後修正・統合検査準備を担当。Claude再開後の予定されたCL03〜06の追加実装はClaude、通常接続と両者実装後の翻訳はChatGPT |
+| 状態 | CL02実装は7242c64で追加済み。以下の受入指摘をChatGPTが修正し、最新CIをPR本文で照合する。通常起動legacy80、catalog80/20は維持し、G2/G5全体合格は未完了 |
 
-## CG02補足：今回の引渡し
+## CL02受入レビューと再開時の受渡し（2026-11-17）
+
+開始headは`7242c6489c69426cd281062eb9d3b7a7fd467bd2`（ClaudeのCL02統合）、開始時[CI #71](https://github.com/chameleonjp-lab/chameleol/actions/runs/43872685333)は全6組成功。本人からClaudeが上限で停止していると連絡を受け、担当を変えずChatGPTがPR後の受入レビュー/修正を先行した。
+
+- [独立レビューと修正記録](../reviews/2026-11-17-chameleol-cl02-acceptance-review.md)：別文脈のCG-R（gpt-6-astra/xhighを明示指定）がCriticalなし/Important3/Minor1を確認。ChatGPTが全件修正し、生成面の解放順、初回撮影の最大保持、保存画面のフォーカス、部分欠損表示の再現を解消。
+- [統合検査表](pr26/integration-checklist.md)：CL02の現在の検査と、CL03〜06受領後のCG03/G5の検査を分けて準備。通常起動の切替と全16案の同時有効化は受領後まで行わない。
+- 目の256×256画像とRGBA読出しも含め、初回撮影は16,838,944B→16,701,856B。PNG生成面はready通知前に解放。E090は実際の主人公画像と残り予算から倍率を決め、通常は最大560を維持し、最大切抜き時は530で16,774,544Bに収める。16MiBの上限は変更しない。
+- 修正前5件RED→対象35/35 GREEN。全単体626件中595成功/失敗0、既存SQL専用31件skip。build110ファイル成功。手元のChromiumはsocket制限で起動できないため、製品の失敗/成功へ読み替えない。新しい実Appの結果更新/回転e2eと本文共有の補強は、修正後headの既存4組並行CIで確認し、最新結果をPR本文へ記録する。
+
+今回ChatGPTが修正を所有した製品ファイルは`result-card-controller.js`、`result-card-view.js`、`result-miniature-view.js`、`result-portrait.js`、`result-turn-view.js`と対応試験。予定されたClaudeの舌/舞台/街/警察/札、CSS、画像素材は変更していない。Claude再開時は本修正を含む最新headを取得し、古いCL-A作業コピーで結果ファイルを上書きしない。追加実装の担当は元の計画どおりで、PR後の問題だけは今後もChatGPTが直接修正する。
+
+今回の受入はCL02のコードと自動接続検査の範囲であり、CL05の全体G2、CG03通常接続、両者実装後の翻訳、G5全体合格、iPhone実機・公開は未完了。以下のCG02補足/先行準備の記載は履歴である。
+
+## CG02補足：先行準備の引渡し（履歴）
 
 [対応範囲・確定回答・API例・翻訳の後送り](chameleol-chatgpt-unblock-20261116.md)を参照。N01/N03とQ01/Q03〜06を解消。N02/Q02は本人の指示で両者実装完了後のCG05前段へ移し、今は辞書を変更しない。CL01設計票・全体要件・3計画・コピー依頼文へ反映した。Claudeは最新headを取得し、この補足を共通baseへ含めてCL02〜CL06へ進める。
 

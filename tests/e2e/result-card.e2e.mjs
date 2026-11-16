@@ -129,8 +129,14 @@ test('share: the tap calls navigator.share synchronously with one PNG; cancel ke
     assert.equal(afterCancel.shares, 2);
     assert.ok(afterCancel.status.length > 0, 'the closed note is shown');
     // 明示タップだけで本文
+    const windowsBefore = await page.evaluate(() => __opened.length);
     await page.locator('.result-card-text').click();
-    assert.equal(await page.evaluate(() => __opened.length >= 0), true);
+    const textShare = await page.evaluate(() => ({ count: __opened.length, url: __opened.at(-1) }));
+    assert.equal(textShare.count, windowsBefore + 1, 'an explicit text-share tap opens exactly one posting window');
+    const intent = new URL(textShare.url);
+    assert.equal(intent.origin + intent.pathname, 'https://x.com/intent/post');
+    assert.equal(intent.searchParams.get('url'), 'https://example.invalid/');
+    assert.ok(intent.searchParams.get('text').length > 0);
     // 再試行は自動共有しない
     const sharesBefore = await page.evaluate(() => __shares.length);
     await page.evaluate(() => __kamereoru.resultCardController.retry());
@@ -245,6 +251,73 @@ test('E090 can open in the first 600ms, gives way to the portrait capture, and b
     await page.locator('[data-panel="turn"]').click();
     assert.equal(await advanceUntil(page, async () => (await liveWebgl(page)) === 0, { limit: 10 }), true, 'closing frees the context');
     assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
+
+test('result updates and rotation release the PNG buffer before E090 expands, invalidate saved images and restore the save action focus', async (t) => {
+  const env = await launch({ width: 402, height: 874, scale: 2 });
+  try {
+    const { page } = env;
+    await openApp(env);
+    await page.evaluate(() => {
+      globalThis.__readyResources = [];
+      const factory = __kamereoru.resultCardPorts;
+      __kamereoru.resultCardPorts = (options) => {
+        const ports = factory(options), notify = ports.onChange;
+        ports.onChange = (snapshot) => {
+          notify(snapshot);
+          if (snapshot.state !== 'ready') return;
+          const bytes = (c) => c ? c.width * c.height * 4 : 0;
+          const turn = document.querySelector('.result-turn-canvas');
+          const generation = [...__encodingCanvases].reduce((sum,c) => sum + bytes(c),0);
+          __readyResources.push({
+            generation,
+            total: 11_673_600 + bytes(document.querySelector('.result-card-canvas')) + bytes(snapshot.portraitImage)
+              + bytes(turn) + (turn ? 262_144 : 0) + generation,
+          });
+        };
+        return ports;
+      };
+    });
+    await playToResult(page);await toReady(page);
+    await page.evaluate(() => __webgl.clear()); // Observe only the result renderer, not the disposed game stage.
+    await page.locator('[data-panel="turn"]').click();
+    await page.waitForSelector('.result-turn-canvas');
+    const update = await page.evaluate(() => {
+      const a=__kamereoru,c=a.resultCardController;
+      globalThis.__oldSharedFile=c.snapshot().prepared.file;
+      a.lastResult.ranked=true;a.lastResult.netState='pending_review';a.renderResultStatus();
+      return { prepared:c.snapshot().prepared, state:c.snapshot().state };
+    });
+    assert.deepEqual(update,{prepared:null,state:'pending'},'a confirmation-only update invalidates the old file synchronously');
+    await toReady(page);
+    assert.equal(await page.evaluate(() => __kamereoru.resultCardController.snapshot().prepared.file!==__oldSharedFile),true);
+    await page.locator('.result-card-save').click();
+    await page.waitForFunction(() => document.querySelector('.result-card-viewer-image')?.complete);
+    const closed = await page.evaluate(() => {
+      const a=__kamereoru;
+      const url=document.querySelector('.result-card-viewer-image').src;
+      a.lastResult.netState='official';a.renderResultStatus();
+      return { viewer:!!document.querySelector('.result-card-viewer'), focus:document.activeElement?.getAttribute('data-testid'), revoked:__revoked.includes(url) };
+    });
+    assert.deepEqual(closed,{viewer:false,focus:'result-card-save',revoked:true});
+    await toReady(page);
+    await page.evaluate(() => { globalThis.__beforeRotation=__kamereoru.resultCardController.snapshot().prepared.file; });
+    await page.setViewportSize({ width:874,height:402 });
+    assert.equal(await advanceUntil(page,async()=>page.evaluate(()=>__kamereoru.resultCardController.snapshot().prepared?.file!==__beforeRotation)),true);
+    await toReady(page);
+    const samples=await page.evaluate(()=>__readyResources);
+    assert.ok(samples.length>=4,'initial, confirmation, official and rotation preparations are observed');
+    assert.ok(samples.every(s=>s.generation===0),'ready subscribers never retain the PNG generation canvas');
+    assert.ok(samples.every(s=>s.total<=BUDGET),JSON.stringify(samples));
+    t.diagnostic(`ready notification resource samples: ${JSON.stringify(samples)}`);
+    const released=await page.evaluate(()=>{
+      const image=__kamereoru.resultCardController.snapshot().portraitImage;
+      __kamereoru.showHome();
+      return {portrait:image.width*image.height,viewer:!!document.querySelector('.result-card-viewer'),contexts:[...__webgl].filter(c=>c.width&&c.height).length};
+    });
+    assert.deepEqual(released,{portrait:0,viewer:false,contexts:0});
+    assert.deepEqual(env.errors,[]);
   } finally { await env.close(); }
 });
 

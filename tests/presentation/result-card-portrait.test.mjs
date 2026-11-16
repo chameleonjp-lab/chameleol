@@ -99,7 +99,7 @@ test('a successful capture returns a 2D canvas inside the byte limit that outliv
   };
   const result = await createResultPortrait({ hero: hero(), signal: new AbortController().signal, rendererLease: lease(renderer) }, { createCanvas, createModel: () => rig });
   assert.equal(renderer.renders, 1);
-  assert.deepEqual(renderer.sizes[0], [480, 720]);
+  assert.deepEqual(renderer.sizes[0], [472, 708]);
   assert.equal(result.image.width, 208);
   assert.equal(result.image.height, 308);
   assert.ok(result.image.width * result.image.height * 4 <= PORTRAIT_MAX_BYTES);
@@ -112,6 +112,54 @@ test('a successful capture returns a 2D canvas inside the byte limit that outliv
   assert.equal(result.image.width, 208);
   result.dispose();
   assert.equal(result.image.width, 0);
+});
+
+test('portrait capture includes offscreen surfaces, readback and the real No.28 eye image in its peak budget', async (t) => {
+  const { window } = setup();
+  const doc = window.document, previous = globalThis.document;
+  globalThis.document = doc;
+  const surfaces = new Set();let peak = 0, largestRead = 0;
+  const measure = (readback = 0) => {
+    const held = [...surfaces].reduce((sum,c) => sum + c.width*c.height*4, 0);
+    peak = Math.max(peak, 11_673_600 + 756_000 + held + readback);
+  };
+  const create = doc.createElement.bind(doc);
+  doc.createElement = (tag, ...args) => {
+    const canvas = create(tag, ...args);
+    if (tag !== 'canvas') return canvas;
+    let w = canvas.width || 300, h = canvas.height || 150;
+    Object.defineProperties(canvas, {
+      width: { configurable:true,get:()=>w,set:v=>{w=Number(v);measure();} },
+      height: { configurable:true,get:()=>h,set:v=>{h=Number(v);measure();} },
+    });
+    surfaces.add(canvas);
+    const get = canvas.getContext.bind(canvas);
+    canvas.getContext = (...params) => {
+      const ctx = get(...params);
+      ctx.getImageData = (_x,_y,width,height) => {
+        const data = new Uint8ClampedArray(width*height*4).fill(255);
+        largestRead = Math.max(largestRead,data.byteLength);measure(data.byteLength);
+        return { data,width,height };
+      };
+      return ctx;
+    };
+    return canvas;
+  };
+  try {
+    const canvas = doc.createElement('canvas');
+    const renderer = { domElement:canvas,setPixelRatio(){},setSize(w,h){canvas.width=w;canvas.height=h;},render(){} };
+    // Use the production model, including its 256x256 eye texture; only GPU drawing is substituted.
+    const result = await createResultPortrait({ hero:hero(),signal:new AbortController().signal,rendererLease:lease(renderer) });
+    assert.ok([...surfaces].some(c=>c.width===256&&c.height===256),'the eye image is included');
+    assert.ok(largestRead>0,'the readback buffer is counted at its real allocation point');
+    assert.ok(peak<=16_777_216,`capture peak ${peak} exceeds the 16MiB image budget`);
+    t.diagnostic(`capture peak including offscreen surfaces, readback and eye image: ${peak} bytes`);
+    assert.ok(result.image.width*result.image.height*4<=691_200);
+    result.dispose();
+  } finally {
+    doc.createElement = create;
+    if(previous===undefined)delete globalThis.document;else globalThis.document=previous;
+  }
 });
 
 test('destroying a renderer twice is harmless and empties its canvas', () => {

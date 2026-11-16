@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parseHTML } from 'linkedom';
 import * as THREE from 'three';
 import { createResultCardPorts } from '../../src/presentation/result-card-ports.js';
-import { createTurnPanel } from '../../src/presentation/result-turn-view.js';
+import { createTurnPanel, turnBackingSide } from '../../src/presentation/result-turn-view.js';
 import { createMiniaturePanel, modelCellOrigin } from '../../src/presentation/result-miniature-view.js';
 import { mountResultPanels } from '../../src/presentation/result-evidence-view.js';
 import { createResultRendererOwner } from '../../src/presentation/result-renderer-owner.js';
@@ -194,6 +194,20 @@ test('the save screen asks for the URL only on tap, shows an img, frees the canv
   assert.equal(host.querySelector('.result-card-status').textContent, t('card.preparing'));
 });
 
+test('a revised image restores the save action focus, while screen disposal never focuses an outgoing view', () => {
+  const { host, window, document } = setup();
+  const controller = fakeController(snap());
+  const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
+  const view = ports.mount({ host, controller, scope: scopeStub(), onTextShare() {} });
+  const save = host.querySelector('.result-card-save');
+  let restored = 0;save.focus = () => { restored += 1; };
+  click(window, save);
+  ports.onChange(snap({ revision: 2, state: 'pending', prepared: null }));
+  assert.equal(document.querySelector('.result-card-viewer'), null);
+  assert.equal(restored, 1, 'same-screen automatic closure returns to its save action');
+  controller.set(snap());click(window, save);view.dispose();
+  assert.equal(restored, 1, 'leaving results does not focus an old action');
+});
 test('a new revision closes the viewer, Escape closes it, and disposing the screen revokes the URL', () => {
   const { host, window, document } = setup();
   const controller = fakeController(snap());
@@ -263,6 +277,28 @@ test('E075 draws all 50 buildings with passed, arrived and unreached told apart 
   assert.deepEqual(modelCellOrigin(10), { x: 292, y: 96 }, 'odd rows run right to left');
 });
 
+test('E075 preserves a recorded body color when only the wall color is missing', () => {
+  const { host, document } = setup({ markup: false });
+  const miniature = cells(1, 2);miniature.cells[0].wallHsv = null;
+  miniature.cells[0].bodyHsv = { h: 0, s: 10000, v: 10000 };
+  const panel = createMiniaturePanel({ getSnapshot: () => snap({ miniature }) });
+  const instance = panel.render(host, null, { doc: document });
+  const building = host.querySelector('g[data-building="1"]');
+  assert.equal(building.getAttribute('data-wall'), 'missing');
+  assert.equal(building.querySelector('rect[width="8"][height="8"]')?.getAttribute('fill'), '#ff0000');
+  instance.dispose();
+});
+
+test('E090 keeps full requested detail when possible and reserves the real eye image at the maximum portrait size', () => {
+  const base = 11_673_600 + 3_024_000 + 262_144;
+  const small = { width: 258, height: 434 };
+  assert.equal(turnBackingSide(false, 2, small), 560, 'the normal portrait keeps the current resolution');
+  const largest = { width: 360, height: 480 };
+  const side = turnBackingSide(false, 3, largest);
+  assert.ok(base + largest.width * largest.height * 4 + side * side * 4 <= 16_777_216, 'E090, eye texture, portrait, screen and atlas fit together');
+  assert.ok(side >= 528, 'use the available resolution instead of a coarse fallback');
+});
+
 // ---- E090 ----
 function turnHarness({ hero = matched, state = 'ready' } = {}) {
   const { document, window } = setup({ markup: false });
@@ -270,7 +306,7 @@ function turnHarness({ hero = matched, state = 'ready' } = {}) {
   const owner = { acquires: 0, signals: [], pending: [] };
   const rendererFor = () => ({
     domElement: document.createElement('canvas'), renders: 0, sizes: [], ratios: [],
-    setPixelRatio(r) { this.ratios.push(r); }, setSize(w, h) { this.sizes.push([w, h]); }, render() { this.renders += 1; },
+    setPixelRatio(r) { this.ratios.push(r); }, setSize(w, h) { this.sizes.push([w, h]); const r=this.ratios.at(-1)??1;this.domElement.width=Math.floor(w*r);this.domElement.height=Math.floor(h*r); }, render() { this.renders += 1; },
   });
   const leases = [];
   owner.acquire = (kind, { signal, onRevoke }) => {
@@ -335,7 +371,8 @@ test('E090 gives way to the portrait capture, waits while pending, then borrows 
   await flush();
   assert.equal(h.owner.acquires, 2, 'borrowed again once the card finished');
   assert.equal(instance.stats().leased, true);
-  assert.ok(instance.stats().backingSide === 0 || instance.stats().canvasBytes <= 1_254_400);
+  assert.equal(instance.stats().backingSide, 300);
+  assert.equal(instance.stats().canvasBytes, 360_000);
   instance.dispose();
 });
 

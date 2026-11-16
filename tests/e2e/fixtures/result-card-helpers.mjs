@@ -34,6 +34,12 @@ export const INSTRUMENT = () => {
   globalThis.__opened = [];
   globalThis.__revoked = [];
   globalThis.__webgl = new Set();
+  globalThis.__encodingCanvases = new Set();
+  const toBlob = HTMLCanvasElement.prototype.toBlob;
+  HTMLCanvasElement.prototype.toBlob = function trackedEncode(...args) {
+    globalThis.__encodingCanvases.add(this);
+    return toBlob.apply(this, args);
+  };
   Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
   Object.defineProperty(navigator, 'share', {
     configurable: true,
@@ -108,6 +114,8 @@ export async function heldBytes(page) {
       card: card ? card.width * card.height * 4 : 0,
       portrait: portrait ? portrait.width * portrait.height * 4 : 0,
       panel: turn ? turn.width * turn.height * 4 : 0,
+      modelImage: turn ? 256 * 256 * 4 : 0, // No.28 eye canvas; offscreen but retained by its material.
+      generation: [...__encodingCanvases].reduce((sum, c) => sum + c.width * c.height * 4, 0),
       viewer: viewer && viewer.naturalWidth ? viewer.naturalWidth * viewer.naturalHeight * 4 : 0,
     };
     return { ...parts, total: Object.values(parts).reduce((a, b) => a + b, 0) };

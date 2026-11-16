@@ -5,7 +5,8 @@ import { createChameleon } from '../scene/characters.js';
 import { outlineForBuilding } from '../scene/chameleon-outline.js';
 import { rgbFloat } from '../scene/palette-colors.js';
 
-export const PORTRAIT_RENDER_SIZE = Object.freeze({ width: 480, height: 720 });
+// Keep the 2:3 framing while reserving the real eye texture and RGBA readback below 16MiB.
+export const PORTRAIT_RENDER_SIZE = Object.freeze({ width: 472, height: 708 });
 export const PORTRAIT_MAX = Object.freeze({ width: 360, height: 480 });
 export const PORTRAIT_MAX_BYTES = 691_200;
 export const PORTRAIT_MARGIN = 4;

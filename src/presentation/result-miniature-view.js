@@ -82,7 +82,7 @@ export function createMiniaturePanel({ getSnapshot, register }) {
             svg('path', { d: `M${x + BOX_W} ${y}L${x + BOX_W + DX} ${y + DY}L${x + BOX_W + DX} ${y - h + DY}L${x + BOX_W} ${y - h}Z`, fill: mixHex(wall, 0, 0.25), stroke: '#24394b', 'stroke-width': 1.5, 'stroke-linejoin': 'round' }, g);
             svg('rect', { x, y: y - h, width: BOX_W, height: h, fill: wall, stroke: cell.state === 'arrived' ? '#ff8a8a' : '#24394b', 'stroke-width': cell.state === 'arrived' ? 2 : 1.5, ...(cell.state === 'arrived' ? dashed : {}) }, g);
           }
-          if (cell.state !== 'unreached' && wall) {
+          if (cell.state !== 'unreached') {
             // 体の色の札（無ければ点線の空の札）
             if (body) svg('rect', { x: x + 3, y: y - 11, width: 8, height: 8, fill: body, stroke: '#24394b', 'stroke-width': 1 }, g);
             else svg('rect', { x: x + 3, y: y - 11, width: 8, height: 8, fill: 'none', stroke: '#ffffffaa', 'stroke-width': 1, 'stroke-dasharray': '2 1.5' }, g);

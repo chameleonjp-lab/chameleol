@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import { t } from '../i18n/i18n.js';
 import { rtext } from './result-card-text.js';
-import { createPosedHero } from './result-portrait.js';
+import { createPosedHero, PORTRAIT_MAX_BYTES } from './result-portrait.js';
+import { RESULT_ATLAS } from './assets/result-atlas-bounds.js';
 
 export const TURN_PANEL_ID = 'turn';
 export const TURN_STAGE_PX = 300;
@@ -18,9 +19,14 @@ const BASE_ANGLE = -0.35;
 const heroSignature = (hero) => JSON.stringify([hero?.status, hero?.building, hero?.hsv, hero?.outlineBuilding]);
 
 /** 裏の大きさ（画素数の辺）。準備中は 300、それ以外は 560 以下で端末の倍率まで。 */
-export function turnBackingSide(pending, devicePixelRatio = 1) {
+export function turnBackingSide(pending, devicePixelRatio = 1, portraitImage = null) {
   const ratio = pending ? 1 : Math.max(1, Math.min(Number.isFinite(devicePixelRatio) ? devicePixelRatio : 1, TURN_MAX_BACKING / TURN_STAGE_PX));
-  return Math.round(TURN_STAGE_PX * ratio);
+  const pixels = (portraitImage?.width ?? portraitImage?.naturalWidth) * (portraitImage?.height ?? portraitImage?.naturalHeight);
+  const portraitBytes = Number.isFinite(pixels) && pixels > 0 ? Math.min(PORTRAIT_MAX_BYTES, pixels * 4) : PORTRAIT_MAX_BYTES;
+  // Count the No.28 eye canvas too. Pending reserves both its small screen card and PNG generation.
+  const available = 16_777_216 - RESULT_ATLAS.width * RESULT_ATLAS.height * 4 - 256 * 256 * 4
+    - portraitBytes - 1200 * 630 * 4 - (pending ? 600 * 315 * 4 : 0);
+  return Math.min(Math.round(TURN_STAGE_PX * ratio), Math.floor(Math.sqrt(Math.max(0, available) / 4)));
 }
 
 /** E090 のパネル定義。getOwner は result.resultRendererOwner を返す。 */
@@ -106,7 +112,7 @@ export function createTurnPanel({ getSnapshot, register, getOwner, deps = {} }) 
       function applySize() {
         if (!lease) return;
         const pending = snapshot?.state === 'pending';
-        const ratio = pending ? 1 : Math.min(win?.devicePixelRatio || 1, TURN_MAX_BACKING / TURN_STAGE_PX);
+        const ratio = turnBackingSide(pending, win?.devicePixelRatio || 1, snapshot?.portraitImage) / TURN_STAGE_PX;
         lease.renderer.setPixelRatio(ratio);
         lease.renderer.setSize(TURN_STAGE_PX, TURN_STAGE_PX, false);
         side = canvas ? canvas.width : Math.round(TURN_STAGE_PX * ratio);

@@ -133,7 +133,7 @@ export function mountResultCardView({ host, controller, scope, onTextShare, init
     if (disposed || !next) return;
     const previous = snapshot;
     snapshot = next;
-    if (viewer && previous && previous.revision !== next.revision) closeViewer({ refocus: false });
+    if (viewer && previous && previous.revision !== next.revision) closeViewer();
     syncControls();
     const view = cardViewState(next);
     if (view.state === 'unavailable') queueMicrotask(() => { if (!disposed && !viewer) saveBtn.focus?.(); });
@@ -229,8 +229,8 @@ export function mountResultCardView({ host, controller, scope, onTextShare, init
 
   function dispose() {
     if (disposed) return;
-    closeViewer({ refocus: false });
     disposed = true;
+    closeViewer({ refocus: false });
     paintToken += 1;
     for (const off of cleanups.splice(0)) { try { off(); } catch { /* 続けて解放 */ } }
     canvas.width = 0;
