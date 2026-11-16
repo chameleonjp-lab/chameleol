@@ -6,6 +6,13 @@
 
 全体要件→本書→全体組織図→分担/契約→個別計画→敵対的検証→修正の順に作成した。製品の実装順はG0→G1→各部品→G2→G3→G4→G5→G6。#23の処理は再実装せず、通常接続と既存挙動の互換調整を追加する。#24のCIを保持する。部品完成と通常起動の完成、実機、公開は別の状態。
 
+### 今回の共有PRの実行順（2026-11-16追記）
+
+最新main `52a6be5aed194baf55e3ba4d77d286b90bab72bd`から専用ブランチ
+`work/chatgpt-cg00-cg02-20261116`を作り、**ChatGPTのCG00→CG01→CG02を先にドラフトPRへ提出→Claudeが同じPR・同じブランチへCL工程の予定された描画/画面を追加→ChatGPTがCG03以降を統合**する。予定番号は#26、実際の番号・URL・準備commitは[受渡し票](../../acceptance/chameleol-handoff-ledger.md)を正とする。Claudeは新しいPRを作らない。全体統合までドラフトを維持し、本人に代わってマージしない。
+
+先行PRの存在はClaudeの予定された機能追加をChatGPTへ移す意味ではない。役割・F要件・IF契約・ファイル分担は変えない。PR後のCI失敗・不具合・レビュー修正・コンフリクトは常にChatGPTが直接対応し、修正対象だけを一時ロックしてClaudeの書込を止める。再開時も最新headを照合し、force pushしない。CG02準備commitをCL02〜05の共通開始点に固定する。
+
 ## 2. ChatGPT＋Claudeの全体組織
 
 | 役割 | 所属 | モデル | effort | 責任 |
@@ -31,7 +38,7 @@ flowchart TD
   K --> A["CL-A 結果 / Sonnet 5.5 high"]
   K --> B["CL-B 舌・舞台 / Sonnet 5.5 high"]
   K --> C["CL-C 街・通知 / Sonnet 5.5 high"]
-  A --> P["G2 PR提出・編集権移管"]
+  A --> P["G2 同じPRへCL追加・編集権移管"]
   B --> P
   C --> P
   S --> I["CG-S 全体接続・PR後修正"]
@@ -73,11 +80,26 @@ ChatGPTのモデル名は現在の作業環境で使える名称を指定し、�
 | IF08 v1.1 検証入口と採否 | CL-B/Cが部品検査、CG-SがApp入口 | 描画部品へsnapshot/固定姿勢 / App.debugPresentation / catalog | Claude段階はAppが拒否するIDを無理に通さない。G4で全16案が揃ってからcatalog96/4、Appの全対象入口、通常mode、共有試験を同じ統合commitで切り替える。 |
 | IF09 v1.1 既存の背景抑止 | CL-Bが観測値、CG-Sが条件 | 追加step入力: frameIntervalMs:非負の有限ms、bestDistance:0〜50の整数またはnull。既存playViewとeventも消費 | CL-Bは進行中のpresentation.tの前回との差をframeIntervalMsとして返す。初回/停止/非表示/不正値は0。bestDistanceは既存setBestDistanceの値で、不正/欠損はnull。CG-Sが50<間隔<1000msを30連続で抑止、その他の間隔で連続数をリセットする旧条件を保持する。phase/警察段階/matchState/lastEvalSuccess/guideActive/guidanceActive/priority/building/passedとinstantSuccess/unlockBrightness/enterBuilding/passイベントを使い、既存の地区800ms・自己ベスト600ms・優先イベントの抑止も処理へ移す。別のlegacyCameoContextや第二の描画側抽選を作らない。 |
 | IF10 v1.1 生涯と解放 | CG-Sが画面の生涯、CL各担当が所有物 | AbortSignal、scope、dispose、revision | 移動/再プレイ/言語/訂正/描画喪失/遅い完了で古い表示を復活させない。disposeは冪等。終了時にrenderer/画像/URL/購読/姿勢補正を戻す。 |
-| IF11 v1.1 提出の単位 | Claudeが提出、ChatGPTが受領 | PR URL + head SHA + 受渡し票 + ファイル一覧 + 契約バージョン | CL06の提出時に書込を止める。以後の失敗/競合/レビュー修正はCG04/CG07。画像ファイルであってもChatGPTが修正し、元担当へ返して待たない。 |
+| IF11 v1.1 提出の単位 | ChatGPTが先行PRを作成、Claudeが同じPRへ追加、ChatGPTが受領 | 同じPR URL + head SHA + 受渡し票 + ファイル一覧 + 契約バージョン | CG02の準備commitから同じブランチへCL工程を追加し、新規PRは作らない。CL06の提出時に書込を止める。以後の失敗/競合/レビュー修正はCG04/CG07。画像ファイルであってもChatGPTが修正し、元担当へ返して待たない。 |
 
 CG02の準備commitはAppオプションの実試験を可能にする共通土台で、通常起動の新演出はまだ有効にしない。CL01の設計はCG02と並行できるが、CL02〜04の製品実装とCL05の実App検査は同じ準備commitを含むbaseから始める。
 
 IF09の入力名と型は上表を固定値とし、CG01が旧directorの全条件と照合して期待例を確定しCL01へ渡す。フィールドを変える必要がある時は契約を改訂し、片側だけで推測して実装しない。画面担当は配置/描画時間/既存反応の事実を返し、実際の抽選・発火・98%判定・保存取得はChatGPTに一か所だけ置く。
+
+### CG01で照合したIF09の期待値
+
+`frameIntervalMs`は有限・非負のみ有効（それ以外は0）。初回/停止/非表示は連続数を0にし、`50 < ms < 1000`だけ数える。29連続までは開始可、30連続で以後の新規背景開始を無効にし、既に取得済みの背景は通常の期限まで扱う。`bestDistance`は整数0〜50のみ、それ以外/欠損はnull。同じ値の毎フレーム入力で自己ベスト通過時刻をリセットしない。
+
+| 旧経路から維持する抑止 | 境界・意味 |
+| --- | --- |
+| phase ended、policeStage>=2、matchState danger/success、lastEvalSuccess、guideActive/guidanceActive | 新規開始を止め、表示中/取得待ちの小芝居を取り消す |
+| priority ending/danger/success/milestone/guidance | 同上 |
+| 初期・地区入口1/20/23/30/40 | 800ms未満を抑止、800msで解除 |
+| bestDistanceをpassedが初めて超える | 600ms未満を抑止、600msで解除。保存claim前に抑止し未表示の回数を消費しない |
+| instantSuccess / unlockBrightness / enterBuilding(46〜50) | イベント時刻から450 / 600 / 800ms未満を抑止、ちょうど期限で解除 |
+| 通常小芝居の機会 | graceへのphase遷移で1回。同じgrace内のbuilding変更で再抽選しない |
+
+Appで生成するinstantSuccessも既存のsession由来イベントと同じcontrollerへ一度だけ渡す。スコア・履歴・署名summary・保存形式へ書き戻さない。舞台による観測値の実接続と画素/資源測定はCL03以降で確認する。
 
 ## 5. 受渡し票と完了条件
 
@@ -87,7 +109,7 @@ IF09の入力名と型は上表を固定値とし、CG01が旧directorの全条�
 | --- | --- | --- |
 | G0 要件確定 | 本書とF01〜F14が対応、3計画の要件/契約/工程IDが一致 | CG-O |
 | G1 契約と先行接続の確定 | CG01でIF01〜11を照合。CG02でmount前owner準備と札snapshot→bonusの橋渡しを先行実装し、legacy80を維持。準備commitを共通baseへ取り込んでからCL02〜04を開始 | CG-O、CL-Oが消費可能を確認 |
-| G2 部品受入/PR提出 | 実装・App明示接続試験・3寸法・測定・提出前レビュー・受渡し票、PR headを固定 | CL-Oが提出、直後にCG-Oが引継ぐ |
+| G2 部品受入/共有PRへ追加提出 | 実装・App明示接続試験・3寸法・測定・提出前レビュー・受渡し票、PR headを固定 | CL-Oが同じPRへ追加提出、直後にCG-Oが引継ぐ |
 | G3 PR後の問題解消 | すべてのPRの失敗/レビュー/競合をCGが解消し対象再確認、Claudeへ修正を返さない | CG-O/S/T |
 | G4 通常接続と切替 | App ports/owner、stage mode、札、更新パネル、旧director置換、96/4、検証入口、共有試験を同じ統合commitで有効化 | CG-S |
 | G5 全体合格 | 正常/旧版/欠損/遅延/取消/同点訂正/停止/全16案・元80・27称号・15言語・資源を実データで照合、4組CI成功 | CG-R/T |
@@ -100,7 +122,7 @@ IF09の入力名と型は上表を固定値とし、CG01が旧directorの全条�
 | 要件・開始状態・契約 | CG00/CG01 | CL00/CL01 | CG-O |
 | 結果の値・世代・共有／結果の描画 | CG02で共通土台→CG03 | CL02はCG02後 | CG-Sが通常接続しG5まで確認 |
 | 発生条件・旧抑止／舌・背景・警察 | CG01/CG03 | CL03/CL04 | CG-Sが新旧切替まで確認 |
-| 部品の提出前確認とPR提出 | CG02は統合試験を準備 | CL05/CL06 | PR前CL-O、提出後CG-O |
+| 部品の提出前確認と共有PRへの追加 | CG02は統合試験を準備 | CL05/CL06 | PR前CL-O、提出後CG-O |
 | すべてのPR後の失敗と競合 | CG04/CG07 | CL06で書込移管 | ChatGPT |
 | 通常起動の接続と全体合格 | CG03/CG05 | CL05の証拠を入力にする | ChatGPT |
 | iPhone候補と配布判断 | CG06 | CL06の画像/素材を入力にする | ChatGPTが用意、本人が判断 |

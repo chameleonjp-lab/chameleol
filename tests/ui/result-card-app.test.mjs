@@ -8,13 +8,13 @@ import {setLanguage} from '../../src/i18n/i18n.js';
 const summary=JSON.parse(readFileSync(new URL('../replay/fixtures/bonus-v3-clear.json',import.meta.url))).expected;
 let app;const frames=new Map();let id=0;
 const settle=async()=>{for(let i=0;i<12;i++)await new Promise(r=>setImmediate(r));};
-function setup(){
+function setup(portOverrides={},factory=false){
  const {window,document}=parseHTML('<html><body><main id="root"></main></body></html>');
  Object.assign(globalThis,{document,Node:window.Node,requestAnimationFrame:fn=>(frames.set(++id,fn),id),cancelAnimationFrame:id=>frames.delete(id),addEventListener:()=>{}});
  const audio={settings:{},setMusic(){},setSettings(){},stopSfx(){},stopGameAudio(){},async suspend(){},play(){}};
  let portraits=0,disposed=0;const nativeShares=[];
- const ports={waitForPresentation:async()=>{},createCanvas:()=>({}),createRenderer:()=>({}),destroyRenderer(){},createResultPortrait:async()=>{portraits++;return {image:{width:320,height:480},dispose:()=>disposed++};},drawResultCard:(c,{model})=>c.model=model,encodePng:async c=>new Blob([JSON.stringify(c.model)],{type:'image/png'}),navigator:{canShare:()=>true},shareImpl:async payload=>nativeShares.push(payload)};
- app=new App(document.querySelector('#root'),{audio,resultCardPorts:ports});app.store=new MemoryStore();app.api={configured:false};
+ const ports={waitForPresentation:async()=>{},createCanvas:()=>({}),createRenderer:()=>({}),destroyRenderer(){},createResultPortrait:async()=>{portraits++;return {image:{width:320,height:480},dispose:()=>disposed++};},drawResultCard:(c,{model})=>c.model=model,encodePng:async c=>new Blob([JSON.stringify(c.model)],{type:'image/png'}),navigator:{canShare:()=>true},shareImpl:async payload=>nativeShares.push(payload),...portOverrides};
+ app=new App(document.querySelector('#root'),{audio,resultCardPorts:factory?()=>ports:ports});app.store=new MemoryStore();app.api={configured:false};
  app.lastResult={playId:'p',summary:structuredClone(summary),ranked:true,netState:'pending',arrivedBuilding:50};
  return {document,nativeShares,counts:()=>({portraits,disposed})};
 }
@@ -37,4 +37,28 @@ test('outbox status-only updates reach the image controller even when online UI 
  app.onOutboxUpdate({playId:'p',state:'pending_review'});
  assert.ok(app.resultCardController.snapshot().revision>before);assert.equal(app.resultCardController.snapshot().prepared,null);await settle();
  assert.equal(app.resultCardController.snapshot().model.verificationState,'pending_review');
+});
+test('factory ports can acquire the shared renderer at first mount before portrait presentation finishes',async()=>{
+ let finishPresentation,earlyLease,firstChangeOwner,mountOwner,revoked=false,renderers=0;
+ const presentationFinished=new Promise(resolve=>finishPresentation=resolve);
+ const {counts}=setup({
+  waitForPresentation:()=>presentationFinished,
+  createRenderer:()=>({id:++renderers}),
+  onChange:()=>{firstChangeOwner??=app.lastResult.resultRendererOwner??null;},
+  mount:()=>{
+   mountOwner=app.lastResult.resultRendererOwner;
+   earlyLease=mountOwner?.acquire('model',{onRevoke:()=>{revoked=true;}})??Promise.resolve(null);
+   return {dispose(){}};
+  },
+ },true);
+ app.showResult();
+ assert.ok(firstChangeOwner,'owner exists before controller first onChange');
+ assert.equal(mountOwner,firstChangeOwner,'mount and controller see the same owner');
+ const lease=await earlyLease;
+ assert.ok(lease,'E090 can acquire during the initial presentation wait');
+ assert.equal(lease.owner,'model');assert.equal(renderers,1);assert.equal(counts().portraits,0);
+ finishPresentation();await settle();
+ assert.equal(revoked,true,'portrait preparation revokes the early model lease');
+ assert.equal(lease.signal.aborted,true);assert.equal(counts().portraits,1);
+ assert.equal(app.resultCardController.snapshot().state,'ready');
 });

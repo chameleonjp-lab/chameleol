@@ -36,6 +36,7 @@ import { buildResultData } from './presentation/result-data.js';
 import { mountResultPresentation } from './presentation/result-view.js';
 import { captureEvidenceBase, releaseResultEvidence, resolveResultEvidence, startResultEvidence } from './presentation/result-evidence.js';
 import { createResultCardController, releaseResultCardResources } from './presentation/result-card-controller.js';
+import { createResultRendererOwner } from './presentation/result-renderer-owner.js';
 import { createGameExtrasController } from './presentation/game-extras-controller.js';
 import { createEvaluationSegmentCollector } from './presentation/evaluation-segments.js';
 import { mountResultPanels } from './presentation/result-evidence-view.js';
@@ -994,7 +995,7 @@ export class App {
     this.guidance = guidance;
     this.renderGuidance = renderGuide;
     scope.own(()=>{guidance.dispose();if(this.guidance===guidance){this.guidance=null;this.renderGuidance=null;}});
-    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,verification:this.runtime.isVerification,extrasPort,gameExtrasController});
+    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,presentationSet:'legacy80',verification:this.runtime.isVerification,extrasPort,gameExtrasController});
     if (!current()) { stageView.dispose(); return; }
     this.stage = stageView;
     stageView.setBestDistance?.(local?.buildings??null);
@@ -1166,7 +1167,7 @@ export class App {
       if (instant.update(s)) {
         cue('success');
         this.stage?.fx('success');
-        const event={ type:'instantSuccess',t:s.t,building:s.evalBuilding };stageView.presentationEvent(event);presentationHud.event(event);
+        const event={ type:'instantSuccess',t:s.t,building:s.evalBuilding };stageView.presentationEvent(event);presentationHud.event(event);gameExtrasController.event(event);
       }
       refreshHud();
       const matchState = s.matchUnits == null ? null : classifyMatch(s.matchUnits);
@@ -1183,7 +1184,8 @@ export class App {
       renderGuide();
       const activeNotice=[...banner.querySelectorAll('.toast-warn')].some(node=>!node.hidden);
       const quiet=Boolean(guideView.step)||stage>0||activeNotice;
-      bonusPresentation.tick({activeMs:s.t,phase:playView.phase,guideActive:Boolean(guideView.step),warningActive:stage>0||activeNotice,running:session.running});
+      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step),guideActive:Boolean(guideView.step),moving:session.running&&!guideView.stationary,warningActive:activeNotice,hidden:!!document.hidden,evaluationSegments:evaluationCollector.drain()}});
+      bonusPresentation.tick({activeMs:s.t,phase:playView.phase,guideActive:Boolean(guideView.step),warningActive:stage>0||activeNotice,running:session.running,precisionBadge:gameExtrasController.snapshot().precisionBadge});
       const batch=pendingBonus;
       if(batch)bonusPresentation.show(batch,s.t,{quiet});
       const bonusVisible=bonusPresentation.stats().visible;
@@ -1202,7 +1204,6 @@ export class App {
       const selected=choosePassCue({batch:suppressed?null:batch,cues:candidates});
       cueCandidates=[];pendingBonus=null;
       if(selected&&!document.hidden)this.audio.play(selected.name,selected.opts);
-      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step),guideActive:Boolean(guideView.step),moving:session.running&&!guideView.stationary,warningActive:activeNotice,hidden:!!document.hidden,evaluationSegments:evaluationCollector.drain()}});
       this.raf = requestAnimationFrame(loop);
     };
 
@@ -1668,6 +1669,9 @@ export class App {
     const evidence=startResultEvidence(r);
     // Claude supplies drawing ports; the default path exposes real data without inventing a visual.
     const cardPorts=(typeof this.resultCardPorts==='function'?this.resultCardPorts({result:r,host:el,scope}):this.resultCardPorts)??{};
+    // Optional E090 can open during the portrait's initial presentation delay.
+    // Its lease and the later card capture must share the same owner from first render.
+    r.resultRendererOwner??=createResultRendererOwner({createRenderer:cardPorts.createRenderer,destroyRenderer:cardPorts.destroyRenderer});
     const resultLayoutKey=()=>cardPorts.getLayoutKey?.()??`${globalThis.innerWidth??this.root.clientWidth??0}:${globalThis.innerHeight??this.root.clientHeight??0}`;
     cardController=createResultCardController({result:r,locale:getLanguage(),layoutKey:resultLayoutKey(),ports:{...cardPorts,
       getPublicUrl:()=>this.runtime.publicUrl,

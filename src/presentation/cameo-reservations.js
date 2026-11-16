@@ -32,7 +32,7 @@ export function createCameoReservations({playId,restore=null,claimStart=async()=
       active={id,startedAt:t,elapsedMs:0,durationMs:row.ms,building:midpoint?25:building,phase:midpoint?'delivery':'story'};
       return true;
     },
-    tick({t,building,phase='eval',canStart=false,blocked=false,placements={}}={}){
+    tick({t,building,phase='eval',running=true,hidden=false,canStart=false,blocked=false,placements={}}={}){
       if(disposed||!Number.isSafeInteger(t)||t<currentT)return snapshot();
       currentT=t;
       midpointReached ||= t>=125000 && building>=26;
@@ -43,8 +43,9 @@ export function createCameoReservations({playId,restore=null,claimStart=async()=
       }
       if(blocked)api.cancel();
       snapshot();
-      const opportunity=phase==='grace'&&(previous?.phase!=='grace'||previous?.building!==building);
-      previous={phase,building};
+      const activeFrame=running!==false&&!hidden;
+      const opportunity=activeFrame&&phase==='grace'&&previous?.phase!=='grace';
+      if(activeFrame)previous={phase,building};
       if(!disabled && state && canStart && !blocked && !pending && !active){
         if(midpointReached&&state.reservedMidpoint&&t>=125000&&t<126500&&placements.midpoint===true){void api.start({id:56,t,building});}
         else if(opportunity && !(t>=110000&&t<126500)){
