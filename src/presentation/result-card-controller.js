@@ -72,9 +72,11 @@ export function createResultCardController({result,locale='en',layoutKey='defaul
       if(!current(rev)||signal.aborted)return;
       if(!blob || blob.type!=='image/png' || blob.size<=0)throw Error('Invalid PNG');
       prepared=Object.freeze({blob,file:new File([blob],'chameleol-result.png',{type:'image/png'}),revision:rev});
+      // Ready subscribers may immediately expand their screen/panel canvases.
+      clearCanvas();
       state='ready';notify();
     } catch {
-      if(current(rev)&&!signal.aborted){prepared=null;state='failed';notify();}
+      if(current(rev)&&!signal.aborted){clearCanvas();prepared=null;state='failed';notify();}
     } finally {lease?.release();if(current(rev))clearCanvas();}
   }
 
