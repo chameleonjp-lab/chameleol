@@ -377,3 +377,81 @@ test('ending and unmount: starting the ending hides the tongue and restores the 
     assert.deepEqual(env.errors, []);
   } finally { await env.close(); }
 });
+
+test('losing the WebGL context stores the tongue at once and steps with drawable:false; restoring brings drawable back', async () => {
+  const env = await launch();
+  try {
+    await openExtended(env);
+    await installDriver(env.page);
+    const r = await env.page.evaluate(({ START }) => {
+      const tp = __tp;
+      const drawables = [];
+      const step = tp.ctrl.step;
+      tp.ctrl.step = (input) => { drawables.push(input.drawable); return step(input); };
+      tp.toBoundary();
+      tp.upd(START + 575);
+      const shown = tp.stage.presentationStats().tongue.visible;
+      tp.stage.renderer.domElement.dispatchEvent(new Event('webglcontextlost'));
+      const storedAtOnce = tp.stage.presentationStats().tongue.visible === false;
+      tp.upd(START + 600);
+      const whileLost = { drawable: drawables.at(-1), frame: tp.frame(), visible: tp.stage.presentationStats().tongue.visible };
+      tp.stage.renderer.domElement.dispatchEvent(new Event('webglcontextrestored'));
+      tp.upd(START + 616);
+      return { shown, storedAtOnce, whileLost, afterRestore: drawables.at(-1) };
+    }, { START });
+    assert.equal(r.shown, true);
+    assert.equal(r.storedAtOnce, true, 'the tongue is stored in the same task as the loss event');
+    assert.equal(r.whileLost.drawable, false);
+    assert.equal(r.whileLost.frame, null, 'the controller drops the opportunity while undrawable');
+    assert.equal(r.whileLost.visible, false);
+    assert.equal(r.afterRestore, true);
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
+
+test('effects-off extended stage and the simple DOM stage still step once per frame with drawable:false and no placements', async () => {
+  const env = await launch();
+  try {
+    await openExtended(env);
+    await installDriver(env.page, { effects: false });
+    const off = await env.page.evaluate(() => {
+      const tp = __tp;
+      const inputs = [];
+      const step = tp.ctrl.step;
+      tp.ctrl.step = (input) => { inputs.push(JSON.parse(JSON.stringify(input))); return step(input); };
+      for (let i = 0; i < 5; i++) tp.upd(2000 + i * 16);
+      return { inputs, stats: tp.stage.presentationStats() };
+    });
+    assert.equal(off.inputs.length, 5, 'one step per frame without effects');
+    assert.ok(off.inputs.every((i) => i.drawable === false && Object.entries(i.placements).every(([key, v]) => (key === 'existing' ? Object.keys(v).length === 0 : v === false))));
+    assert.equal(off.stats.mode, 'extended96');
+    assert.equal(off.stats.tongue, null);
+    await env.page.evaluate(() => __kamereoru.leaveGame());
+    // 簡易DOMの舞台（WebGL を使わない）。実 controller でも評価区間を落とさず、札を止めない。
+    const dom = await env.page.evaluate(async () => {
+      const { createStage } = await import('/src/scene/stage.js');
+      const { createGameExtrasController } = await import('/src/presentation/game-extras-controller.js');
+      const { RULES_V1 } = await import('/src/rules/v1/index.js');
+      const host = document.createElement('div');
+      document.body.append(host);
+      const controller = createGameExtrasController({ playId: 'dom', rules: RULES_V1, seed: 1, extrasPort: { fresh: true, claimCameoStart: () => true, claimPrecisionBadge: async () => true } });
+      const stage = await createStage(host, { forceDom: true, course: { targets: Array.from({ length: 50 }, () => ({ h: 3000, s: 5000, v: 10000 })) }, rules: RULES_V1, presentationSet: 'extended96', gameExtrasController: controller });
+      let calls = 0;
+      const step = controller.step.bind(controller);
+      controller.step = (input) => { calls += 1; return step(input); };
+      const view = (t, segments = []) => ({ t, playId: 'dom', passed: 2, building: 3, phase: 'eval', color: { h: 1, s: 2, v: 3 }, policeStage: 0, running: true, moving: true, hidden: false, evaluationSegments: segments });
+      const segment = { building: 3, from: 11500, to: 12000, matchUnits: 98000000, unitsPerPercent: 1000000, evaluationEnd: 14500 };
+      stage.update({ t: 11000, color: { h: 1, s: 2, v: 3 }, presentation: view(11000) });
+      stage.update({ t: 12000, color: { h: 1, s: 2, v: 3 }, presentation: view(12000, [segment]) });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const badge = controller.snapshot().precisionBadge?.kind ?? null;
+      const kind = stage.kind;
+      stage.dispose(); controller.dispose(); host.remove();
+      return { calls, badge, kind };
+    });
+    assert.equal(dom.kind, 'dom');
+    assert.equal(dom.calls, 2);
+    assert.equal(dom.badge, 'nearPerfect', 'the simple stage alone does not suppress the badge');
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
