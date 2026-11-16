@@ -194,6 +194,86 @@ test('the save screen asks for the URL only on tap, shows an img, frees the canv
   assert.equal(host.querySelector('.result-card-status').textContent, t('card.preparing'));
 });
 
+for (const exit of ['close', 'revision', 'dispose']) {
+  test(`save dialog isolates the background and restores existing state on ${exit}`, () => {
+    const { host, window, document } = setup();
+    const controller = fakeController(snap());
+    const ports = createResultCardPorts({ result:{}, host, scope:scopeStub() });
+    const view = ports.mount({host,controller,scope:scopeStub(),onTextShare(){}});
+    const other=document.createElement('aside');other.setAttribute('inert','already');other.setAttribute('aria-hidden','false');document.body.append(other);
+    document.documentElement.style.overflow='auto';
+    Object.assign(document.body.style,{overflow:'scroll',position:'relative',top:'13px',left:'7px',width:'95%'});
+    const oldX=window.scrollX,oldY=window.scrollY,oldScroll=window.scrollTo;
+    const restored=[];window.scrollX=12;window.scrollY=430;window.scrollTo=(x,y)=>restored.push([x,y]);
+    try {
+      click(window,host.querySelector('.result-card-save'));
+      const dialog=document.querySelector('.result-card-viewer');
+      assert.equal(host.hasAttribute('inert'),true,'the real background cannot receive user interaction');
+      assert.equal(host.getAttribute('aria-hidden'),'true');
+      assert.equal(dialog.hasAttribute('inert'),false,'the image and native save gesture remain available');
+      assert.equal(document.documentElement.style.getPropertyValue('overflow-x'),'hidden');
+      assert.equal(document.documentElement.style.getPropertyValue('overflow-y'),'hidden');
+      assert.equal(document.body.style.position,'fixed');
+      assert.equal(document.body.style.top,'-430px');
+      assert.equal(document.body.style.left,'-12px');
+      assert.equal(dialog.style.getPropertyValue('overscroll-behavior'),'contain');
+      document.body.style.backgroundColor='black';
+      if(exit==='close')click(window,dialog.querySelector('.result-card-viewer-close'));
+      else if(exit==='revision')ports.onChange(snap({revision:2,state:'pending',prepared:null}));
+      else view.dispose();
+      assert.equal(document.querySelector('.result-card-viewer'),null);
+      assert.equal(host.hasAttribute('inert'),false);assert.equal(host.hasAttribute('aria-hidden'),false);
+      assert.equal(other.getAttribute('inert'),'already');assert.equal(other.getAttribute('aria-hidden'),'false');
+      assert.equal(document.documentElement.style.overflow,'auto');
+      assert.equal(document.body.style.overflow,'scroll');assert.equal(document.body.style.position,'relative');
+      assert.equal(document.body.style.top,'13px');assert.equal(document.body.style.left,'7px');assert.equal(document.body.style.width,'95%');
+      assert.equal(document.body.style.backgroundColor,'black','unrelated style updates are preserved');
+      assert.deepEqual(restored,exit==='dispose'?[]:[[12,430]],'only the same screen restores its scroll');
+      view.dispose();assert.equal(controller.calls.revoke,1,'cleanup is idempotent');
+    } finally {window.scrollX=oldX;window.scrollY=oldY;window.scrollTo=oldScroll;}
+  });
+}
+
+test('save dialog restores single-axis overflow and mixed priorities without losing declarations', () => {
+  const {host,window,document}=setup();
+  // LinkeDOM does not expand CSS shorthands. Model the CSSOM overflow boundary;
+  // the browser suite also exercises these declarations with native CSSStyleDeclaration.
+  const cssStyle=(initial)=>{
+    const values=new Map(initial);
+    const parts=(property)=>property==='overflow'?['overflow-x','overflow-y']:[property];
+    return {
+      getPropertyValue(property){
+        if(property!=='overflow')return values.get(property)?.[0]??'';
+        const x=values.get('overflow-x'),y=values.get('overflow-y');
+        if(!x||!y||x[1]!==y[1])return '';
+        return x[0]===y[0]?x[0]:`${x[0]} ${y[0]}`;
+      },
+      getPropertyPriority(property){
+        if(property!=='overflow')return values.get(property)?.[1]??'';
+        const x=values.get('overflow-x'),y=values.get('overflow-y');
+        return x&&y&&x[1]===y[1]?x[1]:'';
+      },
+      setProperty(property,value,priority=''){for(const part of parts(property))values.set(part,[value,priority]);},
+      removeProperty(property){for(const part of parts(property))values.delete(part);},
+      declarations:()=>[...values].sort(([a],[b])=>a.localeCompare(b)),
+    };
+  };
+  const htmlStyle=cssStyle([['overflow-x',['hidden','important']],['overflow-y',['scroll','']]]);
+  const bodyStyle=cssStyle([['overflow-y',['scroll','important']]]);
+  Object.defineProperty(document.documentElement,'style',{value:htmlStyle});
+  Object.defineProperty(document.body,'style',{value:bodyStyle});
+  const before=[htmlStyle.declarations(),bodyStyle.declarations()];
+  const controller=fakeController(snap()),ports=createResultCardPorts({result:{},host,scope:scopeStub()});
+  const view=ports.mount({host,controller,scope:scopeStub(),onTextShare(){}});
+  click(window,host.querySelector('.result-card-save'));
+  for(const style of [htmlStyle,bodyStyle])for(const axis of ['overflow-x','overflow-y']){
+    assert.equal(style.getPropertyValue(axis),'hidden');assert.equal(style.getPropertyPriority(axis),'important');
+  }
+  click(window,document.querySelector('.result-card-viewer-close'));
+  assert.deepEqual([htmlStyle.declarations(),bodyStyle.declarations()],before);
+  view.dispose();
+});
+
 test('a revised image restores the save action focus, while screen disposal never focuses an outgoing view', () => {
   const { host, window, document } = setup();
   const controller = fakeController(snap());

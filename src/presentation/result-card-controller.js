@@ -76,7 +76,7 @@ export function createResultCardController({result,locale='en',layoutKey='defaul
       clearCanvas();
       state='ready';notify();
     } catch {
-      if(current(rev)&&!signal.aborted){prepared=null;state='failed';notify();}
+      if(current(rev)&&!signal.aborted){clearCanvas();prepared=null;state='failed';notify();}
     } finally {lease?.release();if(current(rev))clearCanvas();}
   }
 

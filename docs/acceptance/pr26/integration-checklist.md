@@ -15,6 +15,10 @@
 
 今回の新しいe2eは、結果画面専用の`tests/e2e/fixtures/result-card.html`から実Appへ実portsを渡す。製品Appに試験用renderer・別時計・採点条件を入れない。ブラウザが起動できない手元の結果を合格扱いせず、同じ変更headの既存4組並行CIで確認する。
 
+## 追加3件の検査
+
+[追加対応記録](../../reviews/2026-11-17-chameleol-result-followup-checks.md)に従い、`result-card-resilience.e2e.mjs`へ7試験を追加した。保存画面の背景focus/scrollと以前の属性/styleの復元、ファイル/payload共有不可・APIなし・共有失敗からの明示操作、PNG生成失敗の通知時の解放と再試行、8回の保存/回転/再生成/再mountと生成中のホーム離脱を扱う。これらも最後の変更headの既存4組CIで確認する。OSの共有画面・画像長押し・VoiceOverのiPhone実機確認は別工程に残す。
+
 ## ClaudeのCL03〜CL06受領後に確認するもの
 
 1. 同じ準備commitと修正headを含む部品を受領する。実ports・stage mode・controllerの旧抑止・通知口・全16案の採用・App検証入口・通常共有試験を同じCG03の統合commitで切り替える。それまでは通常legacy80/catalog80/20を維持する。

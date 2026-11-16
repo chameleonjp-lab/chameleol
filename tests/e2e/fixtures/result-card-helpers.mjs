@@ -31,6 +31,11 @@ export const SCRIPT = async (endMs) => {
 export const INSTRUMENT = () => {
   globalThis.__shares = [];
   globalThis.__shareMode = 'ok';
+  globalThis.__canShareFiles = true;
+  globalThis.__canSharePayload = true;
+  globalThis.__encodeFailures = 0;
+  globalThis.__pendingEncodes = 0;
+  globalThis.__createdUrls = [];
   globalThis.__opened = [];
   globalThis.__revoked = [];
   globalThis.__webgl = new Set();
@@ -38,19 +43,30 @@ export const INSTRUMENT = () => {
   const toBlob = HTMLCanvasElement.prototype.toBlob;
   HTMLCanvasElement.prototype.toBlob = function trackedEncode(...args) {
     globalThis.__encodingCanvases.add(this);
-    return toBlob.apply(this, args);
+    const callback=args[0];globalThis.__pendingEncodes+=1;
+    args[0]=(...values)=>{globalThis.__pendingEncodes-=1;callback(...values);};
+    if (globalThis.__encodeFailures > 0) {
+      globalThis.__encodeFailures -= 1;
+      queueMicrotask(() => args[0](null));
+      return;
+    }
+    try { return toBlob.apply(this, args); }
+    catch(error) { globalThis.__pendingEncodes-=1;throw error; }
   };
-  Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
+  Object.defineProperty(navigator, 'canShare', { value: payload => globalThis.__canShareFiles && (globalThis.__canSharePayload || !Object.hasOwn(payload,'text')), configurable: true });
   Object.defineProperty(navigator, 'share', {
     configurable: true,
     value: async (payload) => {
       globalThis.__shares.push({ files: payload.files.map((f) => ({ type: f.type, size: f.size, name: f.name })), text: payload.text, url: payload.url });
       if (globalThis.__shareMode === 'cancel') throw new DOMException('cancelled', 'AbortError');
+      if (globalThis.__shareMode === 'fail') throw new DOMException('Share rejected', 'NotAllowedError');
     },
   });
   const open = window.open;
   window.open = (...args) => { globalThis.__opened.push(args[0]); return null; };
   void open;
+  const createUrl = URL.createObjectURL.bind(URL);
+  URL.createObjectURL = (blob) => { const u=createUrl(blob);globalThis.__createdUrls.push(u);return u; };
   const revoke = URL.revokeObjectURL.bind(URL);
   URL.revokeObjectURL = (u) => { globalThis.__revoked.push(u); revoke(u); };
   const get = HTMLCanvasElement.prototype.getContext;

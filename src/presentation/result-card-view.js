@@ -8,6 +8,49 @@ import { rtext } from './result-card-text.js';
 const FULL = [CARD_W, CARD_H];
 const HALF = [CARD_W / 2, Math.round(CARD_H / 2)];
 
+/** Keep the image's native gestures while the rest of the page is inactive. */
+function isolateViewer(doc, root) {
+  const win = doc.defaultView;
+  const x = Number.isFinite(win?.scrollX) ? win.scrollX : 0;
+  const y = Number.isFinite(win?.scrollY) ? win.scrollY : 0;
+  const background = new Map();
+  const styles = [];
+  let released = false;
+  const isolate = (node) => {
+    if (released || node === root || node.nodeType !== 1 || background.has(node)) return;
+    background.set(node, [node.getAttribute('inert'), node.getAttribute('aria-hidden')]);
+    node.setAttribute('inert', '');node.setAttribute('aria-hidden', 'true');
+  };
+  const set = (node, property, value) => {
+    styles.push([node.style, property, node.style.getPropertyValue(property) ?? '', node.style.getPropertyPriority?.(property) ?? '']);
+    node.style.setProperty(property, value, 'important');
+  };
+  for (const node of doc.body.children) isolate(node);
+  const observer = win?.MutationObserver ? new win.MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) isolate(node);
+  }) : null;
+  observer?.observe(doc.body, { childList: true });
+  // The shorthand can serialize to '' for single-axis or mixed-priority values.
+  for (const axis of ['overflow-x', 'overflow-y']) set(doc.documentElement, axis, 'hidden');
+  for (const [property, value] of Object.entries({ 'overflow-x': 'hidden', 'overflow-y': 'hidden', position: 'fixed', top: `${-y}px`, left: `${-x}px`, width: '100%' })) set(doc.body, property, value);
+  root.style.setProperty('overscroll-behavior', 'contain');
+  return () => {
+    if (released) return () => {};
+    released = true;observer?.disconnect();
+    for (const [node, previous] of background) {
+      for (const [index, attribute] of ['inert', 'aria-hidden'].entries()) {
+        if (previous[index] === null) node.removeAttribute(attribute);else node.setAttribute(attribute, previous[index]);
+      }
+    }
+    background.clear();
+    for (const [style, property, value, priority] of styles) {
+      if (value) style.setProperty(property, value, priority);else style.removeProperty(property);
+    }
+    // Restore after the screen card has its pixels and height again.
+    return () => win?.scrollTo?.(x, y);
+  };
+}
+
 /** snapshot から画面の見せ方を決める（設計票 §3.3.2）。 */
 export function cardViewState(snapshot) {
   const prepared = Boolean(snapshot?.prepared) && snapshot.prepared.revision === snapshot.revision;
@@ -204,7 +247,7 @@ export function mountResultCardView({ host, controller, scope, onTextShare, init
     closeBtn.addEventListener('click', () => closeViewer());
     doc.addEventListener('keydown', onKey);
     doc.body.append(root);
-    viewer = { root, onKey };
+    viewer = { root, onKey, restoreBackground: isolateViewer(doc, root) };
     // 画面全体を覆うので、画面のカードの画素は一時的に手放す（同時保持の上限のため）。
     canvas.width = 0;
     canvas.height = 0;
@@ -213,18 +256,20 @@ export function mountResultCardView({ host, controller, scope, onTextShare, init
 
   function closeViewer({ refocus = true } = {}) {
     if (!viewer) return;
-    const { root, onKey } = viewer;
+    const { root, onKey, restoreBackground } = viewer;
     viewer = null;
     doc.removeEventListener('keydown', onKey);
     root.querySelector('img')?.removeAttribute('src');
     root.remove();
+    const restoreScroll = restoreBackground();
     try { controller?.revokeImageUrl?.(); } catch { /* 解除の失敗で閉じられなくならない */ }
     if (disposed) return;
     const view = cardViewState(snapshot);
     canvas.width = view.size[0];
     canvas.height = view.size[1];
     paint();
-    if (refocus) saveBtn.focus?.();
+    restoreScroll();
+    if (refocus) saveBtn.focus?.({ preventScroll: true });
   }
 
   function dispose() {

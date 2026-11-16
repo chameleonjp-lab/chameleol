@@ -20,6 +20,8 @@ CG02準備commit／開始点：7d551ed624cde7b61ff2ef33cf434945706b7919
 今回の追加回答（必読）：docs/acceptance/chameleol-chatgpt-unblock-20261116.md
 CL02受入修正（再開前に読む）：docs/reviews/2026-11-17-chameleol-cl02-acceptance-review.md
 統合検査表：docs/acceptance/pr26/integration-checklist.md
+結果画面の追加3対応（今回の最新修正）：docs/reviews/2026-11-17-chameleol-result-followup-checks.md
+保存画面の背景操作/scrollの抑止と復元、PNG失敗時の生成面解放、異常時/反復の追加検査も含む最新headを取得し、古い作業コピーで上書きしないでください。
 #23の既存処理のAPI：docs/prompts/2026-11-15-claude-pr23-handoff.md
 
 役割・要件・工程ID・ファイル分担は計画から変更しません。CL-O/CL-D/CL-A/B/C/CL-R/T/Wの指定modelとeffortを使い、実際に設定できた値を記録してください。全体統括を含め同時4人以内、同じファイルを同時編集しないでください。追加課金やCodex Cloud実装ジョブは起動しないでください。

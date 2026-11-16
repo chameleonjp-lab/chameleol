@@ -40,6 +40,18 @@ test('same-condition retry recovers failed encoding without automatically sharin
   const c=createResultCardController({result:r,ports:p});await settle();assert.equal(c.snapshot().state,'failed');const old=c.snapshot().revision;
   c.retry();await settle();assert.equal(c.snapshot().state,'ready');assert.ok(c.snapshot().revision>old);assert.equal(p.count.portraits,1);assert.equal(p.count.shares.length,0);releaseResultCardResources(r);
 });
+test('failed encoding releases its generation canvas before recovery views are notified',async()=>{
+  const p=ports(),r=result(),failedSizes=[];let canvas;
+  p.createCanvas=()=>canvas={};
+  const encode=p.encodePng;p.encodePng=async()=>{throw Error('PNG encode failure');};
+  p.onChange=snapshot=>{if(snapshot.state==='failed')failedSizes.push([canvas.width,canvas.height]);};
+  const c=createResultCardController({result:r,ports:p});await settle();
+  assert.equal(c.snapshot().state,'failed');assert.equal(c.snapshot().prepared,null);
+  assert.deepEqual(failedSizes,[[0,0]],'failure subscribers may restore an open E090 immediately');
+  p.encodePng=encode;c.retry();await settle();
+  assert.equal(c.snapshot().state,'ready');assert.equal(p.count.shares.length,0);
+  releaseResultCardResources(r);
+});
 test('ready subscribers never overlap their full-size views with the PNG generation canvas',async()=>{
   const p=ports(),r=result(),sizes=[];let canvas;
   p.createCanvas=()=>canvas={};
