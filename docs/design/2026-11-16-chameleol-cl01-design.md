@@ -430,7 +430,7 @@ controller が渡されただけでは新経路にしない（App は常に cont
 | DOM（簡易） | extended96 | 無い | 毎フレーム1回、`drawable:false`・配置すべて false | 何も足さない |
 | 練習・ホーム・検証の舞台 | controller 無し | — | 呼ばない | 今のまま |
 
-禁止：旧 director との二重抽選、`cameo:null` の時に旧描画へ戻すこと、舞台の `presentationEvent` を controller へ転送すること（App が既に `gameExtrasController.event` を呼んでいる。`app.js:1043,1167`）。
+禁止：旧 director との二重抽選、`cameo:null` の時に旧描画へ戻すこと、舞台の `presentationEvent` を controller へ転送すること（App が既に `gameExtrasController.event` を呼んでいる。`app.js:1043,1170`）。
 
 ### 4.2 `step` へ渡す値（IF02/IF09）
 
@@ -454,13 +454,13 @@ const extra = controller.step({
 | `t` | `p.t`（ゲーム時計）。`args.t`（ガイドの見せる位置 sceneT）を使わない。上書きしない |
 | `drawable` | `!contextLost && !opening && !ending && presentationEnabled`。`contextLost` は `renderer.domElement` の `webglcontextlost`/`webglcontextrestored` を購読して持つ（dispose で外す） |
 | `actorBusy` | `{hero: busy.hero===true, police: busy.police===true}`。`busy=reactions?.busy()`（C が足す安い読み出し。今の `stats()` は配列を作るので毎フレームは避ける）。reactions が無ければ両方 false |
-| `placements` | `{...accents.placements(view, frameInfo), policeSettled}`。accents が無ければ5案すべて false・`existing:{}`。`policeSettled` は `policeStage===1` かつ `updatePolice` の中の「立ち位置に着いた」（`street.js:1049` の `arrived` を外へ出して持つ） |
+| `placements` | `{...accents.placements(view, frameInfo), policeSettled}`。accents が無ければ5案すべて false・`existing:{}`。`policeSettled` は `policeStage===1` かつ `updatePolice` の中の「立ち位置に着いた」（`street.js:1050` の `arrived` を外へ出して持つ） |
 | `reducedMotion` | `mq?.matches===true`（`mq=matchMedia('(prefers-reduced-motion: reduce)')` を作成時に1回作って保持し、毎フレーム読む） |
 | `frameIntervalMs` | `p.running===true && !p.hidden && prevT!==null && Number.isSafeInteger(p.t) && p.t>=prevT` なら `p.t-prevT`、それ以外は 0。その後 `prevT = (p.running===true && !p.hidden && Number.isSafeInteger(p.t)) ? p.t : null`（初回・停止・非表示・不正値は 0） |
 | `bestDistance` | `setBestDistance(v)` で受けた値を `Number.isInteger(v)&&v>=0&&v<=50 ? v : null` で持つ（accents へも今までどおり渡す） |
 | 作らない物 | `priority`（D10）、`leaving`、第二の抽選の文脈。抑止の判定は controller だけが持つ |
 
-- 1フレーム1回：App の `stage.update(args)` 1回につき `step` 1回。**終了演出・開始演出の分かれ道でも1回**呼ぶ（`drawable:false`。評価区間を落とさないため）。終了演出の内部フレーム（`update(lastArgs, cutsceneFrame)`、`street.js:1386`）では呼ばない（同じ評価区間を二度渡さないため）。
+- 1フレーム1回：App の `stage.update(args)` 1回につき `step` 1回。**終了演出・開始演出の分かれ道でも1回**呼ぶ（`drawable:false`。評価区間を落とさないため）。終了演出の内部フレーム（`api.update(lastArgs, frame)`、`street.js:1381`）では呼ばない（同じ評価区間を二度渡さないため）。
 - `args.presentation` が無い呼び出し（練習の `renderPractice` など）では呼ばない。
 
 ### 4.3 フレームの中の順番（extended96）
@@ -517,7 +517,7 @@ legacy80 は 5〜8 を行わず、6 を今までどおり accents.tick(view) に
 - 舌の包絡（頭の座標、持ち上げ込み）：x −0.23〜1.06、y −0.17〜0.71、z ±0.25（旧作業コピーの測定値）。
 - 停止中：controller の `elapsedMs` が止まるので同じ姿勢。形は書き直さない（`shapeWrites` が増えない）。
 - 取消（`extra.travelTongue===null`、ガイド・警告・危険・主人公反応・終了・描画喪失・動きを減らす）：同じフレームで台帳を戻し、舌とダイヤを隠す（途中のアニメーションなし）。
-- 最初の表示の引っかかりを避けるため、舌の mesh とダイヤを `street.js:1180-1202` の事前準備の `show(...)` に足す。`street.dispose()` では `scene.traverse` より前に `travelTongue.dispose()`。
+- 最初の表示の引っかかりを避けるため、舌の mesh とダイヤを `street.js:1181-1206` の事前準備の `show(...)` に足す。`street.dispose()` では `scene.traverse` より前に `travelTongue.dispose()`。
 - `presentationStats()` に `mode` と `tongue: travelTongue.stats()`（`visible, diamondVisible, shapeWrites, poseWrites, drawCalls, geometries`）を足す。
 
 ### 4.6 動きを減らす設定の途中変更
@@ -549,3 +549,140 @@ reactions.applyPoliceExtra(policeExtra, view) -> {dx:number}  // 姿勢は save(
 ```
 - `hudBottom` は B が resize の時に `container.closest('.stage-wrap')?.querySelector('.hud')` の下端を測って持つ（読むだけ。見つからなければ 76）。
 - B が C の部品を取り込むのは C の CL04 の部品試験が通った commit の後（§6）。それまで B は `accents.placements` が無ければ全部 false、`busy` が無ければ `stats()` から作る、`applyPoliceExtra` が無ければ `{dx:0}` として進める（存在確認で分ける。偽の絵は描かない）。
+
+## 5. CL-C（CL04）街・警察・札
+
+F04〜F06/F12、IF02/05/08/09/10。編集先：`street-accents.js`、`actor-reactions.js`、`characters.js`（必要な時だけ）、`bonus-view.js`、`scripts/render-street-atlas.mjs` と街アトラス、対応試験。`hud-view.js` は今回変える必要が無い（見つかれば理由を票に書く）。描画は controller の出力だけで決め、回数・間隔・期限・抽選・98%判定を描画側で持たない。
+
+### 5.1 置き場所の決まり（全案共通）
+
+- 新しい絵は既存の `sprite(...)` の束で描き、新しい描画呼出・形・画像を増やさない。
+  - 世界に固定する絵は深度を使う `sprites` の束へ、新しい種類 `'story'` として入れる（`staticN` に数えず、`visibleCameos` に数える。小芝居1組3枚の上限を旧案と共有）。
+  - 画面に固定する `cameoSprites`（深度なし）は旧9案だけが使う。新5案は使わない（深度なしだと主人公の上に描かれるため）。
+- 置ける所（§2.3）：道の帯（壁の下端の線より 4px 下〜canvas 下端の 4px 上）、路地の隙間（両側の壁の正面の投影から 2px 以上内側）、屋根より上（その位置の建物の正面の上端の投影より 4px 上、HUD の下端＋6px より下）。
+- 置く前の確かめ（`accents.placements`）：その案のすべての絵の、開始時と終了時（主人公が +4 進んだ時）の投影の箱が、上の帯に入り、主人公・警察の箱（世界の箱 x−1.6〜+1.2、y 0.2〜3.2、z 2.0〜3.0 を投影）から 6px 以上離れ、canvas の左右 8px の内側にあること。だめなら false（controller は選ばず、回数を使わない）。
+- 描く時も毎フレーム同じ確かめをし、帯から外れた絵は**描かない**（穴の開いた絵を出さない）。controller の取得は取り消さない（描画側から抽選に触らない）。
+- 静的装飾の24：足跡（最大3）・静止旗（1）を出す間は、家具の枠（`furnishingSlots`、`street-accents.js:54` の最大5）を同じ数だけ減らす。
+- 時間：`p = cameo.elapsedMs / cameo.durationMs`（controller の時計）。`t - start` を自分で数えない。
+- 動きを減らす設定（作成時の `reducedMotion`）：各案の「静止コマ」を時間いっぱい出すだけ。
+- 位置の基準：`bx = (cameo.building − 1) × 10`（その棟の左端。小芝居の機会は grace の始まりで、主人公はほぼ bx にいる）。2000ms で主人公は +4 進む。
+- 1単位の画面上の大きさは z で変わる（§2.4。z=5 付近で 402×700 約31px、402×874 約38px、874×402 約30px）。
+
+### 5.2 街アトラスの拡張
+
+1. 最初に、スクリプトを変えずに動かし（`python`・PIL・librsvg・cairo はこの環境にある。確認済み）、今の `atlas.webp` と 61枠を比べる（各枠の平均絶対差・最大差）。同じでなければ、作り直しの差（WebP 品質88の再圧縮）として数値を票に記録し、次の 2 では「今の画像を読み、上の 1024×1024 をそのまま使い、新しい行だけ SVG から描いて合成する」方法にする。
+2. 既存の `add()` の後ろへ下の19セルを足す（既存の 0〜60 番は動かさない）。
+3. 1024×1536（8列×12行）。`atlas.json` は `rows:12`・`height:1536`。
+4. 格子の数を直に書いた所を一度に直す：`street-accents.js:25` のシェーダー `/ 8.0` → `/ vec2(8.0, 12.0)`、`:26` のキャッシュ名 → `'street-atlas-v2'`、`:44`（2か所）・`:86`・`:91` の `7-Math.floor(cell/8)` → `11-Math.floor(cell/8)`。`CELLS`（`:4`）へ新しい名前を同じ順で足す。
+5. 拡張後も上の 1024×1024（61枠）と今の画像の差を数値で残す（合成なら差0のはず）。展開後 6,291,456B、圧縮後の大きさを記録する。
+
+| 番号 | 名前 | 絵（128px セル。線 `#24394b`・太さ3・角丸。文字・数字は描かない） |
+| --- | --- | --- |
+| 61 | crossingPost | 支柱 `#e9e3d6`（黒黄の帯4本 `#293d4d`/`#eecb69`）、上に×の標識 `#f5e5cf`、左右の灯（枠 `#3a3f4d` r11、消灯レンズ `#7a4a4a` r7） |
+| 62 | crossingPostLit | 61 の左のレンズ `#ff6b5e`＋不透明の輪 `#ffb39e` r13。右の点灯は x を反転して使う（支柱は左右対称） |
+| 63 | crossingArm | セル中心から右端までの棒 `#f5e5cf`、赤帯 `#d26f75` 3つ、中心に軸 `#9caeb9` r8（中心で回すと根元で回る） |
+| 64 | tram | 1両の路面電車 `#9fd1cb`、屋根 `#e7ecef`、窓4つ `#83a9b9`、車輪 `#293d4d`、前面に `eye()`。上下は透明 |
+| 65 | droneA | 丸い機体 `#f0eee1`＋帯 `#e78b70`、`eye()`、腕4本の先に回転翼（横長の楕円 `#c7d1dd`）、下にフック |
+| 66 | droneB | 65 の回転翼を細い線に |
+| 67 | midFlag | 細い支柱 `#9caeb9`、2色の旗（`#83bd87`/`#f5e5cf` の斜め分け）に `eye()` の丸い紋、足元に小さな台 |
+| 68 | gutterWaterA | 上に雨どいの口（`#9caeb9` 太さ14の曲がり）、下へ波打つ水 `#9fd1cb`、白い筋 `#dfedf1` 2本 |
+| 69 | gutterWaterB | 68 の波の位相を半分ずらす |
+| 70 | gutterSwirl | 排水の格子 `#556c8e`、その上の渦（`#dfedf1` 太さ6）、水しぶきの小円3つ `#9fd1cb` |
+| 71 | robotPaint | 四角いロボット（胴 `#f0eee1`、顔 `#283c5a`・目 `#9fd1cb`）、車輪の足2本、右腕のローラー `#eecb69` |
+| 72 | robotFoot | 腕を曲げて自分の左足を塗る。左足が `#eecb69` |
+| 73 | robotLook | 頭を20°下へ、目を下向きの弧、左足は黄色 |
+| 74 | paintStripe | 黄色い帯 `#eecb69`、右端は少しかすれる、線は太さ2 |
+| 75 | birdCarryA | 丸い鳥 `#f8e7c9`・くちばし `#e49263`・`eye()`、翼が上、足でひもの輪 |
+| 76 | birdCarryB | 翼が下、頭の横に汗 `#9fe6ff` |
+| 77 | parcel | 箱 `#c3a18c`、十字のひも `#f5e5cf`、無地の札 `#eecb69` |
+| 78 | rope | セル中央の縦線 `#8b6e5a` 太さ6（縦に伸ばして使う） |
+| 79 | footprint | 線なし。指先が2つに分かれたミトン形 `#6e6a66`（左右は x 反転） |
+
+### 5.3 E020 踏切（2000ms、3枚：電車・棒・支柱。すべて世界に固定・道の帯）
+
+| 時間 | 支柱（x=bx+5.5、z=5.4、足元 y=0.245、幅0.55・高さ1.1） | 棒（軸 y=1.2・z=5.35、長さ2.2、+x 向き） | 電車（z=7.6、下端 y=0.05、幅3.2・高さ0.95） |
+| --- | --- | --- | --- |
+| 0〜400 | 左右の灯を 250ms ごとに交互 | 上向き +80°→0°（easeInOutSine） | 出ない |
+| 400〜1500 | 交互を続ける | 0°（下りたまま） | 450〜1450 で x=bx+20 → bx−8（等速） |
+| 1500〜1900 | 1750 で消灯 | 0°→+80° | 出ない |
+| 1900〜2000 | 消灯 | 上向き | 出ない |
+
+- 支柱の高さ 1.1 は、z=5.4 で上端が壁の下端の線より下になる値（1.3 を越えると壁の前に出て穴が開く。§2.3）。電車（高さ0.95・z=7.6）は主人公の足の線より下に投影される見込み（計算）。
+- 静止コマ：棒が下り、左の灯、電車は x=bx+5。取消（cameo が null）は3枚とも同じフレームで消す。
+- 置ける条件：§5.1。支柱の画面 x の見込み 402×700 約329、402×874 約367、874×402 約338（canvas 内）。
+
+### 5.4 E067 雨どい（2000ms、2枚：水・渦。路地の隙間、粒子0、同時の水源1）
+
+- 水（世界、路地）：x=bx+10（今の棟の右の隙間の中心）、z=0.15、上端 y=2.2・下端 y=0.3、幅0.45。
+- 渦（世界、地面に平置き）：同じ x、y=0.25、z=0.9、0.9×0.9。
+- 0〜200：水が上から伸びる（縦 0→1、上端固定）、渦 0.6→1。200〜1700：水 A/B を 120ms ごと、渦は 700ms で1回転（右回り）。1700〜2000：水が細る（横 1→0.2）、渦 1→0.6。静止コマ：水 A、渦 0°。
+- 置ける条件：隙間の右の棟（b+1）の枠が見えていて、主人公が +2 進んだ時の水の箱が隙間の内側・canvas の内側。見込み（計算）：402×700 と 874×402 は可、402×874 は隙間が画面の右外になり不可（その寸法では出ない。§8 Q07）。
+
+### 5.5 E068 縁石塗装ロボット（2000ms、2枚：ロボット・塗装。道の帯）
+
+- ロボット（世界）：x=bx+5.5、z=5.0、足元 y=0、高さ0.85・幅0.8。塗装（世界、縁石の上に平置き）：y=0.25、z=4.35、左端固定で長さ 0→0.7、幅0.14。
+- 0〜800 robotPaint：ロボットが +0.7 進み、塗装が伸びる。150ms ごとに上下 0.02。800〜1300 robotFoot。1300〜2000 robotLook（1600 で首を +0.08rad）。終わりに2枚とも消す（塗装を残さない）。静止コマ：robotFoot、塗装0.7。
+- 終了時の主人公（bx+4）との差は約2.2単位（重ならない見込み）。
+
+### 5.6 E069 重い荷物の配達鳥（2000ms、3枚：鳥・荷物・ひも。屋根より上）
+
+- 場所（世界）：今の棟の屋根の右寄り x=bx+6.5、z=−1.2。着地の高さ `roof` はその枠の屋根の上端（平屋根 `h+0.6`、三角屋根は頂）。
+- 共通の上下 `lift(ms)`：0〜300 は0、300〜1000 で sin により 0→1、1000〜1300 は1、1300〜1700 で 1→0、以後0。
+- 鳥 y=`roof+0.35+0.6·lift(ms)`、荷物 y=`roof+0.2+0.2·lift(ms−120)`、ひもは両者の間に縦に伸ばす。翼：140ms ごとに A/B、1000〜1300 は 80ms ごとで B（汗）。1700〜2000 は屋根の上で A のまま止まる。静止コマ：lift=1、翼 B。
+- 置ける条件：飛ぶ範囲の箱（鳥の上端〜荷物の下端）が、重なるすべての建物の正面の上端より 4px 上、HUD の下端＋6px より下で、高さ 56px 以上。屋根が高い棟では出ない（条件付き表示）。
+
+### 5.7 E056 中間旗（機体と旗。1500ms と静止旗）
+
+- 旗の位置（世界・道の帯）：x=`fx`=250（`bestDistance===25` の時だけ 249.0。自己ベスト旗は既存の `sprite('flag', best*10, .9, -.6, …)`（`street-accents.js:110`）で路地の奥。深さが違い、画面で約6px 以上離れる見込み。25棟の時はさらに1単位離す）、z=5.0、足元 y=0.245、高さ0.8・幅0.6。高さは壁の下端の線より下に収まる上限。
+- `phase:'delivery'`（1500ms）：0〜800 機体（z=5.6、y=0.95、幅0.5・高さ0.3）が x=fx+6 から fx へ（easeOutCubic）、回転翼 A/B を 60ms ごと、小さく巻いた旗（大きさ0.5）をフックの下に。800〜1050 旗を下ろして立てる（大きさ 0.5→1、着地で縦 0.9→1.0 を 80ms）。この時の主人公は fx＋1.6〜2.1。1050〜1500 機体は x=fx+8 へ戻って去る（主人公の前を横切らない）。
+- `phase:'static'`（間に合わない・取消・期限切れ・機体の後）：旗だけを fx に立てる。controller は以後ずっと static を返すので、旗が画面の外にある間は描かない。画面にある間は静的装飾1つに数える。
+- `placements.midpoint`：125000≦t<126500 の間、旗（立てる時刻の主人公を fx+1.6 と見込む）と機体の通り道が道の帯に入り、主人公・警察の箱から 6px 離れること。警察1人目（x−2.9、z=2.7）と画面で近い（402×700 で旗 x≈82、警察 x≈68）。警察は比較面ではないので重なっても可とし、画像で判定する（§8 Q08）。
+
+### 5.8 警察2案（E034・E039）
+
+共通：警察1人目（`ferrets[0]`）だけ。正式な追跡位置・警戒は変えない。表示用のずれ `dx` を `reactions.applyPoliceExtra` が返し、B が root・影・記号へ同じ値を足す（§4.3 の7）。体・頭・道具・光の姿勢は C が `save()` で書く（次の `tick` で自動で戻る）。光（beam）は胴の子なので一緒に動く。`dx` は −1.0 まで（402幅で警察が画面の外へ出すぎない）。既存の似顔絵・双眼鏡の交互の番は進めない（`alternate` に触らない）。
+
+E034 見当違いの聞き込み（`kind:'inquiry'`、1200ms）：
+
+| ms | 体・頭 | dx | 道具 |
+| --- | --- | --- | --- |
+| 0〜200 | 体を壁の側（−z）へ +0.8rad 回す。相手は近くの街灯の柱、無ければ壁 | 0 | — |
+| 200〜600 | 立ち止まる（足の振り0） | 0→−0.8（直線。足が地面に止まって見える） | 似顔絵（既存の `sketch`）を 0.15 上げて相手へ。330ms と 470ms に小さくうなずく（頭 z ±0.08） |
+| 600〜800 | 「あれ？」頭 z +0.15 | −0.8→−1.0 | 下ろす |
+| 800〜1200 | 向きを戻し小走り（足の振り1.6倍） | −1.0→0（easeInOutQuad） | 1150 で隠す |
+
+E039 足跡の調査（`kind:'footprints'`、1500ms）：
+
+| ms | 体・頭 | dx | 足跡 |
+| --- | --- | --- | --- |
+| 0〜150 | 歩きのまま | 0 | 3つが手前から 50ms おきに出る（大きさ0.6→1） |
+| 150〜550 | 前かがみ（上体0.35rad、頭を下へ）、光を足跡へ | 0→−0.8 | 表示 |
+| 550〜1150 | 迷う：頭 yaw −0.6→+0.6→−0.3（200ms ずつ、最初は主人公と反対） | −0.8 | 表示 |
+| 1150〜1500 | 体を起こし小走り | −0.8→0 | 1500 で消す |
+
+- 足跡：開始時の警察の x＋0.8・1.3・1.8、z=3.1、y=0.25 に平置き、0.32×0.42、左右交互に ±8°。世界に固定（静的装飾に数える）。主人公の箱と 4px 以上離れない足跡は出さない。取消・終了・棟の切替・枠の使い回しで必ず消す。経路として保存しない。
+- 上体の姿勢に部品が要る時だけ、C が `characters.js` の `createFerret` の `actorParts` へ既存の胴の参照を足す（見た目は変えない）。
+- 取消（controller が null を返す：警察 1→0／1→2、ガイド、警告、既存の警察の反応、立ち位置から外れる、終了）：同じフレームで `dx=0`、道具を隠し、足跡を消す。補正が残らないことを `ferretRoots[0].position.x === playerX + ferretRel[0]` で確かめる。
+- 停止中（`view.running===false`）は姿勢を書き足さず、同じ `dx` を返す（二重に足さない）。
+
+### 5.9 精密札（`bonus-view.js` の `tick({precisionBadge,...})`）
+
+App は毎フレーム `bonusPresentation.tick({activeMs:s.t, phase, guideActive, warningActive: stage>0||activeNotice, running, precisionBadge})` を呼び、その後で batch があれば `show(batch, s.t, {quiet})` を呼ぶ（`app.js:1188-1190`）。`show` は中で `tick({t:now,quiet})`（precisionBadge 無し）を呼ぶ。
+
+- 受け取り方：引数に `precisionBadge` の項目がある時だけ `badge` を更新する（値か null）。項目が無い呼び出し（`show` の中）では前の値を保つ。→ **show(batch) で札を消さない**。
+- 抑止：`quiet = guideActive || warningActive`（既存の既定どおり）。quiet の間は札を出さない。期限・98%・500ms を自分で判定しない（controller が 1400ms を過ぎると null を渡す）。
+- 文言：`'◎ ' + t('presentation.nearPerfect')`。キーがまだ無い間（`t(key)===key`）は `'◎ 98%'`。点数（`+0` など）・効果音は出さない。
+- 見せ方：
+  - batch が見えている時（`age<1400 && phase!=='eval'`）：既存の通知の行 `.bonus-card-notices` の最後へ `span.bonus-card-badge` として足す（既存の通知と「 · 」で区切る）。
+  - batch が無い・見えていない時（評価中を含む）：カードを `is-badge-only` で出し、通知の行だけを見せる（題・点・行・詳細は隠す）。出入りは札の `elapsedMs` で：`--bonus-enter=min(1,elapsedMs/150)`、`elapsedMs≥1250` から `--bonus-progress=(elapsedMs−1250)/150`。
+  - 札が null か quiet：batch も無ければカードを隠す。
+- `stats()` に `badge:boolean`（見えているか）を足す。
+- CSS は A が `presentation.css` に書く（C は書かない）：
+```css
+.bonus-card.is-badge-only .bonus-card-title,.bonus-card.is-badge-only .bonus-card-points,
+.bonus-card.is-badge-only .bonus-awards,.bonus-card.is-badge-only .bonus-card-detail{display:none}
+.bonus-card.is-badge-only{right:auto;left:50%;transform:translateX(-50%);padding:5px 12px;max-width:calc(100% - 20px)}
+.bonus-card.is-badge-only .bonus-card-notices{margin:0}
+.bonus-card-badge{color:#ffe694;white-space:nowrap}
+```
+  （`transform` は既存の出入りの `transform` と重なるので、A は `is-badge-only` の時は `translate` プロパティを使うなど、既存の規則と衝突しない書き方にする。）
