@@ -35,6 +35,9 @@ import { choosePassCue } from './presentation/bonus-audio.js';
 import { buildResultData } from './presentation/result-data.js';
 import { mountResultPresentation } from './presentation/result-view.js';
 import { captureEvidenceBase, releaseResultEvidence, resolveResultEvidence, startResultEvidence } from './presentation/result-evidence.js';
+import { createResultCardController, releaseResultCardResources } from './presentation/result-card-controller.js';
+import { createGameExtrasController } from './presentation/game-extras-controller.js';
+import { createEvaluationSegmentCollector } from './presentation/evaluation-segments.js';
 import { mountResultPanels } from './presentation/result-evidence-view.js';
 import { sanitizeStats } from './presentation/stats.js';
 import { mountPresentationHud } from './presentation/hud-view.js';
@@ -60,12 +63,13 @@ function randomSeed() {
 const better = (a, b) => !b || a.buildings > b.buildings || (a.buildings === b.buildings && (a.rankAverage ?? -1) > (b.rankAverage ?? -1));
 
 export class App {
-  constructor(root, { audio = null, stageFactory = null } = {}) {
+  constructor(root, { audio = null, stageFactory = null, resultCardPorts = null } = {}) {
     this.root = root;
     this.runtime = loadRuntimeConfig();
     this.api = createApi({ base: this.runtime.apiBase });
     this.audio = audio ?? createMixer();
     this.stageFactory = stageFactory ?? createStage;
+    this.resultCardPorts = resultCardPorts;
     this.store = null;
     this.flags = {};
     this.nameRaw = '';
@@ -285,6 +289,7 @@ export class App {
 
   showHome() {
     this.session = null;
+    releaseResultCardResources(this.lastResult);
     releaseResultEvidence(this.lastResult); // 結果を離れる：解析を止めて、表示専用の入力を手放す
     this.disposeStage();
     const showOnline = this.runtime.isVerification || this.api.configured;
@@ -649,7 +654,8 @@ export class App {
       const session=new GameSession({playId:uuid(),seed:1,debug:true,name:'',ranked:false});
       for(let b=1;b<=50;b++){const target=session.game.course.targets[b-1];session.apply({type:'color',t:(b-1)*5000+1400,...target});}
       session.apply({type:'tick',t:250000});
-      releaseResultEvidence(this.lastResult);
+      releaseResultCardResources(this.lastResult);
+    releaseResultEvidence(this.lastResult);
       this.lastResult={playId:session.meta.playId,name:'',summary:session.summary(),newBest:true,firstClearNow:true,firstClearAt:Date.now(),previous:{playId:'previous',buildings:40,rankAverage:9500,maxCombo:10,endedAt:1},targets:session.game.course.targets.map(c=>({...c})),arrivedBuilding:50,ranked:false};
       this.session=null;this.showResult();
       if(effectId===96)this.resultPresentation.updateRank({state:'official',rank:1,label:'current'});
@@ -865,6 +871,7 @@ export class App {
 
   async showGame(session, { fresh }) {
     this.session = session;
+    releaseResultCardResources(this.lastResult);
     releaseResultEvidence(this.lastResult);
     this.setMenuMusic(null); // 本編の曲は、時計が動き始めた時に流す
     const rules = session.rules;
@@ -938,6 +945,10 @@ export class App {
       await extrasPort.restore();
       if (!current()) return;
     }
+    const gameExtrasController=createGameExtrasController({playId:session.meta.playId,rules,extrasPort,seed:decorations?.[0]?.sign??1});
+    const evaluationCollector=createEvaluationSegmentCollector({session,restore:!extrasPort.fresh});
+    this.gameExtrasController=gameExtrasController;
+    scope.own(()=>{evaluationCollector.dispose();gameExtrasController.dispose();if(this.gameExtrasController===gameExtrasController)this.gameExtrasController=null;});
     const local = (await this.safeGet('localBest'))?.[session.meta.name || ''] ?? null;
     const statistics = sanitizeStats(await this.safeGet('presentation.stats.v1'));
     if (!current()) return;
@@ -983,7 +994,7 @@ export class App {
     this.guidance = guidance;
     this.renderGuidance = renderGuide;
     scope.own(()=>{guidance.dispose();if(this.guidance===guidance){this.guidance=null;this.renderGuidance=null;}});
-    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,verification:this.runtime.isVerification,extrasPort});
+    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,verification:this.runtime.isVerification,extrasPort,gameExtrasController});
     if (!current()) { stageView.dispose(); return; }
     this.stage = stageView;
     stageView.setBestDistance?.(local?.buildings??null);
@@ -1028,6 +1039,7 @@ export class App {
     scope.own(session.on((events) => {
       for (const ev of events) {
         if (!current()) break;
+        gameExtrasController.event(ev);
         stageView.presentationEvent({ ...ev });
         presentationHud.event(ev);
         if (ev.type === 'evalEnd') lastEvalSuccess = observedEvalSuccess;
@@ -1190,7 +1202,7 @@ export class App {
       const selected=choosePassCue({batch:suppressed?null:batch,cues:candidates});
       cueCandidates=[];pendingBonus=null;
       if(selected&&!document.hidden)this.audio.play(selected.name,selected.opts);
-      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step),moving:session.running&&!guideView.stationary,warningActive:activeNotice}});
+      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step),guideActive:Boolean(guideView.step),moving:session.running&&!guideView.stationary,warningActive:activeNotice,hidden:!!document.hidden,evaluationSegments:evaluationCollector.drain()}});
       this.raf = requestAnimationFrame(loop);
     };
 
@@ -1477,6 +1489,7 @@ export class App {
     if (!current()) return;
     const summary = result?.summary??session.summary();
     const endingBonus=buildEndingBonus(summary);
+    releaseResultCardResources(this.lastResult);
     releaseResultEvidence(this.lastResult);
     this.lastResult = { playId: session.meta.playId, ranked: session.meta.ranked, name: session.meta.name, summary,saved,stale,newBest,previous,firstClearNow,firstClearAt,targets,arrivedBuilding:Math.min(50,Math.floor(session.state.t/session.rules.buildingMs)+1),netState: session.meta.ranked ? 'pending' : null };
     if (!saved && !stale && result?.ranked) {
@@ -1585,14 +1598,16 @@ export class App {
     const displayData=buildResultData(r);
     const s=displayData.summary;
     const resultScreen=this.screenGeneration+1;
-    let resultPresentation=null;
+    let resultPresentation=null,cardController=null;
     const resultCurrent=()=>this.lastResult===r&&this.screenGeneration===resultScreen;
     const showOnline = this.runtime.isVerification || this.api.configured;
     const reasonKey = { detected: 'result.detected', cleared: 'result.cleared', quit: 'result.quit' }[s.endReason];
     const statusBox = h('div', { class: 'result-status', 'aria-live': 'polite' });
     const rankingHost = h('div', { class: 'result-ranking' });
     const renderResultStatus = () => {
-      if(!showOnline||!resultCurrent())return;
+      if(!resultCurrent())return;
+      cardController?.refresh({locale:getLanguage()});
+      if(!showOnline)return;
       clear(statusBox);
       if (!r.ranked) {
         statusBox.append(h('p', { class: 'note' }, t(r.name ? 'result.status.unranked' : 'result.status.anonymous')));
@@ -1651,8 +1666,20 @@ export class App {
     const resultHost=h('div',{class:'result-supplement'});el.querySelector('.result-actions').after(resultHost);
     // 任意のふり返りパネル。解析は lastResult の持ち物で、言語の描き直しでは始め直さない。
     const evidence=startResultEvidence(r);
+    // Claude supplies drawing ports; the default path exposes real data without inventing a visual.
+    const cardPorts=(typeof this.resultCardPorts==='function'?this.resultCardPorts({result:r,host:el,scope}):this.resultCardPorts)??{};
+    const resultLayoutKey=()=>cardPorts.getLayoutKey?.()??`${globalThis.innerWidth??this.root.clientWidth??0}:${globalThis.innerHeight??this.root.clientHeight??0}`;
+    cardController=createResultCardController({result:r,locale:getLanguage(),layoutKey:resultLayoutKey(),ports:{...cardPorts,
+      getPublicUrl:()=>this.runtime.publicUrl,
+      onChange:snapshot=>{if(resultCurrent()){this.resultCardSnapshot=snapshot;cardPorts.onChange?.(snapshot);}},
+    }});
+    this.resultCardController=cardController;
+    const refreshCardLayout=()=>cardController.refresh({locale:getLanguage(),layoutKey:resultLayoutKey()});
+    globalThis.addEventListener?.('resize',refreshCardLayout);
+    const cardView=cardPorts.mount?.({host:el,controller:cardController,scope,onTextShare:()=>this.shareResultText()});
+    scope.own(()=>{globalThis.removeEventListener?.('resize',refreshCardLayout);cardView?.dispose?.();cardController.dispose();if(this.resultCardController===cardController){this.resultCardController=null;this.resultCardSnapshot=null;}});
     const evidenceHost=h('div',{class:'result-evidence-host'});el.querySelector('.result-actions').after(evidenceHost);
-    const panels=mountResultPanels({host:evidenceHost,t,state:resolveResultEvidence(r)});
+    const panels=mountResultPanels({host:evidenceHost,t,state:resolveResultEvidence(r),panels:cardPorts.panels??[]});
     if(r.evidencePanelId)panels.open(r.evidencePanelId);
     const refreshEvidence=()=>{if(!resultCurrent())return;panels.update(resolveResultEvidence(r));r.evidencePanelId=panels.openId;};
     const evidenceUnsubscribe=evidence?.subscribe(refreshEvidence);
@@ -1666,7 +1693,7 @@ export class App {
     if(r.presentationPlayed)resultPresentation.finishNow();
     r.presentationPlayed=true;
     let scoreSignature=JSON.stringify(r.verifiedScore??null);
-    const renderResultScore=()=>{if(!resultCurrent())return;const signature=JSON.stringify(r.verifiedScore??null);if(signature===scoreSignature)return;scoreSignature=signature;const data=buildResultData(r);resultPresentation.updateData(data);el.querySelector('[data-testid="result-max-combo"]').textContent=formatNumber(data.maxCombo);refreshEvidence();};
+    const renderResultScore=()=>{if(!resultCurrent())return;cardController.refresh({locale:getLanguage()});const signature=JSON.stringify(r.verifiedScore??null);if(signature===scoreSignature)return;scoreSignature=signature;const data=buildResultData(r);resultPresentation.updateData(data);el.querySelector('[data-testid="result-max-combo"]').textContent=formatNumber(data.maxCombo);refreshEvidence();};
     this.renderResultScore=renderResultScore;
     scope.own(()=>{if(this.renderResultScore===renderResultScore)this.renderResultScore=null;});
     if(r.ranked)this.store.getOne('records',r.playId).then(rec=>{if(!resultCurrent()||!rec?.verifiedScore)return;r.verifiedScore=rec.verifiedScore;renderResultScore();}).catch(()=>{});
@@ -1696,7 +1723,12 @@ export class App {
     }
   }
 
-  async shareResult() {
+  shareResult() {
+    if(this.resultCardPorts&&this.resultCardController)return this.resultCardController.share();
+    return this.shareResultText();
+  }
+
+  async shareResultText() {
     const { summary, official, rankedBest, netState } = this.lastResult;
     // /rank は名前ごとのベスト。投稿する成績が今回の正式値とベストの両方に一致する時だけ順位を添える。
     const matchesRankedBest = netState === 'official' && rankedBest?.rank != null && official != null &&

@@ -243,6 +243,10 @@ async function scanHistory(input, { signal, onYield, now }) {
       const current = best[b];
       if (!current || prev.matchUnits > current.matchUnits) {
         best[b] = { building: b, hsv: copyHsv(prev.color), matchUnits: prev.matchUnits, from: prev.t, to: cur.t };
+      } else if (current.to === prev.t && current.matchUnits === prev.matchUnits &&
+        current.hsv.h === prev.color.h && current.hsv.s === prev.color.s && current.hsv.v === prev.color.v) {
+        // Static frame queries split the scan, but not an uninterrupted real color interval.
+        current.to = cur.t;
       }
     }
     if (cur.t === prev.t) return;

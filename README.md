@@ -14,7 +14,21 @@
 - [受入試験一覧](docs/acceptance/kamereoru-acceptance.md)：実装後に確認する条件と要件番号の対応。
 - [仕様統合のレビュー記録](docs/reviews/2026-11-07-kamereoru-requirements-review.md)：旧案との整理、補完した境界処理、文書確認の範囲と限界。
 
+## 現在の全体要件と3つの実装計画（2026-11-16）
+
+完成形を先に[全体要件](docs/superpowers/specs/2026-11-16-chameleol-final-requirements.md)で定め、以下の3計画へ分けました。全体組織・モデル/effort・担当・契約v1.1と受渡し・合格の責任は①が正本です。
+
+1. [①全体実装計画書](docs/superpowers/plans/2026-11-16-chameleol-master-plan.md)
+2. [②ChatGPT実装計画書](docs/superpowers/plans/2026-11-16-chameleol-chatgpt-plan.md)
+3. [③Claude実装計画書](docs/superpowers/plans/2026-11-16-chameleol-claude-plan.md)
+
+**どちらがPRを作っても、提出後の失敗・不具合・レビュー修正・コンフリクトはChatGPTが直接解消します。** Claudeは描画部品と提出前の確認、ChatGPTは仕様処理・通常接続・全体検証とPR後対応を担当します。
+
+#24の4組CIを維持し、mainへ未反映だった#23の処理を今回のPRへ引き継ぎます。新しい画面・実機・公開は未完了です。[Claudeへコピーする依頼文](docs/prompts/2026-11-15-claude-visual-followups.md)は#25のマージ後に使います。[敵対的検証と反映記録](docs/reviews/2026-11-16-chameleol-three-plans-review.md)も併せて確認してください。
+
 ## PR #21後の対応と担当（2026-11-15）
+
+ChatGPT担当C0〜C4の判定・データ・保存取得・画像共有制御を実装しました。[実装・検証記録](docs/acceptance/chatgpt-pr23-evidence.md)と[Claudeへの受け渡し](docs/prompts/2026-11-15-claude-pr23-handoff.md)を参照してください。描画口と新しい舞台の実接続、V1〜V4の画面・実機・公開は別工程です。
 
 PR [#21](https://github.com/chameleonjp-lab/chameleol/pull/21)は取り込み済みです。輪郭8段階、結果の静止解析と5パネル、表示用保存とappの取得口が入りました。舌とダイヤ、背景・警察の追加、精密札、全27称号の主結果カードと画像共有、実接続と実機確認は残っています。静止解析にもレビューの修正が残ります。PR本文の「T0のみ」は初期の記述です。
 

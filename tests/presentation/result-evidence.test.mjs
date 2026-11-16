@@ -47,6 +47,30 @@ function inputFor({ rulesVersion, seed, history, summary, endedAtT = summary.end
 }
 const fixtureInput = (f) => inputFor({ rulesVersion: f.rulesVersion, seed: f.seed, history: f.history, summary: f.expected });
 
+test('visual sample extends through internal query boundaries without crossing a color or evaluation gap', async () => {
+  for (const version of VERSIONS) {
+    const events = perfectEvents(version, 17, 11000);
+    events.push({ type: 'quit', t: 11000 });
+    const run = build(version, 17, events);
+    const result = await prepareResultEvidence(run.input, { onYield: noYield });
+    assert.equal(result.available, true);
+    const second = result.data.visualSamples.find(x => x.building === 2);
+    assert.equal(second.from, 6500);
+    assert.equal(second.to, 9500);
+    assert.equal(result.data.visualSamples[0].to, 4500, 'do not extend across the non-evaluation interval');
+
+    const c = run.game.course.targets[1];
+    const changed = events.filter(e => e.type !== 'quit' && e.t < 8000);
+    changed.push({ type: 'color', t: 8000, h: (c.h + 18000) % 36000, s: c.s, v: 10000 });
+    changed.push({ type: 'color', t: 8600, h: c.h, s: c.s, v: 10000 });
+    changed.push({ type: 'quit', t: 11000 });
+    const split = await prepareResultEvidence(build(version, 17, changed).input, { onYield: noYield });
+    const firstBest = split.data.visualSamples.find(x => x.building === 2);
+    assert.equal(firstBest.from, 6500);
+    assert.equal(firstBest.to, 8000, 'a later equal color must not bridge a different color');
+  }
+});
+
 function deepFreeze(value) {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
     Object.freeze(value);
