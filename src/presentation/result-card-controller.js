@@ -29,7 +29,10 @@ export function createResultCardController({result,locale='en',layoutKey='defaul
   const focusTarget=ports.focusTarget??globalThis;
   const visibilityTarget=ports.visibilityTarget??globalThis.document;
   const navigator=ports.navigator??globalThis.navigator;
-  const snapshot=()=>Object.freeze({model,miniature,state,prepared,revision});
+  // Views borrow the cached image used by drawResultCard; its lifetime stays with the result.
+  const snapshot=()=>Object.freeze({model,miniature,state,prepared,revision,
+    portraitImage:!disposed&&model&&result.resultPortrait?.signature===portraitKey(model.hero)
+      ?result.resultPortrait?.portrait?.image??null:null});
   const notify=()=>{try{ports.onChange?.(snapshot());}catch{/* views do not own the controller */}};
   const revokeImageUrl=()=>{if(imageUrl){try{urlApi?.revokeObjectURL?.(imageUrl);}catch{}imageUrl=null;}};
   const clearCanvas=()=>{if(canvas){canvas.width=0;canvas.height=0;canvas=null;}};

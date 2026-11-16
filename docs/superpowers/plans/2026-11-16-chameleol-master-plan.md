@@ -1,6 +1,6 @@
 # ① カメレオる：全体実装計画書
 
-2026-11-16。**Goal:** 通常起動したゲームを[全体要件](../specs/2026-11-16-chameleol-final-requirements.md)F01〜F14へ一致させる。**Architecture:** ChatGPTが仕様処理・接続・PR後対応、Claudeが描画/UI部品と提出前の確認を担当し、契約v1.1で結ぶ。個別計画は[②ChatGPT](./2026-11-16-chameleol-chatgpt-plan.md)と[③Claude](./2026-11-16-chameleol-claude-plan.md)。本書が担当・接続・ゲートの正本。
+2026-11-16。**Goal:** 通常起動したゲームを[全体要件](../specs/2026-11-16-chameleol-final-requirements.md)F01〜F14へ一致させる。**Architecture:** ChatGPTが仕様処理・接続・PR後対応、Claudeが描画/UI部品と提出前の確認を担当し、契約v1.2で結ぶ。個別計画は[②ChatGPT](./2026-11-16-chameleol-chatgpt-plan.md)と[③Claude](./2026-11-16-chameleol-claude-plan.md)。本書が担当・接続・ゲートの正本。
 
 ## 1. 完成までの順序と現在地
 
@@ -64,23 +64,25 @@ ChatGPTのモデル名は現在の作業環境で使える名称を指定し、�
 
 **PR後の失敗・コンフリクトは、どちらのPRでもChatGPTの管轄。** CI失敗、既存試験の破損、不具合、レビュー修正、競合、候補作成失敗までCG-Oが追跡し、CG-S/Tが直接修正する。表示用のコード/素材/試験も対象。元Claude担当へ修正を返して待たない。Claudeは提出時に対象への書込を止め、ChatGPTが対象ファイル/開始head/修正branchを宣言する。仕様を変えず解消し、仕様判断が必要ならCG-Oが正本と照合する。
 
-## 4. 担当間の契約 v1.1
+## 4. 担当間の契約 v1.2
+
+2026-11-16のCL01設計票への回答と実装は[CG02補足受渡し](../../acceptance/chameleol-chatgpt-unblock-20261116.md)を参照。v1.2はsnapshotの画像借用、Appの画面寸法と札の抑止を明確化する追加で、工程ID・担当範囲は変更しない。
 
 下表の「追加」はこれから作る接続であり、#23に存在することにしない。実装済みの細かな型は[接続票](../../prompts/2026-11-15-claude-pr23-handoff.md)とソースを照合する。契約変更はCG-Oが本書を先に更新し、両個別計画と試験の期待値も同時に更新する。
 
 | 契約 | 生産側→消費側 | 関数/値 | 責任と確認 |
 | --- | --- | --- | --- |
-| IF01 v1.1 起動mode | CG-Sが選択、CL-Bが消費 | stage option presentationSet: legacy80(default) / extended96 | Claude段階の通常起動はlegacy80。実App試験のstageFactory wrapperだけextended96を指定。G4でChatGPTが通常Appをextended96へ。controllerが渡されたこと自体で起動しない。effects無効/簡易表示/ガイドでも既存経路を維持。 |
-| IF02 v1.1 ゲーム中の値 | CG-Sが生成、CL-B/Cが描画 | options.gameExtrasController.step({...args.presentation, drawable, actorBusy:{hero,police}, placements:{railway,water,robot,bird,midpoint,policeSettled,existing}, reducedMotion:boolean}) | CL-Bが現在のprefers-reduced-motionの値をbooleanで毎回渡す。途中変更で舌を収納し、変更監視はscope/disposeで解除する。tはargs.presentation.t。extended96で舞台フレーム内に1回。legacy80は旧directorだけ、extended96は旧directorを止め、新controllerが旧小芝居も含め制御。controller方式のcameo:nullは非表示であり、旧directorへフォールバックしない。snapshot/event/disposeは既存APIを使用。DOM簡易表示のcreateDomStageもextended96ではdrawable:false・配置不可でstepを1回呼び、評価区間と札の処理を失わない。 |
-| IF03 v1.1 結果ports | CL-Aが提供、CG-Sが接続 | 新規 src/presentation/result-card-ports.js: createResultCardPorts({result,host,scope}) -> ports | createResultPortrait/drawResultCard/createRenderer/destroyRenderer/mount/onChange/panelsを返す。Appの既存resultCardPortsへ渡す。初回onChangeはmountより先なのでlatestを保持し、mount時にcontroller.snapshot()を読む。Appで称号等を再算出しない。 |
-| IF04 v1.1 所有者の先行準備 | CG-Sが生成、CL-Aが借りる | result.resultRendererOwner / acquire(kind,{signal,onRevoke}) | CG-Sがports取得後、controllerとmountより先にcreateResultRendererOwnerを準備する。CL-Aは最初の600msにも安全にE090を開ける。自前rendererを作らず、撮影優先時は解放して現在modelで再取得。 |
-| IF05 v1.1 札の表示 | CG-Sが値を渡す、CL-Cが表示 | mountBonusPresentation().tick({precisionBadge,...})（追加する表示引数） | stage更新後snapshot().precisionBadgeを既存通知へ。通知のためのstep追加なし。batch無しのeval中でも有効札は点数無しで表示し、guide/warningでは抑止。通常bonusのshow(batch)が札の開始時刻や表示状態を消さない。札の期限・閾値を描画側で再判定しない。 |
-| IF06 v1.1 パネル更新 | CG-Sのcontrollerが通知、CL-Aが購読/表示 | ports.onChange(snapshot) -> main view + 開いているE075/E090 | factoryが購読/解除を所有し、確認状態だけの訂正でもmodel/miniatureを更新する。evidence更新だけに依存しない。パネルは初回panelsへ登録し、同時1つ。 |
-| IF07 v1.1 共有・保存 | CG-Sが制御、CL-Aが操作画面 | controller.share/retry/getImageUrl/revokeImageUrl、mount({host,controller,scope,onTextShare}) | タップからshareを直接呼ぶ。生成待ちを挟まない。取消で本文窓を自動で開かない。保存を閉じたらURL解除、再試行で自動共有しない。通常経路の本文共有試験はG4で同時に移す。 |
-| IF08 v1.1 検証入口と採否 | CL-B/Cが部品検査、CG-SがApp入口 | 描画部品へsnapshot/固定姿勢 / App.debugPresentation / catalog | Claude段階はAppが拒否するIDを無理に通さない。G4で全16案が揃ってからcatalog96/4、Appの全対象入口、通常mode、共有試験を同じ統合commitで切り替える。 |
-| IF09 v1.1 既存の背景抑止 | CL-Bが観測値、CG-Sが条件 | 追加step入力: frameIntervalMs:非負の有限ms、bestDistance:0〜50の整数またはnull。既存playViewとeventも消費 | CL-Bは進行中のpresentation.tの前回との差をframeIntervalMsとして返す。初回/停止/非表示/不正値は0。bestDistanceは既存setBestDistanceの値で、不正/欠損はnull。CG-Sが50<間隔<1000msを30連続で抑止、その他の間隔で連続数をリセットする旧条件を保持する。phase/警察段階/matchState/lastEvalSuccess/guideActive/guidanceActive/priority/building/passedとinstantSuccess/unlockBrightness/enterBuilding/passイベントを使い、既存の地区800ms・自己ベスト600ms・優先イベントの抑止も処理へ移す。別のlegacyCameoContextや第二の描画側抽選を作らない。 |
-| IF10 v1.1 生涯と解放 | CG-Sが画面の生涯、CL各担当が所有物 | AbortSignal、scope、dispose、revision | 移動/再プレイ/言語/訂正/描画喪失/遅い完了で古い表示を復活させない。disposeは冪等。終了時にrenderer/画像/URL/購読/姿勢補正を戻す。 |
-| IF11 v1.1 提出の単位 | ChatGPTが先行PRを作成、Claudeが同じPRへ追加、ChatGPTが受領 | 同じPR URL + head SHA + 受渡し票 + ファイル一覧 + 契約バージョン | CG02の準備commitから同じブランチへCL工程を追加し、新規PRは作らない。CL06の提出時に書込を止める。以後の失敗/競合/レビュー修正はCG04/CG07。画像ファイルであってもChatGPTが修正し、元担当へ返して待たない。 |
+| IF01 v1.2 起動mode | CG-Sが選択、CL-Bが消費 | stage option presentationSet: legacy80(default) / extended96 | Claude段階の通常起動はlegacy80。実App試験のstageFactory wrapperだけextended96を指定。G4でChatGPTが通常Appをextended96へ。controllerが渡されたこと自体で起動しない。effects無効/簡易表示/ガイドでも既存経路を維持。 |
+| IF02 v1.2 ゲーム中の値 | CG-Sが生成、CL-B/Cが描画 | options.gameExtrasController.step({...args.presentation, drawable, actorBusy:{hero,police}, placements:{railway,water,robot,bird,midpoint,policeSettled,existing}, reducedMotion:boolean}) | CL-Bが現在のprefers-reduced-motionの値をbooleanで毎回渡す。途中変更で舌を収納し、変更監視はscope/disposeで解除する。tはargs.presentation.t。extended96で舞台フレーム内に1回。legacy80は旧directorだけ、extended96は旧directorを止め、新controllerが旧小芝居も含め制御。controller方式のcameo:nullは非表示であり、旧directorへフォールバックしない。snapshot/event/disposeは既存APIを使用。DOM簡易表示のcreateDomStageもextended96ではdrawable:false・配置不可でstepを1回呼び、評価区間と札の処理を失わない。 |
+| IF03 v1.2 結果ports | CL-Aが提供、CG-Sが接続 | 新規 src/presentation/result-card-ports.js: createResultCardPorts({result,host,scope}) -> ports | createResultPortrait/drawResultCard/createRenderer/destroyRenderer/mount/onChange/panelsを返す。Appの既存resultCardPortsへ渡す。snapshot.portraitImageはPNGと同じ現在の主人公画像の借用参照またはnullで、画面側は直接result.resultPortraitを読まず、変更/解放しない。初回onChangeはmountより先なのでlatestを保持し、mount時にcontroller.snapshot()を読む。Appで称号等を再算出しない。 |
+| IF04 v1.2 所有者の先行準備 | CG-Sが生成、CL-Aが借りる | result.resultRendererOwner / acquire(kind,{signal,onRevoke}) | CG-Sがports取得後、controllerとmountより先にcreateResultRendererOwnerを準備する。CL-Aは最初の600msにも安全にE090を開ける。自前rendererを作らず、撮影優先時は解放して現在modelで再取得。 |
+| IF05 v1.2 札の表示 | CG-Sが値を渡す、CL-Cが表示 | mountBonusPresentation().tick({precisionBadge,...})（追加する表示引数） | stage更新後snapshot().precisionBadgeを既存通知へ。Appはガイド/警告/警察1人以上/演出オフで通知値をnullにし、既存の警告優先を維持する。簡易DOMだけを理由に札を消さない。通知のためのstep追加なし。batch無しのeval中でも有効札は点数無しで表示し、guide/warningでは抑止。通常bonusのshow(batch)が札の開始時刻や表示状態を消さない。札の期限・閾値を描画側で再判定しない。 |
+| IF06 v1.2 パネル更新 | CG-Sのcontrollerが通知、CL-Aが購読/表示 | ports.onChange(snapshot) -> main view + 開いているE075/E090 | factoryが購読/解除を所有し、確認状態だけの訂正でもmodel/miniatureを更新する。evidence更新だけに依存しない。パネルは初回panelsへ登録し、同時1つ。 |
+| IF07 v1.2 共有・保存 | CG-Sが制御、CL-Aが操作画面 | controller.share/retry/getImageUrl/revokeImageUrl、mount({host,controller,scope,onTextShare}) | タップからshareを直接呼ぶ。生成待ちを挟まない。取消で本文窓を自動で開かない。保存を閉じたらURL解除、再試行で自動共有しない。AppはgetLayoutKeyの構図版と画面幅/高さを合成し、回転/寸法変更で旧Fileと保存URLを即無効にする。mountは既存.result-actionsの移動だけを行い、複製や既存ボタンへの二重イベント登録をしない。通常経路の本文共有試験はG4で同時に移す。 |
+| IF08 v1.2 検証入口と採否 | CL-B/Cが部品検査、CG-SがApp入口 | 描画部品へsnapshot/固定姿勢 / App.debugPresentation / catalog | Claude段階はAppが拒否するIDを無理に通さない。G4で全16案が揃ってからcatalog96/4、Appの全対象入口、通常mode、共有試験を同じ統合commitで切り替える。 |
+| IF09 v1.2 既存の背景抑止 | CL-Bが観測値、CG-Sが条件 | 追加step入力: frameIntervalMs:非負の有限ms、bestDistance:0〜50の整数またはnull。既存playViewとeventも消費 | CL-Bは進行中のpresentation.tの前回との差をframeIntervalMsとして返す。初回/停止/非表示/不正値は0。bestDistanceは既存setBestDistanceの値で、不正/欠損はnull。CG-Sが50<間隔<1000msを30連続で抑止、その他の間隔で連続数をリセットする旧条件を保持する。phase/警察段階/matchState/lastEvalSuccess/guideActive/guidanceActive/priority/building/passedとinstantSuccess/unlockBrightness/enterBuilding/passイベントを使い、既存の地区800ms・自己ベスト600ms・優先イベントの抑止も処理へ移す。別のlegacyCameoContextや第二の描画側抽選を作らない。 |
+| IF10 v1.2 生涯と解放 | CG-Sが画面の生涯、CL各担当が所有物 | AbortSignal、scope、dispose、revision | 移動/再プレイ/言語/訂正/描画喪失/遅い完了で古い表示を復活させない。disposeは冪等。終了時にrenderer/画像/URL/購読/姿勢補正を戻す。 |
+| IF11 v1.2 提出の単位 | ChatGPTが先行PRを作成、Claudeが同じPRへ追加、ChatGPTが受領 | 同じPR URL + head SHA + 受渡し票 + ファイル一覧 + 契約バージョン | CG02の準備commitから同じブランチへCL工程を追加し、新規PRは作らない。CL06の提出時に書込を止める。以後の失敗/競合/レビュー修正はCG04/CG07。画像ファイルであってもChatGPTが修正し、元担当へ返して待たない。 |
 
 CG02の準備commitはAppオプションの実試験を可能にする共通土台で、通常起動の新演出はまだ有効にしない。CL01の設計はCG02と並行できるが、CL02〜04の製品実装とCL05の実App検査は同じ準備commitを含むbaseから始める。
 
@@ -112,7 +114,7 @@ Appで生成するinstantSuccessも既存のsession由来イベントと同じco
 | G2 部品受入/共有PRへ追加提出 | 実装・App明示接続試験・3寸法・測定・提出前レビュー・受渡し票、PR headを固定 | CL-Oが同じPRへ追加提出、直後にCG-Oが引継ぐ |
 | G3 PR後の問題解消 | すべてのPRの失敗/レビュー/競合をCGが解消し対象再確認、Claudeへ修正を返さない | CG-O/S/T |
 | G4 通常接続と切替 | App ports/owner、stage mode、札、更新パネル、旧director置換、96/4、検証入口、共有試験を同じ統合commitで有効化 | CG-S |
-| G5 全体合格 | 正常/旧版/欠損/遅延/取消/同点訂正/停止/全16案・元80・27称号・15言語・資源を実データで照合、4組CI成功 | CG-R/T |
+| G5 全体合格 | 両者の実装完了後、CG05前段でChatGPTが15辞書をまとめて翻訳・再検査する。その後、正常/旧版/欠損/遅延/取消/同点訂正/停止/全16案・元80・27称号・15言語・資源を実データで照合、4組CI成功。翻訳前は合格にしない | CG-R/T |
 | G6 実機と配布判断 | iPhone候補と版照合、実機項目、原画/不足、現行本番差分、切戻し、未確認一覧 | CG-O/T、最終マージ/公開判断は本人 |
 
 ## 6. ①から②③への対応
