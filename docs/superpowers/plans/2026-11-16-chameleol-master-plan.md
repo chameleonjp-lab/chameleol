@@ -2,6 +2,8 @@
 
 2026-11-16。**Goal:** 通常起動したゲームを[全体要件](../specs/2026-11-16-chameleol-final-requirements.md)F01〜F14へ一致させる。**Architecture:** ChatGPTが仕様処理・接続・PR後対応、Claudeが描画/UI部品と提出前の確認を担当し、契約v1.2で結ぶ。個別計画は[②ChatGPT](./2026-11-16-chameleol-chatgpt-plan.md)と[③Claude](./2026-11-16-chameleol-claude-plan.md)。本書が担当・接続・ゲートの正本。
 
+2026-11-17追記：CL02追加分は[CG-Rの独立レビューとChatGPTのPR後修正](../../reviews/2026-11-17-chameleol-cl02-acceptance-review.md)、[統合検査表](../../acceptance/pr26/integration-checklist.md)を参照。予定された描画の担当は変えず、CL03〜06受領前に通常起動を先行有効化しない。
+
 ## 1. 完成までの順序と現在地
 
 全体要件→本書→全体組織図→分担/契約→個別計画→敵対的検証→修正の順に作成した。製品の実装順はG0→G1→各部品→G2→G3→G4→G5→G6。#23の処理は再実装せず、通常接続と既存挙動の互換調整を追加する。#24のCIを保持する。部品完成と通常起動の完成、実機、公開は別の状態。
