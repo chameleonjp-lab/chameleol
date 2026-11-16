@@ -262,7 +262,12 @@ export function mountResultPanels({ host, t = (key) => key, state = { status: 'm
       chip.setAttribute('aria-controls', body.id);
       chip.classList.toggle('is-open', isOpen);
       const pending = def && def.needsData !== false && current.status === 'pending';
-      chip.textContent = tr(def.labelKey) + (pending ? ' …' : '');
+      // 辞書にまだ無いキーは、パネルの控え（labelFallback）で名前を出す（翻訳は後でまとめて入る）。
+      let label = tr(def.labelKey);
+      if (label === def.labelKey && typeof def.labelFallback === 'function') {
+        try { label = def.labelFallback() ?? label; } catch { /* キーのまま */ }
+      }
+      chip.textContent = label + (pending ? ' …' : '');
     }
     body.hidden = openId === null;
   }
