@@ -313,8 +313,9 @@ test('result updates and rotation release the PNG buffer before E090 expands, in
     t.diagnostic(`ready notification resource samples: ${JSON.stringify(samples)}`);
     const released=await page.evaluate(()=>{
       const image=__kamereoru.resultCardController.snapshot().portraitImage;
+      const resultContexts=[...__webgl];
       __kamereoru.showHome();
-      return {portrait:image.width*image.height,viewer:!!document.querySelector('.result-card-viewer'),contexts:[...__webgl].filter(c=>c.width&&c.height).length};
+      return {portrait:image.width*image.height,viewer:!!document.querySelector('.result-card-viewer'),contexts:resultContexts.filter(c=>c.width&&c.height).length};
     });
     assert.deepEqual(released,{portrait:0,viewer:false,contexts:0});
     assert.deepEqual(env.errors,[]);

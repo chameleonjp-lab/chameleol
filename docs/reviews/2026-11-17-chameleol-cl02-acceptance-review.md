@@ -41,6 +41,8 @@ E090は、通常の主人公画像で予算が足りる場合は従来どおり�
 | 手元のChromium | `socket() failed: Operation not permitted`でブラウザ起動前に失敗。8件を製品の失敗とも成功とも数えず、当該検査を中断。製品コードや期待値を緩和しない |
 | GitHub CI | 開始headの[CI #71](https://github.com/chameleonjp-lab/chameleol/actions/runs/43872685333)は全6組成功。今回の修正後headの結果はPR本文で別に記録し、#71の結果を流用しない |
 
+修正後の初回[CI #72](https://github.com/chameleonjp-lab/chameleol/actions/runs/43900888955)では単体/SQL/QuickJSと、結果更新・回転・共有・保存の動作は成功したが、新しいe2eの離脱後の集計だけが失敗した。`showHome()`が新たに作るWebGL利用可否の確認用canvasまで、結果画面の残りとして数えていたためである。結果画面を離れる前の描画器を記録し、その同じオブジェクトの解放を確認するよう検査を訂正した。解放済みという期待値を緩めず、別画面の新しい描画を除外する。最新headのCI結果をPR本文へ記録する。
+
 ## 接続準備と受入の限界
 
 [統合検査表](../acceptance/pr26/integration-checklist.md)に既存の検査・今回の追加・Claude受領後の検査を対応させた。CL02の結果画面は試験専用の実App入口から検査し、通常起動のlegacy80とcatalog80/20を維持する。全体接続と96/4の同時切替はCL03〜CL06の受渡し後、CG03で行う。
