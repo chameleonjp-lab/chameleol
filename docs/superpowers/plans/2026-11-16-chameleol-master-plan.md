@@ -53,10 +53,10 @@ ChatGPTのモデル名は現在の作業環境で使える名称を指定し、�
 
 ## 3. ファイルの分担とPR後の移管
 
-| 対象 | PR前の書込担当 | PR後の問題対応 | 境界 |
+| 対象 | 予定された機能追加の書込担当 | PR後の問題対応 | 境界 |
 | --- | --- | --- | --- |
 | src/app.js、判定/保存/通信/共有制御、15辞書、catalog採否 | CG-S | CG-S | 通常接続と切替は常にChatGPT |
-| result-card-ports/各結果描画、result-evidence-view、presentation.css、結果アトラス | CL-A | CG-S | CSSはAのみ。提出後は書込停止→ChatGPTへ移管 |
+| result-card-ports/各結果描画、result-evidence-view、presentation.css、結果アトラス | CL-A | CG-S | CSSは予定追加ではAのみ。CL06追加提出後は書込停止→ChatGPTへ移管 |
 | tongue-rig/travel-tongue/showcase-tongue、scene/street.js、stage.js | CL-B | CG-S | stage/streetはBのみ。Cの部品をBが取り込む |
 | street-accents/actor-reactions/characters/hud-view/bonus-view、街アトラス | CL-C | CG-S | Cは描画と表示引数。仕様処理はCG。提出後はCG |
 | 試験 | 実装担当→CL-T/CG-T | CG-T/CG-S | 同じファイルの同時編集なし。既存通常経路はG4まで維持 |

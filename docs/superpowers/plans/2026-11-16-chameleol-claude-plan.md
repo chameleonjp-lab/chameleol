@@ -4,7 +4,7 @@
 
 ## 担当と開始条件
 
-CL-O：Opus5.5/high、CL-Dの見た目設計：Opus5.5/xhigh、CL-A/B/C：Sonnet5.5/high、CL-R：別のOpus5.5/xhigh、CL-T：Sonnet5.5/high、記録W：Sonnet5.5/medium。モデルIDは①の固定値、設定できた実effortを記録する。全体統括を含め同時4人まで。A＝結果と共通CSS、B＝舌・street/stage、C＝街・警察・通知。App・規則・保存・通信・共有制御・15辞書・catalog採否はPR前のClaude編集対象にしない。
+CL-O：Opus5.5/high、CL-Dの見た目設計：Opus5.5/xhigh、CL-A/B/C：Sonnet5.5/high、CL-R：別のOpus5.5/xhigh、CL-T：Sonnet5.5/high、記録W：Sonnet5.5/medium。モデルIDは①の固定値、設定できた実effortを記録する。全体統括を含め同時4人まで。A＝結果と共通CSS、B＝舌・street/stage、C＝街・警察・通知。App・規則・保存・通信・共有制御・15辞書・catalog採否は予定されたClaude機能追加の編集対象にしない。
 
 CG01でIF09まで確定した契約v1.1を受け取る。CL01設計はCG02の準備と並行可。CL02〜04は、CG02のowner先行準備/札の橋渡しcommitを含む同じ共通baseで開始する。IF09の追加フィールドや未実装の関数を#23に存在すると仮定しない。契約が必要な箇所を推測して二重実装せず、独立した見た目設計や他の部品を進める。①IF01〜IF11を参照し、個別の別契約を増やさない。
 
@@ -101,7 +101,7 @@ ChatGPTがCG00→CG02を先行実装して共有ドラフトPRを作成する。
 
 - [ ] 入力と既存実装を照合し、対象ファイルと開始headを記録する。
 - [ ] 製品コードを変える場合は要件を満たさない再現を先に確認し、必要な最小の実装を行う。
-- [ ] 通常起動はlegacy80/旧本文共有試験を保持。extended96と実portsはAppオプションの試験で確認。Appに拒否されるIDは新描画部品へのsnapshotで検査しApp入口を変えない。レビュー修正はPR前にSonnet担当が行い対象再確認。モックやPNGだけで通常起動/実機を完成扱いにしない。
+- [ ] 通常起動はlegacy80/旧本文共有試験を保持。extended96と実portsはAppオプションの試験で確認。Appに拒否されるIDは新描画部品へのsnapshotで検査しApp入口を変えない。CL-Rが予定追加を提出前に確認する。共有PRは先に開かれているため、レビュー指摘による修正はChatGPTが対象を一時移管して直接行い、CL-Tが対象を再確認する。モックやPNGだけで通常起動/実機を完成扱いにしない。
 - [ ] F/IF番号、結果、差分、未完了を共通の受渡し票へ記録し、合格条件を満たしてから次へ渡す。
 
 ## CL06：同じ共有PRへ追加を提出しChatGPTへ移管

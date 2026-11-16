@@ -9,9 +9,10 @@
 | 開始main | `52a6be5aed194baf55e3ba4d77d286b90bab72bd`（#25取込済み） |
 | 開始時の開いているPR | 0件。#26は未使用（GitHub API 404を確認） |
 | 作業ブランチ | `work/chatgpt-cg00-cg02-20261116` |
-| 共有PR番号・URL | 提出前。確定後に本票へ記録する |
-| CG02準備commit／Claude開始点 | 本準備commitをPR提出後にSHAで固定する |
-| 現在の担当 | CG-O統括、CG-S製品、CG-T試験。CG-R独立読取レビュー |
+| 共有PR番号・URL | [#26（ドラフト）](https://github.com/chameleonjp-lab/chameleol/pull/26) |
+| CG02準備commit／Claude開始点 | `7d551ed624cde7b61ff2ef33cf434945706b7919` |
+| 最新commit識別値（文書追記前に確認したhead） | `7d551ed624cde7b61ff2ef33cf434945706b7919`。後続は文書のみ、最新headの識別値/CIはPR本文と下記ブランチ履歴を参照 |
+| 現在の担当 | CG-O/T：PR/CI/文書確認。CG-S製品書込停止、CG-R独立レビュー完了。次の予定された描画追加はClaude CL-O管理 |
 | 状態 | CG00/CG01/CG02対象実装・試験済み、独立レビューで製品P0〜P2指摘なし。通常起動legacy80、catalog80/20を維持 |
 
 ## 実行体制と書込ロック
@@ -63,6 +64,36 @@ node --test tests/presentation/game-extras-compat.test.mjs tests/presentation/ga
 - IF01/05: Appは舞台の既定オプションに`presentationSet:'legacy80'`を渡す。明示試験はstageFactory wrapperが`extended96`を指定。札の橋渡しは舞台更新後のcontroller.snapshot()の読取だけで、新たなstepを呼ばない。legacy80舞台はstepしないため札はnull。新しいApp modeオプションや舞台のmode getterは追加しない。
 - 自己ベスト通過の抑止は保存claim前に行う。旧描画器は同フレームで抽選後に表示を消していたが、新処理では未表示の回数を消費しない（表示抑止と600ms境界は維持）。
 - CG01→CG02→CL02〜05は同じ契約v1.1と準備commitを使う。先行PR後も予定されたCL機能追加の担当は維持する。失敗修正だけ対象ファイルをChatGPTへ一時移管する。
+
+## 共有PRのCI
+
+対象製品commit：`7d551ed624cde7b61ff2ef33cf434945706b7919`。
+[CI run 43783681349](https://github.com/chameleonjp-lab/chameleol/actions/runs/43783681349)。
+
+- checks成功：`npm test` 574件中543成功・失敗0・SQL専用31 skip。別工程`npm run test:sql`は32/32成功・skip0で、ローカル未実行のSQL項目も検証。QuickJSは16照合成功。
+- ブラウザ1/4＝27/27、2/4＝30/30、3/4＝136/136、4/4＝16/16、計209/209成功・skip0。最終testは全4組の成功を確認し、standalone build/成果物保存まで成功。6ジョブすべてsuccessを確認した。
+- workflowの変更・手動の全件追加実行は行わず、PR既存の4組並行CIを確認する。受渡し文書だけの後続commitにも既存CIが自動で走るため、その最新headも完了まで確認し、PR本文に最新head/CI結果を追記する（本票は製品commitの成功を記録）。
+
+製品commitのCI成果物：`chameleol-standalone-6e2e8df6bde3b59c84009a3793df53be8a201d08`、[artifact 14188923848](https://github.com/chameleonjp-lab/chameleol/actions/runs/43783681349/artifacts/14188923848)。CIのcheckoutはPR merge ref `6e2e8df6bde3b59c84009a3793df53be8a201d08`、assetVersionは`0.1.0-3024f33aeb`。これはレビュー用ビルドであり、配布/公開済みではない。head SHAとmerge refを混同しない。
+
+## 提出・同じPRへの受渡し
+
+- 2026-11-16 01:00 UTC、ChatGPTがドラフトPR #26を作成。準備commitは`7d551ed624cde7b61ff2ef33cf434945706b7919`。これは最新の製品変更commitであり、後続の本票/依頼文の文書commitでも保持する。文書を含む最新headは[共有ブランチ](https://github.com/chameleonjp-lab/chameleol/commits/work/chatgpt-cg00-cg02-20261116)で照合できる。
+- コピー用[Claude依頼文](../prompts/2026-11-16-claude-shared-pr26-handoff.md)を作成。**Claudeへ実送信していない。** 新規PRは作らず、この同じブランチの最新head（準備commitを含む）へ追加する。
+- ChatGPTは製品ファイルへの書込を止め、予定されたCL-A/B/Cの範囲を解放する。今はCIと文書だけChatGPTが所有。Claudeは最新head/開始点とロックを確認して着手する。CI等の修正が必要になれば、対象ファイルだけChatGPTへ一時移管して直接修正する。
+- 受入対象はCG00〜CG02の接続準備。CL02〜CL05の実描画・実App検査、G2全体の部品受入はまだ完了していない。全体統合までドラフトを維持する。
+
+呼出例（描画はClaudeが実装する）：
+
+```js
+// IF04: ports取得後、controller/mount前にAppが所有者を準備済み。
+const lease = await result.resultRendererOwner.acquire('model', {signal, onRevoke});
+// CL-Aは取消/閉鎖時にlease.release()、撮影優先時は現在modelで再取得。
+// IF05: stepの追加呼出なし。CL-Cはこの表示引数を消費する。
+bonusPresentation.tick({precisionBadge: gameExtrasController.snapshot().precisionBadge, ...clockAndGuards});
+```
+
+入力はIF09の観測値と既存playView/event、出力は`{travelTongue,cameo,policeExtra,precisionBadge}`。所有者のexportは既存`createResultRendererOwner`、Appオプションは既存resultCardPorts/stageFactory。変更ファイルは3計画、本票、app.js、game-extras-controller.js、cameo-reservations.js、互換試験、UI2試験、依頼文。3寸法画像/画素/描画数/16MiBとiPhone測定は未実施で、CL工程/CG05/06へ残す。
 
 ## 未完了・次の担当
 
