@@ -410,3 +410,142 @@ CSS（`presentation.css`、A だけが書く。初期値）：
 | `presentation.nearPerfect` | ほぼ完全一致！ | C が使う。§5.8 |
 
 控えの英語は ports を明示した試験（CL05）でだけ見える。G4 で辞書が揃うまで「15言語の文言」は未完了として票に残す。
+
+## 4. CL-B（CL03）舌と舞台
+
+F02/F03/F04/F05/F12、IF01/02/09/10。編集先：`src/scene/tongue-rig.js`・`travel-tongue.js`（新規）、`showcase-tongue.js`、`street.js`、`stage.js`、対応試験。`travel-tongue-motion.js`（処理側）・`app.js` は編集しない。
+
+### 4.1 `presentationSet` の分岐（IF01）
+
+```js
+const mode = opts.presentationSet === 'extended96' && opts.gameExtrasController ? 'extended96' : 'legacy80';
+```
+controller が渡されただけでは新経路にしない（App は常に controller を渡し、`'legacy80'` を指定している。`app.js:998`）。
+
+| 舞台 | 条件 | 旧 director（accents の抽選） | `step` | 描く物 |
+| --- | --- | --- | --- | --- |
+| WebGL | legacy80（既定） | 今のまま動かす | 呼ばない | 今のまま（舌・新5案・警察2案は出ない） |
+| WebGL | extended96、効果あり | 止める（accents を `mode:'extended96'` で作る） | 毎フレーム1回 | 舌・ダイヤ（B）、小芝居と警察2案（C の部品） |
+| WebGL | extended96、`presentationEnabled:false` | accents が無い | 毎フレーム1回、`drawable:false`・配置すべて false | 何も足さない（札の扱いは §8 Q04） |
+| DOM（簡易） | extended96 | 無い | 毎フレーム1回、`drawable:false`・配置すべて false | 何も足さない |
+| 練習・ホーム・検証の舞台 | controller 無し | — | 呼ばない | 今のまま |
+
+禁止：旧 director との二重抽選、`cameo:null` の時に旧描画へ戻すこと、舞台の `presentationEvent` を controller へ転送すること（App が既に `gameExtrasController.event` を呼んでいる。`app.js:1043,1167`）。
+
+### 4.2 `step` へ渡す値（IF02/IF09）
+
+```js
+const p = args.presentation;              // App が作る（readPlayView＋ガイド・警告・hidden・評価区間）
+const extra = controller.step({
+  ...p,                                   // t, playId, passed, building, phase, matchState, policeStage, running,
+                                          // lastEvalSuccess, guidanceActive, guideActive, moving, warningActive,
+                                          // hidden, evaluationSegments をそのまま
+  drawable,                               // 下の表
+  actorBusy: {hero, police},              // C の reactions.busy()（reactions.tick の後に読む）
+  placements: {railway, water, robot, bird, midpoint, existing, policeSettled},
+  reducedMotion,                          // 毎回 boolean
+  frameIntervalMs,
+  bestDistance,
+});
+```
+
+| 値 | 作り方 |
+| --- | --- |
+| `t` | `p.t`（ゲーム時計）。`args.t`（ガイドの見せる位置 sceneT）を使わない。上書きしない |
+| `drawable` | `!contextLost && !opening && !ending && presentationEnabled`。`contextLost` は `renderer.domElement` の `webglcontextlost`/`webglcontextrestored` を購読して持つ（dispose で外す） |
+| `actorBusy` | `{hero: busy.hero===true, police: busy.police===true}`。`busy=reactions?.busy()`（C が足す安い読み出し。今の `stats()` は配列を作るので毎フレームは避ける）。reactions が無ければ両方 false |
+| `placements` | `{...accents.placements(view, frameInfo), policeSettled}`。accents が無ければ5案すべて false・`existing:{}`。`policeSettled` は `policeStage===1` かつ `updatePolice` の中の「立ち位置に着いた」（`street.js:1049` の `arrived` を外へ出して持つ） |
+| `reducedMotion` | `mq?.matches===true`（`mq=matchMedia('(prefers-reduced-motion: reduce)')` を作成時に1回作って保持し、毎フレーム読む） |
+| `frameIntervalMs` | `p.running===true && !p.hidden && prevT!==null && Number.isSafeInteger(p.t) && p.t>=prevT` なら `p.t-prevT`、それ以外は 0。その後 `prevT = (p.running===true && !p.hidden && Number.isSafeInteger(p.t)) ? p.t : null`（初回・停止・非表示・不正値は 0） |
+| `bestDistance` | `setBestDistance(v)` で受けた値を `Number.isInteger(v)&&v>=0&&v<=50 ? v : null` で持つ（accents へも今までどおり渡す） |
+| 作らない物 | `priority`（D10）、`leaving`、第二の抽選の文脈。抑止の判定は controller だけが持つ |
+
+- 1フレーム1回：App の `stage.update(args)` 1回につき `step` 1回。**終了演出・開始演出の分かれ道でも1回**呼ぶ（`drawable:false`。評価区間を落とさないため）。終了演出の内部フレーム（`update(lastArgs, cutsceneFrame)`、`street.js:1386`）では呼ばない（同じ評価区間を二度渡さないため）。
+- `args.presentation` が無い呼び出し（練習の `renderPractice` など）では呼ばない。
+
+### 4.3 フレームの中の順番（extended96）
+
+```
+update(args, cutsceneFrame)
+ ├ disposed → return
+ ├ opening、または ending かつ cutsceneFrame なし → step を1回（drawable:false）→ 今までどおり return
+ ├（今までどおり）時計・棟・時間帯・カメラ・主人公の位置と色
+ ├ ending（演出フレーム）→ travelTongue.cancel() → 今までどおり applyEnding（step しない）
+ └ 通常
+    1 travelTongue.prepareBase()              … 前フレームに舌が足した姿勢だけを戻す
+    2 view.running なら hero.animate(...)      … 既存（reactions の包みが先に戻す）
+    3 updatePolice(...)                        … 既存。arrived[0] を持つ
+    4 presentationScope.tick / reactions.tick(view)   … 既存
+    5 extra = controller.step(...)             … §4.2
+    6 accents.tick(view, {cameo:extra.cameo, policeExtra:extra.policeExtra, actors})   … C（§5）
+    7 {dx} = reactions.applyPoliceExtra(extra.policeExtra, view)                      … C（§5.7）
+      ferretRoots[0].position.x += dx; ferretShadows[0].position.x += dx; fx.placeIcon(0, …+dx)   … B
+    8 travelTongue.apply(extra.travelTongue)  … 加算。null なら取消と同じ
+    9 成功リング（既存）→ drawFrame
+legacy80 は 5〜8 を行わず、6 を今までどおり accents.tick(view) にする。
+```
+
+### 4.4 舌の形の共通部品（旧作業コピーの再利用）
+
+旧作業コピー（`.claude/worktrees/agent-a2f81ca502cced406`、commit `1dee360`）を読んだ結果：
+
+| 旧ファイル | 使う所 | 直す所 |
+| --- | --- | --- |
+| `src/scene/tongue-rig.js`（264行） | そのまま使う：`createTongueRig(hero,{name})` → `{mesh, apply({visible,extension,unroll,storage}), writePoint(u,pos,tan,normal), writeTip, getLocalEnvelope, reset, stats(){shapeWrites}, dispose}`、`createPoseLedger()` → `{add,set,restore,clear,appliedCount}`。管の計算は今の `showcase-tongue.js:40-88` と同じ式 | なし（同じ extension・unroll なら形を書き直さない点もそのまま） |
+| `src/scene/showcase-tongue.js`（61行の薄い包み） | そのまま使う。公開名 `createShowcaseTongue(hero)` と `apply(frame)`、顎・口の絶対値の書込み、settle の150ms収納を保つ | なし。**ホームの舌は変えない**（下の試験で同じ頂点を確かめる） |
+| `src/scene/travel-tongue.js`（236行） | ダイヤの形（八面体 半径0.2 を 横0.85×1.2・縦1.15×1.2・奥0.85×1.2）、面の色塗り、`placeDiamond`、台帳で書く5種、`stats()`、`dispose()` | 入力を旧 motion の枠から **controller の `travelTongue`** へ替える。姿勢の曲線は §4.5 の純粋な関数 `travelTonguePose(frame,out)` に移す（時計は持たない）。`TRAVEL_LIFT_RADIANS`（6°）は旧 motion から import せず自分で持つ |
+| `src/scene/travel-tongue-motion.js`（旧、277行） | 使わない（時計は処理側の同名ファイル） | 姿勢の曲線（`writeCycle` の中身）だけを §4.5 へ移す |
+| `tests/scene/travel-tongue*.test.mjs` | 形・姿勢・破棄・二重 dispose・包絡の試験の考え方 | 時計の試験は捨てる（処理側の試験がある）。入力を controller の枠に替える |
+
+### 4.5 5段階の姿勢（controller の `phase`・`phaseProgress` だけから決める）
+
+`ms = phaseProgress × 段階の長さ`、`u = phaseProgress`。`e`・`easeOutCubic` などは旧作業コピーと同じ式。
+
+| phase（ms） | 口 | 視線 | 頭の傾き(rad) | 伸び | ほどけ | 収納 | ダイヤ | 持ち上げ | 光 | 回転 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| prepare（150） | e=easeOutCubic(u) | e | 0.04e | 0.05e | 0 | 0.6+0.4e | 0 | 0 | 0 | 0 |
+| extend（250） | 1 | 1 | 0.04 | 0.05+0.95·easeOutQuart(u) | smoothstep(0.3,1,u) | 1 | grow(ほどけ) | 0 | 0 | 0 |
+| hold（350） | 1 | 1 | 0.04 | 1 | 1 | 1 | 1 | easeOutCubic(min(1,ms/100)) | ms<200 なら sin(π·ms/200) | (π/4)·u |
+| retract（450） | 1 | 1−0.5e（e=easeInOutCubic(u)） | 0.04−0.02e | 1−0.95e | 1−smoothstep(0.2,0.8,u) | 1 | smoothstep(0.6,0.95,ほどけ) | 1−e | 0 | π/4 |
+| store（200） | 1−e（e=easeInOutCubic(u)） | 0.5(1−e) | 0.02(1−e) | 0.05 | 0 | 1−0.999·easeInCubic(u) | 0 | 0 | 0 | 0 |
+
+- `grow(w')`：`w=clamp((ほどけ−0.6)/0.4)`、0なら0、`w<0.75` なら `1.08·easeOutCubic(w/0.75)`、それ以外 `1.08−0.08·smoothstep(0,1,(w−0.75)/0.25)`。
+- `frame.jewelVisible===false` の時はダイヤを0にする（controller の枠と食い違わせない）。
+- 台帳が書くのは5種だけ：`jaw.position.y −= 0.05·口`、`mouth.position.y −= 0.025·口`、`head.rotation.z += 傾き`、`eyes[0].rotation.y += 0.18·視線`、`eyes[1].rotation.y −= 0.18·視線`、そして舌の表示中は `jewel.visible=false`（尻尾の宝石との二重表示なし）。戻す時は「今の値が自分の書いた値のままの時だけ」前の値へ（引き算しない）。
+- 持ち上げは `mesh.rotation.z = 持ち上げ×6°`。収納は `mesh.scale`（ダイヤは子なので一緒に縮む）。
+- ダイヤ：舌の長さの 85% の点と接線（`writePoint(0.85)`）。中心＝点＋法線×(0.05＋(0.276−0.008)×大きさ)。縦軸を法線へ、`rotation=(0, 12°+回転, atan2(接線))`。色 上4面 `#c9fbff`、下4面 `#5fd8ee`、右上1面 `#ffffff`（光る時 `#fffbe0`・上面 `#effeff`）。`MeshBasicMaterial({vertexColors:true})` 不透明、輪郭なし、**1形状・1描画**。舌が所有し、dispose で1回だけ破棄。画面上の高さの見込み：402×874 約18px、402×700 約15px、874×402 約14px（12px 以上）。
+- 舌の包絡（頭の座標、持ち上げ込み）：x −0.23〜1.06、y −0.17〜0.71、z ±0.25（旧作業コピーの測定値）。
+- 停止中：controller の `elapsedMs` が止まるので同じ姿勢。形は書き直さない（`shapeWrites` が増えない）。
+- 取消（`extra.travelTongue===null`、ガイド・警告・危険・主人公反応・終了・描画喪失・動きを減らす）：同じフレームで台帳を戻し、舌とダイヤを隠す（途中のアニメーションなし）。
+- 最初の表示の引っかかりを避けるため、舌の mesh とダイヤを `street.js:1180-1202` の事前準備の `show(...)` に足す。`street.dispose()` では `scene.traverse` より前に `travelTongue.dispose()`。
+- `presentationStats()` に `mode` と `tongue: travelTongue.stats()`（`visible, diamondVisible, shapeWrites, poseWrites, drawCalls, geometries`）を足す。
+
+### 4.6 動きを減らす設定の途中変更
+
+- `mq.addEventListener('change', onReduced)`（無い環境は `addListener`）。`onReduced` は `mq.matches` が true なら `travelTongue.cancel()` して `drawFrame()`（停止中でもすぐ収納が見える）。controller へは次のフレームの `reducedMotion:true` で伝わり、舌の機会は消費される。
+- 解除は `presentationScope.own(() => mq.removeEventListener('change', onReduced))`。dispose の二度目は何もしない。
+- 既存の `reducedMotion`（作成時に1回読む値。`street.js:792`、粒・accents・reactions が使う）は変えない。
+
+### 4.7 DOM 簡易舞台（`createDomStage`）
+
+- `createStage` は今も `createDomStage(container, opts)` に全部の opts を渡している（`stage.js:98`）。`createDomStage` が `presentationSet` と `gameExtrasController` を読み、§4.1 と同じ式で mode を決める。
+- `update({t,color,policeStage,presentation})` の最後で、extended96 かつ `presentation` があれば `step` を1回：`drawable:false`、`actorBusy:{hero:false,police:false}`、`placements:{railway:false,water:false,robot:false,bird:false,midpoint:false,policeSettled:false,existing:{}}`、`reducedMotion`・`frameIntervalMs`・`bestDistance` は §4.2 と同じ作り方。戻り値は描かない（評価区間と札は controller の中で進み、App が snapshot を bonus へ渡す）。
+- `setBestDistance(v)` は値を持つように直す（今は何もしない）。`matchMedia` の購読は dispose で外す。
+
+### 4.8 C の部品を組み込む口（B が呼ぶ。C が作る）
+
+```js
+// street-accents.js（C）
+createStreetAccents({scene, camera, slots, atlas, scope, seed, reducedMotion, mode='legacy80'})
+accents.placements(view, frameInfo) -> {railway, water, robot, bird, midpoint, existing:{12:boolean}}
+   // frameInfo = {viewport:{width,height}（CSS px）, hudBottom（CSS px）, heroX, policeX:[x0,x1], policeVisible:[b0,b1]}
+   // legacy80 は全部 false。grace に入るフレームと 125000≦t<126500 以外は false でよい（controller はその時だけ読む）
+accents.tick(view, extra)   // extended96：extra = {cameo, policeExtra, actors:frameInfo}。legacy80 は extra を無視
+accents.stats()             // 既存＋{mode, storySprites, staticFlag, footprints}
+// actor-reactions.js（C）
+reactions.busy() -> {hero:boolean, police:boolean}         // stats().hero/police !== null と同じ意味
+reactions.applyPoliceExtra(policeExtra, view) -> {dx:number}  // 姿勢は save() で書く（次の tick で自動で戻る）
+   // view.running が false の時は姿勢に触らず、同じ dx だけ返す。policeExtra が null なら {dx:0}
+```
+- `hudBottom` は B が resize の時に `container.closest('.stage-wrap')?.querySelector('.hud')` の下端を測って持つ（読むだけ。見つからなければ 76）。
+- B が C の部品を取り込むのは C の CL04 の部品試験が通った commit の後（§6）。それまで B は `accents.placements` が無ければ全部 false、`busy` が無ければ `stats()` から作る、`applyPoliceExtra` が無ければ `{dx:0}` として進める（存在確認で分ける。偽の絵は描かない）。
