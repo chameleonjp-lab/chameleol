@@ -151,19 +151,30 @@ export function mountResultPanels({ host, t = (key) => key, state = { status: 'm
     const lineD = coords.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join('');
     svg('path', { d: `${lineD}L${coords[coords.length - 1][0].toFixed(1)} ${y1}L${coords[0][0].toFixed(1)} ${y1}Z`, fill: '#ffcc4d', 'fill-opacity': 0.12 }, graph);
     svg('path', { d: lineD, fill: 'none', stroke: '#ffcc4d', 'stroke-width': 2.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, graph);
-    // 印の番号。近い印は上へずらして重ならないようにし、本当の位置へ細い線を引く。
+    // 印：真値の点（本当の位置）と番号の丸を分ける。番号の丸は真値の点の14px上（上端を越える時は下）へ置き、
+    // 前の丸と中心が16px未満なら16pxずつ同じ向きへずらす。連結線で真値の点とつなぐ。描く順：面→線→連結線→真値の点→番号の丸。
     const placed = [];
-    marks.forEach((mark, i) => {
+    const items = marks.map((mark, i) => {
       const cx = xOf(mark.t);
       const trueY = yOf(mark.alertUnits);
-      let cy = trueY;
-      while (placed.some((q) => Math.abs(q.cx - cx) < 11 && Math.abs(q.cy - cy) < 11) && cy > y0 - 4) cy -= 11;
+      const dir = trueY - 14 < y0 - 4 ? 1 : -1;
+      let cy = trueY + dir * 14;
+      for (let guard = 0; guard < 8 && placed.some((q) => Math.hypot(q.cx - cx, q.cy - cy) < 16); guard += 1) cy += dir * 16;
       placed.push({ cx, cy });
-      if (cy !== trueY) svg('line', { x1: cx, x2: cx, y1: trueY, y2: cy, stroke: '#fff', 'stroke-width': 1 }, graph);
-      svg('circle', { cx, cy, r: 5, fill: '#fff', stroke: '#14183a', 'stroke-width': 2 }, graph);
-      const digit = svg('text', { x: cx, y: cy + 3, 'text-anchor': 'middle', 'font-size': 8, 'font-weight': 700, fill: '#14183a' }, graph);
-      digit.textContent = String(i + 1);
+      return { cx, cy, trueY, i };
     });
+    for (const m of items) {
+      const dy = m.cy - m.trueY;
+      const len = Math.abs(dy);
+      svg('line', { x1: m.cx, x2: m.cx, y1: m.trueY + Math.sign(dy) * 3, y2: m.cy - Math.sign(dy) * Math.min(7, len), stroke: '#fff', 'stroke-width': 1, 'data-role': 'mark-link' }, graph);
+    }
+    // 真値の点は丸と同じ形の楕円（半径3）。番号の丸だけを circle にして、印1つにつき circle が1つになるようにする。
+    for (const m of items) svg('ellipse', { cx: m.cx, cy: m.trueY, rx: 3, ry: 3, fill: '#fff', stroke: '#14183a', 'stroke-width': 1, 'data-role': 'true-point' }, graph);
+    for (const m of items) {
+      svg('circle', { cx: m.cx, cy: m.cy, r: 7, fill: '#fff', stroke: '#14183a', 'stroke-width': 1.5, 'data-role': 'mark-number' }, graph);
+      const digit = svg('text', { x: m.cx, y: m.cy + 3.5, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 700, fill: '#14183a' }, graph);
+      digit.textContent = String(m.i + 1);
+    }
     if (marks.length) {
       const list = el('ol', 'evidence-marks', null, container);
       const labelKey = { police1: 'evidence.alert.markPolice', police2: 'evidence.alert.markTwo', recovery: 'evidence.alert.markRecover' };
