@@ -106,6 +106,23 @@ test('long titles shrink and wrap in the documented order and never use an ellip
   assert.ok(worst.lines.every((l) => m(l, worst.size) * worst.scaleX <= box.w + 1e-6), 'nothing leaves the text area');
 });
 
+test('a long word is never cut in the middle while a smaller size can hold it', () => {
+  const ctx = createFakeContext();
+  const m = widthAt(ctx);
+  const text = 'aaa bbbbbbbbbbbbbbbbbbbbbbb';
+  const fit = fitTitle(m, text, 'en');
+  assert.deepEqual(fit.lines, ['aaa', 'bbbbbbbbbbbbbbbbbbbbbbb']);
+  assert.ok(fit.lines.every((l) => m(l, fit.size) * fit.scaleX <= 548 + 1e-6));
+});
+
+test('a hyphen stays at the end of the previous line, never at the start of the next', () => {
+  const ctx = createFakeContext();
+  const m = (s) => widthAt(ctx)(s, 40);
+  const lines = wrapLines(m, 'Neuer Verfolgungs-Ausweicher', m('Neuer Verfolgungs') + 1, 'de');
+  assert.ok(lines.length >= 2);
+  assert.ok(lines.every((l) => !l.startsWith('-')), JSON.stringify(lines));
+});
+
 test('wrapping keeps closing marks off the start of a line', () => {
   const ctx = createFakeContext();
   const m = (s) => widthAt(ctx)(s, 40);

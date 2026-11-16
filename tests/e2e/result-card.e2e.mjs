@@ -1,128 +1,10 @@
 // CL02 結果画面の実 App＋実 ports の自動ブラウザ試験（Chromium）。iPhone 実機の X 添付・長押し保存・性能の代わりにはしない。
 // 入口は試験専用の fixtures/result-card.html（index.html・app.js は変えず、実 App へ実 ports だけを明示して渡す）。
-// CG02 の試験用 renderer/stage は使わない。画像の証拠は CL02_EVIDENCE_DIR を指した時だけ書き出す。
+// CG02 の試験用 renderer/stage は使わない。画像の証拠は result-card-evidence.e2e.mjs（CL02_EVIDENCE_DIR 指定時）。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
 import { launch } from './helpers.mjs';
-
-const id = (name) => `[data-testid="${name}"]`;
-const FIXTURE = 'tests/e2e/fixtures/result-card.html';
-const EVIDENCE = process.env.CL02_EVIDENCE_DIR || null;
-const BUDGET = 16_777_216;
-const ATLAS_BYTES = 1920 * 1520 * 4;
-
-/** 画面の中で、建物13〜16を遊ぶ脚本を実行して途中終了する（result-evidence.e2e と同じ流れ）。 */
-const SCRIPT = async (endMs) => {
-  const a = __kamereoru;
-  const s = a.session;
-  const targets = s.game.course.targets;
-  const far = (c) => ({ h: (c.h + 18000) % 36000, s: c.s, v: 10000 });
-  const good = (b) => ({ h: targets[b - 1].h, s: targets[b - 1].s, v: 10000 });
-  const put = (t, c) => s.apply({ type: 'color', t, h: c.h, s: c.s, v: c.v });
-  document.querySelector('.pause-overlay')?.remove();
-  if (a.coverEl) a.coverEl.hidden = true;
-  put(61500, far(targets[12]));
-  put(63100, good(13));
-  put(65100, good(14));
-  put(70100, good(15));
-  put(75100, good(16));
-  s.apply({ type: 'tick', t: endMs });
-  s.quit();
-};
-
-/** 試験の道具：共有・URL・WebGL の観測。製品の ports には何も足さない。 */
-const INSTRUMENT = () => {
-  globalThis.__shares = [];
-  globalThis.__shareMode = 'ok';
-  globalThis.__opened = [];
-  globalThis.__revoked = [];
-  globalThis.__webgl = new Set();
-  Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
-  Object.defineProperty(navigator, 'share', {
-    configurable: true,
-    value: async (payload) => {
-      globalThis.__shares.push({ files: payload.files.map((f) => ({ type: f.type, size: f.size, name: f.name })), text: payload.text, url: payload.url });
-      if (globalThis.__shareMode === 'cancel') throw new DOMException('cancelled', 'AbortError');
-    },
-  });
-  const open = window.open;
-  window.open = (...args) => { globalThis.__opened.push(args[0]); return null; };
-  void open;
-  const revoke = URL.revokeObjectURL.bind(URL);
-  URL.revokeObjectURL = (u) => { globalThis.__revoked.push(u); revoke(u); };
-  const get = HTMLCanvasElement.prototype.getContext;
-  HTMLCanvasElement.prototype.getContext = function patched(kind, ...rest) {
-    if (typeof kind === 'string' && kind.startsWith('webgl')) globalThis.__webgl.add(this);
-    return get.call(this, kind, ...rest);
-  };
-};
-
-async function openApp(env, { lang = 'ja' } = {}) {
-  const { page, context } = env;
-  await context.addInitScript(INSTRUMENT);
-  await page.goto(env.url + FIXTURE);
-  await page.waitForSelector(id('home-start'));
-  if (lang !== 'ja') await page.evaluate(async (l) => { (await import('/src/i18n/i18n.js')).setLanguage(l); }, lang);
-  await page.clock.install({ time: new Date('2030-01-01T00:00:00Z') });
-  await page.clock.pauseAt(new Date('2030-01-01T00:00:01Z'));
-}
-
-async function playToResult(page) {
-  await page.evaluate(() => __kamereoru.debugStart({ atMs: 60000, seed: 17 }));
-  await page.evaluate(async () => {
-    const a = __kamereoru;
-    const { TAB_ID } = await import('/src/storage/store.js');
-    a.generation = await a.store.beginRun(TAB_ID, a.session.snapshot());
-    a.memoryOnly = false;
-  });
-  await page.evaluate(SCRIPT, 80000);
-  await page.waitForSelector(id('skip-ending'));
-  await page.locator(id('skip-ending')).dispatchEvent('click');
-  await page.waitForSelector(id('result-again'));
-}
-
-const cardState = (page) => page.evaluate(() => __kamereoru.resultCardController?.snapshot().state ?? null);
-const evidenceStatus = (page) => page.evaluate(() => __kamereoru.lastResult?.evidence?.status ?? null);
-
-/** 止めた時計を少しずつ進め、条件が真になるのを待つ（固定時間は待たない）。 */
-async function advanceUntil(page, predicate, { step = 50, limit = 120 } = {}) {
-  for (let i = 0; i < limit; i += 1) {
-    if (await predicate()) return true;
-    await page.clock.runFor(step);
-  }
-  return predicate();
-}
-
-async function toReady(page) {
-  assert.equal(await advanceUntil(page, async () => (await cardState(page)) === 'ready'), true, 'the card becomes ready');
-}
-
-const liveWebgl = (page) => page.evaluate(() => [...__webgl].filter((c) => c.width > 0 && c.height > 0).length);
-
-async function heldBytes(page) {
-  return page.evaluate((ATLAS) => {
-    const r = __kamereoru.lastResult;
-    const card = document.querySelector('.result-card-canvas');
-    const portrait = r.resultPortrait?.portrait?.image;
-    const turn = document.querySelector('.result-turn-canvas');
-    const viewer = document.querySelector('.result-card-viewer-image');
-    const parts = {
-      atlas: ATLAS,
-      card: card ? card.width * card.height * 4 : 0,
-      portrait: portrait ? portrait.width * portrait.height * 4 : 0,
-      panel: turn ? turn.width * turn.height * 4 : 0,
-      viewer: viewer && viewer.naturalWidth ? viewer.naturalWidth * viewer.naturalHeight * 4 : 0,
-    };
-    return { ...parts, total: Object.values(parts).reduce((a, b) => a + b, 0) };
-  }, ATLAS_BYTES);
-}
-
-async function snap(page, name, options = {}) {
-  if (!EVIDENCE) return;
-  await mkdir(EVIDENCE, { recursive: true });
-  await page.screenshot({ path: `${EVIDENCE}/${name}.png`, ...options });
-}
+import { id, BUDGET, openApp, playToResult, toReady, cardState, evidenceStatus, advanceUntil, liveWebgl, heldBytes } from './fixtures/result-card-helpers.mjs';
 
 // ---------------------------------------------------------------------------------------------
 test('card text: 15 languages x 27 titles and the worst-case numbers stay inside their areas with real font metrics', async (t) => {
@@ -155,6 +37,14 @@ test('card text: 15 languages x 27 titles and the worst-case numbers stay inside
           if (info.title.lines.length * info.title.size * 1.15 > 152.5) failures.push({ lang, key: title.key, tall: true });
           if (info.title.lines.some((l) => l.includes('…'))) failures.push({ lang, key: title.key, ellipsis: true });
           if (info.title.lines.join('').replace(/\s/g, '') !== text.replace(/\s/g, '')) failures.push({ lang, key: title.key, lost: true });
+          if (!['ja', 'zh-Hans', 'zh-Hant', 'th'].includes(lang)) {
+            // 語の途中で折り返さない：行の切れ目は空白かハイフンの所だけ
+            let at = 0;
+            info.title.lines.slice(0, -1).forEach((line) => {
+              for (const ch of line.replace(/\s/g, '')) { while (/\s/.test(text[at])) at += 1; at += 1; void ch; }
+              if (!(text[at - 1] === '-' || /\s/.test(text[at] ?? ' '))) failures.push({ lang, key: title.key, midWord: line });
+            });
+          }
           for (const part of ['score', 'bonus', 'passed']) {
             if (info[part].width > 572.5) failures.push({ lang, part, width: info[part].width });
             if (info[part].stage >= 3) rowStage[part] += 1;
@@ -204,8 +94,6 @@ for (const [w, h] of [[402, 700], [402, 874], [874, 402]]) {
       assert.notEqual(supplement.display, 'none');
       for (const n of [71, 80, 93]) assert.ok(supplement.stats.includes(n), `No.${n} is active`);
       assert.ok(m.portrait.top > m.again.bottom, 'the photo is below the primary action');
-      await snap(env.page, `result-${w}x${h}-ja-first`);
-      await snap(env.page, `result-${w}x${h}-ja-full`, { fullPage: true });
       assert.deepEqual(env.errors, []);
     } finally { await env.close(); }
   });
@@ -275,7 +163,6 @@ test('save screen: an img from the prepared PNG, the screen card frees its pixel
     const viewerBytes = await heldBytes(page);
     assert.ok(viewerBytes.total <= BUDGET, `viewer open ${viewerBytes.total}`);
     assert.ok(viewerBytes.total < closedBytes.total + 1_000_000);
-    await snap(env.page, 'viewer-402x874-ja');
     await page.keyboard.press('Escape');
     await page.waitForSelector(id('result-card-viewer'), { state: 'detached' });
     const revoked = await page.evaluate(() => __revoked.slice());
@@ -346,7 +233,6 @@ test('E090 can open in the first 600ms, gives way to the portrait capture, and b
     void angle;
     const frames = () => page.evaluate(() => performance.now());
     void frames;
-    await snap(page, 'turn-402x874-ja-front', { fullPage: false });
     await touch('pointerdown', cx, cy);
     await touch('pointermove', cx + 5, cy);
     await touch('pointermove', cx + 4, cy + 30);
@@ -355,7 +241,6 @@ test('E090 can open in the first 600ms, gives way to the portrait capture, and b
     await touch('pointermove', cx + 70, cy + 3);
     await touch('pointerup', cx + 70, cy + 3);
     await page.clock.runFor(50);
-    await snap(page, 'turn-402x874-ja-turned', { fullPage: false });
     // 閉じると手放す
     await page.locator('[data-panel="turn"]').click();
     assert.equal(await advanceUntil(page, async () => (await liveWebgl(page)) === 0, { limit: 10 }), true, 'closing frees the context');

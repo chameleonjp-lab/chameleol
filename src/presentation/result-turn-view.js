@@ -146,8 +146,8 @@ export function createTurnPanel({ getSnapshot, register, getOwner, deps = {} }) 
           applySize();
           scene = new THREE.Scene();
           camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
-          camera.position.set(0, 1.9, 9.5);
-          camera.lookAt(0, 1.45, 0);
+          camera.position.set(0, 1.7, 7.6);
+          camera.lookAt(0, 1.3, 0);
           rig = createPosedHero(hero, deps);
           scene.add(rig.group);
           setTexts();

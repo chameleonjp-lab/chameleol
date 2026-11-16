@@ -12,7 +12,7 @@ export const CARD_LAYOUT_KEY = 'card-1200x630-v1';
 const FAMILY = 'system-ui, -apple-system, "Hiragino Sans", "Noto Sans", "Noto Sans JP", "Noto Sans Thai", "Noto Sans Arabic", sans-serif';
 const fontOf = (weight, size) => `${weight} ${size}px ${FAMILY}`;
 const CONFIRMING_STATES = ['accepted', 'verifying', 'pending_review', 'under_review'];
-const NO_LINE_START = new Set([...'ー。、！？）」』，．…!?)]},.:;']);
+const NO_LINE_START = new Set([...'ー。、！？）」』，．…!?)]},.:;-‐–—/']);
 const COLON_LOCALES = new Set(['ja', 'zh-Hans', 'zh-Hant']);
 
 // ---------- 文言 ----------
@@ -76,11 +76,14 @@ function tokensOf(text, locale) {
   return /[　-鿿＀-￯฀-๿]/.test(text) ? [...text] : text.split(/(\s+)/).filter(Boolean);
 }
 
-/** 幅 maxW に収まるよう貪欲に折り返す。行頭に禁則の文字を置かない。長すぎる語は1文字ずつ。 */
-export function wrapLines(measure, text, maxW, locale) {
+/**
+ * 幅 maxW に収まるよう貪欲に折り返す。行頭に禁則の文字を置かない。
+ * splitLong が true の時だけ、1語で幅を超える語を1文字ずつに割る（最後の手段）。false では語を割らず、はみ出す行が残る。
+ */
+export function wrapLines(measure, text, maxW, locale, { splitLong = true } = {}) {
   const toks = [];
   for (const tok of tokensOf(text, locale)) {
-    if (measure(tok) > maxW) toks.push(...[...tok]);
+    if (splitLong && measure(tok) > maxW) toks.push(...[...tok]);
     else toks.push(tok);
   }
   const lines = [];
@@ -105,19 +108,19 @@ export function fitTitle(measureAt, text, locale, box = { w: 548, h: 152 }) {
     if (measureAt(text, size) <= box.w) return { lines: [text], size, scaleX: 1, stage: 1 };
   }
   for (let size = 60; size >= 40; size -= 4) {
-    const lines = wrapLines((s) => measureAt(s, size), text, box.w, locale);
-    if (lines.length <= 2 && lines.length * size * 1.15 <= box.h) return { lines, size, scaleX: 1, stage: 2 };
+    const lines = wrapLines((s) => measureAt(s, size), text, box.w, locale, { splitLong: false });
+    if (lines.length <= 2 && lines.length * size * 1.15 <= box.h && lines.every((l) => measureAt(l, size) <= box.w)) return { lines, size, scaleX: 1, stage: 2 };
   }
   {
-    const lines = wrapLines((s) => measureAt(s, 40), text, box.w / 0.88, locale);
-    if (lines.length <= 2) {
+    const lines = wrapLines((s) => measureAt(s, 40), text, box.w / 0.88, locale, { splitLong: false });
+    if (lines.length <= 2 && lines.every((l) => measureAt(l, 40) <= box.w / 0.88)) {
       const widest = Math.max(...lines.map((l) => measureAt(l, 40)));
       return { lines, size: 40, scaleX: Math.min(1, Math.max(0.88, box.w / widest)), stage: 3 };
     }
   }
   for (let size = 40; size >= 28; size -= 2) {
-    const lines = wrapLines((s) => measureAt(s, size), text, box.w, locale);
-    if (lines.length <= 3 && lines.length * size * 1.15 <= box.h) return { lines, size, scaleX: 1, stage: 4 };
+    const lines = wrapLines((s) => measureAt(s, size), text, box.w, locale, { splitLong: false });
+    if (lines.length <= 3 && lines.length * size * 1.15 <= box.h && lines.every((l) => measureAt(l, size) <= box.w)) return { lines, size, scaleX: 1, stage: 4 };
   }
   const lines = wrapLines((s) => measureAt(s, 28), text, box.w, locale).slice(0, 3);
   const widest = Math.max(...lines.map((l) => measureAt(l, 28)));

@@ -192,7 +192,7 @@
 }
 
 /* ---- 画像の保存画面（img を長押しで保存。canvas の長押しは使わない）---- */
-.result-card-viewer{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:calc(var(--safe-top,0px) + 14px) 16px calc(var(--safe-bottom,0px) + 14px);background:#14183af5;color:#fff6d6;overflow:auto;box-sizing:border-box}
+.result-card-viewer{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:calc(var(--safe-top,0px) + 14px) 16px calc(var(--safe-bottom,0px) + 14px);background:#14183a;color:#fff6d6;overflow:auto;box-sizing:border-box}
 .result-card-viewer *{box-sizing:border-box}
 .result-card-viewer-title{margin:0;padding-right:96px;font-size:1.05rem;font-weight:800;color:#fff0a0}
 .result-card-viewer-close{position:absolute;top:calc(var(--safe-top,0px) + 10px);right:16px;min-height:44px}
@@ -221,7 +221,7 @@
 /* ---- E090 回して見る ---- */
 .result-turn{display:grid;gap:8px;justify-items:center}
 .result-turn-stage{position:relative;width:100%;max-width:300px;aspect-ratio:1;border-radius:14px;overflow:hidden;touch-action:pan-y;background:radial-gradient(circle at 50% 54%,#ffffff38 0,#ffffff00 62%),#14183a;border:1px solid #ffffff33}
-.result-turn-stage::after{content:'';position:absolute;left:50%;bottom:12%;width:52%;height:8%;transform:translateX(-50%);border-radius:50%;background:#cbb9a4;border:2px solid #24394b;z-index:0}
+.result-turn-stage::after{content:'';position:absolute;left:50%;bottom:17%;width:46%;height:7%;transform:translateX(-50%);border-radius:50%;background:#cbb9a4;border:2px solid #24394b;z-index:0}
 .result-turn-canvas{position:absolute;inset:0;width:100%!important;height:100%!important;z-index:1;touch-action:pan-y}
 .result-turn-step{position:absolute;top:50%;z-index:2;width:44px;height:44px;margin-top:-22px;padding:0;border:1px solid #ffffff55;border-radius:50%;background:#14183acc;color:#fff;font-size:18px;line-height:1;cursor:pointer}
 .result-turn-left{left:6px}.result-turn-right{right:6px}
