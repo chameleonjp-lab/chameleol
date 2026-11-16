@@ -26,7 +26,7 @@
 | 小芝居の予約 | `cameo-reservations.js`。回数6・間隔15000ms・中間旗の予約・静止旗 |
 | 警察2案 | `police-extras.js`。E034→E039 の順に各1回 |
 | 精密札 | `precision-badge.js`。98%・500ms・1回・表示1400ms |
-| 評価区間 | `evaluation-segments.js`。App が毎フレーム `drain()` して `presentation.evaluationSegments` に入れる（`app.js:1186`） |
+| 評価区間 | `evaluation-segments.js`。App が毎フレーム `drain()` して `presentation.evaluationSegments` に入れる（`app.js:1187`） |
 | 輪郭8段階 | `chameleon-outline.js` の `outlineForBuilding(b)`（段階は 0〜7 の番号）、`hero.setOutlineStyle(style)` |
 | 結果解析と5パネル | `result-evidence.js`、`result-evidence-view.js` の `mountResultPanels({host,t,state,panels})`（DOM と SVG だけ） |
 | 結果の値 | `buildResultCardModel`（`result-card-data.js:106`）、`buildResultMiniatureModel`（`result-miniature-data.js`） |
@@ -44,17 +44,17 @@ ports 本体（`result-card-ports.js`）、主カードの描画、主人公の�
 | --- | --- | --- | --- |
 | D01 | ports は「createResultPortrait/drawResultCard/createRenderer/destroyRenderer/mount/onChange/panels」 | App は `{...cardPorts, getPublicUrl, onChange}` を controller へ広げて渡す（`app.js:1676-1679`）。controller は ports から `createCanvas`・`encodePng`・`waitForPresentation`・`urlApi`・`focusTarget`・`visibilityTarget`・`navigator`・`shareImpl` も読む（`result-card-controller.js:28-31,49,64,68,113`）。`getLayoutKey` は App が読む（`app.js:1675`） | 製品の ports は `navigator`・`shareImpl`・`urlApi`・`waitForPresentation`・`focusTarget`・`visibilityTarget` を**定義しない**（定義すると本物を上書きする。試験の代用品だけが使う） |
 | D02 | 「主カードと PNG を同じ描画元」 | controller は自分で作った canvas に `drawResultCard` して PNG にした後、`width=height=0` にして捨てる（`:35,64-75`）。snapshot に主人公の画像は無い（`:32`） | 画面のカードは ports が別の canvas に同じ `drawResultCard` で描く。主人公画像は `result.resultPortrait?.portrait?.image` から読む（下の不足 N01） |
-| D03 | share の結果を見て案内を出す | `share()` は shared と cancelled のどちらも state を `'ready'` に戻す（`:117`）。準備前のタップは `'unavailable'` を返すだけで onChange を呼ばない（`:107`） | 画面は sharing→ready の遷移で `card.shareClosed`（「共有を終了しました」）を出す。タップ時の state を記録して準備中の案内を出す（§3.6） |
+| D03 | share の結果を見て案内を出す | `share()` は shared と cancelled のどちらも state を `'ready'` に戻す（`:117`）。準備前のタップは `'unavailable'` を返すだけで onChange を呼ばない（`:107`） | 画面は sharing→ready の遷移で `card.shareClosed`（「共有を終了しました」）を出す。タップ時の state を記録して準備中の案内を出す（§3.5） |
 | D04 | 舌の段階名 | `'prepare','extend','hold','retract','store'`、各 150/250/350/450/200ms。枠は `{id,startedAt,elapsedMs,building,phase,phaseProgress,jewelVisible}`。`jewelVisible` は extend/hold/retract で true（`travel-tongue-motion.js:2,27`） | 旧メモの anticipate/settle は使わない |
 | D05 | E020/E067/E068/E069 の長さ（旧メモ 2600/2000/2400/2200ms） | 4案とも 2000ms（`catalog.js:32`）。E056 は 1500ms（`cameo-reservations.js:55`） | 時間表を 2000ms・1500ms に詰め直した（§5） |
-| D06 | 中間旗は 110000〜126500ms | 110000〜126500ms は通常抽選を止める予約枠。機体の開始は 125000≦t<126500 で、`placements.midpoint===true` の時だけ（`:57,86`）。間に合わない・取消・期限切れは静止旗 `{id:56,startedAt:125000,elapsedMs:0,phase:'static',building:25,durationMs:0}`（`:48`）で、以後ずっと返る | §5.6 |
-| D07 | 警察2案の長さ（旧メモ 1500/1800ms） | inquiry 1200ms（id 34）、footprints 1500ms（id 39）、`phase:'investigate'`。`policeStage!==1`・ガイド・警告・`actorBusy.police`・`!placements.policeSettled` で即 null（`police-extras.js:11-12`）。elapsedMs は `running!==false` の時だけ進む | §5.7 |
-| D08 | 札の表示時間（旧メモ 1200ms） | `startedAt` から 1400ms だけ snapshot が値を返す。controller はガイド・警告（App の `activeNotice`）中は null（`game-extras-controller.js:21,42`） | §5.8 |
+| D06 | 中間旗は 110000〜126500ms | 110000〜126500ms は通常抽選を止める予約枠。機体の開始は 125000≦t<126500 で、`placements.midpoint===true` の時だけ（`:57,86`）。間に合わない・取消・期限切れは静止旗 `{id:56,startedAt:125000,elapsedMs:0,phase:'static',building:25,durationMs:0}`（`:48`）で、以後ずっと返る | §5.7 |
+| D07 | 警察2案の長さ（旧メモ 1500/1800ms） | inquiry 1200ms（id 34）、footprints 1500ms（id 39）、`phase:'investigate'`。`policeStage!==1`・ガイド・警告・`actorBusy.police`・`!placements.policeSettled` で即 null（`police-extras.js:11-12`）。elapsedMs は `running!==false` の時だけ進む | §5.8 |
+| D08 | 札の表示時間（旧メモ 1200ms） | `startedAt` から 1400ms だけ snapshot が値を返す。controller はガイド・警告（App の `activeNotice`）中は null（`game-extras-controller.js:21,42`） | §5.9 |
 | D09 | bonus tick の warningActive | App は `warningActive: stage>0||activeNotice` を渡す（`app.js:1188`）。警察が1人でもいると true | 札は tick の値どおり抑止する（判断は §8 Q03） |
 | D10 | IF09 の `priority` | App の `readPlayView` は `priority` を作らない（`events.js:35-52`）。旧 accents でも未使用 | B は `priority` を作らない（追加すると新しい判定になる） |
 | D11 | DOM 簡易舞台の step | `createDomStage(container,{course,rules})` は `presentationSet`・`gameExtrasController` を受けず、`setBestDistance(){}` は何もしない（`stage.js:18,71`） | §4.7 |
 | D12 | 任意パネルは model/miniature を表示 | `mountResultPanels` は各パネルの `render(container, evidenceData, ctx)` に解析データだけを渡す（`result-evidence-view.js:128`）。`needsData!==false` だと解析待ち・欠損で描かない | E075/E090 は ports が持つ最新 snapshot を読み、`needsData:false` にする（§3.8） |
-| D13 | 結果の並び | App は mount の**後**に写真（`.result-scene`）を `.result-main` の前へ入れる（`app.js:1690`）。`evidenceHost` は `.result-actions` の直後へ入る（`:1685`） | §3.5 で mount が `.result-actions` を動かす |
+| D13 | 結果の並び | App は mount の**後**に写真（`.result-scene`）を `.result-main` の前へ入れる（`app.js:1694`）。`evidenceHost` は `.result-actions` の直後へ入る（`:1685`） | §3.5 で mount が `.result-actions` を動かす |
 | D14 | 結果アトラスの作成 | `render-result-atlas.mjs:5` は `executablePath:'/usr/bin/chromium'`。この環境にその実行ファイルは無い（確認済み）。e2e は `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` か Playwright 同梱を使う（`tests/e2e/helpers.mjs:14`） | A が同じ方式に直す |
 | D15 | 舞台の初期化 | 本編の `createThreeStage` は効果が無効（`presentationEnabled:false`）だと accents/reactions を作らない（`street.js:795-796`） | §4.1 の表 |
 
@@ -63,7 +63,7 @@ ports 本体（`result-card-ports.js`）、主カードの描画、主人公の�
 | 番号 | 不足 | 依頼 |
 | --- | --- | --- |
 | N01 | 画面のカードが主人公画像を読む口が契約に無い（D02） | `result.resultPortrait.portrait.image` を ports から読んでよいことの確認、または snapshot へ主人公画像を足す |
-| N02 | 新しい文言キー（§3.11 の表） | 15辞書へ追加。足りない間は §3.11 の代わりの表示を使う |
+| N02 | 新しい文言キー（§3.12 の表） | 15辞書へ追加。足りない間は §3.12 の代わりの表示を使う |
 | N03 | 効果無効（`effects:false`）の extended96 で札を出すか（D15） | App 側で決める（§8 Q04） |
 
 ## 2. 共通の約束
@@ -104,7 +104,7 @@ ports 本体（`result-card-ports.js`）、主カードの描画、主人公の�
 3. 保存画面の `img`（1200×630 の PNG を展開）
 
 決まり：
-- 画像の準備中（`state:'pending'`）の画面カードは 600×315（756,000B）の canvas で描く。この間は E090 の再取得を待たせる（§3.9）。準備中の瞬間の合計は 11,673,600＋756,000＋691,200＋3,024,000＝16,144,800B。
+- 画像の準備中（`state:'pending'`）の画面カードは 600×315（756,000B）の canvas で描く。準備中に開いている E090 は裏の大きさを 300×300（360,000B）に下げ、撮影で取り上げられた後の借り直しは準備が終わるまで待つ（§3.9）。準備中の最大は 11,673,600＋756,000＋691,200＋3,024,000＋360,000＝16,504,800B。
 - `ready` になったら、controller が自分の canvas を捨てた後（onChange の中で直接描かず `queueMicrotask` で）画面カードを 1200×630 に描き直す。
 - 保存画面を開いている間は画面カードの canvas を `width=height=0` にし、閉じたら描き直す（保存画面は画面全体を覆うので見た目は変わらない）。
 - 主人公の撮影中は描画器の 480×720 の描画面（1,382,400B、深度の分は未確認）が一時的に増えるが、その時は主人公の切り抜きも PNG の canvas もまだ無い。
@@ -119,7 +119,7 @@ ports 本体（`result-card-ports.js`）、主カードの描画、主人公の�
 | 胴＋4px と重ならない | 胴の楕円体（`hero.comparePoint` を中心に胴の半径、`chameleon28.js:342`）の8頂点を投影した画面の箱を4px広げる。舌は `getLocalEnvelope`、ダイヤは自分の箱の8頂点を `matrixWorld` で投影した箱。C の絵は各絵の4隅を投影した箱 | 箱が交わらない |
 | 壁遮蔽 1.5%以下 | 同じ `t` で、舌を隠した描画と出した描画の両方で `stage.checkComparisonSurfaces()`（`street.js:1569`）を呼び、`wallPixels` の差 ÷ 隠した時の `wallPixels` | 0.015 以下 |
 | 比較画素の不一致 0 | 舌・絵を出した描画で `checkComparisonSurfaces()` | `wallMismatches===0` かつ `bodyMismatches===0` |
-| 端 8px | 上の箱が canvas の内側 8px に入る | 4辺とも |
+| 端 8px | 上の箱が canvas の内側 8px に入る（舌・ダイヤは毎フレーム。C の世界に固定する絵は置く時。§5.1・§8 Q07） | 4辺とも |
 | 警察1人の最大振り向き | 警察1人の時、主人公の頭は最大 `1.15×min(1,0.5×1.6)＝0.92rad` 振り向く（`chameleon28.js:547`）。`hero.head.rotation.y=-0.92` に固定した描画でも上の4つを測る | 4つとも |
 | DOM の保護 | HUD（高さ 75px、測定）、ボーナス通知（上 84px から）、ガイド（上 88px から）、一致の札（402×700 で y 374〜410） | 舌・ダイヤ・C の絵の箱が重ならない、または DOM の下に隠れるだけ（canvas は DOM を覆えない） |
 
@@ -265,7 +265,7 @@ mount が行うこと（App の DOM の**並びだけ**を変える。App のコ
 2. カード `section.result-card`（canvas＋下の1行）を作り、`.result-title` の直後へ入れる。
 3. `.result-actions` をカードの直後へ移す。中の `[data-testid=result-share]`（App の既存ボタン。黒地白字 `.btn-x`）を `[data-testid=result-again]` の直後へ移し、`result-card-share` を付ける。
 4. その直後へ小ボタン行 `div.result-card-secondary`：「画像を保存」`card.save`、「本文でXを開く」`card.textShare`（`onTextShare()` を呼ぶ）、「作り直す」`card.retry`（準備失敗の時だけ）、状態の小文字 `p.result-card-status[aria-live=polite]`。
-5. dispose で自分の要素・class・購読を外す（App の要素は戻さない。画面ごと捨てられるため）。
+5. dispose で自分の要素・class・購読を外し、画面カードの canvas を 0×0 にし、保存画面が開いていれば閉じて `revokeImageUrl()` を呼ぶ（言語の変更で画面を作り直す時に古い画素を残さない）。App の要素は戻さない（画面ごと捨てられるため）。
 
 最終の並び（DOM と見た目が同じ。写真と成績だけ CSS の `order` で入れ替える）：
 ```
@@ -283,7 +283,7 @@ mount が行うこと（App の DOM の**並びだけ**を変える。App のコ
 注記・状態・補足の詳細・ランキング  … order 10（DOM の順のまま）
 ```
 - 主ボタンのタップは App の既存ハンドラが `controller.share()` を**直接**呼ぶ（`app.js:1731`）。ports は追加のリスナーを `.result-actions` の捕捉段階に置いてタップ時の state を覚え、泡立ち段階で上の表の案内を出す（伝播を止めない・share を遅らせない）。
-- 402×700 の見込み（計算）：題 27〜72、カード 87〜281、1行 287〜307、もう一度 315〜363、Xでシェア 379〜427、小ボタン 435〜475、ホーム 491〜539。主操作は最初の画面に入る。402×874 は同じ位置で、写真は約 880px 以降（最初の画面に入らない）。
+- 402×700 の見込み（計算）：題 27〜72、カード 87〜281、1行 287〜307、もう一度 315〜363、Xでシェア 379〜427、小ボタン 435〜475、ホーム 491〜539。主操作は最初の画面に入る。402×874 は同じ位置で、写真は約 870px 以降（最初の画面にほぼ入らない。境目に近いので画像で確かめる。§8 Q11）。
 - 874×402（`orientation:landscape and max-height:500px`）は2列の格子：左列にカード（約311×163＋1行）、右列に題（1.6rem）→ `.result-actions`。それ以外は全幅で下へ。右列の高さの見込み 約330px（ホーム・ランキングまで）。
 - 試験は3寸法で、主カード・もう一度・Xでシェア・小ボタン2つがスクロール前に入ること、写真の主人公がスクロール前に入らないこと、横にはみ出さないことを測る。
 
@@ -354,7 +354,7 @@ CSS（`presentation.css`、A だけが書く。初期値）：
 ### 3.9 E090 回して見る（owner から 'model' を借りる）
 
 - パネル定義：`{id:'turn', order:70, labelKey:'evidence.turn.title', needsData:false, render}`。render は「パネルの1回分」の物を作り、`{dispose(), update(snapshot)}` を返す（mountResultPanels は dispose だけを使う。ports は生きている回の update を自分の onChange から呼ぶ）。
-- 正方形 300×300（列幅まで）。地はカードの写真と同じ光の輪＋`#14183a`、足元に台（CSS の楕円）。canvas は借りた描画器の `domElement`。`setPixelRatio(min(devicePixelRatio, 560/300))` で裏の大きさを 560×560 以下（1,254,400B 以下）にする。
+- 正方形 300×300（列幅まで）。地はカードの写真と同じ光の輪＋`#14183a`、足元に台（CSS の楕円）。canvas は借りた描画器の `domElement`。`setPixelRatio(min(devicePixelRatio, 560/300))` で裏の大きさを 560×560 以下（1,254,400B 以下）にする。ただし `state==='pending'` の間は `setPixelRatio(1)`（300×300＝360,000B）にし、`pending` を抜けた onChange で上げて1回描き直す（§2.2）。
 - カメラ `PerspectiveCamera(32,1,.1,100)`、位置 (0,1.9,9.5)、注視点 (0,1.45,0)（初期値。尻尾まで入るかを画像で調整）。主人公はカードと同じ色・輪郭段階・姿勢（§3.4 の 3）。
 - 操作：`pointerdown` で始点、横に 8px 以上かつ縦より大きく動いた時だけ回す（`rotation.y = 始めの角 + dx×0.012`）。それまではタップ・スクロールのまま。`touch-action:pan-y`。慣性・自動回転なし。描くのは動かした時に rAF 1回だけ（ループを持たない）。左右に 44px の「◀」「▶」（π/6 ずつ）。説明の1行（キーは不足 N02）。主カードは触っても回らない。
 - 借り方：
@@ -407,7 +407,7 @@ CSS（`presentation.css`、A だけが書く。初期値）：
 | `card.viewerTitle` | 結果の画像 | `card.save` |
 | `evidence.model.title`／`.passed`／`.arrived`／`.unreached`／`.missing`／`.alt` | 街の模型／通過／到達／未到達／色の記録なし／街の模型。50棟のうち{passed}棟を通過、{arrived}棟目まで到達 | 英語の控え（`bonus-view.js:3` の FALLBACK と同じ作り）。控えは辞書が揃ったら消す |
 | `evidence.turn.title`／`.hint`／`.left`／`.right`／`.alt` | 回して見る／左右になぞると回ります／左へ回す／右へ回す／今回の主人公。左右に回して見られます | 同上 |
-| `presentation.nearPerfect` | ほぼ完全一致！ | C が使う。§5.8 |
+| `presentation.nearPerfect` | ほぼ完全一致！ | C が使う。§5.9 |
 
 控えの英語は ports を明示した試験（CL05）でだけ見える。G4 で辞書が揃うまで「15言語の文言」は未完了として票に残す。
 
@@ -478,7 +478,7 @@ update(args, cutsceneFrame)
     4 presentationScope.tick / reactions.tick(view)   … 既存
     5 extra = controller.step(...)             … §4.2
     6 accents.tick(view, {cameo:extra.cameo, policeExtra:extra.policeExtra, actors})   … C（§5）
-    7 {dx} = reactions.applyPoliceExtra(extra.policeExtra, view)                      … C（§5.7）
+    7 {dx} = reactions.applyPoliceExtra(extra.policeExtra, view)                      … C（§5.8）
       ferretRoots[0].position.x += dx; ferretShadows[0].position.x += dx; fx.placeIcon(0, …+dx)   … B
     8 travelTongue.apply(extra.travelTongue)  … 加算。null なら取消と同じ
     9 成功リング（既存）→ drawFrame
@@ -509,11 +509,11 @@ legacy80 は 5〜8 を行わず、6 を今までどおり accents.tick(view) に
 | retract（450） | 1 | 1−0.5e（e=easeInOutCubic(u)） | 0.04−0.02e | 1−0.95e | 1−smoothstep(0.2,0.8,u) | 1 | smoothstep(0.6,0.95,ほどけ) | 1−e | 0 | π/4 |
 | store（200） | 1−e（e=easeInOutCubic(u)） | 0.5(1−e) | 0.02(1−e) | 0.05 | 0 | 1−0.999·easeInCubic(u) | 0 | 0 | 0 | 0 |
 
-- `grow(w')`：`w=clamp((ほどけ−0.6)/0.4)`、0なら0、`w<0.75` なら `1.08·easeOutCubic(w/0.75)`、それ以外 `1.08−0.08·smoothstep(0,1,(w−0.75)/0.25)`。
+- `grow(x)`（x はほどけ）：`w=clamp((x−0.6)/0.4)`、0なら0、`w<0.75` なら `1.08·easeOutCubic(w/0.75)`、それ以外 `1.08−0.08·smoothstep(0,1,(w−0.75)/0.25)`。
 - `frame.jewelVisible===false` の時はダイヤを0にする（controller の枠と食い違わせない）。
 - 台帳が書くのは5種だけ：`jaw.position.y −= 0.05·口`、`mouth.position.y −= 0.025·口`、`head.rotation.z += 傾き`、`eyes[0].rotation.y += 0.18·視線`、`eyes[1].rotation.y −= 0.18·視線`、そして舌の表示中は `jewel.visible=false`（尻尾の宝石との二重表示なし）。戻す時は「今の値が自分の書いた値のままの時だけ」前の値へ（引き算しない）。
 - 持ち上げは `mesh.rotation.z = 持ち上げ×6°`。収納は `mesh.scale`（ダイヤは子なので一緒に縮む）。
-- ダイヤ：舌の長さの 85% の点と接線（`writePoint(0.85)`）。中心＝点＋法線×(0.05＋(0.276−0.008)×大きさ)。縦軸を法線へ、`rotation=(0, 12°+回転, atan2(接線))`。色 上4面 `#c9fbff`、下4面 `#5fd8ee`、右上1面 `#ffffff`（光る時 `#fffbe0`・上面 `#effeff`）。`MeshBasicMaterial({vertexColors:true})` 不透明、輪郭なし、**1形状・1描画**。舌が所有し、dispose で1回だけ破棄。画面上の高さの見込み：402×874 約18px、402×700 約15px、874×402 約14px（12px 以上）。
+- ダイヤ：舌の長さの 85% の点と接線（`writePoint(0.85)`）。中心＝点＋法線×(0.05＋(0.276−0.008)×大きさ)。縦軸を法線へ、`rotation.order='ZYX'`・`rotation=(0, 12°+回転, atan2(接線))`。色 上4面 `#c9fbff`、下4面 `#5fd8ee`、右上1面 `#ffffff`（光る時 `#fffbe0`・上面 `#effeff`）。`MeshBasicMaterial({vertexColors:true})` 不透明、輪郭なし、**1形状・1描画**。舌が所有し、dispose で1回だけ破棄。画面上の高さの見込み：402×874 約18px、402×700 約15px、874×402 約14px（12px 以上）。
 - 舌の包絡（頭の座標、持ち上げ込み）：x −0.23〜1.06、y −0.17〜0.71、z ±0.25（旧作業コピーの測定値）。
 - 停止中：controller の `elapsedMs` が止まるので同じ姿勢。形は書き直さない（`shapeWrites` が増えない）。
 - 取消（`extra.travelTongue===null`、ガイド・警告・危険・主人公反応・終了・描画喪失・動きを減らす）：同じフレームで台帳を戻し、舌とダイヤを隠す（途中のアニメーションなし）。
@@ -559,6 +559,7 @@ F04〜F06/F12、IF02/05/08/09/10。編集先：`street-accents.js`、`actor-reac
 - 新しい絵は既存の `sprite(...)` の束で描き、新しい描画呼出・形・画像を増やさない。
   - 世界に固定する絵は深度を使う `sprites` の束へ、新しい種類 `'story'` として入れる（`staticN` に数えず、`visibleCameos` に数える。小芝居1組3枚の上限を旧案と共有）。
   - 画面に固定する `cameoSprites`（深度なし）は旧9案だけが使う。新5案は使わない（深度なしだと主人公の上に描かれるため）。
+  - `sprites` の束は40枚まで（`street-accents.js:44` の `np>=40`）。静的24＋粒子8＋'story'3＝35 で収まる。
 - 置ける所（§2.3）：道の帯（壁の下端の線より 4px 下〜canvas 下端の 4px 上）、路地の隙間（両側の壁の正面の投影から 2px 以上内側）、屋根より上（その位置の建物の正面の上端の投影より 4px 上、HUD の下端＋6px より下）。
 - 置く前の確かめ（`accents.placements`）：その案のすべての絵の、開始時と終了時（主人公が +4 進んだ時）の投影の箱が、上の帯に入り、主人公・警察の箱（世界の箱 x−1.6〜+1.2、y 0.2〜3.2、z 2.0〜3.0 を投影）から 6px 以上離れ、canvas の左右 8px の内側にあること。だめなら false（controller は選ばず、回数を使わない）。
 - 描く時も毎フレーム同じ確かめをし、帯から外れた絵は**描かない**（穴の開いた絵を出さない）。controller の取得は取り消さない（描画側から抽選に触らない）。
@@ -636,7 +637,7 @@ F04〜F06/F12、IF02/05/08/09/10。編集先：`street-accents.js`、`actor-reac
 - 旗の位置（世界・道の帯）：x=`fx`=250（`bestDistance===25` の時だけ 249.0。自己ベスト旗は既存の `sprite('flag', best*10, .9, -.6, …)`（`street-accents.js:110`）で路地の奥。深さが違い、画面で約6px 以上離れる見込み。25棟の時はさらに1単位離す）、z=5.0、足元 y=0.245、高さ0.8・幅0.6。高さは壁の下端の線より下に収まる上限。
 - `phase:'delivery'`（1500ms）：0〜800 機体（z=5.6、y=0.95、幅0.5・高さ0.3）が x=fx+6 から fx へ（easeOutCubic）、回転翼 A/B を 60ms ごと、小さく巻いた旗（大きさ0.5）をフックの下に。800〜1050 旗を下ろして立てる（大きさ 0.5→1、着地で縦 0.9→1.0 を 80ms）。この時の主人公は fx＋1.6〜2.1。1050〜1500 機体は x=fx+8 へ戻って去る（主人公の前を横切らない）。
 - `phase:'static'`（間に合わない・取消・期限切れ・機体の後）：旗だけを fx に立てる。controller は以後ずっと static を返すので、旗が画面の外にある間は描かない。画面にある間は静的装飾1つに数える。
-- `placements.midpoint`：125000≦t<126500 の間、旗（立てる時刻の主人公を fx+1.6 と見込む）と機体の通り道が道の帯に入り、主人公・警察の箱から 6px 離れること。警察1人目（x−2.9、z=2.7）と画面で近い（402×700 で旗 x≈82、警察 x≈68）。警察は比較面ではないので重なっても可とし、画像で判定する（§8 Q08）。
+- `placements.midpoint`：125000≦t<126500 の間、旗（立てる時刻の主人公を fx+1.6 と見込む）と機体の通り道が道の帯に入り、主人公の箱から 6px 離れること。§5.1 の「警察の箱から 6px」はこの案だけ外す：警察1人目（x−2.9、z=2.7）と画面で近い（402×700 で旗 x≈82、警察 x≈68）が、警察は比較面ではないので重なっても可とし、画像で判定する（§8 Q08）。外さないと警察がいる時は必ず静止旗になる。
 
 ### 5.8 警察2案（E034・E039）
 
@@ -681,11 +682,11 @@ App は毎フレーム `bonusPresentation.tick({activeMs:s.t, phase, guideActive
 ```css
 .bonus-card.is-badge-only .bonus-card-title,.bonus-card.is-badge-only .bonus-card-points,
 .bonus-card.is-badge-only .bonus-awards,.bonus-card.is-badge-only .bonus-card-detail{display:none}
-.bonus-card.is-badge-only{right:auto;left:50%;transform:translateX(-50%);padding:5px 12px;max-width:calc(100% - 20px)}
+.bonus-card.is-badge-only{right:auto;left:50%;translate:-50% 0;margin:0;padding:5px 12px;max-width:calc(100% - 20px)}
 .bonus-card.is-badge-only .bonus-card-notices{margin:0}
 .bonus-card-badge{color:#ffe694;white-space:nowrap}
 ```
-  （`transform` は既存の出入りの `transform` と重なるので、A は `is-badge-only` の時は `translate` プロパティを使うなど、既存の規則と衝突しない書き方にする。）
+  （中央寄せは `translate` プロパティで行い、既存の出入りの `transform`（`presentation.css:108`）と重ねない。）
 
 ## 6. 工程間の受け渡しと順序
 
@@ -731,7 +732,7 @@ CL05: A/B/C の後。実 App の明示接続（§6.4）
 import { App } from '/src/app.js';
 import { createStage } from '/src/scene/stage.js';
 import { createResultCardPorts } from '/src/presentation/result-card-ports.js';
-const app = new App(document.getElementById('test-root'), {   // id を 'app' にしない（自動起動を避ける。app.js:2169）
+const app = new App(document.getElementById('test-root'), {   // id を 'app' にしない（自動起動を避ける。app.js:2170）
   stageFactory: (container, options) => createStage(container, {...options, presentationSet:'extended96'}),
   resultCardPorts: ({result, host, scope}) => createResultCardPorts({result, host, scope}),
 });
