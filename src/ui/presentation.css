@@ -39,7 +39,7 @@
 .result-scene.result-photo{position:relative;inset:auto;z-index:auto;opacity:1;width:100%;max-width:640px;height:170px;flex:none;margin:0 auto 10px;border:4px solid #eee8d4;border-bottom-width:12px;border-radius:5px;background-color:#34446d;background-repeat:no-repeat;box-shadow:0 4px 12px #0005;overflow:hidden}
 .result-scene .result-portrait{position:absolute;bottom:-3px;left:50%;margin:0 0 0 -48px;transform-origin:center bottom}
 .result-scene.is-paused *{animation-play-state:paused!important}
-.ending-comic{pointer-events:none;position:absolute;z-index:12;top:calc(var(--safe-top,0px) + 80px);right:max(18px,var(--safe-right,0px));width:112px;height:168px;overflow:hidden;border:4px solid #fff4c9;border-radius:11px;box-shadow:4px 4px 0 #10142d,0 0 0 2px #10142d;background-color:#ffe694;background-image:url('../presentation/assets/result-atlas.webp');background-size:426.666667% 284.444444%;background-position:30.612245% 72.289157%;background-repeat:no-repeat;color:transparent;font-size:0;transform:rotate(5deg)}
+.ending-comic{pointer-events:none;position:absolute;z-index:12;top:calc(var(--safe-top,0px) + 80px);right:max(18px,var(--safe-right,0px));width:112px;height:168px;overflow:hidden;border:4px solid #fff4c9;border-radius:11px;box-shadow:4px 4px 0 #10142d,0 0 0 2px #10142d;background-color:#ffe694;background-repeat:no-repeat;color:transparent;font-size:0;transform:rotate(5deg)}
 .ending-comic::after{content:'';position:absolute;inset:0;border:2px solid #161b34;border-radius:5px;pointer-events:none}
 @media(max-height:740px){.result-scene.result-photo{height:125px}.result-scene .result-portrait{width:80px;height:120px;margin-left:-40px}.ending-comic{top:calc(var(--safe-top,0px) + 72px);width:88px;height:132px}}
 @media(orientation:landscape) and (max-height:500px){.result-scene.result-photo{height:105px;max-width:420px;margin-bottom:6px}.result-scene .result-portrait{width:68px;height:102px;margin-left:-34px}.ending-comic{top:24px;right:20px;width:76px;height:114px}}
@@ -157,3 +157,10 @@
 .evidence-film-body.is-missing{border:1px dashed #ffffff55;border-top:2px solid #0a0c1e;background:transparent}
 .evidence-film-frame figcaption{margin-top:2px;font-size:12px;line-height:1.2;text-align:center;color:#b9bee6}
 @media(orientation:landscape) and (max-height:500px){.result-evidence{max-width:600px}}
+
+/* 精密札だけを出す時のカード（ボーナスの束が無い評価中）。中央寄せは translate で行い、出入りの transform と重ねない。 */
+.bonus-card.is-badge-only .bonus-card-title,.bonus-card.is-badge-only .bonus-card-points,
+.bonus-card.is-badge-only .bonus-awards,.bonus-card.is-badge-only .bonus-card-detail{display:none}
+.bonus-card.is-badge-only{right:auto;left:50%;translate:-50% 0;margin:0;padding:5px 12px;max-width:calc(100% - 20px)}
+.bonus-card.is-badge-only .bonus-card-notices{margin:0}
+.bonus-card-badge{color:#ffe694;white-space:nowrap}
