@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createCameoDirector, createSlotRegistry, createCosmeticRng, CAMEOS } from './catalog.js';
 
-const CELLS=['pavement0','pavement1','pavement2','pavement3','pavement4','interior0','interior1','interior2','alley0','alley1','sign','plant','laundry','awning','fan','leaf','smoke','steam','vending','can','poster0','poster1','poster2','chameleon','manhole0','manhole1','manhole2','manhole3','manhole4','windows','resident','cat','bird','bicycle','bus','policeCar','ufo','rainbow','flag','remaining1','remaining2','remaining3','remaining4','remaining5','chimney','windowsWave','chameleonWink','manholeWink0','manholeWink1','manholeWink2','manholeWink3','manholeWink4','landmark0','landmark1','landmark2','landmark3','landmark4','awningFlip','vendingLit','pipe','residentFace'];
+const CELLS=['pavement0','pavement1','pavement2','pavement3','pavement4','interior0','interior1','interior2','alley0','alley1','sign','plant','laundry','awning','fan','leaf','smoke','steam','vending','can','poster0','poster1','poster2','chameleon','manhole0','manhole1','manhole2','manhole3','manhole4','windows','resident','cat','bird','bicycle','bus','policeCar','ufo','rainbow','flag','remaining1','remaining2','remaining3','remaining4','remaining5','chimney','windowsWave','chameleonWink','manholeWink0','manholeWink1','manholeWink2','manholeWink3','manholeWink4','landmark0','landmark1','landmark2','landmark3','landmark4','awningFlip','vendingLit','pipe','residentFace','crossingPost','crossingPostLit','crossingArm','tram','droneA','droneB','midFlag','gutterWaterA','gutterWaterB','gutterSwirl','robotPaint','robotFoot','robotLook','paintStripe','birdCarryA','birdCarryB','parcel','rope','footprint'];
 const district=b=>b<20?0:b<23?1:b<30?2:b<40?3:4;
 const ENTRY=[1,20,23,30,40];
 const streetFeature=b=>({0:5,1:6,2:7,3:8,4:18,5:19,6:62,7:63,8:64,9:66}[b%10]);
@@ -22,8 +22,8 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
   const planeGeometry=new THREE.PlaneGeometry(1,1);
   const tile=new THREE.InstancedBufferAttribute(new Float32Array(48*2),2);planeGeometry.setAttribute('atlasOffset',tile);
   const spriteMaterial=safe(new THREE.MeshBasicMaterial({map:texture,alphaTest:.2,side:THREE.DoubleSide,depthWrite:true}));
-  spriteMaterial.onBeforeCompile=shader=>{shader.vertexShader='attribute vec2 atlasOffset;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\n#ifdef USE_MAP\nvMapUv = (vMapUv + atlasOffset) / 8.0;\n#endif');};
-  spriteMaterial.customProgramCacheKey=()=> 'street-atlas-v1';
+  spriteMaterial.onBeforeCompile=shader=>{shader.vertexShader='attribute vec2 atlasOffset;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\n#ifdef USE_MAP\nvMapUv = (vMapUv + atlasOffset) / vec2(8.0, 12.0);\n#endif');};
+  spriteMaterial.customProgramCacheKey=()=> 'street-atlas-v2';
   const sprites=new THREE.InstancedMesh(planeGeometry,spriteMaterial,48);sprites.name='street-accent-atlas';sprites.frustumCulled=false;sprites.renderOrder=5;group.add(sprites);
   // Window-only exception: each quad is bounded by an existing opaque decorative glass pane.
   // It shares the atlas/plane geometry; reserved instance indices 40..46 avoid changing sprite UVs.
@@ -41,7 +41,7 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
   for(const mesh of [boxes,roofs]){mesh.frustumCulled=false;mesh.renderOrder=5;group.add(mesh);}
   const dummy=new THREE.Object3D(),color=new THREE.Color();let np=0,nb=0,nr=0,ni=0,residentWindows=0,staticN=0,particles=0,visibleCameos=0;const artwork=[];
   const place=(mesh,i,x,y,z,sx,sy,sz=1,rz=0,rx=0,ry=0)=>{dummy.position.set(x,y,z);dummy.scale.set(sx,sy,sz);dummy.rotation.set(rx,ry,rz);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);};
-  const sprite=(name,x,y,z,w,h,rz=0,rx=0,kind='static')=>{if(np>=40||kind==='static'&&staticN>=24)return;if(kind==='cameo'){const index=45+visibleCameos;if(index>=48)return;artwork.push(name);const cell=CELLS.indexOf(name);tile.setXY(index,cell%8,7-Math.floor(cell/8));place(cameoSprites,index,x,y,z,w,h,1,rz,rx);visibleCameos++;return;}artwork.push(name);const cell=Math.max(0,CELLS.indexOf(name));tile.setXY(np,cell%8,7-Math.floor(cell/8));place(sprites,np++,x,y,z,w,h,1,rz,rx);if(kind==='static')staticN++;else if(kind==='particle')particles++;};
+  const sprite=(name,x,y,z,w,h,rz=0,rx=0,kind='static')=>{if(np>=40||kind==='static'&&staticN>=24)return;if(kind==='cameo'){const index=45+visibleCameos;if(index>=48)return;artwork.push(name);const cell=CELLS.indexOf(name);tile.setXY(index,cell%8,11-Math.floor(cell/8));place(cameoSprites,index,x,y,z,w,h,1,rz,rx);visibleCameos++;return;}artwork.push(name);const cell=Math.max(0,CELLS.indexOf(name));tile.setXY(np,cell%8,11-Math.floor(cell/8));place(sprites,np++,x,y,z,w,h,1,rz,rx);if(kind==='static')staticN++;else if(kind==='particle')particles++;};
   const box=(x,y,z,w,h,d,c=0xaab3bc,rz=0)=>{if(staticN>=24)return;place(boxes,nb,x,y,z,w,h,d,rz);boxes.setColorAt(nb++,color.setHex(c));staticN++;};
   function syncSlot(id,building){if(disposed)return;registry.sync(id,building);}
   function draw(view={}) {
@@ -83,12 +83,12 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
           const n=s.deco.windows,k=Math.floor(n/2),instance=40+ni++,cell=CELLS.indexOf('residentFace');
           const reveal=reducedMotion?1:Math.max(0,Math.sin((t-cameo.start)/cameo.ms*Math.PI));
           const cy=Math.min(Math.max(h-1.15,5.95),6.9);
-          tile.setXY(instance,cell%8,7-Math.floor(cell/8));
+          tile.setXY(instance,cell%8,11-Math.floor(cell/8));
           place(interiors,instance,x+(k-(n-1)/2)*2.15,cy-.28+.3*reveal,.31,1.08,.5+.3*reveal);
           artwork.push('residentFace');residentWindows++;
         }else if(s.deco?.kind==='shop'&&s.deco.windows>0&&staticN<24){
           const n=s.deco.windows,k=Math.floor(n/2),cell=CELLS.indexOf(`interior${b%3}`),instance=40+ni++;
-          tile.setXY(instance,cell%8,7-Math.floor(cell/8));
+          tile.setXY(instance,cell%8,11-Math.floor(cell/8));
           place(interiors,instance,x+(k-(n-1)/2)*2.15,Math.min(Math.max(h-1.15,5.95),6.9),.3,1.2,1.08);
           artwork.push(`interior${b%3}`);staticN++;
           if(b===current&&!name.startsWith('alley'))sprite(name,px,py,pz,w,ph,rz,rx);
