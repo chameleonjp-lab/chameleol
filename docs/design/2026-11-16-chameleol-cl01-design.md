@@ -209,7 +209,7 @@ App.showResult()
 | 台 | 中心 294,520、横150・縦24、厚み10 | 上面 `#cbb9a4`、側面 `#a8957f`、線 `#24394b` 3px。影 (294,518) 横96・縦12 `#24394b` 35% |
 | 主人公 | 中心 x=294、足 y=516、高さ430 | 切り抜き画像（上下左右4px の余白込み）を `s=430/(h−8)` で拡大。主人公が無い時は影絵（`result-evidence-view.js:9` の SILHOUETTE を 3.6倍、中心 294,330、白15%・線 白40% 3px） |
 | 写真の帯 | 48,534,492,48 中央 | 28px・700・`#342811`。matched：`resultBestBuilding`＋「：」＋`evidence.building`。missing：`card.noRecord`。主人公 pending：`evidence.pending`。準備失敗（`state:'failed'` かつ prepared 無し）：`card.failed`。棟平均・瞬間一致度の数値は載せない（F08 の分離） |
-| ゲーム名 | 592,60〜92 | 小さなダイヤ（幅24・高さ32、§4.4 と同じ3色）＋`app.title` 40px・900・`#8dff6a`、縁 6px `#0a0c1e`、x=624 |
+| ゲーム名 | 592,60〜92 | 小さなダイヤ（幅24・高さ32、§4.5 と同じ3色）＋`app.title` 40px・900・`#8dff6a`、縁 6px `#0a0c1e`、x=624 |
 | 称号の札 | 592,112,572,176 角丸18 | 地 `#232a5e`、枠 `#ffe694` 4px（50棟は `#ffd43b` 6px）。文字域 604,124,548,152。`#fff6d6` 900。文字は `rankKey` があれば `card.rank.<rankKey>`、無ければ `card.confirming` |
 | 総得点の見出し | 592,基線336 | `result.total` 30px・700・`#fff0a0` |
 | 確認中の札 | 右端1164、306〜346 | `verificationState` が `accepted`・`verifying`・`pending_review`・`under_review` で、かつ `rankKey!==null` の時だけ。地 `#ffcc4d`、`card.confirming` 26px・800・`#3b2a00`、左右16、角丸999。順位は載せない |
@@ -686,3 +686,111 @@ App は毎フレーム `bonusPresentation.tick({activeMs:s.t, phase, guideActive
 .bonus-card-badge{color:#ffe694;white-space:nowrap}
 ```
   （`transform` は既存の出入りの `transform` と重なるので、A は `is-badge-only` の時は `translate` プロパティを使うなど、既存の規則と衝突しない書き方にする。）
+
+## 6. 工程間の受け渡しと順序
+
+### 6.1 互いに使う物
+
+| 使う側 → 作る側 | 物 | 形 |
+| --- | --- | --- |
+| B → C | 街の部品 | `createStreetAccents({...,mode})`、`accents.placements(view,frameInfo)`、`accents.tick(view,extra)`、`accents.stats()`（§4.8） |
+| B → C | 警察・主人公の反応 | `reactions.busy()`、`reactions.applyPoliceExtra(policeExtra,view)`（§4.8・§5.8） |
+| C → A | 札の CSS | `.bonus-card.is-badge-only`・`.bonus-card-badge`（§5.9。A が CL02 の最初の commit で書く） |
+| A → B | なし（カードのダイヤは A が 2D で同じ色を描く。コードは共有しない） | — |
+| CL05 → A/B/C | 明示接続の wrapper（§6.4） | 製品コードは変えない |
+
+### 6.2 ファイルの担当（同じファイルを同時に編集しない）
+
+| 担当 | 製品 | 試験（新しいファイルを作り、既存の試験ファイルは原則触らない） |
+| --- | --- | --- |
+| A | `result-card-ports.js`・カード/撮影/模型/回転の新規、`result-evidence-view.js`、`result-view.js`、`presentation.css`、`render-result-atlas.mjs`、`result-atlas.webp/.json`・`result-atlas-bounds.js` | `tests/presentation/result-card-*.test.mjs`、`tests/e2e/result-card.e2e.mjs` |
+| B | `tongue-rig.js`、`travel-tongue.js`、`showcase-tongue.js`、`street.js`、`stage.js` | `tests/scene/tongue-rig.test.mjs`・`travel-tongue.test.mjs`・`stage-mode.test.mjs`、`tests/e2e/travel-tongue.e2e.mjs` |
+| C | `street-accents.js`、`actor-reactions.js`、`characters.js`、`bonus-view.js`、`render-street-atlas.mjs`、`atlas.webp/.json` | `tests/presentation/street-extras.test.mjs`・`police-extras-view.test.mjs`・`bonus-badge.test.mjs`、`tests/e2e/street-extras.e2e.mjs` |
+| 誰も編集しない | `app.js`、`index.html`、`game.css`、`travel-tongue-motion.js` ほか処理側・15辞書・catalog | — |
+
+既存の試験ファイル（例 `tests/scene/showcase-tongue.test.mjs`、`tests/presentation/catalog.test.mjs`、`tests/e2e/presentation.e2e.mjs`）は**変えずに通す**。期待値の変更が要る時は理由を票に書き、CL-O が担当を一人に決めてから行う。
+
+### 6.3 順序
+
+```
+共通 base（cae3efc。7d551ed を含む）
+ ├ A（CL02）: ①札の CSS と結果アトラス詰め直し → ②カード描画・撮影 → ③ports と mount → ④E075/E090・保存画面 → ⑤5パネルの直し
+ ├ B（CL03）: ①tongue-rig と showcase の薄い包み（ホーム不変） → ②travel-tongue（姿勢・ダイヤ） → ③stage/street の mode 分岐・step・DOM 簡易舞台
+ │           （C の関数は存在確認で分け、無ければ false・0 で進める）
+ └ C（CL04）: ①街アトラスの拡張（61枠の比較） → ②accents の mode と5案・placements → ③reactions の busy/applyPoliceExtra と警察2案 → ④bonus-view の札
+B ④: C の②③の commit 後（CL-O が知らせる）に、extended96 の舞台へ C の部品を取り込み、3寸法の e2e と資源の測定
+CL05: A/B/C の後。実 App の明示接続（§6.4）
+```
+- A の①（CSS）が C の④の e2e より先。C の単体試験は CSS に頼らない（クラス名と `hidden` を見る）。
+- B と C は `street.js`・`street-accents.js` を分けて持つので同時に進められる。B は accents の中を書き換えない。C は street の中を書き換えない（必要な値は `frameInfo` と戻り値で渡す）。
+
+### 6.4 CL05 の明示接続（通常起動は変えない）
+
+```js
+// 試験専用（例 tests/e2e/fixtures/extended96.html から読む module）。index.html・app.js は変えない
+import { App } from '/src/app.js';
+import { createStage } from '/src/scene/stage.js';
+import { createResultCardPorts } from '/src/presentation/result-card-ports.js';
+const app = new App(document.getElementById('test-root'), {   // id を 'app' にしない（自動起動を避ける。app.js:2169）
+  stageFactory: (container, options) => createStage(container, {...options, presentationSet:'extended96'}),
+  resultCardPorts: ({result, host, scope}) => createResultCardPorts({result, host, scope}),
+});
+globalThis.__kamereoru = app; await app.boot();
+```
+- `importmap`（`three`）と `game.css` は `index.html` と同じに書く。CG02 の試験用の代用品（`tests/ui/*-app.test.mjs` の renderer/stage）は使わない。
+- 通常起動を変えていないことの確かめ：`git diff cae3efc -- src/app.js index.html src/presentation/catalog.js src/i18n` が空、既存の `tests/ui/game-extras-app.test.mjs`（legacy80 で step 0回）と `tests/e2e/presentation.e2e.mjs`（80/20）が変えずに通る、通常の `index.html` で `__kamereoru.stage.presentationStats().mode==='legacy80'`。
+
+## 7. 試験と測定の一覧
+
+先に失敗させる試験（RED）を書いてから製品を直す。工程の途中は対象試験だけを実行する（`node --test <ファイル>`、ブラウザは `--test-concurrency=1`）。画像は scratchpad ではなく各工程の証拠の置き場（`docs/acceptance/` 以下、CL-O が決める）へ。
+
+### 7.1 CL02（A）
+
+| 種類 | 内容 |
+| --- | --- |
+| RED→GREEN 単体 | ports：factory の中で acquire しない／初回 onChange が mount より先に来ても mount で `snapshot()` を描く／パネルは初回 `panels` に2つ／定義してはいけない6項目が無い（D01）。カード：405通りではみ出し0・3段目0件、`locale` 引数だけで文言が決まる、pending/missing/failed/確認中/旧版の文、順位・名前を描かない。撮影：中断で例外、`w×h×4≦691200`、描画器を自分で作らない |
+| e2e（実 App＋ports、§6.4） | 最初の600ms に E090 を開けて借りられる／撮影で取り上げられ、ready 後に今の model で借り直す（描画器は同時1）／公式訂正と言語変更で開いた E075・E090 が今の値／`share()` はタップの中で直接（代用の navigator で同期に1回）／取消・失敗・unavailable の案内と明示操作／保存画面の `img` と閉じた時の URL 解除／再試行で自動共有しない |
+| 画像 | 3寸法の結果画面（最初の表示・スクロール後）、主カード（ja・de・ru・th・vi × 0/1/20/50棟、6状態）、E075（通過・到達・未到達・色欠損・50棟）、E090（正面・回した後）、グラフの印・38px フィルム。倍率2 |
+| 測定 | 結果画面の同時保持バイト（atlas＋画面 canvas＋主人公＋パネル canvas＋保存 img）を「準備中」「ready」「E090 開」「保存画面開」で記録し 16,777,216 以下。結果アトラス10区画の前後差。PNG の大きさ |
+
+### 7.2 CL03（B）
+
+| 種類 | 内容 |
+| --- | --- |
+| RED→GREEN 単体 | mode：controller があっても `legacy80` なら step 0回、extended96 で1フレーム1回、終了演出フレームで0回、早期 return でも1回。step の入力：`t===presentation.t`、`frameIntervalMs`（初回/停止/非表示/不正=0）、`bestDistance`（不正=null）、`reducedMotion` が boolean。DOM 簡易舞台も1回・`drawable:false`。舌：本物の `createChameleon` と `createActorReactions` で成功中の顎・視線・停止を混ぜた1000周期の後に顎・口・頭・目・`jewel.visible` が舌なしと一致、二重 dispose、ダイヤの形と材質の破棄1回、`head.children` が元へ、ホームの管の頂点が今と同じ（同じ extension・unroll の格子で `Float32Array` 一致） |
+| e2e（extended96） | 3寸法・倍率1と2で5段階の各時点の画像、保持の中央でダイヤ 12px 以上、§2.3 の5条件（警察1人・頭 −0.92rad を含む）、途中で「動きを減らす」へ変更して1フレームで収納、停止中の `shapeUpdates` 増加0、`matchMedia` の購読が dispose で外れる |
+| 測定 | 舌の表示中＋小芝居＋警察の道具で `stage.stats()` の calls/geometries/textures の増分が 12/16/4 以下（既存 `presentation.e2e.mjs:151-216` と同じ方法） |
+
+### 7.3 CL04（C）
+
+| 種類 | 内容 |
+| --- | --- |
+| RED→GREEN 単体 | accents extended96：旧 director を呼ばない、cameo が null なら何も描かない、取得前に描かない、5案の各時点の絵の名前・枚数（3以下）、静止コマ、静止旗（`phase:'static'`）、自己ベスト25棟で x=249.0。placements：帯に入らない寸法で false。reactions：`busy()` が `stats()` と一致、applyPoliceExtra の取消で dx=0、停止中に二重に足さない、交互の番が変わらない。bonus-view：batch 無しの eval で札を通知の行に点数なしで表示、guide/warning で隠す、`show(batch)` の後も札が残る、`precisionBadge:null` で消える |
+| e2e（実 controller を明示接続） | t=2000〜3400 の札（batch 無し eval）、初通過前、E020/E067/E068/E069/E056 の開始・中間・終わりを3寸法、壁の所で絵が欠けない（§2.3 の不一致0）、期限切れの静止旗、警察 1→0／1→2 の取消で補正0、足跡が棟の切替で残らない |
+| 測定 | 既存61枠の画素差（作り直し前と拡張後）、街アトラスの展開後・圧縮後バイト、静的装飾・粒子・小芝居の枚数の最大 |
+
+### 7.4 CL05
+
+実 App の明示接続（§6.4）で A/B/C を通しで：1プレイの中で舌・小芝居・警察・札、終了→結果カード→共有→保存→もう一度。15言語×3寸法の結果画面の画像。通常起動の不変（§6.4 の確かめ）。CL-R の提出前レビュー。
+
+### 7.5 iPhone 実機でしか確かめられない項目（自動ブラウザで合格にしない）
+
+X の投稿画面への PNG 1枚の添付（Web Share の files）、`img` の長押しで写真に保存、canvas の長押しで保存できないこと、`Intl.Segmenter` の改行、段階1の細い輪郭とダイヤの見え方（倍率3）、E090 の横なぞりと縦スクロールの両立（`touch-action:pan-y`）、結果画面の同時保持メモリ（Safari の canvas 上限）、30秒の描画時間（95百分位 33.4ms 以下・中央値悪化10%以内）、効果音が増えていないこと。
+
+## 8. 決めきれなかった所・判断が要る所
+
+| 番号 | 内容 | この票の仮の決め | 判断する人 |
+| --- | --- | --- | --- |
+| Q01 | 画面カードが主人公画像を `result.resultPortrait` から読む（N01） | 読む。snapshot へ足すなら ports を合わせる | 処理側（ChatGPT） |
+| Q02 | 新しい文言キー（§3.12）。届くまで英語の控え・代わりの表示 | 控えで進め、15言語は未完了として残す | 処理側 |
+| Q03 | bonus tick の `warningActive` が警察1人以上で true（D09）。そのため警察がいる間は札が出ない | tick の値どおり抑止（描画側で判定し直さない） | 処理側・本人 |
+| Q04 | 効果無効（`effects:false`）の extended96 で step を呼ぶか、札を出すか（D15） | step は `drawable:false` で呼ぶ。札を出すかは App 側で決める | 処理側 |
+| Q05 | `getLayoutKey` を定数にする（画面の回転・大きさの変化で PNG を作り直さない） | 定数 `'card-1200x630-v1'` | 処理側 |
+| Q06 | mount が App の `.result-actions` と共有ボタンの位置を DOM で動かす（App のコードは変えない） | 動かす。CG03 で App 側が並びを持つなら mount の移動をやめる | 処理側 |
+| Q07 | E067 は 402×874 で出ない見込み、E069 は屋根の高い棟で出ない（条件付き表示）。新しい絵の「端8px」を、画面外から流れ込む世界の絵にも当てるか | 置く時の判定は画面内8px、流れて出入りするのは可 | 本人 |
+| Q08 | 中間旗・足跡が警察1人目の足元と画面で重なることがある（比較面ではない） | 可とし、画像で判定 | 本人 |
+| Q09 | 警察1人で頭が振り向いている時に舌が出る見た目（§2.3） | 測る。悪ければ「頭の振り向きが 0.3rad 以下の時だけ描く」は描画側でできないので、処理側の開始条件の変更として依頼する | 本人・処理側 |
+| Q10 | 結果アトラスを作り直すか、今の画像を並べ直すか（§3.11） | 10区画の差を見て A が選び、票に書く | A（記録） |
+| Q11 | 結果の写真（2体目の主人公）を最初の画面に入れない並び（§3.5）。402×874 で写真の上端が約870px と境目に近い | `order` で成績の後ろへ。画像で確かめる | 本人 |
+
+未確認（この票では確かめていない）：本編の資源の現行 head での数値（§2.1）、2つのアトラス作成スクリプトのこの環境での実行結果、WebGL の深度バッファの分のメモリ、`Intl.Segmenter`・Web Share・長押し保存の iPhone での動き、§3.5・§5 の画面上の位置の見込み（カメラの投影から計算した値で、実画像では未確認）。
