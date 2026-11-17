@@ -18,6 +18,15 @@ export const NO_PLACEMENTS = Object.freeze({ railway: false, water: false, robot
 export const IDLE_BUSY = Object.freeze({ hero: false, police: false });
 
 /**
+ * step へ渡す placements を作る。配置できるか（描画できる時だけ）は C の部品（accents.placements）が決め、ここは
+ * 事実（描画可否・警察が立ち位置に着いたか）と合わせるだけ。描けない時は部品を呼ばず、すべて配置不可。
+ */
+export function composePlacements({ drawable, accents, view, info, policeSettled }) {
+  if (!drawable) return NO_PLACEMENTS;
+  return { ...NO_PLACEMENTS, existing: {}, ...(info && accents?.placements ? accents.placements(view, info) : null), policeSettled: policeSettled === true };
+}
+
+/**
  * extended96 の舞台が controller へ step を渡す口（IF02/IF09）。立体の舞台と簡易表示が同じものを使う。
  * 値は観測するだけで、抑止・抽選・時計は controller が持つ。priority は作らない。
  *  - t は presentation.t（ゲーム時計）。

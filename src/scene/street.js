@@ -21,9 +21,8 @@ import { createChameleon, createFerret, createJewelryShop } from './characters.j
 import { outlineForBuilding } from './chameleon-outline.js';
 import { SKY, TOD, rgbFloat } from './palette-colors.js';
 import { createEffects } from './effects.js';
-import { createGamePresentationClock, createVisiblePresentationClock, resolvePresentationMode, createExtendedStepper, NO_PLACEMENTS, IDLE_BUSY } from './stage.js';
+import { createGamePresentationClock, createVisiblePresentationClock, resolvePresentationMode, createExtendedStepper, composePlacements, NO_PLACEMENTS, IDLE_BUSY } from './stage.js';
 import { createTravelTongue } from './travel-tongue.js';
-import { CAMEOS } from '../presentation/catalog.js';
 import { createPresentationScope } from '../presentation/scope.js';
 import { createStreetAccents } from '../presentation/street-accents.js';
 import { createActorReactions } from '../presentation/actor-reactions.js';
@@ -1251,7 +1250,6 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       policeVisible: ferretRoots.map((r) => r.visible),
     };
   }
-  const existingOff = Object.fromEntries(CAMEOS.map((c) => [c.id, false]));
   /** 開始演出・終了演出の時の step（描かない。評価区間と一度だけの取得処理を続ける）。 */
   function stepIdle(args) {
     travelTongue?.cancel();
@@ -1260,27 +1258,19 @@ export function createThreeStage(container, { course, decorations, rules = RULES
 
   /**
    * extended96 の1フレーム：controller を1回だけ step し、その出力を描く。
-   * C の部品（placements・busy・applyPoliceExtra・tick の第2引数）は、存在すれば使い、無ければ false・0・何もしない。
+   * 配置可否・小芝居の絵・警察の追加動作は C の部品（accents・reactions）が持ち、ここは事実を渡して出力を戻すだけ。
+   * cameo が null の時は何も描かず、旧描画へは戻らない。
    */
   function stepExtended(args, view) {
     const drawable = !contextLost && presentationEnabled;
-    const info = drawable && accents?.placements ? frameInfo() : null;
+    const info = drawable && accents ? frameInfo() : null;
     let extra = null;
     if (stepper && args.presentation) {
-      const placements = drawable
-        ? { ...NO_PLACEMENTS, existing: existingOff, ...(info ? accents.placements(view, info) : null), policeSettled: view.policeStage === 1 && ferretArrived[0] }
-        : NO_PLACEMENTS;
-      let busy = IDLE_BUSY;
-      if (reactions?.busy) busy = reactions.busy();
-      else if (reactions) { const st = reactions.stats(); busy = { hero: st.hero != null, police: st.police != null }; }
-      extra = stepper.step(args.presentation, { drawable, actorBusy: busy, placements });
+      const placements = composePlacements({ drawable, accents, view, info, policeSettled: view.policeStage === 1 && ferretArrived[0] });
+      extra = stepper.step(args.presentation, { drawable, actorBusy: reactions ? reactions.busy() : IDLE_BUSY, placements });
     }
-    if (accents) {
-      // C の部品が無い間は、旧 director の抽選を止めるため優先扱いで進める（取得済みの新演出は C の部品が描く）。
-      if (accents.placements) accents.tick(view, { cameo: extra?.cameo ?? null, policeExtra: extra?.policeExtra ?? null, actors: info ?? frameInfo() });
-      else accents.tick({ ...view, priority: 'guidance' });
-    }
-    const dx = reactions?.applyPoliceExtra ? (reactions.applyPoliceExtra(extra?.policeExtra ?? null, view)?.dx ?? 0) : 0;
+    accents?.tick(view, { cameo: extra?.cameo ?? null, policeExtra: extra?.policeExtra ?? null, actors: info ?? frameInfo() });
+    const dx = reactions?.applyPoliceExtra(extra?.policeExtra ?? null, view)?.dx ?? 0;
     if (dx) {
       ferretRoots[0].position.x += dx;
       ferretShadows[0].position.x += dx;
@@ -1821,7 +1811,9 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) add(b, new THREE.Vector3(x, y, z));
         return done(b);
       });
-      return { canvas: { width: viewW, height: viewH }, hudBottom, body: done(body), tongue: done(tongue), diamond: done(diamond), police };
+      // 警察の足元（root の位置）の画面上の x。追加動作の移動量（dx）の確認用。
+      const policeRoot = ferretRoots.map((r) => (r.visible ? screenX(r.position.x, r.position.y, r.position.z) : null));
+      return { canvas: { width: viewW, height: viewH }, hudBottom, body: done(body), tongue: done(tongue), diamond: done(diamond), police, policeRoot };
     },
     /** 検証用（verification の時だけ）：主人公のモデル（警察1人の最大振り向きなど、姿勢を固定した描画の確認用）。 */
     verificationHero: () => (verification && !disposed ? hero : null),
