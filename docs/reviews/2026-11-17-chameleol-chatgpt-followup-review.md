@@ -59,3 +59,9 @@ null cameo検査は16ms刻みで実claimのPromiseを待つ。2案以上の取�
 Importantは静止旗の画素差で、`cameo:null`にすると旗の装飾枠が空き、別の装飾も増える点だった。レビュー担当が旗以外の装飾の変化を確認したため、試験側を修正した。実rendererのscene/cameraを観測し、アトラスの67番に一致する実インスタンスだけを一時的に零行列へ変える。舞台・controller・装飾の選択・時計を進めず同じ場面を描き直し、finallyで元の行列を復元する。実インスタンスの四隅の投影と、その旗だけの可視画素差を検査する。
 
 試験補助`tests/presentation/atlas-capture.mjs`の欠落を先に確認し、実Three.jsを使う3試験（他の装飾を維持、読出し例外でも復元、対象が無ければ失敗）を追加して3/3成功を確認。修正後を再び独立レビューしたとは扱わず、CIで画素・画像の実証を行う。
+
+## 最後の確認
+
+製品基準`455c1495a12fe2f7dda08b1f6f6e7925a8a9e569`の[CI #80](https://github.com/chameleonjp-lab/chameleol/actions/runs/44046124259)が全6ジョブ成功。最終単体718件中687成功・失敗0・既存SQL専用31skip、SQL32/32、QuickJS16照合、ブラウザ263成功/失敗0/既存CL02画像生成の任意2件skip、standalone build112ファイル。新規対象はすべて成功。画像・測定artifactを回収して旗と水を目視した。
+
+3寸法の旗は125632msからdelivery93フレームすべて描画、127120msの旗の可視画素は249/371/234。旧最大＋舌は11呼出/13形/1画像で上限内。実走査の可否表、実投影・画素・JSONと画像は[測定票](../acceptance/pr26/chatgpt-followup/measurements.md)に保存した。R07/R11、R09の設計差と全体ゲートは未解決のままである。最終文書反映後のhead/CIはPR本文を正とする。

@@ -12,8 +12,22 @@
 | 共有PR番号・URL | [#26（ドラフト）](https://github.com/chameleonjp-lab/chameleol/pull/26) |
 | CG02準備commit／Claude開始点 | `7d551ed624cde7b61ff2ef33cf434945706b7919` |
 | 今回のCG02補足の開始head | `90473ee5c4367d784c8a4579e302b37a652964ab`（CL01設計追加済み）。補足後は製品変更を含む。最新head/CIはPR本文とブランチ履歴を正とする |
-| 現在の担当 | ChatGPT：CL02追加分の独立レビュー・PR後修正・統合検査準備を担当。Claude再開後の予定されたCL03〜06の追加実装はClaude、通常接続と両者実装後の翻訳はChatGPT |
-| 状態 | CL02実装は7242c64で追加済み。以下の受入指摘をChatGPTが修正し、最新CIをPR本文で照合する。通常起動legacy80、catalog80/20は維持し、G2/G5全体合格は未完了 |
+| 現在の担当 | ChatGPT：提出済みCL03/CL04の受入修正と実接続検査。Claude：残る見た目の判断資料と予定されたCL05/CL06。通常接続・双方実装後の翻訳はChatGPT |
+| 状態 | CL02/CL03/CL04を受領し、今回のChatGPT修正基準は455c149。R07/Q07・R11/Q09と全体受渡しが未解決。最新head/CIはPR本文。通常起動legacy80、catalog80/20、G2/CG03/翻訳/G5は未完了 |
+
+## CL03/CL04のChatGPT受入修正（2026-11-17）
+
+本人の「洗い出し→計画→敵対的検証→実装完了→Claude申し送り」の依頼で、開始head `ffa16869302ccc121f8b5372ad27b7dc21e26fae`から進めた。[計画](../superpowers/plans/2026-11-17-chameleol-chatgpt-pr26-followup-plan.md)、[独立レビューと検証](../reviews/2026-11-17-chameleol-chatgpt-followup-review.md)、[測定](pr26/chatgpt-followup/measurements.md)、[Claudeへのコピー用依頼文](../prompts/2026-11-17-claude-pr26-after-chatgpt.md)を参照する。
+
+F14に従い、提出済みの表示不具合もChatGPTが引き継いだ。製品の編集先は`src/app.js`、`src/presentation/bonus-view.js`、`src/presentation/street-accents.js`。未定義翻訳キーを数字仮表示へ戻し、検証予熱を16ms以下に変更、中間旗x253と水・渦の柱からの分離を修正した。予定されたClaudeの担当を変えず、抽選・時刻・採点・保存・通信・辞書を変えていない。
+
+計画の独立レビューはCritical0/Important3/Minor3で全6件を反映。コードの独立レビューはCritical0/Important1/Minor0。旗を消すと別の装飾も増える試験の欠陥を受け、実midFlagだけを隠して測定しfinallyで復元するよう直した。独立レビュー後の修正を再レビュー済みとは記載しない。
+
+実stepperと実controllerによる予熱の再現、旗の縦画面配置、水と柱の交差、未定義キーのREDを確認してから修正。最後の確認は全単体718件中687成功・失敗0・既存SQL専用31skip、build112ファイル。実E020 claim、16msの2案以上と実Artwork、3寸法49棟の最初grace、実中間旗のdelivery→static・投影・画素、旧最大＋舌の資源試験を追加した。CIの4組と合否は維持し、画像と測定の保存のみ追加した。製品基準455c149のCI #80は全6ジョブ成功。SQL32/32、QuickJS16、ブラウザ263成功・失敗0・CL02画像生成用任意2件skip。今回の対象はskipなしで成功。回収画像9枚とJSON7件を測定票へ保存した。文書反映後の最新head/CIはPR本文を照合する。
+
+今回のChatGPT実装・検査の製品基準は`455c1495a12fe2f7dda08b1f6f6e7925a8a9e569`。通常git pushの認証情報が無かったため、GitHubの認証済み機能で同じ親から同じtreeのcommitを作成し、期待headを照合して通常の前進だけを行った。強制上書きやmainへの書込はしていない。手元の独立レビュー範囲と同じtreeであることを照合済み。
+
+R07/Q07（鳥の可視率）、R11/Q09（舌と胴4px）、R09の足元箱に対する設計値との差、CL05/CL06の実Appループ全体検査は残る。これらを今回の試験成功へ含めない。CG03の通常接続・96/4切替・15言語・G5・iPhone・公開は未完了。Claudeは済んだ部品を作り直さず、最新修正を保持して残工程を進める。提出済み不具合の製品修正は引き続きChatGPTが所有し、同じファイルの同時編集を避ける。Claudeへの実送信は行っていない。
 
 ## 結果画面の追加3対応（2026-11-17）
 

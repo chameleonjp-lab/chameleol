@@ -2,6 +2,12 @@
 
 2026-11-17。担当はChatGPT。基準はCL02追加head `7242c6489c69426cd281062eb9d3b7a7fd467bd2`と、その後の[CL02受入修正](../../reviews/2026-11-17-chameleol-cl02-acceptance-review.md)。全体要件F01〜14、契約IF01〜11 v1.2を変更しない。現在の実装状況と最新CIは[受渡し票](../chameleol-handoff-ledger.md)から案内するPR本文を正とする。
 
+## CL03/CL04の提出済み部分の受入修正（2026-11-17）
+
+[実装計画](../../superpowers/plans/2026-11-17-chameleol-chatgpt-pr26-followup-plan.md)、[独立レビューと修正](../../reviews/2026-11-17-chameleol-chatgpt-followup-review.md)、[測定](chatgpt-followup/measurements.md)、[Claude用申し送り](../../prompts/2026-11-17-claude-pr26-after-chatgpt.md)を追加した。
+
+精密札の未定義キー、検証用予熱、中間旗、水の表示位置と、実claim/実舞台/可視画素/旧最大＋舌の検査をChatGPTが引き継いだ。R07/Q07とR11/Q09が未解決で、CL05/CL06の実Appループ全体受入も残るため、G2・CG03・翻訳・G5は未完了。通常legacy80/catalog80/20を維持する。最新headとCIはPR本文を照合する。
+
 ## 今回先に確認するもの
 
 | 要件/契約 | 確認する動作 | 検査と現在の位置 |

@@ -1,0 +1,1604 @@
+[
+  {
+    "atMs": 95000,
+    "baseline": [
+      {
+        "effectId": null,
+        "t": 95350,
+        "renderer": {
+          "objects": 202,
+          "geometries": 56,
+          "textures": 13,
+          "calls": 106
+        },
+        "pools": {
+          "mode": "extended96",
+          "tongue": null,
+          "actors": {},
+          "activeIds": [],
+          "successRings": 0,
+          "enabled": false
+        }
+      },
+      {
+        "effectId": 19,
+        "t": 95700,
+        "renderer": {
+          "objects": 202,
+          "geometries": 56,
+          "textures": 14,
+          "calls": 106
+        },
+        "pools": {
+          "mode": "extended96",
+          "tongue": null,
+          "actors": {},
+          "activeIds": [],
+          "successRings": 0,
+          "enabled": false
+        }
+      }
+    ],
+    "samples": [
+      {
+        "effectId": null,
+        "t": 95350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 63,
+          "textures": 14,
+          "calls": 116
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "sign",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            22,
+            23,
+            24,
+            31,
+            28,
+            32
+          ],
+          "staticDecorations": 24,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 2,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              22,
+              23,
+              24,
+              31,
+              28,
+              32
+            ],
+            "hero": null,
+            "police": "radio",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 32,
+        "t": 95350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 64,
+          "textures": 14,
+          "calls": 117
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "sign",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            32
+          ],
+          "staticDecorations": 24,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 3,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              32
+            ],
+            "hero": "sweat",
+            "police": "radio",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 33,
+        "t": 95350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 66,
+          "textures": 14,
+          "calls": 117
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "sign",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            33
+          ],
+          "staticDecorations": 24,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 4,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              33
+            ],
+            "hero": "sweat",
+            "police": "sketch",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 37,
+        "t": 95350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 67,
+          "textures": 14,
+          "calls": 117
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "sign",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            37
+          ],
+          "staticDecorations": 24,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 5,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              37
+            ],
+            "hero": "sweat",
+            "police": "binoculars",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 40,
+        "t": 95350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 68,
+          "textures": 14,
+          "calls": 114
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "sign",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            40
+          ],
+          "staticDecorations": 24,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 6,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              40
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 26,
+        "t": 95350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 68,
+          "textures": 14,
+          "calls": 115
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "sign",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            26
+          ],
+          "staticDecorations": 24,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 7,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              26
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 4,
+        "t": 95350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 68,
+          "textures": 14,
+          "calls": 115
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            4,
+            26
+          ],
+          "staticDecorations": 23,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 8,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              26
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 41,
+        "t": 95350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 69,
+          "textures": 14,
+          "calls": 116
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            4,
+            26,
+            41
+          ],
+          "staticDecorations": 23,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 9,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              26
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 1,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 19,
+        "t": 95350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 69,
+          "textures": 14,
+          "calls": 116
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "chimney",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "leaf",
+            "leaf",
+            "leaf",
+            "smoke",
+            "smoke",
+            "smoke",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            19,
+            26,
+            41
+          ],
+          "staticDecorations": 24,
+          "ambientParticles": 6,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 10,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              26
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 1,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 19,
+        "t": 95700,
+        "renderer": {
+          "objects": 228,
+          "geometries": 69,
+          "textures": 15,
+          "calls": 116
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "chimney",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "leaf",
+            "leaf",
+            "leaf",
+            "smoke",
+            "smoke",
+            "smoke",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            19,
+            26,
+            41
+          ],
+          "staticDecorations": 24,
+          "ambientParticles": 6,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 11,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              26
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 1,
+          "enabled": true
+        }
+      }
+    ]
+  },
+  {
+    "atMs": 100000,
+    "baseline": [
+      {
+        "effectId": null,
+        "t": 100350,
+        "renderer": {
+          "objects": 202,
+          "geometries": 55,
+          "textures": 13,
+          "calls": 105
+        },
+        "pools": {
+          "mode": "extended96",
+          "tongue": null,
+          "actors": {},
+          "activeIds": [],
+          "successRings": 0,
+          "enabled": false
+        }
+      },
+      {
+        "effectId": 19,
+        "t": 100700,
+        "renderer": {
+          "objects": 202,
+          "geometries": 55,
+          "textures": 14,
+          "calls": 105
+        },
+        "pools": {
+          "mode": "extended96",
+          "tongue": null,
+          "actors": {},
+          "activeIds": [],
+          "successRings": 0,
+          "enabled": false
+        }
+      }
+    ],
+    "samples": [
+      {
+        "effectId": null,
+        "t": 100350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 62,
+          "textures": 14,
+          "calls": 115
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "alley1",
+            "pavement2",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            22,
+            23,
+            24,
+            31,
+            28,
+            32
+          ],
+          "staticDecorations": 21,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 2,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              22,
+              23,
+              24,
+              31,
+              28,
+              32
+            ],
+            "hero": null,
+            "police": "radio",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 32,
+        "t": 100350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 63,
+          "textures": 14,
+          "calls": 116
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "alley1",
+            "pavement2",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            32
+          ],
+          "staticDecorations": 21,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 3,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              32
+            ],
+            "hero": "sweat",
+            "police": "radio",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 33,
+        "t": 100350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 65,
+          "textures": 14,
+          "calls": 116
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "alley1",
+            "pavement2",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            33
+          ],
+          "staticDecorations": 21,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 4,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              33
+            ],
+            "hero": "sweat",
+            "police": "sketch",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 37,
+        "t": 100350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 66,
+          "textures": 14,
+          "calls": 116
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "alley1",
+            "pavement2",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            37
+          ],
+          "staticDecorations": 21,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 5,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              37
+            ],
+            "hero": "sweat",
+            "police": "binoculars",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 40,
+        "t": 100350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 67,
+          "textures": 14,
+          "calls": 113
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "alley1",
+            "pavement2",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            40
+          ],
+          "staticDecorations": 21,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 6,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              40
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 26,
+        "t": 100350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 67,
+          "textures": 14,
+          "calls": 114
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "alley1",
+            "pavement2",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            26
+          ],
+          "staticDecorations": 21,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 7,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              26
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 4,
+        "t": 100350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 67,
+          "textures": 14,
+          "calls": 114
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "alley1",
+            "pavement2",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            4,
+            26
+          ],
+          "staticDecorations": 21,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 8,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              26
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 0,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 41,
+        "t": 100350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 68,
+          "textures": 14,
+          "calls": 115
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "pavement1",
+            "alley1",
+            "pavement2",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            4,
+            26,
+            41
+          ],
+          "staticDecorations": 21,
+          "ambientParticles": 0,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 9,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              26
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 1,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 19,
+        "t": 100350,
+        "renderer": {
+          "objects": 228,
+          "geometries": 68,
+          "textures": 14,
+          "calls": 115
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "chimney",
+            "pavement1",
+            "alley1",
+            "pavement2",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "leaf",
+            "leaf",
+            "leaf",
+            "smoke",
+            "smoke",
+            "smoke",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            19,
+            26,
+            41
+          ],
+          "staticDecorations": 22,
+          "ambientParticles": 6,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 10,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              26
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0.3333333333333333,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 1,
+          "enabled": true
+        }
+      },
+      {
+        "effectId": 19,
+        "t": 100700,
+        "renderer": {
+          "objects": 228,
+          "geometries": 68,
+          "textures": 15,
+          "calls": 115
+        },
+        "pools": {
+          "visibleArtwork": [
+            "pavement0",
+            "alley0",
+            "pavement1",
+            "interior2",
+            "pavement1",
+            "interior0",
+            "chimney",
+            "pavement1",
+            "alley1",
+            "pavement2",
+            "pavement2",
+            "pavement2",
+            "manhole1",
+            "poster1",
+            "landmark1",
+            "leaf",
+            "leaf",
+            "leaf",
+            "smoke",
+            "smoke",
+            "smoke",
+            "bird",
+            "bird",
+            "bird"
+          ],
+          "activeIds": [
+            19,
+            26,
+            41
+          ],
+          "staticDecorations": 22,
+          "ambientParticles": 6,
+          "backgroundGroups": 1,
+          "backgroundBirds": 3,
+          "shopInteriors": 2,
+          "residentWindows": 0,
+          "drawCalls": 5,
+          "geometries": 3,
+          "textures": 1,
+          "mode": "extended96",
+          "storySprites": 0,
+          "staticFlag": false,
+          "footprints": 0,
+          "count": 0,
+          "disabled": false,
+          "slow": 0,
+          "tongue": {
+            "visible": true,
+            "diamondVisible": true,
+            "shapeWrites": 2,
+            "poseWrites": 11,
+            "drawCalls": 3,
+            "geometries": 2
+          },
+          "actors": {
+            "activeIds": [
+              26
+            ],
+            "hero": "sweat",
+            "police": "hat",
+            "tail": 0,
+            "counts": {
+              "radio": 1,
+              "sweat": 1
+            },
+            "props": 10
+          },
+          "successRings": 1,
+          "enabled": true
+        }
+      }
+    ]
+  }
+]

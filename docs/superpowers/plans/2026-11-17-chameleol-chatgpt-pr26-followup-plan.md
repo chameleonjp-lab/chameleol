@@ -57,11 +57,11 @@ F14に従い、提出済みの不具合は表示ファイルもChatGPTが直接�
 
 **Interfaces:** `mountBonusPresentation({host,scope,t,reducedMotion})`、`App.debugPresentation({effectId})`を維持。検証入口のstage.updateは表示用入力のみでsessionへapplyしない。
 
-- [ ] 既存辞書検査のREDを記録し、未定義キーを呼ばず「◎ 98%」を表示する試験へ更新する。
-- [ ] 検証入口の予熱を実createExtendedStepperへ通し、後続の描画可能な評価→grace（lastEvalSuccess:false・実配置可）で同じ実controllerが新しい演出を始め、sessionのstate/history/saveSeqが変わらない試験を追加しREDを確認する。
-- [ ] 数字の仮表示と16ms刻み・終点一致の予熱を最小修正する。
-- [ ] `node --test tests/i18n/messages.test.mjs tests/presentation/bonus-badge.test.mjs tests/ui/game-extras-app.test.mjs`で失敗0を確認する。
-- [ ] 対応結果を記録してcommitする。
+- [x] 既存辞書検査のREDを記録し、未定義キーを呼ばず「◎ 98%」を表示する試験へ更新する。
+- [x] 検証入口の予熱を実createExtendedStepperへ通し、後続の描画可能な評価→grace（lastEvalSuccess:false・実配置可）で同じ実controllerが新しい演出を始め、sessionのstate/history/saveSeqが変わらない試験を追加しREDを確認する。
+- [x] 数字の仮表示と16ms刻み・終点一致の予熱を最小修正する。
+- [x] `node --test tests/i18n/messages.test.mjs tests/presentation/bonus-badge.test.mjs tests/ui/game-extras-app.test.mjs`で失敗0を確認する。
+- [x] 対応結果を記録してcommitする。
 
 ## Task 2：実舞台の接続試験と待機を直す
 
@@ -69,12 +69,12 @@ F14に従い、提出済みの不具合は表示ファイルもChatGPTが直接�
 
 **Interfaces:** `createStage(...,{presentationSet:'extended96',gameExtrasController})`、controllerの`step`と`extrasPort.initialState`、`presentationStats()`。観測ラッパーは入力・戻り値を変更しない。
 
-- [ ] E020を最初の機会で選ぶ保存用乱数状態を決定し、実placements→claim前0→claim後のE020描画をassertする試験を追加する。
-- [ ] 既存null cameo試験へ`offered.length>=2`・`shownWithOffer>0`・提供中に実visibleArtworkが非空を先に加えて失敗を確認する。
-- [ ] 16ms刻みとclaim Promiseの完了を使い、1フレーム1step・非提供時描画0を維持して成功させる。
-- [ ] 固定50msをsnapshotの状態待ちへ変更する。
-- [ ] 旧最大propの各表示が非空であることと舌holdの同時状態をassertし、12/16/4以内を実計測する。
-- [ ] 対象ブラウザ試験をCIで確認する。部品描画のoverrideは残しても、実接続の証拠と明確に区別する。
+- [x] E020を最初の機会で選ぶ保存用乱数状態を決定し、実placements→claim前0→claim後のE020描画をassertする試験を追加する。
+- [x] 既存null cameo試験へ`offered.length>=2`・`shownWithOffer>0`・提供中に実visibleArtworkが非空を先に加えて失敗を確認する。
+- [x] 16ms刻みとclaim Promiseの完了を使い、1フレーム1step・非提供時描画0を維持して成功させる。
+- [x] 固定50msをsnapshotの状態待ちへ変更する。
+- [x] 旧最大propの各表示が非空であることと舌holdの同時状態をassertし、12/16/4以内を実計測する。
+- [x] 対象ブラウザ試験をCIで確認する。部品描画のoverrideは残しても、実接続の証拠と明確に区別する。
 
 ## Task 3：旗と水の提出済み描画を修正
 
@@ -82,11 +82,11 @@ F14に従い、提出済みの不具合は表示ファイルもChatGPTが直接�
 
 **Interfaces:** `storyPoses(id,elapsedMs,{building,fx,...})`、`accents.placements(view,frameInfo)`と描画の位置を一致させる。旗の時計・保存形式・当選条件は変更しない。
 
-- [ ] 実舞台相当のカメラで125600〜126500msに3寸法とも旗が置ける試験、bestDistance=25との6px分離、隙間内の水源・渦の試験を先に作りREDを確認する。
-- [ ] 旗の着地点を前方へ寄せ、水源と渦を街灯の柱からずらす。実測で決めた値と理由を記録する。
-- [ ] overrideなしで3寸法delivery→staticをassertし、静止旗の撮影時に`staticFlag===true`に加え、舞台を進めず実midFlagインスタンスだけを隠して再描画した画素差の非空（10画素以上）と、その外接矩形がcanvasの8px内側に収まることを必須にする。統計値だけで画面内を推定しない。
-- [ ] 49棟のgrace最初のフレームの配置走査、壁/胴不一致0、壁遮蔽<=1.5%を確認する。水が開始できない寸法の画像は部品例と表示する。
-- [ ] 対象単体とブラウザを確認し、測定表・画像を更新する。
+- [x] 実舞台相当のカメラで125600〜126500msに3寸法とも旗が置ける試験、bestDistance=25との6px分離、隙間内の水源・渦の試験を先に作りREDを確認する。
+- [x] 旗の着地点を前方へ寄せ、水源と渦を街灯の柱からずらす。実測で決めた値と理由を記録する。
+- [x] overrideなしで3寸法delivery→staticをassertし、静止旗の撮影時に`staticFlag===true`に加え、舞台を進めず実midFlagインスタンスだけを隠して再描画した画素差の非空（10画素以上）と、その外接矩形がcanvasの8px内側に収まることを必須にする。統計値だけで画面内を推定しない。
+- [x] 49棟のgrace最初のフレームの配置走査、壁/胴不一致0、壁遮蔽<=1.5%を確認する。水が開始できない寸法の画像は部品例と表示する。
+- [x] 対象単体とブラウザを確認し、測定表・画像を更新する。
 
 ## Task 4：全体確認・申し送り
 
@@ -94,12 +94,16 @@ F14に従い、提出済みの不具合は表示ファイルもChatGPTが直接�
 
 **Interfaces:** 既存F/IF/G番号とR/H/Q番号を保持。修正済み・未解決・未実行・実機の状態を分ける。
 
-- [ ] 最終差分の独立レビューを受け、重要な指摘は再現試験を先に作って修正する。
-- [ ] 最後の製品変更後に`npm test`、`npm run build`、`git diff --check`を実行する。
-- [ ] 共有headを再確認して同じPRへ通常pushする。履歴の強制上書きをしない。そのSHAの既存4組並行CIを完了まで確認し、失敗はChatGPTが直す。画像/測定artifactを回収して目視し、記録更新後の最終SHAもCI確認する。
-- [ ] Claude用の申し送りとコピー用依頼文を作る。済んだCL03/04を作り直さず、未解決条件とCL05/06の必要な証拠、CG03/翻訳の開始条件を明記する。
-- [ ] 最終結果と残る条件を本人へ短く報告し、コピー可能な本文とファイルを渡す。
+- [x] 最終差分の独立レビューを受け、重要な指摘は再現試験を先に作って修正する。
+- [x] 最後の製品変更後に`npm test`、`npm run build`、`git diff --check`を実行する。
+- [x] 共有headを再確認して同じPRへ通常pushする。履歴の強制上書きをしない。そのSHAの既存4組並行CIを完了まで確認し、失敗はChatGPTが直す。画像/測定artifactを回収して目視し、記録更新後の最終SHAもCI確認する。
+- [x] Claude用の申し送りとコピー用依頼文を作る。済んだCL03/04を作り直さず、未解決条件とCL05/06の必要な証拠、CG03/翻訳の開始条件を明記する。
+- [x] 最終結果と残る条件を本人へ短く報告し、コピー可能な本文とファイルを渡す。
 
 ## 実装前の敵対的検証と反映
 
 別文脈のCG-R（gpt-6-astra/xhighを指定）で計画と正本/実コードを照合。Critical0/Important3/Minor3。ImportantはCIの画像回収不足、H01代用舞台のframeIntervalMs欠落、staticFlag統計だけでは画面内を証明できない点。Minorは実描画の非空assert、storyPoses署名、pushとCI確認の順序。上記Task 1〜4へ全6件を反映してから実装する。
+
+## 実施完了の範囲
+
+Task 1〜4の今回対象を実装・検証し、独立レビュー指摘を反映。製品基準455c149のCI #80は全6ジョブ成功。画像9枚と測定JSON7件を保存し、[測定票](../../acceptance/pr26/chatgpt-followup/measurements.md)と[申し送り](../../prompts/2026-11-17-claude-pr26-after-chatgpt.md)を作成した。文書反映後の最新CIはPR本文で確認する。本計画の完了はR07/R11の解決、CL05/06、CG03、15言語、G2/G5、実機、マージ/公開の完了を意味しない。
