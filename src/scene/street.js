@@ -877,6 +877,9 @@ export function createThreeStage(container, { course, decorations, rules = RULES
 
   function resize() {
     if (disposed) return;
+    // Projection calibration uses the origin, then returns to the exact displayed world pose.
+    // A deferred layout or a paused resize must not move a frozen scene back to building1.
+    const cameraPose=lastArgs?{position:camera.position.clone(),quaternion:camera.quaternion.clone()}:null;
     const rect = container.getBoundingClientRect();
     viewW = Math.max(1, rect.width);
     viewH = Math.max(1, rect.height);
@@ -938,6 +941,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     darkPlane.position.set(v3.x, v3.y, -dd);
     darkPlane.scale.setScalar(halfH * 7.5);
     refreshGlass.dirty = true;
+    if(cameraPose){camera.position.copy(cameraPose.position);camera.quaternion.copy(cameraPose.quaternion);camera.updateMatrixWorld(true);}
   }
 
   function assignSlots(current) {

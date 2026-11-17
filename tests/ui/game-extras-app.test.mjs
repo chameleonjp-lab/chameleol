@@ -15,7 +15,7 @@ function setup(presentationSet,{drawable=true,realStepper=false}={}){
  Object.assign(globalThis,{document,Node:window.Node,requestAnimationFrame:fn=>(frames.set(++seq,fn),seq),cancelAnimationFrame:n=>frames.delete(n),addEventListener:()=>{}});
  const audio={settings:{},setMusic(){},setSettings(){},setBuilding(){},setArea(){},setFinale(){},setPoliceStage(){},setDanger(){},startGameAudio(){},stopGameAudio(){},stopSfx(){},async suspend(){},play(){}};
  let controller,lastView,defaultPresentationSet,stepCalls=0;
- const order=[],ticks=[],controllerEvents=[],stageEvents=[],inputs=[];
+ const order=[],ticks=[],controllerEvents=[],stageEvents=[],inputs=[],previews=[];
  app=new App(document.querySelector('#root'),{audio,stageFactory:async(_host,options)=>{
   defaultPresentationSet=options.presentationSet;
   // An explicit wrapper can still select legacy80; normal App requests extended96.
@@ -26,7 +26,7 @@ function setup(presentationSet,{drawable=true,realStepper=false}={}){
   const stepper=realStepper?createExtendedStepper({controller}):null;
   const event=controller.event.bind(controller);
   controller.event=input=>{controllerEvents.push(structuredClone(input));return event(input);};
-  return {dispose(){stepper?.dispose();},resize(){},forcePresentationEffect(){return true;},presentationStats(){return {};},presentationEvent:event=>stageEvents.push(structuredClone(event)),setBestDistance(){},fx(){},update(args){
+  return {dispose(){stepper?.dispose();},resize(){},forcePresentationEffect(id,preview){previews.push({id,preview:structuredClone(preview)});return true;},presentationStats(){return {};},presentationEvent:event=>stageEvents.push(structuredClone(event)),setBestDistance(){},fx(){},update(args){
    order.push('stage');lastView=args.presentation;
    if(opts.presentationSet==='extended96'){
     if(stepper)stepper.step(args.presentation,{drawable,placements:{railway:true,water:true,robot:true,bird:true,existing:{12:true}}});
@@ -35,7 +35,7 @@ function setup(presentationSet,{drawable=true,realStepper=false}={}){
   }};
  }});
  app.store=new MemoryStore();app.flags={openingSeen:true,alertGuideSeen:true};app.initializeGuides=async()=>({version:1,basic:{consumed:true},brightness:{consumed:true}});app.api={configured:false};
- return {order,ticks,controllerEvents,stageEvents,inputs,get controller(){return controller;},get lastView(){return lastView;},get defaultPresentationSet(){return defaultPresentationSet;},get stepCalls(){return stepCalls;},observeBonus(){
+ return {order,ticks,controllerEvents,stageEvents,inputs,previews,get controller(){return controller;},get lastView(){return lastView;},get defaultPresentationSet(){return defaultPresentationSet;},get stepCalls(){return stepCalls;},observeBonus(){
   const tick=app.bonusPresentation.tick;
   app.bonusPresentation.tick=args=>{order.push('bonus');ticks.push(args);return tick(args);};
  }};
@@ -179,17 +179,19 @@ test('normal App loop preserves the same 50-building course, summary, history an
 
 test('bird verification warmup reports the real building/phase at each frame without changing run history or cameo claims',async()=>{
  const view=setup(undefined,{realStepper:true});app.runtime={...app.runtime,isVerification:true};
- await app.debugStart({atMs:20000,seed:1});
+ await app.debugStart({atMs:21000,seed:1});
  const before=inspect(app.session),extras=JSON.stringify(app.extrasMemory);
  await app.debugPresentation({effectId:69});
- assert.equal(view.inputs[0].t,17000);assert.equal(view.inputs.at(-1).t,20000);
+ assert.equal(view.inputs[0].t,18000);assert.equal(view.inputs.at(-1).t,21000);
  for(const input of view.inputs){
   assert.equal(input.building,Math.floor(input.t/5000)+1);
   const offset=input.t%5000;
   assert.equal(input.phase,offset>=1500&&offset<4500?'eval':'grace');
  }
- assert.equal(view.inputs.at(-1).building,5,'building5 route is first considered at its real first grace');
- assert.equal(view.inputs.filter(input=>input.building===5).length,1);
+ assert.equal(view.inputs.find(input=>input.building===5).t,20000,'building5 route is first considered at its real first grace');
+ const cameo=view.previews.at(-1).preview.cameo;
+ assert.equal(cameo.startedAt,20000);assert.equal(cameo.elapsedMs,1000);
+ assert.equal(cameo.startedAt+cameo.elapsedMs,view.inputs.at(-1).t,'elapsed1000 is drawn with the t=21000 camera, not the start camera');
  assert.equal(inspect(app.session),before);assert.equal(JSON.stringify(app.extrasMemory),extras);
  assert.equal(view.controller.snapshot().cameo,null,'preview warming does not consume a production claim');
 });

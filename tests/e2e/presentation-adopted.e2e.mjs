@@ -17,8 +17,9 @@ test('normal verification: all 16 adopted IDs paint real artwork, badge or histo
   for(const effectId of STREETS)await t.test(`adopted E${String(effectId).padStart(3,'0')} actual drawing`,async()=>{
    const proof=await env.page.evaluate(async id=>{
     const p=await __kamereoru.debugPresentation({effectId:id});
+    // Let showGame's deferred layout really run; capture must not repair its camera with update().
+    if(id===69)await new Promise(resolve=>requestAnimationFrame(resolve));
     const canvas=__kamereoru.stage.renderer.domElement,gl=__kamereoru.stage.renderer.getContext();
-    const pixels=new Uint8Array(canvas.width*canvas.height*4);gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
     let birdPixels=null;
     if(id===69&&p.storySprites===3){
      const stage=__kamereoru.stage,renderer=stage.renderer,render=renderer.render;let scene,camera;
@@ -31,9 +32,10 @@ test('normal verification: all 16 adopted IDs paint real artwork, badge or histo
      for(const name of [p.visibleArtwork.includes('birdCarryA')?'birdCarryA':'birdCarryB','parcel','rope']){
       const sampled=captureAtlasCell({scene,camera,renderer,cellIndex:atlas.street[name].index,columns:atlas.columns,rows:atlas.rows,viewport:{width:canvas.width,height:canvas.height},read});
       let changed=0;for(let i=0;i<sampled.shown.data.length;i+=4)if(Math.max(...[0,1,2].map(k=>Math.abs(sampled.shown.data[i+k]-sampled.hidden.data[i+k])))>24)changed++;
-      birdPixels.push({name,pixels:changed,projected:sampled.projected});
+      birdPixels.push({name,pixels:changed,projected:sampled.projected,canvas:{width:canvas.width,height:canvas.height}});
      }
     }
+    const pixels=new Uint8Array(canvas.width*canvas.height*4);gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
     const colors=new Set();for(let i=0;i<pixels.length;i+=16)colors.add(`${pixels[i]},${pixels[i+1]},${pixels[i+2]}`);
     return {...p,birdPixels,renderedColors:colors.size,policeVisible:__kamereoru.stage.presentationGeometry().police[0]!==null,badgeText:document.querySelector('.bonus-card-badge')?.textContent??''};
    },effectId);
@@ -46,7 +48,7 @@ test('normal verification: all 16 adopted IDs paint real artwork, badge or histo
      if(effectId===39)assert.ok(proof.footprints>=1&&proof.footprints<=3);
     }else{
      assert.ok(proof.storySprites>=1&&proof.storySprites<=3,`E${effectId}: actual atlas instances ${proof.storySprites}`);
-     if(effectId===69){assert.equal(proof.storySprites,3);assert.equal(proof.birdPixels.length,3);for(const cell of proof.birdPixels)assert.ok(cell.pixels>0,`E069 preview actually paints ${cell.name}: ${cell.pixels} pixels`);}
+     if(effectId===69){assert.equal(proof.storySprites,3);assert.equal(proof.birdPixels.length,3);for(const cell of proof.birdPixels){assert.ok(cell.pixels>0,`E069 preview actually paints ${cell.name}: ${cell.pixels} pixels`);const b=cell.projected;assert.ok(b.l>=8&&b.t>=8&&b.r<=cell.canvas.width-8&&b.b<=cell.canvas.height-8,`E069 whole ${cell.name} stays inside the canvas after deferred layout: ${JSON.stringify(cell)}`);}}
      const required={20:['tram'],56:['drone','flag'],67:['water','swirl'],68:['robot'],69:['birdcarry','parcel','rope']}[effectId];
      for(const name of required)assert.ok(proof.visibleArtwork.some(art=>art.toLowerCase().includes(name)),`E${effectId} visible ${name}: ${proof.visibleArtwork}`);
     }

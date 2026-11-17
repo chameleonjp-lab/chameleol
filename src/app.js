@@ -676,7 +676,7 @@ export class App {
       return {...this.resultPresentation.stats(),effectId,panel:panel??null};
     }
     const actorIds=[21,22,23,24,25,26,27,28,29,30,31,32,33,35,37,38,40];
-    const fixtureTimes={4:95000,5:95000,6:55000,7:95000,20:21500,34:41500,39:41500,44:2000,56:125500,58:225000,59:246000,63:195000,65:30000,67:26500,68:31500,69:20000};
+    const fixtureTimes={4:95000,5:95000,6:55000,7:95000,20:21500,34:41500,39:41500,44:2000,56:125500,58:225000,59:246000,63:195000,65:30000,67:26500,68:31500,69:21000};
     const fixtureTime=fixtureTimes[effectId];
     if(!this.session||!this.session.meta.debug||this.session.running||this.session.meta.effects===false||this.session.ended||!this.stage?.forcePresentationEffect||(fixtureTime!==undefined&&this.session.state.t!==fixtureTime))await this.debugStart({atMs:fixtureTime??(effectId>=57&&effectId!==65?200000:30000),seed:1});
     if(effectId===65&&this.session.state.t>=195000)await this.debugStart({atMs:30000,seed:1});
@@ -702,7 +702,7 @@ export class App {
       for(let i=0;i<=Math.ceil(3000/16);i++){
         const t=view.t-3000+Math.min(i*16,3000);
         // Placement caches must see the building/phase that actually belongs to this warmup t.
-        // E069 uses the real first-grace building5 fixture; no earlier frame may cache its route.
+        // E069 plans at building5's real first grace, then draws elapsed1000 at the matching t=21000.
         const building=Math.min(this.session.rules.buildingCount,Math.floor(t/this.session.rules.buildingMs)+1);
         const phase=isEvalTime(t,this.session.rules)?'eval':'grace';
         this.stage.update({t,color:view.color,policeStage:previewView.policeStage,walking:false,presentation:{...previewView,t,building,passed:building-1,phase,guideActive:true,guidanceActive:true,evaluationSegments:[]}});
