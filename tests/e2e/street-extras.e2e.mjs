@@ -2,6 +2,7 @@
 // extended96 accents are added to the same scene by hand. This does not use the stage's own extended
 // path (that belongs to the stage owner); it proves the pictures against real wall fronts and camera.
 // Set CL04_EVIDENCE_DIR to also write the frames as PNG files.
+import { MESSAGES } from '../../src/i18n/messages/index.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdirSync, writeFileSync} from 'node:fs';
@@ -237,7 +238,8 @@ for (const layout of LAYOUTS) {
         const {createPresentationScope} = await import('/src/presentation/scope.js');
         const host = document.querySelector('.stage-wrap');
         document.querySelectorAll('.cover,.pause-overlay').forEach(c => { c.style.display = 'none'; });   // the restore dialog only hides the street for this check
-        window.__badge = mountBonusPresentation({host, scope: createPresentationScope({id: 'cl04-badge', kind: 'game'}), t: key => key});
+        const {t} = await import('/src/i18n/i18n.js');
+        window.__badge = mountBonusPresentation({host, scope: createPresentationScope({id: 'cl04-badge', kind: 'game'}), t});
       });
       const wrap = env.page.locator('.stage-wrap');
       const probe = ms => env.page.evaluate((ms) => {
@@ -251,7 +253,7 @@ for (const layout of LAYOUTS) {
         const p = await probe(ms);
         assert.equal(p.hidden, false, `visible at +${ms}`);
         assert.equal(p.badgeOnly, true);
-        assert.equal(p.text, '◎ 98%');
+        assert.equal(p.text, `◎ ${MESSAGES.ja['presentation.nearPerfect']}`);
         assert.equal(p.titleDisplay, 'none', 'the title/points/rows are hidden by the integrated CSS');
         assert.ok(Math.abs(p.left - p.right) <= 2, `centred: ${p.left} ${p.right}`);
         assert.ok(p.width < p.wrapWidth - 20);

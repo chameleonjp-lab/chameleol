@@ -337,6 +337,7 @@ for(const [width,height] of LAYOUTS){
       for(const row of report){
         assert.equal(row.frame?.id,69,'the real controller and persistent claim start E069 without an override');
         assert.equal(row.stats.storySprites,3);
+        assert.ok(row.shown.bodyPixels>0&&row.birdHidden.bodyPixels>0,`${width}x${height}@${row.elapsed}: both comparisons must retain real body pixels`);
         assert.equal(row.shown.wallMismatches,0,`${width}x${height}@${row.elapsed} wall: ${JSON.stringify(row.shown)}`);assert.equal(row.shown.bodyMismatches,0,`${width}x${height}@${row.elapsed} body shown/hidden: ${JSON.stringify({shown:row.shown,birdHidden:row.birdHidden})}`);
         for(const cell of row.cells)assert.ok(cell.pixels>=(row.elapsed===1000?3:1),`${cell.name}@${row.elapsed}: visible pixels ${cell.pixels}`);
         if(row.elapsed===1000)for(const cell of row.cells){const b=cell.projected;assert.ok(b.l>=8&&b.t>=8&&b.r<=row.canvas.width-8&&b.b<=row.canvas.height-8, `whole ${cell.name} inset: ${JSON.stringify(b)}`);}

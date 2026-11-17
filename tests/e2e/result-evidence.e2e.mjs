@@ -346,6 +346,8 @@ for (const [width, height] of [[402, 700], [402, 874], [874, 402]]) {
           const root = document.querySelector('.result-evidence');
           return {
             buttons: root.querySelectorAll('button').length,
+            chips: root.querySelectorAll('.evidence-chip').length,
+            extraButtons: root.querySelectorAll('button:not(.evidence-chip)').length,
             media: root.querySelectorAll('input, audio, video, canvas, progress, [role=slider], [role=progressbar], [role=timer]').length,
             animations: root.getAnimations({ subtree: true }).length,
             overflowX: document.documentElement.scrollWidth - innerWidth,
@@ -353,7 +355,9 @@ for (const [width, height] of [[402, 700], [402, 874], [874, 402]]) {
             fonts: [...root.querySelectorAll('.evidence-chip, .evidence-caption, .evidence-empty, .evidence-frame-caption, .evidence-marks li, .evidence-swatch figcaption')].filter((n) => parseFloat(getComputedStyle(n).fontSize) < 14).length,
           };
         });
-        assert.equal(parts.buttons, 5, `${panel}: ボタンはチップだけ`);
+        assert.equal(parts.chips,7,`${panel}: 通常結果のチップは7個`);
+        assert.equal(parts.buttons,parts.chips,`${panel}: ボタンはチップだけ`);
+        assert.equal(parts.extraButtons,0,`${panel}: 再生ボタンを追加しない`);
         assert.equal(parts.media, 0);
         assert.equal(parts.animations, 0, '動く部品がない');
         assert.ok(parts.overflowX <= 0 && parts.rootOverflow <= 0, `${panel}: 横にはみ出さない ${JSON.stringify(parts)}`);

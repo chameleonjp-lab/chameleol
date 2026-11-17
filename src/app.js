@@ -676,7 +676,7 @@ export class App {
       return {...this.resultPresentation.stats(),effectId,panel:panel??null};
     }
     const actorIds=[21,22,23,24,25,26,27,28,29,30,31,32,33,35,37,38,40];
-    const fixtureTimes={4:95000,5:95000,6:55000,7:95000,20:21500,34:41500,39:41500,44:2000,56:125500,58:225000,59:246000,63:195000,65:30000,67:26500,68:31500,69:36500};
+    const fixtureTimes={4:95000,5:95000,6:55000,7:95000,20:21500,34:41500,39:41500,44:2000,56:125500,58:225000,59:246000,63:195000,65:30000,67:26500,68:31500,69:20000};
     const fixtureTime=fixtureTimes[effectId];
     if(!this.session||!this.session.meta.debug||this.session.running||this.session.meta.effects===false||this.session.ended||!this.stage?.forcePresentationEffect||(fixtureTime!==undefined&&this.session.state.t!==fixtureTime))await this.debugStart({atMs:fixtureTime??(effectId>=57&&effectId!==65?200000:30000),seed:1});
     if(effectId===65&&this.session.state.t>=195000)await this.debugStart({atMs:30000,seed:1});
@@ -701,7 +701,11 @@ export class App {
       // Warm the actual actor arrival with ordinary display intervals, without stepping the session.
       for(let i=0;i<=Math.ceil(3000/16);i++){
         const t=view.t-3000+Math.min(i*16,3000);
-        this.stage.update({t,color:view.color,policeStage:previewView.policeStage,walking:false,presentation:{...previewView,t,guideActive:true,guidanceActive:true,evaluationSegments:[]}});
+        // Placement caches must see the building/phase that actually belongs to this warmup t.
+        // E069 uses the real first-grace building5 fixture; no earlier frame may cache its route.
+        const building=Math.min(this.session.rules.buildingCount,Math.floor(t/this.session.rules.buildingMs)+1);
+        const phase=isEvalTime(t,this.session.rules)?'eval':'grace';
+        this.stage.update({t,color:view.color,policeStage:previewView.policeStage,walking:false,presentation:{...previewView,t,building,passed:building-1,phase,guideActive:true,guidanceActive:true,evaluationSegments:[]}});
       }
       const durationMs=legacyCameo?.ms??(effectId===56?1500:2000),elapsedMs=police?600:effectId===56?700:1000;
       const extra={id:effectId,kind:effectId===34?'inquiry':'footprints',building:effectId===56?25:view.building,startedAt:view.t-elapsedMs,elapsedMs,durationMs,phase:effectId===56?'delivery':'story'};

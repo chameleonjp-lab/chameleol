@@ -46,7 +46,7 @@ test('pending, missing, failed, confirming and old-version records have their ow
   assert.equal(describeResultCard(model({ rankKey: null }), 'ja').title, t('card.confirming'), 'an unknown rank prints the confirming wording');
   const old = describeResultCard(model({ bonusCount: null, countState: 'missing' }), 'ja');
   assert.equal(old.bonusKnown, false);
-  assert.equal(old.bonusText, `${t('bonus.card.title')} ${t('evidence.colors.missing')}`, 'the stand-in wording is used until the dictionary has the key');
+  assert.equal(old.bonusText, t('card.bonusMissing'), 'a missing bonus record has its own translated wording');
   const zero = describeResultCard(model({ bonusCount: 0 }), 'ja');
   assert.equal(zero.bonusNumber, '0');
   assert.equal(zero.bonusKnown, true);

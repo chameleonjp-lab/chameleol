@@ -1,5 +1,7 @@
 # PR #26：ChatGPTの受入修正・検査強化の実装計画
 
+> 2026-11-17追記：この文書は作成時点の履歴です。現在の実装・検査・担当・残件は[最新状況](../../acceptance/pr26/completion-task4/evidence.md)を参照してください。通常接続や翻訳の未完了、旧CI待ち、Claudeへの再開指示を現在の作業指示として扱わず、実装済み部分を作り直さないでください。
+
 > **For agentic workers:** Use superpowers:executing-plans to implement this plan task-by-task. Review this plan before implementation, then request a fresh whole-change review.
 
 **Goal:** 提出済みCL03/CL04のうち、既存契約を変えずに直せる不具合と検査の欠落を解消し、Claudeの残工程へ渡す。

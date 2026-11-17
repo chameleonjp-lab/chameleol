@@ -1,4 +1,25 @@
-# 公開と切り戻しの手順（案）
+# 公開と切り戻しの手順
+
+## PR #26と現在の単独公開（2026-11-17）
+
+[現在の実装・検証状態](../acceptance/pr26/completion-task4/evidence.md)と[本番・候補の比較票](pr26-candidate-comparison.md)を確認する。現行本番は `https://chameleonjp-kamereoru.chameleonjp.chatgpt.site/`、Sites version 5、commit `9c4a6ebad65414e4f659537d28f4bc3a93a1f55c`、assetVersion `0.1.0-f25f4a9ee1`、単独v2・API指定なしと照合した。従来の「現在の公開状態は未確認」は各資料の作成時点の記録である。
+
+PR #26候補はオンライン未公開。最終commitからAPI指定なしの単独版を作り、取得・照合済み本番一式を `--keep` に渡す。最終の `release.json` と入口の版、全旧5版の保持と指紋を確認する。ビルドが終わるまでは新commit・assetVersionを確定値として書かない。候補の共有URLと配信URLの一致も、公開時の照合事項とする。
+
+```sh
+KAMEREORU_ENV=production \
+KAMEREORU_STANDALONE=1 \
+KAMEREORU_PUBLIC_URL=https://chameleonjp-kamereoru.chameleonjp.chatgpt.site/ \
+npm run build -- --keep <照合済みの本番配布一式>
+```
+
+新しい公開やmainへの取込は本人の判断を待つ。今回、Supabaseの配備・本番DB変更・実験場連携は行わない。API指定なしの単独版なので、下の旧ランキング手順にあるSQLやEdge Functionの変更を今回の公開手順として実行しない。
+
+切り戻す場合も、新旧すべての `v/<assetVersion>/` を残し、保存や未送信結果を消さない。新規開始の見た目を戻す必要がある場合は、v4を読める現行の保存・未送信保護処理を残した戻し版を準備して検査することを推奨する。入口だけ旧本番v2へ戻す方法は、旧入口の保存版案内に依存する。案内の処理は旧コードにあるが、実サイトでv4途中保存→v2入口→保存版再開と再送を通す実演は未実施で、完全な切り戻し合格とは扱わない。前の入口とrelease記録を保存し、実演の結果を記録してから採用する。
+
+## 以下は2026-11-07作成・2026-11-14注記の参考案
+
+以下はオンラインランキングを含む旧い手順の履歴である。未公開・公開先未定・未実装などの表現は当時の記録として残す。現在の状態は上の比較票を正とする。
 
 2026年11月7日時点の案です。この手順は、まだ一度も本番で実行していません。Supabase の本番データベースへの適用、Edge Function の配備、ゲームの公開は、どれも本人の承認を得てから行います。公開先（GitHub Pages など）もまだ決まっていません。
 

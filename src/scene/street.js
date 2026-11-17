@@ -26,6 +26,7 @@ import { createTravelTongue } from './travel-tongue.js';
 import { createPresentationScope } from '../presentation/scope.js';
 import { createStreetAccents } from '../presentation/street-accents.js';
 import { createActorReactions } from '../presentation/actor-reactions.js';
+import { measureComparisonPixels } from './comparison-pixels.js';
 
 const W = 10; // 1棟の幅（ワールド座標）
 const GAP = 1.3; // 建物の間の路地の幅
@@ -1376,7 +1377,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       // Draw an isolated verification snapshot through the same painter. No controller step,
       // random draw or persistent claim is made here. The next actual frame replaces the preview.
       if(extended&&preview&&[12,13,14,15,16,20,34,36,39,56,61,65,67,68,69,70].includes(id)){
-        const view={...lastPresentation,running:true,guideActive:false,guidanceActive:false};
+        const view={...lastPresentation,running:true,phase:'grace',guideActive:false,guidanceActive:false};
         accents?.placements(view,frameInfo());
         if((preview.cameo??preview.policeExtra)?.id!==id)return false;
         paintExtended(preview,view);drawFrame();return true;
@@ -1675,75 +1676,39 @@ export function createThreeStage(container, { course, decorations, rules = RULES
         if (!o.material) return;
         (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => mats.set(m, m.colorWrite));
       });
-      // 不透明な物（手前の人・手足の輪郭・街灯など）はそのまま描いて、比較面を隠す所を除く。重ね描きの光（透明）だけ消す
-      for (const m of mats.keys()) if (m.transparent) m.colorWrite = false;
       const live = slots.filter((sl) => sl.index > 0 && sl.group.visible);
       const saved = live.map((sl) => sl.facadeMat.color.clone());
       const wallMarkStep = Math.floor(255 / SLOTS); // 全ての描画枠の印を8ビットに収める
-      live.forEach((sl, i) => {
-        sl.facadeMat.colorWrite = true;
-        sl.facadeMat.color.setRGB(((i + 1) * wallMarkStep) / 255, 0, 0);
-      });
       const bodyMats = comparisonMats().filter((m) => m.uniforms?.uColor);
       const bodySaved = bodyMats.map((m) => m.uniforms.uColor.value.clone());
       const bodyTarget = bodyMats.length ? bodyMats[0].uniforms.uColor.value.toArray().map((x) => Math.round(x * 255)) : null;
-      bodyMats.forEach((m) => {
-        m.colorWrite = true;
-        m.uniforms.uColor.value.setRGB(0, 128 / 255, 0);
-      });
-      const clearSaved = renderer.getClearColor(new THREE.Color());
-      renderer.setClearColor(0x000000, 1);
+      const clearSaved = renderer.getClearColor(new THREE.Color()),clearAlpha=renderer.getClearAlpha();
       const bgFog = scene.fog;
-      scene.fog = null;
-      renderer.render(scene, camera);
-      const mask = readAll();
-      scene.fog = bgFog;
-      renderer.setClearColor(clearSaved, 1);
-      for (const [m, c] of mats) m.colorWrite = c;
-      live.forEach((sl, i) => sl.facadeMat.color.copy(saved[i]));
-      bodyMats.forEach((m, i) => m.uniforms.uColor.value.copy(bodySaved[i]));
-      drawFrame();
-      const key = (i) => mask[i] * 65536 + mask[i + 1] * 256 + mask[i + 2];
-      const res = { wallPixels: 0, wallMismatches: 0, bodyPixels: 0, bodyMismatches: 0, maxDev: 0, perSlot: live.map((sl) => ({ index: sl.index, pixels: 0, mismatches: 0 })) };
-      const targets = live.map((sl) => saved[live.indexOf(sl)].toArray().map((x) => Math.round(x * 255)));
-      for (let y = 2; y < ch - 2; y += 1) {
-        for (let x = 2; x < cw - 2; x += 1) {
-          const i = (y * cw + x) * 4;
-          let kind = 0;
-          let tgt = null;
-          let slotNo = -1;
-          if (mask[i + 1] === 0 && mask[i + 2] === 0 && mask[i] > 0 && mask[i] % wallMarkStep === 0 && mask[i] / wallMarkStep <= live.length) {
-            kind = 1;
-            slotNo = mask[i] / wallMarkStep - 1;
-            tgt = targets[slotNo];
-          } else if (bodyTarget && mask[i] === 0 && mask[i + 1] === 128 && mask[i + 2] === 0) {
-            kind = 2;
-            tgt = bodyTarget;
-          }
-          if (!kind) continue;
-          const k = key(i);
-          let same = true;
-          for (let dy = -2; dy <= 2 && same; dy += 1) for (let dx = -2; dx <= 2; dx += 1) if (key(((y + dy) * cw + x + dx) * 4) !== k) { same = false; break; }
-          if (!same) continue;
-          const dev = Math.max(Math.abs(normal[i] - tgt[0]), Math.abs(normal[i + 1] - tgt[1]), Math.abs(normal[i + 2] - tgt[2]));
-          if (kind === 1) {
-            res.wallPixels += 1;
-            res.perSlot[slotNo].pixels += 1;
-            if (dev > 0) {
-              res.wallMismatches += 1;
-              res.perSlot[slotNo].mismatches += 1;
-            }
-          } else {
-            res.bodyPixels += 1;
-            if (dev > 0) {
-              res.bodyMismatches += 1;
-              res.bodyBad = res.bodyBad ?? { x, y: ch - 1 - y, got: [normal[i], normal[i + 1], normal[i + 2]], want: tgt, maskPx: [mask[i], mask[i + 1], mask[i + 2]], right: [normal[i + 4], normal[i + 5], normal[i + 6]], left: [normal[i - 4], normal[i - 3], normal[i - 2]] };
-            }
-          }
-          if (dev > res.maxDev) res.maxDev = dev;
-        }
+      let mask,bodyBlack,bodyWhite;
+      try{
+        // Keep opaque occluders; remove only transparent overlays from all three marker passes.
+        for (const m of mats.keys()) if (m.transparent) m.colorWrite = false;
+        live.forEach((sl,i)=>{sl.facadeMat.colorWrite=true;sl.facadeMat.color.setRGB(((i+1)*wallMarkStep)/255,0,0);});
+        renderer.setClearColor(0x000000,1);scene.fog=null;
+        const bodyPass=(r,g,b)=>{
+          bodyMats.forEach(m=>{m.colorWrite=true;m.uniforms.uColor.value.setRGB(r,g,b);});
+          renderer.render(scene,camera);return readAll();
+        };
+        // The green region and its existing 5x5 interior rule identify the same visible body.
+        // The real shader's endpoint responses additionally reject quantized rim/gloss pixels.
+        mask=bodyPass(0,128/255,0);
+        bodyBlack=bodyPass(0,0,0);
+        bodyWhite=bodyPass(1,1,1);
+      }finally{
+        scene.fog=bgFog;renderer.setClearColor(clearSaved,clearAlpha);
+        for(const [m,colorWrite] of mats)m.colorWrite=colorWrite;
+        live.forEach((sl,i)=>sl.facadeMat.color.copy(saved[i]));
+        bodyMats.forEach((m,i)=>m.uniforms.uColor.value.copy(bodySaved[i]));
+        drawFrame();
       }
-      return res;
+      return measureComparisonPixels({normal,mask,bodyBlack,bodyWhite,width:cw,height:ch,bodyTarget,
+        wallTargets:saved.map(color=>color.toArray().map(x=>Math.round(x*255))),
+        slotIndices:live.map(slot=>slot.index),wallMarkStep});
     },
     /** 描画物体の数（連戦での増加の確認用、SCOPE-03）。 */
     stats() {

@@ -1,6 +1,6 @@
 import {bonusNameKey} from './bonus-data.js';
 const SYMBOLS={precision:'◎',steady:'✓',quick:'➜',milestone:'⚑',allSuccess:'✺'};
-const FALLBACK={'bonus.card.title':'Bonus','bonus.precision':'Precision','bonus.precisionHigh':'High precision','bonus.steady':'Steady','bonus.quick':'Quick match','bonus.milestone':'Milestone','bonus.basePoints':'Base points','bonus.passTotal':'This building','bonus.finalBuilding':'Final building bonuses','bonus.allSuccess':'All buildings successful!','bonus.allSuccessDetail':'Successful at all 50 buildings','result.score.clear':'Clear'};
+const FALLBACK={'presentation.nearPerfect':'Near perfect!','bonus.card.title':'Bonus','bonus.precision':'Precision','bonus.precisionHigh':'High precision','bonus.steady':'Steady','bonus.quick':'Quick match','bonus.milestone':'Milestone','bonus.basePoints':'Base points','bonus.passTotal':'This building','bonus.finalBuilding':'Final building bonuses','bonus.allSuccess':'All buildings successful!','bonus.allSuccessDetail':'Successful at all 50 buildings','result.score.clear':'Clear'};
 function elements(host,t){const doc=host.ownerDocument??globalThis.document;return {doc,tr:(key)=>{const value=t(key);return value===key?FALLBACK[key]??key:value;},el:(tag,cls,text,parent)=>{const n=doc.createElement(tag);n.className=cls;if(text!=null)n.textContent=String(text);parent.append(n);return n;}};}
 /** One card, no animation loop: elapsed time comes exclusively from the game clock. */
 export function mountBonusPresentation({host,scope,t=key=>key,reducedMotion}) {
@@ -13,8 +13,7 @@ export function mountBonusPresentation({host,scope,t=key=>key,reducedMotion}) {
   // E044 is a display claim only: the controller owns the 98%/500ms/deadline clock and hands over
   // a value (or null) every frame. Here it is just drawn; there are no points and no sound.
   const badgeEl=doc.createElement('span');badgeEl.className='bonus-card-badge';
-  // Agreed language-neutral placeholder until CG05 translates the finished CL/CG interface.
-  const badgeText=()=> '◎ 98%';
+  const badgeText=()=> `◎ ${tr('presentation.nearPerfect')}`;
   const validBadge=b=>b&&typeof b==='object'&&Number.isFinite(b.elapsedMs)&&b.elapsedMs>=0?b:null;
   function setNotices(base,withBadge){
     const key=`${base}|${withBadge?badgeEl.textContent:''}`;

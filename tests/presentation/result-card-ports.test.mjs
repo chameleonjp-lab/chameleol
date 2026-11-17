@@ -7,9 +7,10 @@ import { createTurnPanel, turnBackingSide } from '../../src/presentation/result-
 import { createMiniaturePanel, modelCellOrigin } from '../../src/presentation/result-miniature-view.js';
 import { mountResultPanels } from '../../src/presentation/result-evidence-view.js';
 import { createResultRendererOwner } from '../../src/presentation/result-renderer-owner.js';
-import { usedFallbackReport } from '../../src/presentation/result-card-text.js';
+import { USED_FALLBACKS, usedFallbackReport } from '../../src/presentation/result-card-text.js';
 import { installFakeCanvas } from './helpers/fake-canvas.mjs';
 import { setLanguage, t } from '../../src/i18n/i18n.js';
+import { MESSAGES } from '../../src/i18n/messages/index.js';
 
 const FORBIDDEN = ['navigator', 'shareImpl', 'urlApi', 'waitForPresentation', 'focusTarget', 'visibilityTarget', 'createCanvas', 'encodePng'];
 const matched = { status: 'matched', building: 12, hsv: { h: 9000, s: 6000, v: 8000 }, outlineBuilding: 12, average: 90, instantMatch: 95 };
@@ -143,9 +144,9 @@ test('state-by-state wording, share button state and retry visibility', () => {
   apply(snap({ state: 'unavailable' }));
   assert.equal(status.textContent, t('card.shareUnavailable'));
   apply(snap({ state: 'failed' }));
-  assert.equal(status.textContent, '', 'no wording for a failed share until the dictionary has it');
-  assert.ok(host.querySelector('.result-card-secondary').classList.contains('is-share-failed'), 'the row is outlined instead');
-  assert.ok(usedFallbackReport().some((x) => x.key === 'card.shareFailed'));
+  assert.equal(status.textContent, t('card.shareFailed'), 'failed sharing offers localized save/text guidance');
+  assert.equal(host.querySelector('.result-card-secondary').classList.contains('is-share-failed'), false);
+  assert.deepEqual(usedFallbackReport(), []);
 });
 
 test('retry and text share happen only on an explicit tap and a retry never shares by itself', () => {
@@ -482,7 +483,7 @@ test('E090 rotates only for a horizontal drag of 8px or more and never draws in 
   instance.dispose();
 });
 
-test('the panel chips use English stand-ins when the dictionary has no key yet, and still open one at a time', () => {
+test('the panel chips use the selected dictionary, and still open one at a time', () => {
   setLanguage('ja');
   const { document, window } = setup({ markup: false });
   const ports = createResultCardPorts({ result: {}, host: null, scope: scopeStub() });
@@ -491,8 +492,8 @@ test('the panel chips use English stand-ins when the dictionary has no key yet, 
   const view = mountResultPanels({ host, t: (k, p) => t(k, p, 'ja'), state: { status: 'missing' }, panels: ports.panels });
   const chips = [...host.querySelectorAll('.evidence-chip')].map((c) => c.textContent);
   assert.equal(chips.length, 7);
-  assert.ok(chips.includes('City model'));
-  assert.ok(chips.includes('Turn and look'));
+  assert.ok(chips.includes(t('evidence.model.title', undefined, 'ja')));
+  assert.ok(chips.includes(t('evidence.turn.title', undefined, 'ja')));
   assert.ok(chips.every((c) => !c.includes('evidence.')));
   view.open('model');
   assert.equal(view.stats().openCount, 1);
@@ -515,4 +516,35 @@ test('panels created by the factory keep one owner: a fake owner shared with the
   assert.ok(second);
   assert.equal(created.length, 2);
   second.release();
+});
+
+test('all 15 dictionaries reach card/error/save/model/turn DOM and aria text without emergency fallbacks', () => {
+  USED_FALLBACKS.clear();
+  for (const [locale, M] of Object.entries(MESSAGES)) {
+    const {host, window, document} = setup();
+    const current = snap({model:baseModel({locale, countState:'missing', bonusCount:null}), miniature:cells(17, 18)});
+    const controller = fakeController(current), scope = scopeStub();
+    const ports = createResultCardPorts({result:{}, host, scope});
+    const view = ports.mount({host, controller, scope, onTextShare(){}});
+    assert.ok(host.querySelector('.result-card-canvas').getAttribute('aria-label').includes(M['card.bonusMissing']), locale);
+    assert.ok(host.querySelector('.result-card-summary').textContent.includes(M['card.bonusMissing']), locale);
+    controller.set({...current, state:'failed'});ports.onChange(controller.snapshot());
+    assert.equal(host.querySelector('.result-card-status').textContent, M['card.shareFailed'], locale);
+    click(window, host.querySelector('.result-card-save'));
+    assert.equal(document.querySelector('.result-card-viewer-title').textContent, M['card.viewerTitle'], locale);
+    assert.ok(document.querySelector('.result-card-viewer-image').alt.includes(M['card.bonusMissing']), locale);
+    click(window, document.querySelector('.result-card-viewer-close'));
+    const panels = mountResultPanels({host, t:(key, params)=>t(key, params, locale), state:{status:'missing'}, panels:ports.panels});
+    assert.equal(host.querySelector('[data-panel=model]').textContent, M['evidence.model.title'], locale);
+    assert.equal(host.querySelector('[data-panel=turn]').textContent, M['evidence.turn.title'], locale);
+    panels.open('model');
+    assert.deepEqual([...host.querySelectorAll('.result-miniature-legend li')].map(el=>el.textContent), ['passed','arrived','unreached','missing'].map(key=>M[`evidence.model.${key}`]), locale);
+    assert.ok(host.querySelector('.result-miniature-svg').getAttribute('aria-label').includes(M['evidence.model.alt'].replace('{passed}','17').replace('{arrived}','18')), locale);
+    panels.open('turn');
+    assert.equal(host.querySelector('.result-turn-left').getAttribute('aria-label'), M['evidence.turn.left'], locale);
+    assert.equal(host.querySelector('.result-turn-right').getAttribute('aria-label'), M['evidence.turn.right'], locale);
+    assert.equal(host.querySelector('.result-turn-hint').textContent, M['evidence.turn.hint'], locale);
+    panels.dispose();view.dispose();scope.run();
+  }
+  assert.deepEqual(usedFallbackReport(), []);
 });

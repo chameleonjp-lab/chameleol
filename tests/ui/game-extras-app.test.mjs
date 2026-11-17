@@ -5,6 +5,7 @@ import {App} from '../../src/app.js';
 import {GameSession} from '../../src/game/session.js';
 import {MemoryStore} from '../../src/storage/memory-store.js';
 import {createExtendedStepper} from '../../src/scene/stage.js';
+import {t} from '../../src/i18n/i18n.js';
 let app;const frames=new Map();let seq=0;
 const settle=async()=>{for(let i=0;i<5;i++)await new Promise(r=>setImmediate(r));};
 afterEach(()=>{app?.disposeStage();frames.clear();app=null;});
@@ -133,19 +134,21 @@ test('normal verification precision preview uses actual evaluation data without 
  const before=inspect(app.session),extras=JSON.stringify(app.extrasMemory),calls=view.stepCalls;
  const proof=await app.debugPresentation({effectId:44});
  assert.equal(proof.badge,true);assert.equal(proof.visible,true);
- assert.match(document.querySelector('.bonus-card-badge').textContent,/98%/);
+ assert.equal(document.querySelector('.bonus-card-badge').textContent,`◎ ${t('presentation.nearPerfect')}`);
  assert.equal(view.stepCalls,calls,'an isolated preview adds no normal-stage controller step');
  assert.equal(inspect(app.session),before);assert.equal(JSON.stringify(app.extrasMemory),extras);
  assert.equal(view.controller.snapshot().precisionBadge,null,'the run claim is untouched');
 });
 
-test('normal App loop preserves the same 50-building course, summary, history and submission as explicit legacy, with effects on and off',async()=>{
+test('normal App loop preserves the same 50-building course, summary, history and submission as explicit legacy, with effects on and off',{timeout:30000},async()=>{
  const {buildResultBody}=await import('../../src/net/outbox.js');const runs=[];
  for(const mode of ['legacy80',undefined])for(const effects of [false,true]){
   const view=setup(mode,{realStepper:true,drawable:false});
   const session=new GameSession({playId:'same-play',launchId:'same-launch',seed:17,effects,startedAt:1000});
   await app.showGame(session,{fresh:true});session.running=false;
-  app.stage.playEnding=async()=>{};app.observeResult=null;
+  app.stage.playEnding=async()=>{};
+  const finishPlay=app.finishPlay.bind(app);let finished;
+  app.finishPlay=(...args)=>(finished=finishPlay(...args));
   const milestones=[];
   for(let b=1;b<=50;b++){
    const target=session.game.course.targets[b-1];
@@ -157,7 +160,12 @@ test('normal App loop preserves the same 50-building course, summary, history an
    session.apply({type:'tick',t:b*5000});
    if([20,40,50].includes(b))milestones.push(session.state.passed);
   }
-  await settle();
+  assert.ok(finished,'the actual cleared event started finishPlay');
+  await finished;
+  const evidence=app.lastResult.evidence;assert.ok(evidence,'showResult started history analysis');
+  if(evidence.status==='pending')await new Promise(resolve=>{
+   const unsubscribe=evidence.subscribe(()=>{if(evidence.status!=='pending'){unsubscribe();resolve();}});
+  });
   assert.deepEqual(milestones,[20,40,50]);assert.equal(app.lastResult.summary.buildings,50);
   assert.equal(app.lastResult.evidence.status,'ready');assert.equal(session.listeners.size,0);
   assert.equal(view.stepCalls,mode==='legacy80'?0:150,'one step for each real App game frame');
@@ -166,4 +174,22 @@ test('normal App loop preserves the same 50-building course, summary, history an
   app.disposeStage();frames.clear();
  }
  for(const run of runs.slice(1))assert.deepEqual(run,runs[0]);
+});
+
+
+test('bird verification warmup reports the real building/phase at each frame without changing run history or cameo claims',async()=>{
+ const view=setup(undefined,{realStepper:true});app.runtime={...app.runtime,isVerification:true};
+ await app.debugStart({atMs:20000,seed:1});
+ const before=inspect(app.session),extras=JSON.stringify(app.extrasMemory);
+ await app.debugPresentation({effectId:69});
+ assert.equal(view.inputs[0].t,17000);assert.equal(view.inputs.at(-1).t,20000);
+ for(const input of view.inputs){
+  assert.equal(input.building,Math.floor(input.t/5000)+1);
+  const offset=input.t%5000;
+  assert.equal(input.phase,offset>=1500&&offset<4500?'eval':'grace');
+ }
+ assert.equal(view.inputs.at(-1).building,5,'building5 route is first considered at its real first grace');
+ assert.equal(view.inputs.filter(input=>input.building===5).length,1);
+ assert.equal(inspect(app.session),before);assert.equal(JSON.stringify(app.extrasMemory),extras);
+ assert.equal(view.controller.snapshot().cameo,null,'preview warming does not consume a production claim');
 });

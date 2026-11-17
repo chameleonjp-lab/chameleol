@@ -1,5 +1,7 @@
 # ① カメレオる：全体実装計画書
 
+> 2026-11-17追記：この文書は作成時点の履歴です。現在の実装・検査・担当・残件は[最新状況](../../acceptance/pr26/completion-task4/evidence.md)を参照してください。通常接続や翻訳の未完了、旧CI待ち、Claudeへの再開指示を現在の作業指示として扱わず、実装済み部分を作り直さないでください。
+
 2026-11-16。**Goal:** 通常起動したゲームを[全体要件](../specs/2026-11-16-chameleol-final-requirements.md)F01〜F14へ一致させる。**Architecture:** ChatGPTが仕様処理・接続・PR後対応、Claudeが描画/UI部品と提出前の確認を担当し、契約v1.2で結ぶ。個別計画は[②ChatGPT](./2026-11-16-chameleol-chatgpt-plan.md)と[③Claude](./2026-11-16-chameleol-claude-plan.md)。本書が担当・接続・ゲートの正本。
 
 2026-11-17追記：CL02追加分は[CG-Rの独立レビューとChatGPTのPR後修正](../../reviews/2026-11-17-chameleol-cl02-acceptance-review.md)、[統合検査表](../../acceptance/pr26/integration-checklist.md)を参照。予定された描画の担当は変えず、CL03〜06受領前に通常起動を先行有効化しない。

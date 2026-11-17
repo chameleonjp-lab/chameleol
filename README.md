@@ -8,6 +8,12 @@
 
 本編は全50棟、1棟5秒を試作基準とします。円形パレットで色を合わせ、20棟目から明るさ調整を使います。ランキングは通過棟数を優先し、同じ棟数なら平均一致度で比較します。
 
+## PR #26の現在地（2026-11-17）
+
+通常起動へ追加16案と結果カードを接続し、96採用/4除外、15言語の文言を実装しました。最終の自動検査と候補作成は進行中です。現在の根拠と未確認事項は[実装・検証・配布候補の記録](docs/acceptance/pr26/completion-task4/evidence.md)へ集約しています。現行本番とは版が違い、PR #26のオンライン候補URL、iPhoneでの共有・保存・音・性能、本番公開は未完了です。
+
+[本番との比較](docs/release/pr26-candidate-comparison.md)と[iPhoneだけで行う確認手順](docs/device-test-procedure.md)を参照してください。以下の旧計画・担当・未実装の説明は、それぞれの日付時点の履歴です。最新状態として読み替えず、済んだ部品を作り直さないでください。
+
 ## 設計資料
 
 - [要件仕様書](docs/superpowers/specs/2026-11-07-kamereoru-design.md)：会話の最新決定、ゲーム・画面・練習・ランキング・15言語・保存・検証の要件。
@@ -114,7 +120,7 @@ npm run build            # 公開用の一式を dist/ に作る
 - [受入試験の記録](docs/acceptance/results.md)：82件の試験を、どこまで確かめたか（自動確認・部分確認・未実施・保留）と、その証拠。
 - [調整表](docs/tuning/adjustment-table.md)：採点・時間・出題・保存・通信の試作値と、正式値を決めるための測定。
 - [iPhone での確認手順](docs/device-test-procedure.md)：実機で試すことと記録表。
-- [公開と切り戻しの手順（案）](docs/release/release-and-rollback.md)：データベース・サーバー・画面を切り替える順番と、戻し方。現在の公開状態は未確認です（同資料の冒頭を参照）。
+- [公開と切り戻しの手順（案）](docs/release/release-and-rollback.md)：データベース・サーバー・画面を切り替える順番と、戻し方。現行本番は2026-11-17に照合しました。最新の候補と切戻しの限界は同資料の冒頭を参照してください。
 - [素材の出典](assets/credits.md)：主人公は、提供されたカメレオン No.28 エディター（[docs/design/chameleon-no28-editor.html](docs/design/chameleon-no28-editor.html)）の書き出し値から作っています。
 
 

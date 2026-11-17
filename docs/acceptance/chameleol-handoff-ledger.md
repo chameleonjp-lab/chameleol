@@ -2,7 +2,15 @@
 
 本票はCG00→CG02先行実装と2026-11-17のCL02受入レビュー/修正を記録する。正本は[全体要件](../superpowers/specs/2026-11-16-chameleol-final-requirements.md)、[全体計画](../superpowers/plans/2026-11-16-chameleol-master-plan.md)の契約v1.2。過去の記録を初期化しない（本票は今回新規）。
 
-## 共有ブランチ・現在地
+## 現在の受渡し（2026-11-17、PR #26完了対応）
+
+最新状態は[実装・検証・配布候補](pr26/completion-task4/evidence.md)へ集約する。提出済みCL03/04の残件、通常接続、翻訳、PR後の失敗対応をChatGPTが引き継いだ。外部Claudeが現在作業中という事実は確認していない。通常起動は `extended96` と実結果描画口、catalogは96採用/4除外へ切替済み。古い `legacy80` の維持指示や翻訳待ちは以下の各時点の履歴である。
+
+共有ブランチとPRは同じものを維持する。最新headとCIは[PR #26](https://github.com/chameleonjp-lab/chameleol/pull/26)、配布候補の正確な版は最終 `release.json` で照合する。最終CI、候補URL、iPhone実機、公開は上の現在状況票を参照し、以前の成功で先取りしない。本番公開・代理マージ・本番DB変更は行っていない。
+
+## 以下は従来の受渡し履歴
+
+## 共有ブランチ・当時の現在地
 
 | 項目 | 値 |
 | --- | --- |

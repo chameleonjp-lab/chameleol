@@ -4,6 +4,8 @@ import {parseHTML} from 'linkedom';
 import {mountBonusPresentation} from '../../src/presentation/bonus-view.js';
 import {createPresentationScope} from '../../src/presentation/scope.js';
 import {buildBonusBatch} from '../../src/presentation/bonus-data.js';
+import { t } from '../../src/i18n/i18n.js';
+import { MESSAGES } from '../../src/i18n/messages/index.js';
 
 const event = {building: 10, t: 50000, basePoints: 118, bonusPoints: 40, points: 158, bonusAwards: [['precision', 10, 30], ['steady', null, 10]].map(([kind, tier, points]) => ({id: `v3:10:${kind}`, building: 10, kind, tier, points, earnedAtT: 50000}))};
 const badge = (elapsedMs, over = {}) => ({id: 'precision:3:2500', kind: 'nearPerfect', building: 3, startedAt: 2500, phase: 'notice', elapsedMs, ...over});
@@ -22,19 +24,25 @@ test('badge_is_shown_without_a_batch_during_evaluation_and_carries_no_points', (
   assert.ok(card.classList.contains('is-badge-only'));
   const el = card.querySelector('.bonus-card-notices .bonus-card-badge');
   assert.ok(el);
-  assert.equal(el.textContent, '◎ 98%');
+  assert.equal(el.textContent, '◎ Near perfect!');
   assert.equal(card.querySelector('.bonus-card-points').textContent, '');
   assert.doesNotMatch(card.textContent, /\+\d/);
   assert.equal(view.stats().badge, true);
   assert.equal(view.stats().particles, 0);
 });
 
-test('badge_keeps_the_agreed_numeric_placeholder_without_requesting_a_missing_translation', () => {
+test('badge_uses_the_requested_translation_and_keeps_a_fallback_if_it_is_missing', () => {
   const keys=[];
   const {view, card} = mount(key => {keys.push(key);return key;});
   view.tick({...base, activeMs: 2500, precisionBadge: badge(300)});
-  assert.equal(card.querySelector('.bonus-card-badge').textContent, '◎ 98%');
-  assert.equal(keys.includes('presentation.nearPerfect'),false,'translations are deferred until both implementations are complete');
+  assert.equal(card.querySelector('.bonus-card-badge').textContent, '◎ Near perfect!');
+  assert.equal(keys.includes('presentation.nearPerfect'),true);
+  for (const [locale, dict] of Object.entries(MESSAGES)) {
+    const localized = mount(key => t(key, undefined, locale));
+    localized.view.tick({...base, activeMs: 2500, precisionBadge: badge(300)});
+    assert.equal(localized.card.querySelector('.bonus-card-badge').textContent, `◎ ${dict['presentation.nearPerfect']}`, locale);
+    localized.scope.dispose();
+  }
 });
 
 test('badge_enter_and_leave_follow_the_controller_elapsed_time', () => {
@@ -79,7 +87,7 @@ test('show_batch_does_not_clear_the_badge_and_the_badge_joins_the_notice_line', 
   // show() ticks internally without a precisionBadge entry: the earlier value must survive.
   assert.equal(view.stats().badge, true);
   const notices = card.querySelector('.bonus-card-notices');
-  assert.match(notices.textContent, /Notice A · ◎ 98%/);
+  assert.equal(notices.textContent, 'Notice A · ◎ Near perfect!');
   assert.equal(card.classList.contains('is-badge-only'), false);
   assert.match(card.querySelector('.bonus-card-points').textContent, /\+40/);
   // The batch later hides in evaluation but the badge keeps going.
