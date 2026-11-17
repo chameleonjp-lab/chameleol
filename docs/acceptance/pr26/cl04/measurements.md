@@ -41,3 +41,4 @@
 - `street-atlas-new-cells.png`：新しい19枠（61〜79）
 - `street-stories-402x700.png`・`street-stories-402x874.png`・`street-stories-874x402.png`：実際の街に各案を重ねた時点の画像（行＝案、列＝0・500・1000・1500・1900ms。置けない案は行が出ない）
 - `police-extras-poses.png`：本物の主人公と警察で E034（上段）・E039（下段）の姿勢
+- `badge-402x700.png`・`badge-402x874.png`・`badge-874x402.png`：統合済みの CSS で、batch 無しの評価中に出る精密札（`◎ 98%`、点数なし）

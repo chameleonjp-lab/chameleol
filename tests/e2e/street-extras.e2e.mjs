@@ -225,3 +225,46 @@ test('street atlas: the 61 existing cells decode to exactly the pixels of the fi
     assert.deepEqual(env.errors, []);
   } finally { await env.close(); }
 });
+
+for (const layout of LAYOUTS) {
+  test(`near-perfect badge at ${layout.key}: batch-less evaluation, real CSS, hidden for guide and warning`, async () => {
+    const env = await launch({width: layout.width, height: layout.height});
+    try {
+      await openHome(env.page, env.url);
+      await env.page.evaluate(async () => {
+        await __kamereoru.debugStart({atMs: 2000, seed: 1, effects: true});
+        const {mountBonusPresentation} = await import('/src/presentation/bonus-view.js');
+        const {createPresentationScope} = await import('/src/presentation/scope.js');
+        const host = document.querySelector('.stage-wrap');
+        document.querySelectorAll('.cover,.pause-overlay').forEach(c => { c.style.display = 'none'; });   // the restore dialog only hides the street for this check
+        window.__badge = mountBonusPresentation({host, scope: createPresentationScope({id: 'cl04-badge', kind: 'game'}), t: key => key});
+      });
+      const wrap = env.page.locator('.stage-wrap');
+      const probe = ms => env.page.evaluate((ms) => {
+        const v = window.__badge, card = v.element, host = card.parentElement.getBoundingClientRect(), r = card.getBoundingClientRect();
+        const cs = getComputedStyle(card), title = getComputedStyle(card.querySelector('.bonus-card-title'));
+        return {hidden: card.hidden, badgeOnly: card.classList.contains('is-badge-only'), text: card.querySelector('.bonus-card-badge')?.textContent ?? null, titleDisplay: title.display, opacity: Number(cs.opacity), left: r.left - host.left, right: host.right - r.right, top: r.top - host.top, width: r.width, wrapWidth: host.width};
+      }, ms);
+      const set = (args) => env.page.evaluate((args) => window.__badge.tick({phase: 'eval', running: true, ...args}), args);
+      for (const ms of [0, 150, 700, 1250, 1380]) {
+        await set({activeMs: 2000 + ms, precisionBadge: {id: 'p', kind: 'nearPerfect', building: 1, startedAt: 2000, phase: 'notice', elapsedMs: ms}});
+        const p = await probe(ms);
+        assert.equal(p.hidden, false, `visible at +${ms}`);
+        assert.equal(p.badgeOnly, true);
+        assert.equal(p.text, '◎ 98%');
+        assert.equal(p.titleDisplay, 'none', 'the title/points/rows are hidden by the integrated CSS');
+        assert.ok(Math.abs(p.left - p.right) <= 2, `centred: ${p.left} ${p.right}`);
+        assert.ok(p.width < p.wrapWidth - 20);
+        if (ms === 700 || ms === 150) await wrap.screenshot({path: OUT ? join(OUT, `badge-${layout.key}-${ms}.png`) : undefined});
+      }
+      await set({activeMs: 3400, precisionBadge: null});
+      assert.equal((await probe(1400)).hidden, true);
+      // Guide and warning values hide it (the application also hands null in those cases).
+      await set({activeMs: 2300, guideActive: true, precisionBadge: {kind: 'nearPerfect', elapsedMs: 300}});
+      assert.equal((await probe(300)).hidden, true);
+      await set({activeMs: 2300, warningActive: true, precisionBadge: {kind: 'nearPerfect', elapsedMs: 300}});
+      assert.equal((await probe(300)).hidden, true);
+      assert.deepEqual(env.errors, []);
+    } finally { await env.close(); }
+  });
+}

@@ -113,3 +113,52 @@ test('invalid_badge_values_are_ignored', () => {
     assert.equal(card.hidden, true, String(bad));
   }
 });
+
+// ---------------------------------------------------------------------------------------------
+// Real controller -> bonus tick: a badge from t=2000 for 1400ms, with no batch, before any pass.
+import {createGameExtrasController} from '../../src/presentation/game-extras-controller.js';
+
+const flushTurn = () => new Promise(resolve => setImmediate(resolve));
+function badgeRig() {
+  const controller = createGameExtrasController({playId: 'badge', seed: 1, extrasPort: {fresh: true, claimCameoStart: async () => false, claimPrecisionBadge: async () => true}});
+  const m = mount();
+  const input = (t, over = {}) => ({t, playId: 'badge', building: 1, passed: 0, phase: 'eval', running: true, hidden: false, policeStage: 0, matchState: null, guideActive: false, guidanceActive: false, warningActive: false, drawable: true, frameIntervalMs: 16, bestDistance: null, actorBusy: {hero: false, police: false}, placements: {}, reducedMotion: false, evaluationSegments: [], ...over});
+  return {controller, ...m, input};
+}
+const segment = {building: 1, from: 1500, to: 2000, evaluationEnd: 5000, matchUnits: 9900, unitsPerPercent: 100};
+
+test('t=2000..3400: the controller badge shows in a batch-less evaluation before the first pass and ends on its own', async () => {
+  const {controller, view, card, input} = badgeRig();
+  try {
+    controller.step(input(1990));
+    controller.step(input(2000, {evaluationSegments: [segment]}));
+    await flushTurn(); await flushTurn();
+    const seen = [];
+    for (let t = 2000; t <= 3500; t += 100) {
+      const quietFrame = controller.step(input(t));
+      view.tick({activeMs: t, phase: 'eval', guideActive: false, warningActive: false, running: true, precisionBadge: quietFrame.precisionBadge});
+      seen.push([t, !card.hidden]);
+    }
+    assert.deepEqual(seen.filter(([t]) => t < 3400).map(x => x[1]), Array(14).fill(true), '2000..3399 visible');
+    assert.deepEqual(seen.filter(([t]) => t >= 3400).map(x => x[1]), [false, false]);
+  } finally { controller.dispose(); }
+});
+
+test('a warning in the middle hides the badge without extending or re-claiming it', async () => {
+  const {controller, view, card, input} = badgeRig();
+  try {
+    controller.step(input(2000, {evaluationSegments: [segment]}));
+    await flushTurn(); await flushTurn();
+    const at = (t, over = {}) => { const f = controller.step(input(t, over)); view.tick({activeMs: t, phase: 'eval', guideActive: false, warningActive: !!over.warningActive, running: true, precisionBadge: f.precisionBadge}); return !card.hidden; };
+    assert.equal(at(2100), true);
+    assert.equal(at(2300, {warningActive: true}), false);
+    assert.equal(at(3000), true, 'the original window is still running after the warning');
+    assert.equal(at(3400), false, 'no extension of the 1400ms');
+    assert.equal(at(3500), false);
+  } finally { controller.dispose(); }
+});
+
+test('before the first pass and with no badge the card stays hidden', () => {
+  const {view, card} = mount();
+  for (let t = 0; t < 5000; t += 250) { view.tick({activeMs: t, phase: t % 2 ? 'eval' : 'grace', running: true, precisionBadge: null}); assert.equal(card.hidden, true); }
+});

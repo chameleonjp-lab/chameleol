@@ -361,3 +361,86 @@ test('footprints that would sit within 4px of the hero box are not drawn', () =>
   assert.ok(a.stats().footprints < 3);
   a.dispose();
 });
+
+// ---------------------------------------------------------------------------------------------
+// Real controller + accents: nothing is drawn before the start is claimed, and cancellations clear it.
+import {createGameExtrasController} from '../../src/presentation/game-extras-controller.js';
+
+function controllerWith(claim) {
+  return createGameExtrasController({playId: 'integ', seed: 1, extrasPort: {fresh: true, initialState: {count: 0, lastStartedAt: null, rngState: 1, reservedMidpoint: true, midpointUsed: false}, claimCameoStart: claim, claimPrecisionBadge: async () => true}});
+}
+const stepInput = (t, over = {}) => ({t, playId: 'integ', building: 43, passed: 42, phase: 'eval', running: true, hidden: false, moving: true, policeStage: 0, matchState: null, lastEvalSuccess: false, guideActive: false, guidanceActive: false, warningActive: false, drawable: true, frameIntervalMs: 16, bestDistance: null, actorBusy: {hero: false, police: false}, placements: {railway: true, water: true, robot: true, bird: true, midpoint: true, policeSettled: true, existing: {12: true}}, reducedMotion: false, ...over});
+const flush = () => new Promise(resolve => setImmediate(resolve));
+
+test('nothing is drawn before the controller has the claim; it appears after, and goes with a cancel', async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const controller = controllerWith(() => gate.then(() => true));
+  const args = plainFixture(), accents = createStreetAccents({...args, mode: 'extended96'});
+  const frame = (t, over) => { const extra = controller.step(stepInput(t, over)); accents.tick(run({t, ...over}), extra); return extra; };
+  try {
+    frame(1000);
+    // Starts are tried at the first grace frame; the claim is still pending, so the snapshot has no cameo.
+    let started = false;
+    for (let t = 2000; t < 2400 && !started; t += 16) { const extra = frame(t, {phase: 'grace'}); started = extra.cameo !== null; }
+    assert.equal(started, false, 'claim pending: no cameo yet');
+    assert.equal(accents.stats().backgroundGroups, 0);
+    assert.equal(accents.stats().storySprites, 0);
+    release(); await flush(); await flush();
+    const extra = frame(2400, {phase: 'grace'});
+    assert.ok(extra.cameo, 'the claim resolved: the controller now reports a story');
+    assert.equal(accents.stats().backgroundGroups, 1);
+    // A cancel from the controller (police 0 -> 2, guide, warning) removes the picture in the same frame.
+    const cancelled = frame(2500, {phase: 'grace', policeStage: 2});
+    assert.equal(cancelled.cameo, null);
+    assert.equal(accents.stats().backgroundGroups, 0);
+    assert.equal(accents.stats().storySprites, 0);
+  } finally { accents.dispose(); controller.dispose(); }
+});
+
+test('police 1->0 and 1->2 cancel the real E034 and clear the actor offset', async () => {
+  const ctx = new Proxy({}, {get: (_, k) => k === 'createRadialGradient' ? () => ({addColorStop() {}}) : () => {}});
+  globalThis.document = {createElement: () => ({getContext: () => ctx})};
+  const {createActorReactions} = await import('../../src/presentation/actor-reactions.js');
+  const {createChameleon, createFerret} = await import('../../src/scene/characters.js');
+  for (const next of [0, 2]) {
+    const controller = controllerWith(async () => false);
+    const hero = createChameleon(), police = [createFerret(), createFerret()], reactions = createActorReactions({hero, police});
+    try {
+      const play = (t, over) => {
+        const view = {playId: 'integ', t, running: true, phase: 'grace', policeStage: 1, combo: 0, passed: 1, building: 2, matchState: null, lastEvalSuccess: false, ...over};
+        hero.animate(0, {walking: false}); police.forEach(p => p.animate(0, {walking: false}));
+        reactions.tick(view);
+        const extra = controller.step(stepInput(t, {building: 2, passed: 1, policeStage: view.policeStage, phase: view.phase, actorBusy: reactions.busy(), ...over}));
+        return {extra, shift: reactions.applyPoliceExtra(extra.policeExtra, view)};
+      };
+      play(900, {phase: 'eval', policeStage: 0});
+      play(1000, {phase: 'eval'});     // the radio reaction starts and ends before the investigation may begin
+      play(1800, {phase: 'eval'});
+      const begin = play(1900, {});
+      assert.equal(begin.extra.policeExtra?.kind, 'inquiry');
+      const mid = play(2300, {});
+      assert.ok(mid.extra.policeExtra && mid.shift.dx < 0);
+      const gone = play(2316, {policeStage: next});
+      assert.equal(gone.extra.policeExtra, null);
+      assert.equal(gone.shift.dx, 0);
+      assert.equal(police[0].group.position.x, 0, 'the formal position is never moved here');
+    } finally { reactions.dispose(); controller.dispose(); hero.dispose(); police.forEach(p => p.dispose()); }
+  }
+});
+
+test('an expired midpoint reservation keeps a static flag forever and the accents draw it', async () => {
+  const controller = controllerWith(async () => true);
+  const args = plainFixture(), accents = createStreetAccents({...args, mode: 'extended96'});
+  try {
+    controller.event({type: 'pass', building: 25});
+    for (const t of [124000, 125000, 126400, 126600, 130000, 190000]) {
+      const extra = controller.step(stepInput(t, {building: 26, placements: {midpoint: false, existing: {}}}));
+      accents.tick(run({t, building: 26}), extra);
+    }
+    const last = controller.snapshot().cameo;
+    assert.equal(last?.phase, 'static');
+    assert.equal(accents.stats().staticFlag, true);
+    assert.equal(accents.stats().storySprites, 0);
+  } finally { accents.dispose(); controller.dispose(); }
+});
