@@ -1261,6 +1261,18 @@ export function createThreeStage(container, { course, decorations, rules = RULES
    * 配置可否・小芝居の絵・警察の追加動作は C の部品（accents・reactions）が持ち、ここは事実を渡して出力を戻すだけ。
    * cameo が null の時は何も描かず、旧描画へは戻らない。
    */
+  let paintedPoliceExtra=null;
+  function paintExtended(extra,view,info=frameInfo()){
+    accents?.tick(view,{cameo:extra?.cameo??null,policeExtra:extra?.policeExtra??null,actors:info});
+    const dx=reactions?.applyPoliceExtra(extra?.policeExtra??null,view)?.dx??0;
+    paintedPoliceExtra=ferretRoots[0].visible&&extra?.policeExtra?{...extra.policeExtra,dx}:null;
+    if(dx){
+      ferretRoots[0].position.x+=dx;
+      ferretShadows[0].position.x+=dx;
+      fx.placeIcon(0,ferretRoots[0].position.x+.35,SIDEWALK_Y+3.6*FERRET_SCALE+ferrets[0].hop*FERRET_SCALE+.75,ferretRoots[0].position.z);
+    }
+    travelTongue?.apply(extra?.travelTongue??null);
+  }
   function stepExtended(args, view) {
     const drawable = !contextLost && presentationEnabled;
     const info = drawable && accents ? frameInfo() : null;
@@ -1269,14 +1281,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const placements = composePlacements({ drawable, accents, view, info, policeSettled: view.policeStage === 1 && ferretArrived[0] });
       extra = stepper.step(args.presentation, { drawable, actorBusy: reactions ? reactions.busy() : IDLE_BUSY, placements });
     }
-    accents?.tick(view, { cameo: extra?.cameo ?? null, policeExtra: extra?.policeExtra ?? null, actors: info ?? frameInfo() });
-    const dx = reactions?.applyPoliceExtra(extra?.policeExtra ?? null, view)?.dx ?? 0;
-    if (dx) {
-      ferretRoots[0].position.x += dx;
-      ferretShadows[0].position.x += dx;
-      fx.placeIcon(0, ferretRoots[0].position.x + 0.35, SIDEWALK_Y + 3.6 * FERRET_SCALE + ferrets[0].hop * FERRET_SCALE + 0.75, ferretRoots[0].position.z);
-    }
-    travelTongue?.apply(extra?.travelTongue ?? null);
+    paintExtended(extra,view,info??frameInfo());
   }
 
   const api = {
@@ -1365,9 +1370,17 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       if(event.type==='instantSuccess')ringUntil=event.t+450;
     },
     setBestDistance(value){accents?.setBestDistance(value);stepper?.setBestDistance(value);},
-    presentationStats(){const a=accents?.stats()??{},r=reactions?.stats()??{};return {...a,mode,tongue:travelTongue?.stats()??null,actors:r,activeIds:[...(a.activeIds??[]),...(r.activeIds??[]),...(successRing.visible?[41]:[])],successRings:successRing.visible?1:0,enabled:presentationEnabled};},
-    forcePresentationEffect(id){
+    presentationStats(){const a=accents?.stats()??{},r=reactions?.stats()??{};return {...a,mode,tongue:travelTongue?.stats()??null,actors:r,policeExtra:paintedPoliceExtra,activeIds:[...(a.activeIds??[]),...(r.activeIds??[]),...(paintedPoliceExtra?.id===34?[34]:[]),...(paintedPoliceExtra?.id===39&&a.footprints>0?[39]:[]),...(successRing.visible?[41]:[])],successRings:successRing.visible?1:0,enabled:presentationEnabled};},
+    forcePresentationEffect(id,preview=null){
       if(!verification||!lastPresentation)return false;
+      // Draw an isolated verification snapshot through the same painter. No controller step,
+      // random draw or persistent claim is made here. The next actual frame replaces the preview.
+      if(extended&&preview&&[12,13,14,15,16,20,34,36,39,56,61,65,67,68,69,70].includes(id)){
+        const view={...lastPresentation,running:true,guideActive:false,guidanceActive:false};
+        accents?.placements(view,frameInfo());
+        if((preview.cameo??preview.policeExtra)?.id!==id)return false;
+        paintExtended(preview,view);drawFrame();return true;
+      }
       if(id===41){forcedRing=true;successRing.visible=true;drawFrame();return true;}
       const actorIds=[21,22,23,24,25,26,27,28,29,30,31,32,33,35,37,38,40];
       if(actorIds.includes(id)){const ok=reactions?.forceEffect(id,lastPresentation)??false;drawFrame();return ok;}

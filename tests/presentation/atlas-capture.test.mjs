@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {captureAtlasCell} from './atlas-capture.mjs';
+import {captureAtlasCell,captureAtlasCells} from './atlas-capture.mjs';
 
 function fixture(){
   const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(44,1,.5,100);
@@ -35,4 +35,17 @@ test('a missing flag fails instead of attributing unrelated changed artwork to t
   const f=fixture(),before=f.matrices();
   assert.throws(()=>captureAtlasCell({...f,cellIndex:68,columns:8,rows:12,viewport:{width:402,height:420},read:f.matrices}),/exactly one/);
   assert.deepEqual(f.matrices(),before);
+});
+
+
+test('grouped capture hides exactly the requested atlas instances and restores all matrices after a failed read',()=>{
+ const f=fixture(),before=f.matrices();let reads=0;
+ assert.throws(()=>captureAtlasCells({...f,cellIndices:[0,67],columns:8,rows:12,viewport:{width:402,height:420},read:()=>{
+  reads++;if(reads===2){const during=f.matrices();
+   assert.equal(new THREE.Matrix4().fromArray(during[0]).determinant(),0);
+   assert.equal(new THREE.Matrix4().fromArray(during[1]).determinant(),0);
+   assert.deepEqual(during[2],before[2]);throw new Error('group-read-failed');
+  }return before;
+ }}),/group-read-failed/);
+ assert.deepEqual(f.matrices(),before);assert.equal(reads,2);
 });

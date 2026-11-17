@@ -147,7 +147,8 @@ test('結果画面では名前のベスト順位を示し、Xには今回の成�
     }
 
     async function getShareText() {
-      await page.click('[data-testid=result-share]');
+      // The main action shares the prepared image. Text/X is an explicit secondary action.
+      await page.click('[data-testid=result-card-text]');
       const url = await page.evaluate(() => window.lastShareUrl);
       const text = new URL(url).searchParams.get('text');
       assert.match(text, /20棟・平均一致度90\.00%/);

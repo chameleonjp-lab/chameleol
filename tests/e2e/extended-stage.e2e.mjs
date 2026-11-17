@@ -307,7 +307,7 @@ for(const [width,height] of LAYOUTS){
           tp.upd(start,{phase:'grace',policeStage:0});
           await Promise.all(tp.claims);
         }
-        const {captureAtlasCell}=await import('/tests/presentation/atlas-capture.mjs');
+        const {captureAtlasCell,captureAtlasCells}=await import('/tests/presentation/atlas-capture.mjs');
         const atlas=await(await fetch('/src/presentation/assets/atlas.json')).json();
         const renderer=tp.stage.renderer,original=renderer.render;
         let scene,camera;
@@ -324,22 +324,24 @@ for(const [width,height] of LAYOUTS){
               for(let i=0;i<captured.shown.data.length;i+=4)if(Math.max(...[0,1,2].map(k=>Math.abs(captured.shown.data[i+k]-captured.hidden.data[i+k])))>24)pixels++;
               cells.push({name,pixels,projected:captured.projected});
             }
-            const shown=tp.stage.checkComparisonSurfaces();
-            samples.push({elapsed,frame,stats,cells,shown,canvas:{width:renderer.domElement.width,height:renderer.domElement.height},image:elapsed===1000?tp.image():null});
+            const baseline=captureAtlasCells({scene,camera,renderer,cellIndices:cells.map(cell=>atlas.street[cell.name].index),columns:atlas.columns,rows:atlas.rows,viewport:{width:renderer.domElement.width,height:renderer.domElement.height},read:()=>tp.stage.checkComparisonSurfaces()});
+            samples.push({elapsed,frame,stats,cells,shown:baseline.shown,birdHidden:baseline.hidden,canvas:{width:renderer.domElement.width,height:renderer.domElement.height},image:tp.image()});
           }
         }finally{renderer.render=original;}
         return samples;
       });
+      // Save every row before any assertion so a failed dimension keeps its exact evidence.
+      for(const row of report)await save(`${width}x${height}-real-bird-${row.elapsed}`,row.image);
+      if(SHOTS){await mkdir(SHOTS,{recursive:true});await writeFile(`${SHOTS}/${width}x${height}-real-bird.json`,JSON.stringify(report.map(({image,...row})=>row),null,2));}
+      t.diagnostic(JSON.stringify(report.map(({elapsed,cells,shown,birdHidden})=>({width,height,elapsed,cells,shown,birdHidden}))));
       for(const row of report){
         assert.equal(row.frame?.id,69,'the real controller and persistent claim start E069 without an override');
         assert.equal(row.stats.storySprites,3);
-        assert.equal(row.shown.wallMismatches,0);assert.equal(row.shown.bodyMismatches,0);
+        assert.equal(row.shown.wallMismatches,0,`${width}x${height}@${row.elapsed} wall: ${JSON.stringify(row.shown)}`);assert.equal(row.shown.bodyMismatches,0,`${width}x${height}@${row.elapsed} body shown/hidden: ${JSON.stringify({shown:row.shown,birdHidden:row.birdHidden})}`);
         for(const cell of row.cells)assert.ok(cell.pixels>=(row.elapsed===1000?3:1),`${cell.name}@${row.elapsed}: visible pixels ${cell.pixels}`);
         if(row.elapsed===1000)for(const cell of row.cells){const b=cell.projected;assert.ok(b.l>=8&&b.t>=8&&b.r<=row.canvas.width-8&&b.b<=row.canvas.height-8, `whole ${cell.name} inset: ${JSON.stringify(b)}`);}
       }
       await save(`${width}x${height}-real-bird`,report.find(r=>r.elapsed===1000)?.image);
-      if(SHOTS){await mkdir(SHOTS,{recursive:true});await writeFile(`${SHOTS}/${width}x${height}-real-bird.json`,JSON.stringify(report.map(({image,...row})=>row),null,2));}
-      t.diagnostic(JSON.stringify(report.map(({elapsed,cells})=>({elapsed,cells}))));
       assert.deepEqual(env.errors,[]);
     }finally{await env.close();}
   });

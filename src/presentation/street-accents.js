@@ -84,6 +84,23 @@ function midpointSpecs(ms,fx,still,phase){
   return out;
 }
 
+/** Conservative torso projection for ground pictures; the original head/feet box stays separate.
+ * `screenX` is frameInfo's actor-root x projected at SIDEWALK_Y + 1.5 (=1.72).
+ * Invert perspective exactly here, without changing the legacy footprint/policeWorldX solver.
+ */
+export function projectTorsoProtection(camera,vp,screenX,z){
+  const e=new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse).elements;
+  const n=screenX/vp.width*2-1,y=1.72;
+  const x=(n*(e[7]*y+e[11]*z+e[15])-(e[4]*y+e[8]*z+e[12]))/(e[0]-n*e[3]);
+  const box={l:Infinity,t:Infinity,r:-Infinity,b:-Infinity},point=new THREE.Vector3();
+  for(const wx of [x-1,x+1])for(const wy of [.8,3.1])for(const wz of [z-.65,z+.65]){
+    point.set(wx,wy,wz).project(camera);
+    const sx=(point.x+1)*vp.width/2,sy=(1-point.y)*vp.height/2;
+    box.l=Math.min(box.l,sx);box.r=Math.max(box.r,sx);box.t=Math.min(box.t,sy);box.b=Math.max(box.b,sy);
+  }
+  return box;
+}
+
 /** Read-only street presentation. Slots retain the existing index/cx/height/width contract. */
 export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope=null,seed,reducedMotion=false,mode='legacy80'}={}) {
   const extended=mode==='extended96',registry=createSlotRegistry(),director=extended?null:createCameoDirector(seed===undefined?{}:{random:createCosmeticRng(seed)});
@@ -135,8 +152,9 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
   // These world bounds include No.28's walking torso and the uniform torso of the 0.9-scale
   // officer; independent projected-vertex tests check real meshes with a separate 6px gap.
   function actorBox(screenX,z,vp,torsoOnly=false){
+    if(torsoOnly)return projectTorsoProtection(camera,vp,screenX,z);
     const x=solveWorldX(screenX,1.5,z,vp);let l=Infinity,t=Infinity,r=-Infinity,b=-Infinity;
-    for(const wx of torsoOnly?[x-.85,x+.85]:[x-1.6,x+1.2])for(const wy of torsoOnly?[.85,2.65]:[.2,3.2])for(const wz of [2,3]){const [sx,sy]=toScreen(wx,wy,wz,vp);l=Math.min(l,sx);r=Math.max(r,sx);t=Math.min(t,sy);b=Math.max(b,sy);}
+    for(const wx of [x-1.6,x+1.2])for(const wy of [.2,3.2])for(const wz of [2,3]){const [sx,sy]=toScreen(wx,wy,wz,vp);l=Math.min(l,sx);r=Math.max(r,sx);t=Math.min(t,sy);b=Math.max(b,sy);}
     return {l,t,r,b};
   }
   const actorBoxes=(fi,vp,withPolice,torsoOnly=false)=>{
@@ -397,7 +415,7 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
   function setBestDistance(value){best=Number.isInteger(value)&&value>=0&&value<=50?value:null;bestPassed=false;bestPassedAt=-Infinity;}
   function ending(kind,elapsed){if(disposed)return;cameo=null;story=null;policeExtra=null;fpKey=null;particles=visibleCameos=0;artwork.length=0;if(kind!=='cleared'){draw({phase:'ended'});return;}np=nb=nr=staticN=0;const x=500,p=reducedMotion?1:Math.max(0,Math.min(1,elapsed/800));box(x,5,-2,.6,10,1,0xc6b58b);box(x+9,5,-2,.6,10,1,0xc6b58b);box(x+4.5,10,-2,10,.6,1,0xc6b58b);box(x+2.2-p*2.2,4,-2,4.4*(1-p)+.02,8,.3,0xb19f78);box(x+6.8+p*2.2,4,-2,4.4*(1-p)+.02,8,.3,0xb19f78);sprites.count=0;roofs.count=0;interiors.count=0;cameoSprites.count=0;boxes.count=nb;boxes.instanceMatrix.needsUpdate=true;}
   function forceEffect(id){if(![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,36,47,53,57,58,59,61,62,63,64,65,66,70].includes(id)||disposed)return false;if(extended&&CAMEO_IMAGES[id])return false;forced=id;forcedStart=t;if([7,17,18,19,64,66].includes(id))graceStart=t;if(id===47)registry.react(current,t-1);if(CAMEO_IMAGES[id])cameo={id,start:t,ms:DURATIONS.get(id),building:current};if(id===11)gateStart=t;return true;}
-  function stats(){return {visibleArtwork:[...artwork],activeIds:[...(forced&&(!CAMEO_IMAGES[forced]||cameo?.id===forced)?[forced]:[]),...(story&&story.phase!=='static'?[story.id]:[])],staticDecorations:staticN,ambientParticles:particles,backgroundGroups:cameo||story&&story.phase!=='static'?1:0,backgroundBirds:cameo?.id===14?visibleCameos:0,shopInteriors:ni-residentWindows,residentWindows,drawCalls:5,geometries:3,textures:texture?1:0,mode,storySprites:storyN,storyLayout:activeLayout?{...activeLayout}:null,staticFlag:staticFlagShown,footprints:footprintsShown,...(director?director.stats():{count:0,disabled:false,slow:0})};}
+  function stats(){return {visibleArtwork:[...artwork],activeIds:[...(forced&&(!CAMEO_IMAGES[forced]||cameo?.id===forced)?[forced]:[]),...(cameo&&(cameo.id===12?residentWindows>0:visibleCameos>0)?[cameo.id]:[]),...(story&&(story.phase==='static'?staticFlagShown:storyN>0)?[story.id]:[])],staticDecorations:staticN,ambientParticles:particles,backgroundGroups:cameo||story&&story.phase!=='static'?1:0,backgroundBirds:cameo?.id===14?visibleCameos:0,shopInteriors:ni-residentWindows,residentWindows,drawCalls:5,geometries:3,textures:texture?1:0,mode,storySprites:storyN,storyLayout:activeLayout?{...activeLayout}:null,staticFlag:staticFlagShown,footprints:footprintsShown,...(director?director.stats():{count:0,disabled:false,slow:0})};}
   function dispose(){if(disposed)return;disposed=true;registry.clear();winked.clear();layouts.clear();activeLayout=null;cameo=null;group.removeFromParent();planeGeometry.dispose();boxGeometry.dispose();roofGeometry.dispose();spriteMaterial.dispose();interiorMaterial.dispose();cameoMaterial.dispose();solidMaterial.dispose();if(ownsTexture)texture.dispose();}
   scope?.own(dispose);draw({phase:'eval'});
   return {tick,event,syncSlot,setBestDistance,ending,stats,dispose,forceEffect,placements};

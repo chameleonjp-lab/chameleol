@@ -1,11 +1,11 @@
 // CL03：舌とダイヤ、舞台の mode 分岐（自動 Chromium）。iPhone 実機の見え方・性能の確認とは別のもの。
-// extended96 は、試験専用の入口 tests/e2e/fixtures/extended96.html（index.html・app.js は変えない。
-// stageFactory の wrapper だけが extended96 を明示する）から開く。通常起動（index.html）は legacy80 のまま。
+// 通常起動も extended96。明示legacy80の互換と、部品試験用extended96入口も維持する。
 // CL03_SCREENSHOTS に保存先を渡すと、画像を書く（docs/acceptance/pr26/cl03/）。
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { launch, openHome } from './helpers.mjs';
+import { polygonDistance } from '../scene/polygon-distance.mjs';
 
 const VIEWPORTS = [[402, 700], [402, 874], [874, 402]];
 const SHOTS = process.env.CL03_SCREENSHOTS || '';
@@ -49,28 +49,13 @@ async function installDriver(page, { effects = true } = {}) {
   }, { effects, START });
 }
 
-// 凸多角形（投影した胴・舌・ダイヤの凸包）どうしの最短距離（画素）。交われば 0。
-function polygonDistance(A, B) {
-  if (!A?.length || !B?.length) return Infinity;
-  const segs = (P) => P.map((p, i) => [p, P[(i + 1) % P.length]]);
-  const pointSegment = (p, [a, b]) => {
-    const dx = b[0] - a[0]; const dy = b[1] - a[1];
-    const k = dx || dy ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy))) : 0;
-    return Math.hypot(p[0] - (a[0] + k * dx), p[1] - (a[1] + k * dy));
-  };
-  const inside = (p, P) => { let sign = 0; for (const [a, b] of segs(P)) { const c = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]); if (c !== 0) { if (sign && Math.sign(c) !== sign) return false; sign = Math.sign(c); } } return true; };
-  if (A.some((p) => inside(p, B)) || B.some((p) => inside(p, A))) return 0;
-  let best = Infinity;
-  for (const p of A) for (const sg of segs(B)) best = Math.min(best, pointSegment(p, sg));
-  for (const p of B) for (const sg of segs(A)) best = Math.min(best, pointSegment(p, sg));
-  return best;
-}
 const overlap = (a, b, margin = 0) => a && b && !(a.x1 + margin <= b.x0 || b.x1 + margin <= a.x0 || a.y1 + margin <= b.y0 || b.y1 + margin <= a.y0);
 
-test('mode: the normal entry stays legacy80 and never steps the controller; only the explicit wrapper uses extended96 and steps once per frame', async () => {
+test('mode: normal entry is extended96 with one controller step per frame; explicit legacy80 remains compatible', async () => {
   const env = await launch();
   try {
-    await openHome(env.page, env.url);
+    await env.page.goto(`${env.url}tests/e2e/fixtures/legacy80.html`);
+    await env.page.waitForFunction(()=>globalThis.__fixtureReady===true);
     await installDriver(env.page);
     const legacy = await env.page.evaluate(() => {
       const tp = __tp;
@@ -82,7 +67,7 @@ test('mode: the normal entry stays legacy80 and never steps the controller; only
     assert.equal(legacy.calls, 0, 'the old stage path never calls step');
     assert.equal(legacy.tongue, null);
     assert.equal(legacy.snapshot, null, 'the controller was never stepped, so no tongue exists');
-    await openExtended(env);
+    await openHome(env.page, env.url);
     await installDriver(env.page);
     const extended = await env.page.evaluate(() => {
       const tp = __tp;

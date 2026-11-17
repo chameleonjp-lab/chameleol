@@ -17,7 +17,7 @@ function setup(presentationSet,{drawable=true,realStepper=false}={}){
  const order=[],ticks=[],controllerEvents=[],stageEvents=[],inputs=[];
  app=new App(document.querySelector('#root'),{audio,stageFactory:async(_host,options)=>{
   defaultPresentationSet=options.presentationSet;
-  // Mirrors the CL05 explicit wrapper: only the stage selects the extended path.
+  // An explicit wrapper can still select legacy80; normal App requests extended96.
   const opts=presentationSet?{...options,presentationSet}:options;
   controller=opts.gameExtrasController;
   const step=controller.step.bind(controller);
@@ -59,8 +59,8 @@ test('verification warmup uses real stage intervals without permanently suppress
  assert.equal(inspect(session),before);
 });
 
-test('explicit extended96 forwards the real post-stage badge to batchless evaluation bonus ticks with no extra step or run changes',async()=>{
- const view=setup('extended96');
+test('normal extended96 forwards the real post-stage badge to batchless evaluation bonus ticks with no extra step or run changes',async()=>{
+ const view=setup();
  const s=new GameSession({playId:'p',seed:17});await app.showGame(s,{fresh:true});assert.ok(view.controller);view.observeBonus();
  let batches=0;const show=app.bonusPresentation.show;app.bonusPresentation.show=(...args)=>{batches++;return show(...args);};
  s.running=false;s.apply({type:'color',t:100,...s.game.course.targets[0]});s.apply({type:'tick',t:2000});
@@ -79,9 +79,9 @@ test('explicit extended96 forwards the real post-stage badge to batchless evalua
  app.disposeStage();assert.deepEqual(view.controller.snapshot(),{travelTongue:null,cameo:null,policeExtra:null,precisionBadge:null});
 });
 
-test('the default legacy80 stage never steps the extended controller or enables a precision badge',async()=>{
- const view=setup();const s=new GameSession({playId:'legacy',seed:17});await app.showGame(s,{fresh:true});view.observeBonus();
- assert.equal(view.defaultPresentationSet,'legacy80');
+test('an explicit legacy80 stage never steps the extended controller or enables a precision badge',async()=>{
+ const view=setup('legacy80');const s=new GameSession({playId:'legacy',seed:17});await app.showGame(s,{fresh:true});view.observeBonus();
+ assert.equal(view.defaultPresentationSet,'extended96');
  s.running=false;s.apply({type:'color',t:100,...s.game.course.targets[0]});s.apply({type:'tick',t:2000});await frame();
  s.apply({type:'tick',t:2100});await frame();
  assert.equal(view.stepCalls,0);assert.equal(view.controller.snapshot().precisionBadge,null);
@@ -124,4 +124,46 @@ test('one police officer keeps the existing warning priority over a precision ba
  assert.equal(view.ticks.at(-1).warningActive,true);assert.equal(view.ticks.at(-1).precisionBadge,null);
  s.state.alert=0;s.apply({type:'tick',t:2200});await frame();
  assert.equal(view.ticks.at(-1).precisionBadge.elapsedMs,200,'returning from warning never restarts its lifetime');
+});
+
+
+test('normal verification precision preview uses actual evaluation data without claiming the current run badge',async()=>{
+ const view=setup(undefined,{realStepper:true});app.runtime={...app.runtime,isVerification:true};
+ await app.debugStart({atMs:2000,seed:1});
+ const before=inspect(app.session),extras=JSON.stringify(app.extrasMemory),calls=view.stepCalls;
+ const proof=await app.debugPresentation({effectId:44});
+ assert.equal(proof.badge,true);assert.equal(proof.visible,true);
+ assert.match(document.querySelector('.bonus-card-badge').textContent,/98%/);
+ assert.equal(view.stepCalls,calls,'an isolated preview adds no normal-stage controller step');
+ assert.equal(inspect(app.session),before);assert.equal(JSON.stringify(app.extrasMemory),extras);
+ assert.equal(view.controller.snapshot().precisionBadge,null,'the run claim is untouched');
+});
+
+test('normal App loop preserves the same 50-building course, summary, history and submission as explicit legacy, with effects on and off',async()=>{
+ const {buildResultBody}=await import('../../src/net/outbox.js');const runs=[];
+ for(const mode of ['legacy80',undefined])for(const effects of [false,true]){
+  const view=setup(mode,{realStepper:true,drawable:false});
+  const session=new GameSession({playId:'same-play',launchId:'same-launch',seed:17,effects,startedAt:1000});
+  await app.showGame(session,{fresh:true});session.running=false;
+  app.stage.playEnding=async()=>{};app.observeResult=null;
+  const milestones=[];
+  for(let b=1;b<=50;b++){
+   const target=session.game.course.targets[b-1];
+   session.apply({type:'color',t:(b-1)*5000+100,...target});
+   for(const offset of [2000,2500,4500]){
+    session.apply({type:'tick',t:(b-1)*5000+offset});
+    const before=inspect(session);await frame();assert.equal(inspect(session),before);
+   }
+   session.apply({type:'tick',t:b*5000});
+   if([20,40,50].includes(b))milestones.push(session.state.passed);
+  }
+  await settle();
+  assert.deepEqual(milestones,[20,40,50]);assert.equal(app.lastResult.summary.buildings,50);
+  assert.equal(app.lastResult.evidence.status,'ready');assert.equal(session.listeners.size,0);
+  assert.equal(view.stepCalls,mode==='legacy80'?0:150,'one step for each real App game frame');
+  const snapshot=session.snapshot();snapshot.meta.effects=true;
+  const summary=session.summary();runs.push({course:session.game.course,summary,history:snapshot.history,body:buildResultBody(snapshot,summary,{endedAt:1000})});
+  app.disposeStage();frames.clear();
+ }
+ for(const run of runs.slice(1))assert.deepEqual(run,runs[0]);
 });

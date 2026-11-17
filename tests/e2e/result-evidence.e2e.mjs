@@ -194,7 +194,7 @@ test('通常終了：session を捨てた後も今回の実色が得られ、言
     });
     assert.equal(pending.status, 'pending');
     assert.ok(pending.hasInput && pending.history > 12);
-    assert.equal(await page.locator('.evidence-chip').count(), 5);
+    assert.equal(await page.locator('.evidence-chip').count(), 7);
     for (const lang of ['en', 'ja', 'th']) {
       await page.evaluate((l) => __kamereoru.changeLanguage(l), lang);
       assert.equal(await page.evaluate(() => __kamereoru.lastResult.evidence === __evidenceProbe.evidence && __kamereoru.lastResult.evidence.controller === __evidenceProbe.controller && !__evidenceProbe.controller.signal.aborted), true, `${lang}: 解析の持ち主は同じ`);

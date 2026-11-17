@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createChameleon, createFerret } from '../../src/scene/characters.js';
-import { createStreetAccents } from '../../src/presentation/street-accents.js';
+import { createStreetAccents, projectTorsoProtection } from '../../src/presentation/street-accents.js';
 import { makeDecorations } from '../../src/rules/v1/course.js';
 import { VIEWPORTS, streetCamera, streetSlots } from './street-fixture.mjs';
 import { hull, polygonDistance, projectMesh } from '../scene/projection-fixture.mjs';
@@ -11,6 +11,45 @@ const context = new Proxy({}, { get: (_, key) => ['createRadialGradient', 'creat
 globalThis.document = { createElement: () => ({ getContext: () => context }) };
 
 for (const [key, vp] of Object.entries(VIEWPORTS)) {
+  test(`${key}: torso protection contains the real hero and police uniform capsule through movement, turns and hops`, t => {
+    const camera = streetCamera(vp.width, vp.height, 40);
+    const hero = createChameleon(); const police = createFerret();
+    const heroRoot = new THREE.Group(); const policeRoot = new THREE.Group();
+    heroRoot.add(hero.group); policeRoot.add(police.group);
+    heroRoot.position.set(40, .22, 2.5); heroRoot.rotation.y = -.42;
+    policeRoot.rotation.y = -.36; policeRoot.scale.setScalar(.9);
+    const torso = hero.comparePoint.parent.children.find(o => o.isMesh && hero.comparisonMaterials.includes(o.material));
+    const uniform = police.actorParts.body.children.find(o => o.isMesh);
+    // characters.js merges the uniform capsule first (1,800 vertices), before arms/tools.
+    assert.ok(uniform.geometry.attributes.position.count >= 1800);
+    const point = new THREE.Vector3();
+    let checked = 0;
+    t.after(() => { hero.dispose(); police.dispose?.(); });
+    for (const z of [2.7, 1.95]) for (const mode of ['run', 'search', 'chase']) {
+      policeRoot.position.set(z === 2.7 ? 37.1 : 35.6, .22, z);
+      police.react();
+      for (let step = 0; step < 32; step++) {
+        hero.animate(.04, { walking: true, nervous: .5 });
+        hero.head.rotation.y = -.92;
+        police.animate(.04, { walking: true, mode });
+        heroRoot.updateMatrixWorld(true); policeRoot.updateMatrixWorld(true);
+        for (const [root, mesh, count] of [[heroRoot, torso, torso.geometry.attributes.position.count], [policeRoot, uniform, 1800]]) {
+          const anchor = root.position.clone().add(new THREE.Vector3(0, 1.5, 0)).project(camera);
+          const box = projectTorsoProtection(camera, vp, (anchor.x + 1) * vp.width / 2, root.position.z);
+          const positions = mesh.geometry.attributes.position;
+          for (let i = 0; i < count; i++) {
+            point.fromBufferAttribute(positions, i).applyMatrix4(mesh.matrixWorld).project(camera);
+            const x = (point.x + 1) * vp.width / 2; const y = (1 - point.y) * vp.height / 2;
+            assert.ok(x >= box.l && x <= box.r && y >= box.t && y <= box.b, `${mode}/z${z}/step${step}/vertex${i}: (${x},${y}) outside ${JSON.stringify(box)}`);
+            checked++;
+          }
+        }
+      }
+    }
+    assert.ok(checked > 400000);
+    t.diagnostic(JSON.stringify({ checked }));
+  });
+
   test(`${key}: road pictures keep the designed 6px from actual torso geometry, separately from feet and head`, t => {
     const hero = createChameleon(); const police = createFerret();
     const heroRoot = new THREE.Group(); const policeRoot = new THREE.Group();

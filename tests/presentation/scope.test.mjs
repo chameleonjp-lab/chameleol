@@ -46,7 +46,7 @@ test('callback_disposal_cancels_other_due_work', () => {
   assert.equal(calls, 0);
 });
 test('catalog_keeps_exact_accepted_and_excluded_ids', () => {
-  assert.equal(ACCEPTED_EFFECT_IDS.length, 80); assert.equal(EXCLUDED_EFFECT_IDS.length, 20);
+  assert.equal(ACCEPTED_EFFECT_IDS.length, 96); assert.deepEqual([...EXCLUDED_EFFECT_IDS], [45,51,88,97]);
   assert.deepEqual([...ACCEPTED_EFFECT_IDS, ...EXCLUDED_EFFECT_IDS].sort((a,b) => a-b), Array.from({length:100}, (_,i) => i+1));
   assert.equal(PRESENTATION_LIMITS.ambientParticles, 8);
 });
