@@ -286,9 +286,60 @@ for(const [width,height] of LAYOUTS){
       assert.equal(new Set(rows.map(row=>row.building)).size,49);
       for(const row of rows){assert.equal(row.phase,'grace');assert.equal(row.t,(row.building-1)*5000);}
       const counts=Object.fromEntries(['railway','water','robot','bird'].map(key=>[key,rows.filter(row=>row.placements[key]).length]));
-      assert.ok(counts.railway>0&&counts.robot>0,'the sweep must observe usable real placements');
+      assert.ok(counts.railway>0&&counts.robot>0&&counts.bird>0,'the first-grace sweep must observe usable railway, robot and bird placements in every canvas');
+      // F04/Q07 permits conditional non-display: the tall canvas has no naturally visible gutter gap at +500ms.
       if(SHOTS){await mkdir(SHOTS,{recursive:true});await writeFile(`${SHOTS}/${width}x${height}-first-grace.json`,JSON.stringify({width,height,counts,rows},null,2));}
       t.diagnostic(`first-grace placement counts out of 49: ${JSON.stringify({width,height,...counts})}`);
+      assert.deepEqual(env.errors,[]);
+    }finally{await env.close();}
+  });
+
+  test(`real bird at ${width}x${height}: persisted selection draws bird, parcel and rope through the whole route`, async(t)=>{
+    const env=await launch({width,height});
+    try{
+      // First three opportunities are the unchanged 10% none draw; fourth selects E069.
+      await open(env,{cameoSeed:22509});
+      const report=await env.page.evaluate(async()=>{
+        const tp=__tp;
+        for(let building=2;building<=5;building++){
+          const start=(building-1)*5000;
+          for(let time=start-800;time<start;time+=16)tp.upd(time,{phase:'eval',policeStage:0});
+          tp.upd(start,{phase:'grace',policeStage:0});
+          await Promise.all(tp.claims);
+        }
+        const {captureAtlasCell}=await import('/tests/presentation/atlas-capture.mjs');
+        const atlas=await(await fetch('/src/presentation/assets/atlas.json')).json();
+        const renderer=tp.stage.renderer,original=renderer.render;
+        let scene,camera;
+        renderer.render=function(s,c){scene=s;camera=c;return original.call(this,s,c);};
+        const read=()=>{const canvas=renderer.domElement,copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;const c=copy.getContext('2d');c.drawImage(canvas,0,0);return c.getImageData(0,0,copy.width,copy.height);};
+        const samples=[];
+        try{
+          for(const elapsed of [250,500,1000,1500,1900]){
+            tp.upd(20000+elapsed,{phase:'grace',policeStage:0});
+            const frame=tp.ctrl.snapshot().cameo,stats=tp.stats(),cells=[];
+            for(const name of [stats.visibleArtwork.includes('birdCarryA')?'birdCarryA':'birdCarryB','parcel','rope']){
+              const captured=captureAtlasCell({scene,camera,renderer,cellIndex:atlas.street[name].index,columns:atlas.columns,rows:atlas.rows,viewport:{width:renderer.domElement.width,height:renderer.domElement.height},read});
+              let pixels=0;
+              for(let i=0;i<captured.shown.data.length;i+=4)if(Math.max(...[0,1,2].map(k=>Math.abs(captured.shown.data[i+k]-captured.hidden.data[i+k])))>24)pixels++;
+              cells.push({name,pixels,projected:captured.projected});
+            }
+            const shown=tp.stage.checkComparisonSurfaces();
+            samples.push({elapsed,frame,stats,cells,shown,canvas:{width:renderer.domElement.width,height:renderer.domElement.height},image:elapsed===1000?tp.image():null});
+          }
+        }finally{renderer.render=original;}
+        return samples;
+      });
+      for(const row of report){
+        assert.equal(row.frame?.id,69,'the real controller and persistent claim start E069 without an override');
+        assert.equal(row.stats.storySprites,3);
+        assert.equal(row.shown.wallMismatches,0);assert.equal(row.shown.bodyMismatches,0);
+        for(const cell of row.cells)assert.ok(cell.pixels>=(row.elapsed===1000?3:1),`${cell.name}@${row.elapsed}: visible pixels ${cell.pixels}`);
+        if(row.elapsed===1000)for(const cell of row.cells){const b=cell.projected;assert.ok(b.l>=8&&b.t>=8&&b.r<=row.canvas.width-8&&b.b<=row.canvas.height-8, `whole ${cell.name} inset: ${JSON.stringify(b)}`);}
+      }
+      await save(`${width}x${height}-real-bird`,report.find(r=>r.elapsed===1000)?.image);
+      if(SHOTS){await mkdir(SHOTS,{recursive:true});await writeFile(`${SHOTS}/${width}x${height}-real-bird.json`,JSON.stringify(report.map(({image,...row})=>row),null,2));}
+      t.diagnostic(JSON.stringify(report.map(({elapsed,cells})=>({elapsed,cells}))));
       assert.deepEqual(env.errors,[]);
     }finally{await env.close();}
   });

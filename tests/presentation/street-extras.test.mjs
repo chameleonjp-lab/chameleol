@@ -162,7 +162,7 @@ test('E069 bird: bird, parcel and rope (three), it cannot lift the parcel and co
   assert.equal(a.stats().storySprites, 3);
   a.dispose();
   const y = (ms, name) => storyPoses(69, ms, {roof: 9}).find(p => p.name.startsWith(name)).y;
-  assert.ok(y(1000, 'bird') > y(0, 'bird') + 0.7, 'lifts');
+  assert.ok(y(1000, 'bird') > y(0, 'bird') + 0.29, 'the compact sky route lifts by 0.3 world units');
   assert.ok(y(1000, 'parcel') - y(0, 'parcel') < y(1000, 'bird') - y(0, 'bird'), 'the parcel is not lifted as much');
   assert.ok(Math.abs(y(1900, 'bird') - y(0, 'bird')) < 1e-9, 'returns to the roof');
   const rope = storyPoses(69, 1000, {roof: 9}).find(p => p.name === 'rope');

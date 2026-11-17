@@ -186,13 +186,19 @@ for (const [width, height] of VIEWPORTS) {
             if (turn) hero.head.rotation.y = -0.92;
             tp.upd(t, { policeStage: 1, running: false }); // 止まっている間は姿勢を保持する
             const geo = tp.stage.presentationGeometry();
+            const shownHeadY = hero.head.rotation.y;
             const shown = tp.stage.checkComparisonSurfaces();
+            // Hide only the added meshes: retain exactly the same head, actor pose and clock,
+            // so a changed head silhouette cannot masquerade as tongue occlusion.
+            const tongue = hero.head.getObjectByName('travel-tongue');
+            const visible = tongue.visible;
+            let hidden;
+            try { tongue.visible = false; hidden = tp.stage.checkComparisonSurfaces(); }
+            finally { tongue.visible = visible; }
             tp.ctrl.step = (input) => ({ ...orig(input), travelTongue: null });
-            if (turn) hero.head.rotation.y = -0.92;
             tp.upd(t, { policeStage: 1, running: false });
-            const hidden = tp.stage.checkComparisonSurfaces();
             tp.ctrl.step = orig;
-            return { geo, shown, hidden, headY: hero.head.rotation.y };
+            return { geo, shown, hidden, shownHeadY, headY: hero.head.rotation.y };
           };
           const natural = measure(false);
           const turned = measure(true);
@@ -210,17 +216,18 @@ for (const [width, height] of VIEWPORTS) {
           }
           m.diamondGap = geo.diamond ? polygonDistance(geo.diamond.hull, geo.body.hull) : null;
           m.tongueGap = polygonDistance(geo.tongue.hull, geo.body.hull);
-          // 舌の根元は頭の口から出るので、口の近く（収縮・収納・頭が最大に振り向いた時）は胴との距離が小さくなる。伸びている段階（伸長・保持）の通常姿勢だけ4px以上を求め、他は記録する。
-          if (pose === 'natural' && ['extend', 'hold'].includes(phase)) assert.ok(m.tongueGap >= 4, `${phase}/${pose}: the extended tongue keeps 4px from the body (${m.tongueGap.toFixed(1)}px)`);
+          assert.equal(m.shownHeadY, 0, `${phase}/${pose}: presentation faces the tongue while preserving the original glance in the ledger`);
+          assert.ok(m.tongueGap >= 4, `${phase}/${pose}: the entire outlined tongue keeps 4px from the body (${m.tongueGap.toFixed(1)}px)`);
           if (geo.diamond) assert.ok(m.diamondGap >= 4, `${phase}/${pose}: the diamond keeps 4px from the body (${m.diamondGap.toFixed(1)}px)`);
           assert.equal(shown.wallMismatches, 0, `${phase}/${pose}: wall pixels unchanged`);
           assert.equal(shown.bodyMismatches, 0, `${phase}/${pose}: body pixels unchanged`);
           m.occluded = (hidden.wallPixels - shown.wallPixels) / hidden.wallPixels;
           m.bodyLoss = (hidden.bodyPixels - shown.bodyPixels) / hidden.bodyPixels;
+          assert.ok(m.bodyLoss <= 0.05, `${phase}/${pose}: tongue occludes at most 5% of the same-pose comparison body/head (${(m.bodyLoss * 100).toFixed(3)}%)`);
           assert.ok(m.occluded <= 0.015, `${phase}/${pose}: wall occlusion ${(m.occluded * 100).toFixed(3)}% <= 1.5%`);
         }
         assert.equal(r.turned.headY, -0.92);
-        // 舌の根元は頭の口から出るため、頭（比較用の材質を使う）の一部は舌で隠れる。その割合は記録し、合否には使わない。
+        // 頭を含む比較面の遮蔽も、同じ姿勢どうしの画素と5%の上限で判定する。
         report.push({ phase, ...r });
       }
       const pct = (v) => +(v * 100).toFixed(3);
@@ -241,7 +248,7 @@ test('stopped or hidden frames hold the same pose and write no shape; leaving re
       const hero = tp.stage.verificationHero();
       tp.toBoundary();
       tp.upd(START + 575);
-      const pose = () => JSON.stringify([hero.head.rotation.z, hero.actorParts.jaw.position.y, hero.actorParts.mouth.position.y, hero.actorParts.eyes[0].rotation.y, hero.actorParts.eyes[1].rotation.y, hero.jewel.visible]);
+      const pose = () => JSON.stringify([hero.head.rotation.y, hero.head.rotation.z, hero.actorParts.jaw.position.y, hero.actorParts.mouth.position.y, hero.actorParts.eyes[0].rotation.y, hero.actorParts.eyes[1].rotation.y, hero.jewel.visible]);
       const held = pose();
       const writes = tp.stage.presentationStats().tongue.shapeWrites;
       let same = true;

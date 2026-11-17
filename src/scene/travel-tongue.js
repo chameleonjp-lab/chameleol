@@ -242,6 +242,9 @@ export function createTravelTongue(hero) {
       }
       ledger.add(jaw.position, 'y', -0.05 * pose.mouthOpen);
       ledger.add(mouth.position, 'y', -0.025 * pose.mouthOpen);
+      // Keep the mouth in front of the torso even at the one-officer maximal glance.
+      // The ledger restores the existing head pose on every cancel/next base frame.
+      ledger.set(head.rotation, 'y', 0);
       ledger.add(head.rotation, 'z', clamp(pose.headTilt, -0.04, 0.04));
       ledger.add(eyes[0].rotation, 'y', 0.18 * pose.gazeWeight);
       ledger.add(eyes[1].rotation, 'y', -0.18 * pose.gazeWeight);

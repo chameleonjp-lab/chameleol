@@ -56,16 +56,18 @@ function robotSpecs(ms,bx,still){
   return out;
 }
 const birdLift=ms=>ms<300?0:ms<1000?Math.sin(Math.PI/2*(ms-300)/700):ms<1300?1:ms<1700?Math.cos(Math.PI/2*(ms-1300)/400):0;
-function birdSpecs(ms,bx,roof,still){
+function birdSpecs(ms,bx,roof,still,layout=null){
   const t=still?1000:ms,x=bx+6.5,lift=birdLift(t);
   const wing=still||(t>=1000&&t<1300)?(still||Math.floor(t/80)%2===0?'birdCarryB':'birdCarryA'):t>=1700?'birdCarryA':Math.floor(t/140)%2===0?'birdCarryA':'birdCarryB';
-  const birdY=roof+1.55+.8*lift,ring=birdY-.55,parcelY=roof+.4+.25*birdLift(t-120),parcelTop=parcelY+DIM.parcel/2;
+  const birdY=roof+1.55+.3*lift,ring=birdY-.55,parcelY=roof+.4+.1*birdLift(t-120),parcelTop=parcelY+DIM.parcel/2;
   const ropeH=Math.max(.05,ring-parcelTop);
-  return [
+  const specs=[
     {name:wing,x,y:birdY,z:-1.2,w:DIM.bird.w,h:DIM.bird.h,kind:'sky'},
     {name:'parcel',x,y:parcelY,z:-1.2,w:DIM.parcel,h:DIM.parcel,kind:'sky'},
     {name:'rope',x,y:parcelTop+ropeH/2,z:-1.15,w:.14,h:ropeH,kind:'sky'},
   ];
+  if(layout)for(const sp of specs){sp.x=layout.x;sp.y=layout.y+(sp.y-roof)*layout.scale;sp.z=layout.z+(sp.z+1.2);sp.w*=layout.scale;sp.h*=layout.scale;}
+  return specs;
 }
 function midpointSpecs(ms,fx,still,phase){
   const flagSpec=(x,y,s,squash=1)=>({name:'midFlag',x,y,z:7,w:DIM.flag.w*s,h:DIM.flag.h*s*squash,kind:'road'});
@@ -129,24 +131,30 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
   const overlap=(a,b,m)=>a.l<b.r+m&&a.r>b.l-m&&a.t<b.b+m&&a.b>b.t-m;
   // The camera only translates along x, so a screen x can be turned back into a world x on a depth plane.
   function solveWorldX(screenX,y,z,vp){const x0=camera.position.x,[a]=toScreen(x0,y,z,vp),[b]=toScreen(x0+10,y,z,vp);return x0+(screenX-a)*10/(b-a);}
-  function actorBox(screenX,z,vp){
+  // Ground pictures protect the torso, not the feet/head box used for flying pictures.
+  // These world bounds include No.28's walking torso and the uniform torso of the 0.9-scale
+  // officer; independent projected-vertex tests check real meshes with a separate 6px gap.
+  function actorBox(screenX,z,vp,torsoOnly=false){
     const x=solveWorldX(screenX,1.5,z,vp);let l=Infinity,t=Infinity,r=-Infinity,b=-Infinity;
-    for(const wx of [x-1.6,x+1.2])for(const wy of [.2,3.2])for(const wz of [2,3]){const [sx,sy]=toScreen(wx,wy,wz,vp);l=Math.min(l,sx);r=Math.max(r,sx);t=Math.min(t,sy);b=Math.max(b,sy);}
+    for(const wx of torsoOnly?[x-.85,x+.85]:[x-1.6,x+1.2])for(const wy of torsoOnly?[.85,2.65]:[.2,3.2])for(const wz of [2,3]){const [sx,sy]=toScreen(wx,wy,wz,vp);l=Math.min(l,sx);r=Math.max(r,sx);t=Math.min(t,sy);b=Math.max(b,sy);}
     return {l,t,r,b};
   }
-  const actorBoxes=(fi,vp,withPolice)=>{
-    const out=[];if(Number.isFinite(fi?.heroX))out.push(actorBox(fi.heroX,2.5,vp));
-    if(withPolice)[2.7,1.95].forEach((z,i)=>{if(fi?.policeVisible?.[i]!==false&&Number.isFinite(fi?.policeX?.[i]))out.push(actorBox(fi.policeX[i],z,vp));});
+  const actorBoxes=(fi,vp,withPolice,torsoOnly=false)=>{
+    const out=[];if(Number.isFinite(fi?.heroX))out.push(actorBox(fi.heroX,2.5,vp,torsoOnly));
+    if(withPolice)[2.7,1.95].forEach((z,i)=>{if(fi?.policeVisible?.[i]!==false&&Number.isFinite(fi?.policeX?.[i]))out.push(actorBox(fi.policeX[i],z,vp,torsoOnly));});
     return out;
   };
   const visibleSlot=b=>slots.find(s=>s.index===b&&s.group?.visible!==false);
   const roofTop=s=>{const h=s.height??7,b=s.index;return b%3===0?h+.6:h+.65+(b%3===1?.65:1.05);};
   const flagX=()=>MIDPOINT_FLAG_X;
-  const specsFor=(id,ms,bx,roof,still,phase)=>id===20?railwaySpecs(ms,bx,still):id===67?gutterSpecs(ms,bx,still):id===68?robotSpecs(ms,bx,still):id===69?birdSpecs(ms,bx,roof,still):id===56?midpointSpecs(ms,flagX(),still,phase):[];
+  const layouts=new Map();
+  let activeLayout=null,activeStoryKey=null;
+  const layoutKey=(id,b,vp)=>`${id}:${b}:${vp.width}:${vp.height}`;
+  const specsFor=(id,ms,bx,roof,still,phase,layout=null)=>id===20?railwaySpecs(ms,bx,still):id===67?gutterSpecs(ms,bx,still):id===68?robotSpecs(ms,bx,still):id===69?birdSpecs(ms,bx,roof,still,layout):id===56?midpointSpecs(ms,flagX(),still,phase):[];
   // Can the whole story be drawn without touching the comparison faces, the actors or the screen edge?
-  function fits(id,bldg,fi,withPolice){
+  function fits(id,bldg,fi,withPolice,layout=null){
     const no=why=>{fi.reasons?.push(`${id}:${why}`);return false;};
-    const vp=fi.viewport,W=vp.width,H=vp.height,bx=(bldg-1)*10,boxes=actorBoxes(fi,vp,withPolice);
+    const vp=fi.viewport,W=vp.width,H=vp.height,bx=(bldg-1)*10,boxes=actorBoxes(fi,vp,withPolice),roadBoxes=actorBoxes(fi,vp,withPolice,true);
     let roof=null,slot=null,next=null;
     if(id===69){slot=visibleSlot(bldg);if(!slot)return no('no building');roof=roofTop(slot);}
     if(id===67){slot=visibleSlot(bldg);next=visibleSlot(bldg+1);if(!slot||!next)return no('no gap');}
@@ -154,9 +162,9 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
     let tallest=0;
     for(let ms=0;ms<=dur;ms+=step){
       const shift=SHIFT_PER_MS*ms;let sky=null;
-      for(const sp of specsFor(id,ms,bx,roof,false,'delivery')){
+      for(const sp of specsFor(id,ms,bx,roof,false,'delivery',layout)){
         const box=specBox(sp,shift,vp),visible=box.r>0&&box.l<W&&box.b>0&&box.t<H;
-        if(visible&&!sp.raised&&boxes.some(a=>overlap(box,a,sp.kind==='road'?-10:6)))return no(`actor ${sp.name}@${ms}`);
+        if(visible&&!sp.raised&&(sp.kind==='road'?roadBoxes:boxes).some(a=>overlap(box,a,6)))return no(`actor ${sp.name}@${ms}`);
         if(sp.kind==='road'&&visible){const wall=toScreen(sp.x,0,0,vp)[1];if(!sp.raised&&box.t<wall+4)return no(`wall ${sp.name}@${ms}`);if(box.b>H-4)return no(`bottom ${sp.name}@${ms}`);}
         if(!sp.enter&&ms===insetAt&&(box.l<8||box.r>W-8||box.t<8||box.b>H-8))return no(`edge ${sp.name}@${ms}`);
         if(sp.kind==='gap'){
@@ -177,6 +185,27 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
     if(id===69&&tallest<56)return no('too short');
     return true;
   }
+  // Routes are chosen from geometry once for this opportunity. No random draw, clock or retry is added.
+  // Keep at most the seven visible-building plans; a claimed story owns its copied route until cancellation.
+  function remember(key,layout){if(layouts.size>=7)layouts.delete(layouts.keys().next().value);layouts.set(key,layout);return !!layout;}
+  function planBird(b,fi){
+    const vp=fi.viewport,key=layoutKey(69,b,vp);if(layouts.has(key))return !!layouts.get(key);
+    // Stage above a visible roof at the front eaves (z=1, ahead of the cap/roof front),
+    // the whole three-picture envelope still measures >=56px, with the original HUD/roof/edge guards.
+    const candidates=slots.filter(s=>s.index>0&&s.index<=50&&s.group?.visible!==false).sort((a,b)=>a.height-b.height);
+    for(const slot of candidates)for(const dx of [0,-2,2]){
+      const layout={x:slot.cx+dx,y:roofTop(slot),z:1,scale:1};
+      const bounds=()=>{let top=Infinity,bottom=-Infinity;for(const sp of birdSpecs(1000,0,0,false,layout)){const box=specBox(sp,0,vp);top=Math.min(top,box.t);bottom=Math.max(bottom,box.b);}return {top,height:bottom-top};};
+      for(let i=0;i<3;i++){const box=bounds();layout.scale*=56.5/box.height;}
+      for(let i=0;i<3;i++){
+        let top=Infinity;for(let ms=0;ms<=2000;ms+=250)for(const sp of birdSpecs(ms,0,0,false,layout))top=Math.min(top,specBox(sp,SHIFT_PER_MS*ms,vp).t);
+        const y=toScreen(layout.x,layout.y,layout.z,vp)[1],up=toScreen(layout.x,layout.y+1,layout.z,vp)[1];
+        layout.y+=(top-((fi.hudBottom??76)+8))/(y-up);
+      }
+      if(fits(69,b,fi,true,layout))return remember(key,layout);
+    }
+    return remember(key,null);
+  }
   function placements(view,fi){
     const out={railway:false,water:false,robot:false,bird:false,midpoint:false,existing:{}};
     if(!extended||disposed)return out;
@@ -185,7 +214,7 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
     const vp=fi?.viewport;
     if(!camera||!vp||!(vp.width>0)||!(vp.height>0))return out;
     camera.updateMatrixWorld();
-    if(view?.phase==='grace'&&Number.isInteger(b)){out.railway=fits(20,b,fi,true);out.water=fits(67,b,fi,true);out.robot=fits(68,b,fi,true);out.bird=fits(69,b,fi,true);}
+    if(view?.phase==='grace'&&Number.isInteger(b)){out.railway=fits(20,b,fi,true);out.water=fits(67,b,fi,true);out.robot=fits(68,b,fi,true);out.bird=planBird(b,fi);}
     if(Number.isFinite(view?.t)&&view.t>=125000&&view.t<126500)out.midpoint=fits(56,25,fi,false);
     return out;
   }
@@ -193,8 +222,16 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
   function drawable(sp,withPolice){
     const vp=frame?.viewport;if(!camera||!vp)return true;
     const box=specBox(sp,0,vp);if(box.r<0||box.l>vp.width||box.b<0||box.t>vp.height)return true;
-    if(actorBoxes(frame,vp,withPolice).some(a=>overlap(box,a,sp.raised?6:sp.kind==='road'?-10:0)))return false;
+    if(actorBoxes(frame,vp,withPolice,sp.kind==='road'&&!sp.raised).some(a=>overlap(box,a,6)))return false;
     if(sp.kind==='road'&&!sp.raised&&box.t<toScreen(sp.x,0,0,vp)[1]+4)return false;
+    if(sp.kind==='sky'){
+      if(box.t<(frame.hudBottom??76)+6)return false;
+      for(const s of slots){
+        if(s.index<=0||s.group?.visible===false)continue;
+        const h=s.height??7,half=(s.width??8.7)/2,l=toScreen(s.cx-half,h,0,vp)[0],r=toScreen(s.cx+half,h,0,vp)[0];
+        if(r>=box.l&&l<=box.r&&box.b>toScreen(s.cx,h,0,vp)[1]-4)return false;
+      }
+    }
     return true;
   }
   function policeWorldX(){
@@ -206,9 +243,10 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
     frame=extra?.actors??null;policeExtra=extra?.policeExtra??null;cameo=null;story=null;
     const c=extra?.cameo;
     if(c&&Number.isFinite(c.elapsedMs)){
-      if(STORY_IDS.has(c.id))story={...c};
+      if(STORY_IDS.has(c.id)){const key=`${c.id}:${c.startedAt}:${c.building}`;if(key!==activeStoryKey){activeStoryKey=key;activeLayout=frame?.viewport?layouts.get(layoutKey(c.id,c.building,frame.viewport))??null:null;}story={...c};}
       else if(CAMEO_IMAGES[c.id])cameo={id:c.id,start:t-c.elapsedMs,ms:c.durationMs,building:c.building};
     }
+    if(!story){activeStoryKey=null;activeLayout=null;}
     if(policeExtra?.kind==='footprints'&&policeExtra.building===current){const key=`${policeExtra.id}:${policeExtra.startedAt}`;if(key!==fpKey){fpKey=key;if(camera)camera.updateMatrixWorld();fpX=policeWorldX();}}else fpKey=null;
   }
   // Footprints (E039) and the standing midpoint flag are static decorations: they take furniture slots.
@@ -238,7 +276,7 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
     const b=story.building,bx=(b-1)*10;let roof=null;
     if(story.id===69){const s=visibleSlot(b);if(!s)return;roof=roofTop(s);}
     if(camera)camera.updateMatrixWorld();
-    for(const sp of specsFor(story.id,Math.max(0,story.elapsedMs),bx,roof,reducedMotion,'delivery')){
+    for(const sp of specsFor(story.id,Math.max(0,story.elapsedMs),bx,roof,reducedMotion,'delivery',activeLayout)){
       if(!drawable(sp,story.id!==56))continue;
       sprite(sp.name,sp.x,sp.y,sp.z,sp.w,sp.h,sp.rz??0,sp.rx??0,'story');
     }
@@ -359,8 +397,8 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
   function setBestDistance(value){best=Number.isInteger(value)&&value>=0&&value<=50?value:null;bestPassed=false;bestPassedAt=-Infinity;}
   function ending(kind,elapsed){if(disposed)return;cameo=null;story=null;policeExtra=null;fpKey=null;particles=visibleCameos=0;artwork.length=0;if(kind!=='cleared'){draw({phase:'ended'});return;}np=nb=nr=staticN=0;const x=500,p=reducedMotion?1:Math.max(0,Math.min(1,elapsed/800));box(x,5,-2,.6,10,1,0xc6b58b);box(x+9,5,-2,.6,10,1,0xc6b58b);box(x+4.5,10,-2,10,.6,1,0xc6b58b);box(x+2.2-p*2.2,4,-2,4.4*(1-p)+.02,8,.3,0xb19f78);box(x+6.8+p*2.2,4,-2,4.4*(1-p)+.02,8,.3,0xb19f78);sprites.count=0;roofs.count=0;interiors.count=0;cameoSprites.count=0;boxes.count=nb;boxes.instanceMatrix.needsUpdate=true;}
   function forceEffect(id){if(![1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,36,47,53,57,58,59,61,62,63,64,65,66,70].includes(id)||disposed)return false;if(extended&&CAMEO_IMAGES[id])return false;forced=id;forcedStart=t;if([7,17,18,19,64,66].includes(id))graceStart=t;if(id===47)registry.react(current,t-1);if(CAMEO_IMAGES[id])cameo={id,start:t,ms:DURATIONS.get(id),building:current};if(id===11)gateStart=t;return true;}
-  function stats(){return {visibleArtwork:[...artwork],activeIds:[...(forced&&(!CAMEO_IMAGES[forced]||cameo?.id===forced)?[forced]:[]),...(story&&story.phase!=='static'?[story.id]:[])],staticDecorations:staticN,ambientParticles:particles,backgroundGroups:cameo||story&&story.phase!=='static'?1:0,backgroundBirds:cameo?.id===14?visibleCameos:0,shopInteriors:ni-residentWindows,residentWindows,drawCalls:5,geometries:3,textures:texture?1:0,mode,storySprites:storyN,staticFlag:staticFlagShown,footprints:footprintsShown,...(director?director.stats():{count:0,disabled:false,slow:0})};}
-  function dispose(){if(disposed)return;disposed=true;registry.clear();winked.clear();cameo=null;group.removeFromParent();planeGeometry.dispose();boxGeometry.dispose();roofGeometry.dispose();spriteMaterial.dispose();interiorMaterial.dispose();cameoMaterial.dispose();solidMaterial.dispose();if(ownsTexture)texture.dispose();}
+  function stats(){return {visibleArtwork:[...artwork],activeIds:[...(forced&&(!CAMEO_IMAGES[forced]||cameo?.id===forced)?[forced]:[]),...(story&&story.phase!=='static'?[story.id]:[])],staticDecorations:staticN,ambientParticles:particles,backgroundGroups:cameo||story&&story.phase!=='static'?1:0,backgroundBirds:cameo?.id===14?visibleCameos:0,shopInteriors:ni-residentWindows,residentWindows,drawCalls:5,geometries:3,textures:texture?1:0,mode,storySprites:storyN,storyLayout:activeLayout?{...activeLayout}:null,staticFlag:staticFlagShown,footprints:footprintsShown,...(director?director.stats():{count:0,disabled:false,slow:0})};}
+  function dispose(){if(disposed)return;disposed=true;registry.clear();winked.clear();layouts.clear();activeLayout=null;cameo=null;group.removeFromParent();planeGeometry.dispose();boxGeometry.dispose();roofGeometry.dispose();spriteMaterial.dispose();interiorMaterial.dispose();cameoMaterial.dispose();solidMaterial.dispose();if(ownsTexture)texture.dispose();}
   scope?.own(dispose);draw({phase:'eval'});
   return {tick,event,syncSlot,setBestDistance,ending,stats,dispose,forceEffect,placements};
 }
