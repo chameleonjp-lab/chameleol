@@ -167,6 +167,49 @@ export function createActorReactions({ hero, police = [], scope, reducedMotion =
     if(n===24)tailK=1;
     if(view)tick(view);return true;
   }
+  // ---- E034 / E039: cosmetic police investigations --------------------------------------------
+  // Time comes only from the controller's elapsedMs. Poses are saved nodes (restored before the next
+  // base animation); the displayed x offset is returned for the stage to add to root, shadow and icon.
+  const seg=(ms,a,b)=>clamp((ms-a)/(b-a));
+  const smooth=x=>{x=clamp(x);return x*x*(3-2*x);};
+  const inOutQuad=x=>{x=clamp(x);return x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;};
+  const keys=(ms,pts)=>{if(ms<=pts[0][0])return pts[0][1];for(let i=1;i<pts.length;i++)if(ms<pts[i][0]){const [a,va]=pts[i-1],[b,vb]=pts[i];return va+(vb-va)*smooth((ms-a)/(b-a));}return pts[pts.length-1][1];};
+  const pulse2=(ms,c,w=40)=>ms>=c-w&&ms<=c+w?Math.sin(Math.PI*(ms-(c-w))/(2*w)):0;
+  function inquiryPlan(ms){
+    const turn=ms<200?smooth(seg(ms,0,200))*.8:ms<800?.8:.8*(1-smooth(seg(ms,800,1100)));
+    const dx=ms<200?0:ms<600?-.8*seg(ms,200,600):ms<800?-.8-.2*seg(ms,600,800):-(1-inOutQuad(seg(ms,800,1200)));
+    const raise=ms<600?smooth(seg(ms,200,350)):1-smooth(seg(ms,600,800));
+    return {dx,turn,lean:0,headY:0,headZ:-.08*(pulse2(ms,330)+pulse2(ms,470))+.15*Math.sin(Math.PI*seg(ms,600,800)),
+      arm:1.2*(ms<700?smooth(seg(ms,100,300)):1-smooth(seg(ms,700,900))),legs:ms<200?1:ms<800?0:1.6,
+      sketch:ms>=150&&ms<1150,raise,beam:0};
+  }
+  function footprintsPlan(ms){
+    const bend=ms<150?0:ms<550?smooth(seg(ms,150,550)):ms<1150?1:1-smooth(seg(ms,1150,1500));
+    const dx=ms<150?0:ms<550?-.8*seg(ms,150,550):ms<1150?-.8:-.8*(1-inOutQuad(seg(ms,1150,1500)));
+    return {dx,turn:0,lean:-.35*bend,headY:keys(ms,[[550,0],[750,-.6],[950,.6],[1150,-.3],[1250,0]]),headZ:-.25*bend,arm:0,
+      legs:ms<150?1:ms<1150?.4:1.6,sketch:false,raise:0,beam:-.3*bend};
+  }
+  function applyPoliceExtra(extra,view){
+    if(disposed||!extra||(extra.kind!=='inquiry'&&extra.kind!=='footprints')||!Number.isFinite(extra.elapsedMs))return {dx:0};
+    const reduced=typeof reducedMotion==='function'?reducedMotion():reducedMotion;
+    const inquiry=extra.kind==='inquiry';
+    const ms=Math.max(0,Math.min(inquiry?1200:1500,extra.elapsedMs));
+    // Reduced motion: hold the characteristic mid pose, with no sliding.
+    const plan=reduced?{...(inquiry?inquiryPlan(400):footprintsPlan(800)),dx:0,legs:1}:(inquiry?inquiryPlan(ms):footprintsPlan(ms));
+    // A paused frame never writes again: the pose from the last running frame is still in place.
+    if(view?.running===false)return {dx:plan.dx||0};
+    const actor=officers[0],p=actor?.actorParts;
+    if(!p)return {dx:plan.dx||0};
+    if(p.lean&&(plan.turn||plan.lean)){save(p.lean);p.lean.rotation.y+=plan.turn;p.lean.rotation.z+=plan.lean;}
+    save(p.head);p.head.rotation.y+=plan.headY;p.head.rotation.z+=plan.headZ;
+    if(plan.arm){save(p.arm);p.arm.rotation.z+=plan.arm;}
+    if(plan.legs!==1)for(const leg of p.legs){save(leg);leg.rotation.z*=plan.legs;}
+    if(plan.beam&&actor.beam){save(actor.beam);actor.beam.rotation.z+=plan.beam;}
+    const sketch=props[0]?.sketch;
+    if(sketch&&plan.sketch){save(sketch);sketch.visible=true;sketch.position.set(.4+.12*plan.raise,-.45+.15*plan.raise,.55);sketch.rotation.z=-.12*plan.raise;}
+    return {dx:plan.dx||0};
+  }
+  const busy=()=>({hero:heroAction!==null,police:policeAction!==null});
   scope?.own(dispose);
-  return {tick,event,reset,dispose,forceEffect,stats:()=>({activeIds:forced?[forced.id]:[...(previous?.phase==='grace'?[21]:[]),...(previous?.matchState==='success'?[22]:[]),...(previous?.policeStage===2?[23,24,31]:[]),28,...({glance:[25],sweat:[26],trip:[27],proud:[29],gem:[30]}[heroAction?.name]??[]),...({radio:[32],sketch:[33],stop:[35],binoculars:[37],together:[38],hat:[40]}[policeAction?.name]??[])],hero:heroAction?.name??null,police:policeAction?.name??null,tail:tailK,counts:{...counts},props:props.length*5})};
+  return {tick,event,reset,dispose,forceEffect,busy,applyPoliceExtra,stats:()=>({activeIds:forced?[forced.id]:[...(previous?.phase==='grace'?[21]:[]),...(previous?.matchState==='success'?[22]:[]),...(previous?.policeStage===2?[23,24,31]:[]),28,...({glance:[25],sweat:[26],trip:[27],proud:[29],gem:[30]}[heroAction?.name]??[]),...({radio:[32],sketch:[33],stop:[35],binoculars:[37],together:[38],hat:[40]}[policeAction?.name]??[])],hero:heroAction?.name??null,police:policeAction?.name??null,tail:tailK,counts:{...counts},props:props.length*5})};
 }

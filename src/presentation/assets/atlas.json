@@ -1,9 +1,9 @@
 {
-  "version": 1,
+  "version": 2,
   "width": 1024,
-  "height": 1024,
+  "height": 1536,
   "columns": 8,
-  "rows": 8,
+  "rows": 12,
   "source": "Original vector artwork, scripts/render-street-atlas.mjs",
   "street": {
     "pavement0": {
@@ -432,6 +432,139 @@
       "width": 128,
       "height": 128,
       "index": 60
+    },
+    "crossingPost": {
+      "x": 640,
+      "y": 896,
+      "width": 128,
+      "height": 128,
+      "index": 61
+    },
+    "crossingPostLit": {
+      "x": 768,
+      "y": 896,
+      "width": 128,
+      "height": 128,
+      "index": 62
+    },
+    "crossingArm": {
+      "x": 896,
+      "y": 896,
+      "width": 128,
+      "height": 128,
+      "index": 63
+    },
+    "tram": {
+      "x": 0,
+      "y": 1024,
+      "width": 128,
+      "height": 128,
+      "index": 64
+    },
+    "droneA": {
+      "x": 128,
+      "y": 1024,
+      "width": 128,
+      "height": 128,
+      "index": 65
+    },
+    "droneB": {
+      "x": 256,
+      "y": 1024,
+      "width": 128,
+      "height": 128,
+      "index": 66
+    },
+    "midFlag": {
+      "x": 384,
+      "y": 1024,
+      "width": 128,
+      "height": 128,
+      "index": 67
+    },
+    "gutterWaterA": {
+      "x": 512,
+      "y": 1024,
+      "width": 128,
+      "height": 128,
+      "index": 68
+    },
+    "gutterWaterB": {
+      "x": 640,
+      "y": 1024,
+      "width": 128,
+      "height": 128,
+      "index": 69
+    },
+    "gutterSwirl": {
+      "x": 768,
+      "y": 1024,
+      "width": 128,
+      "height": 128,
+      "index": 70
+    },
+    "robotPaint": {
+      "x": 896,
+      "y": 1024,
+      "width": 128,
+      "height": 128,
+      "index": 71
+    },
+    "robotFoot": {
+      "x": 0,
+      "y": 1152,
+      "width": 128,
+      "height": 128,
+      "index": 72
+    },
+    "robotLook": {
+      "x": 128,
+      "y": 1152,
+      "width": 128,
+      "height": 128,
+      "index": 73
+    },
+    "paintStripe": {
+      "x": 256,
+      "y": 1152,
+      "width": 128,
+      "height": 128,
+      "index": 74
+    },
+    "birdCarryA": {
+      "x": 384,
+      "y": 1152,
+      "width": 128,
+      "height": 128,
+      "index": 75
+    },
+    "birdCarryB": {
+      "x": 512,
+      "y": 1152,
+      "width": 128,
+      "height": 128,
+      "index": 76
+    },
+    "parcel": {
+      "x": 640,
+      "y": 1152,
+      "width": 128,
+      "height": 128,
+      "index": 77
+    },
+    "rope": {
+      "x": 768,
+      "y": 1152,
+      "width": 128,
+      "height": 128,
+      "index": 78
+    },
+    "footprint": {
+      "x": 896,
+      "y": 1152,
+      "width": 128,
+      "height": 128,
+      "index": 79
     }
   }
 }
