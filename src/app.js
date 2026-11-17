@@ -674,7 +674,9 @@ export class App {
     const view=readPlayView(this.session,1,{lastEvalSuccess:true});
     if(actorIds.includes(effectId)){
       const police=[23,24,31,38].includes(effectId)?2:[25,32,33,35,37,40].includes(effectId)?1:0;
-      for(let i=0;i<=30;i++){const t=view.t-3000+i*100;this.stage.update({t,color:view.color,policeStage:police,walking:true,matchState:null,presentation:{...view,t,running:true,policeStage:police}});}
+      // Use normal display intervals: 30 consecutive 100ms frames permanently disable cameos.
+      // Clamp the last sample to the original end time, without advancing the game session.
+      for(let i=0;i<=Math.ceil(3000/16);i++){const t=view.t-3000+Math.min(i*16,3000);this.stage.update({t,color:view.color,policeStage:police,walking:true,matchState:null,presentation:{...view,t,running:true,policeStage:police}});}
     }else this.stage.update({t:view.t,color:view.color,policeStage:1,walking:false,presentation:view});
     if(hudIds.includes(effectId)){this.presentationHud.forceEffect(effectId,{...view,running:true});if([11,58].includes(effectId))this.stage.forcePresentationEffect(effectId);return this.presentationHud.stats();}
     if(effectId===60){

@@ -428,7 +428,7 @@ test('effects-off extended stage and the simple DOM stage still step once per fr
     assert.equal(off.stats.tongue, null);
     await env.page.evaluate(() => __kamereoru.leaveGame());
     // 簡易DOMの舞台（WebGL を使わない）。実 controller でも評価区間を落とさず、札を止めない。
-    const dom = await env.page.evaluate(async () => {
+    await env.page.evaluate(async () => {
       const { createStage } = await import('/src/scene/stage.js');
       const { createGameExtrasController } = await import('/src/presentation/game-extras-controller.js');
       const { RULES_V1 } = await import('/src/rules/v1/index.js');
@@ -443,12 +443,13 @@ test('effects-off extended stage and the simple DOM stage still step once per fr
       const segment = { building: 3, from: 11500, to: 12000, matchUnits: 98000000, unitsPerPercent: 1000000, evaluationEnd: 14500 };
       stage.update({ t: 11000, color: { h: 1, s: 2, v: 3 }, presentation: view(11000) });
       stage.update({ t: 12000, color: { h: 1, s: 2, v: 3 }, presentation: view(12000, [segment]) });
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      const badge = controller.snapshot().precisionBadge?.kind ?? null;
-      const kind = stage.kind;
-      stage.dispose(); controller.dispose(); host.remove();
-      return { calls, badge, kind };
+      globalThis.__domBadgeFixture={
+        read:()=>({calls,badge:controller.snapshot().precisionBadge?.kind??null,kind:stage.kind}),
+        dispose:()=>{stage.dispose();controller.dispose();host.remove();},
+      };
     });
+    await env.page.waitForFunction(()=>globalThis.__domBadgeFixture?.read().badge==='nearPerfect');
+    const dom=await env.page.evaluate(()=>{const value=__domBadgeFixture.read();__domBadgeFixture.dispose();delete globalThis.__domBadgeFixture;return value;});
     assert.equal(dom.kind, 'dom');
     assert.equal(dom.calls, 2);
     assert.equal(dom.badge, 'nearPerfect', 'the simple stage alone does not suppress the badge');

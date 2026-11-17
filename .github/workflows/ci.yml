@@ -88,6 +88,15 @@ jobs:
       - name: 自動ブラウザの通し試験（${{ matrix.shard }}/4）
         # Node が対象全ファイルを重複・欠落なく分割する。新しい試験ファイルも自動で対象になる。
         run: node --test --test-concurrency=1 --test-shard=${{ matrix.shard }}/4 tests/e2e/*.e2e.mjs
+        env:
+          CL03_SCREENSHOTS: ${{ runner.temp }}/pr26-evidence
+      - name: PR26の画像と測定を保存（試験の合否は変更しない）
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr26-evidence-${{ github.event.pull_request.head.sha || github.sha }}-${{ matrix.shard }}
+          path: ${{ runner.temp }}/pr26-evidence/
+          if-no-files-found: ignore
       - name: この組の成功を記録
         id: completed
         env:

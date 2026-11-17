@@ -16,12 +16,15 @@ const CAMEO_IMAGES={12:'resident',13:'cat',14:'bird',15:'bicycle',16:'bus',36:'p
 // place a picture can be drawn without being cut by the wall-front stencil.
 const STORY_IDS=new Set([20,56,67,68,69]);
 const GROUND=.245,SHIFT_PER_MS=.002;
+// Keep delivery visible after the 26th-building reaction, including tall portrait layouts.
+// The best-distance flag stays at best*10,z=-0.6; this flag is further forward on the road.
+const MIDPOINT_FLAG_X=253;
 const clamp01=x=>Math.max(0,Math.min(1,x));
 const smooth=x=>{x=clamp01(x);return x*x*(3-2*x);};
 const easeOutCubic=x=>1-Math.pow(1-clamp01(x),3);
 const lerp=(a,b,x)=>a+(b-a)*clamp01(x);
 const DEG=Math.PI/180;
-const DIM={post:{w:.9,h:1.1},arm:{w:2.6,h:.33},tram:{w:3,h:.95},flag:{w:.65,h:.85},drone:{w:.8,h:.62},water:{w:.8,h:1.9},swirl:.7,robot:{w:.95,h:1.05},bird:{w:1.5,h:1.22},parcel:.75};
+const DIM={post:{w:.9,h:1.1},arm:{w:2.6,h:.33},tram:{w:3,h:.95},flag:{w:.65,h:.85},drone:{w:.8,h:.62},water:{w:.45,h:1.9},swirl:.45,robot:{w:.95,h:1.05},bird:{w:1.5,h:1.22},parcel:.75};
 const TILT=.85; // ground pictures lean toward the camera so that they are not seen edge-on
 function railwaySpecs(ms,bx,still){
   const px=bx+4.2,t=still?600:ms,out=[];
@@ -34,13 +37,13 @@ function railwaySpecs(ms,bx,still){
   return out;
 }
 function gutterSpecs(ms,bx,still){
-  const x=bx+10,t=still?600:ms,out=[];
+  const x=bx+9.7,t=still?600:ms,out=[];
   const grow=t<200?t/200:1,narrow=t<1700?1:lerp(1,.2,(t-1700)/300);
   const name=still||t<200||Math.floor((t-200)/120)%2===0?'gutterWaterA':'gutterWaterB';
   const h=DIM.water.h*grow;
   out.push({name,x,y:2.2-h/2,z:.15,w:DIM.water.w*narrow,h:Math.max(.01,h),kind:'gap'});
   const size=DIM.swirl*(t<200?lerp(.6,1,t/200):t<1700?1:lerp(1,.6,(t-1700)/300));
-  out.push({name:'gutterSwirl',x,y:.55,z:.4,w:size,h:size,rx:-Math.PI/2+TILT,rz:still?0:-(2*Math.PI*Math.min(1500,Math.max(0,t-200))/700),kind:'gap',circle:true});
+  out.push({name:'gutterSwirl',x,y:.25,z:.9,w:size,h:size,rx:-Math.PI/2,rz:still?0:-(2*Math.PI*Math.min(1500,Math.max(0,t-200))/700),kind:'gap',circle:true});
   return out;
 }
 function robotSpecs(ms,bx,still){
@@ -138,7 +141,7 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
   };
   const visibleSlot=b=>slots.find(s=>s.index===b&&s.group?.visible!==false);
   const roofTop=s=>{const h=s.height??7,b=s.index;return b%3===0?h+.6:h+.65+(b%3===1?.65:1.05);};
-  const flagX=()=>best===25?249:250;
+  const flagX=()=>MIDPOINT_FLAG_X;
   const specsFor=(id,ms,bx,roof,still,phase)=>id===20?railwaySpecs(ms,bx,still):id===67?gutterSpecs(ms,bx,still):id===68?robotSpecs(ms,bx,still):id===69?birdSpecs(ms,bx,roof,still):id===56?midpointSpecs(ms,flagX(),still,phase):[];
   // Can the whole story be drawn without touching the comparison faces, the actors or the screen edge?
   function fits(id,bldg,fi,withPolice){
@@ -364,6 +367,6 @@ export function createStreetAccents({scene,camera=null,slots=[],atlas=null,scope
 
 /** Pure poses of an extended story at a controller time: [{name,x,y,z,w,h,rz?,rx?,kind}]. Used by tests and measurements. */
 export function storyPoses(id,elapsedMs,{building=1,roof=9,bestDistance=null,reducedMotion=false,phase='delivery'}={}) {
-  const bx=(building-1)*10,fx=bestDistance===25?249:250;
+  const bx=(building-1)*10,fx=MIDPOINT_FLAG_X;
   return id===20?railwaySpecs(elapsedMs,bx,reducedMotion):id===67?gutterSpecs(elapsedMs,bx,reducedMotion):id===68?robotSpecs(elapsedMs,bx,reducedMotion):id===69?birdSpecs(elapsedMs,bx,roof,reducedMotion):id===56?midpointSpecs(elapsedMs,fx,reducedMotion,phase):[];
 }

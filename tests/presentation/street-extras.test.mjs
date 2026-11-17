@@ -169,7 +169,7 @@ test('E069 bird: bird, parcel and rope (three), it cannot lift the parcel and co
   assert.ok(rope.h > 0.1);
 });
 
-test('E056 midpoint: drone delivers the flag in 1500ms, then the static flag stays; best 25 moves it by one unit', () => {
+test('E056 midpoint: drone delivers the flag in 1500ms, then the static flag stays ahead of best 25', () => {
   const {a} = storyCase(56, 400, {cameo: {id: 56, phase: 'delivery', building: 25}});
   assert.ok(names(a).includes('midFlag') && names(a).some(n => n.startsWith('drone')));
   assert.equal(a.stats().storySprites, 2);
@@ -186,12 +186,12 @@ test('E056 midpoint: drone delivers the flag in 1500ms, then the static flag sta
   }
   const x = i => { const m = new THREE.Matrix4(), p = new THREE.Vector3(); spritesMesh(args).getMatrixAt(i, m); p.setFromMatrixPosition(m); return p.x; };
   assert.ok(names(s).indexOf('midFlag') >= 0);
-  assert.equal(x(names(s).indexOf('midFlag')), 250);
+  assert.equal(x(names(s).indexOf('midFlag')), 253);
   s.setBestDistance(25);
   s.tick(run({t: 126700, building: 43}), {cameo: staticFlag});
-  assert.equal(x(names(s).indexOf('midFlag')), 249);
-  assert.equal(storyPoses(56, 0, {phase: 'static', bestDistance: 25})[0].x, 249);
-  assert.equal(storyPoses(56, 0, {phase: 'static'})[0].x, 250);
+  assert.equal(x(names(s).indexOf('midFlag')), 253);
+  assert.equal(storyPoses(56, 0, {phase: 'static', bestDistance: 25})[0].x, 253);
+  assert.equal(storyPoses(56, 0, {phase: 'static'})[0].x, 253);
   s.tick(run({t: 126800, building: 43}), {cameo: null});
   assert.equal(s.stats().staticFlag, false);
   s.dispose();
@@ -332,6 +332,49 @@ test('midpoint placement is a fact about the flag position, only inside the 1250
   assert.equal(at('402x700', 124999), false);
   assert.equal(at('402x700', 126500), false);
   assert.equal(at('402x700', 125500, 26, 262), false, 'the flag is already off the left of the screen');
+});
+
+test('midpoint fits after the building-entry reaction in all real camera layouts, including best 25', () => {
+  const projectBox=(camera,vp,sp)=>{
+    const xs=[],ys=[];
+    for(const dx of [-sp.w/2,sp.w/2])for(const dy of [-sp.h/2,sp.h/2]){
+      const p=new THREE.Vector3(sp.x+dx,sp.y+dy,sp.z).project(camera);
+      xs.push((p.x+1)*vp.width/2);ys.push((1-p.y)*vp.height/2);
+    }
+    return {l:Math.min(...xs),r:Math.max(...xs),t:Math.min(...ys),b:Math.max(...ys)};
+  };
+  for(const [key,vp] of Object.entries(VIEWPORTS))for(const best of [null,25]){
+    const camera=streetCamera(vp.width,vp.height,250);
+    const a=createStreetAccents({scene:new THREE.Scene(),camera,slots:streetSlots(26),atlas:new THREE.Texture(),mode:'extended96'});
+    a.setBestDistance(best);
+    const available=[];
+    for(let t=125632;t<126500;t+=16){
+      camera.placeAt(t*.002);
+      if(a.placements({building:26,phase:'grace',t},frameInfoFor(key)).midpoint)available.push(t);
+    }
+    assert.ok(available.length>0,`${key}/best=${best}: delivery must fit after the 600ms entry reaction`);
+    camera.placeAt(127152*.002); // delivery started at 125632 has now become static
+    const flag=projectBox(camera,vp,storyPoses(56,0,{phase:'static',bestDistance:best})[0]);
+    assert.ok(flag.l>=8&&flag.r<=vp.width-8&&flag.t>=8&&flag.b<=vp.height-8,`${key}: whole static flag remains visible`);
+    if(best===25){
+      const old=projectBox(camera,vp,{x:250,y:.9,z:-.6,w:1.8,h:2.4});
+      const gap=Math.hypot(Math.max(0,old.l-flag.r,flag.l-old.r),Math.max(0,old.t-flag.b,flag.t-old.b));
+      assert.ok(gap>=6,`${key}: midpoint and best flags keep 6px (${gap})`);
+    }
+    a.dispose();
+  }
+});
+
+test('gutter water clears the lamp pole and the swirl lies on the pavement inside the same alley',()=>{
+  for(const building of [2,6,26,49])for(const ms of [0,500,1000,1500,1990]){
+    const poleX=building*10;
+    const [water,swirl]=storyPoses(67,ms,{building});
+    assert.ok(water.x+Math.abs(water.w)/2<poleX-.045,'water does not cross the 0.09-wide pole');
+    assert.ok(swirl.x+Math.abs(swirl.w)/2<poleX-.045,'swirl does not sit behind the pole');
+    assert.ok(water.x-Math.abs(water.w)/2>poleX-.65,'water remains in the alley');
+    assert.ok(swirl.x-Math.abs(swirl.w)/2>poleX-.65,'swirl remains in the alley');
+    assert.equal(swirl.y,.25);assert.equal(swirl.z,.9);assert.equal(swirl.rx,-Math.PI/2);
+  }
 });
 
 test('the resident window fact needs a visible slot with windows', () => {

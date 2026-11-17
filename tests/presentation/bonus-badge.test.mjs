@@ -29,10 +29,12 @@ test('badge_is_shown_without_a_batch_during_evaluation_and_carries_no_points', (
   assert.equal(view.stats().particles, 0);
 });
 
-test('badge_uses_the_translated_phrase_when_the_key_exists', () => {
-  const {view, card} = mount(key => key === 'presentation.nearPerfect' ? 'Nearly perfect!' : key);
+test('badge_keeps_the_agreed_numeric_placeholder_without_requesting_a_missing_translation', () => {
+  const keys=[];
+  const {view, card} = mount(key => {keys.push(key);return key;});
   view.tick({...base, activeMs: 2500, precisionBadge: badge(300)});
-  assert.equal(card.querySelector('.bonus-card-badge').textContent, '◎ Nearly perfect!');
+  assert.equal(card.querySelector('.bonus-card-badge').textContent, '◎ 98%');
+  assert.equal(keys.includes('presentation.nearPerfect'),false,'translations are deferred until both implementations are complete');
 });
 
 test('badge_enter_and_leave_follow_the_controller_elapsed_time', () => {

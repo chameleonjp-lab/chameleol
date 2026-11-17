@@ -3,7 +3,7 @@
 // 試験専用の入口 tests/e2e/fixtures/extended96.html（index.html・app.js は変えない）を使う。
 // controller は本物。小芝居・警察の追加動作を指定の時点に出すため、step の戻り値の cameo / policeExtra だけを
 // controller が返す形式の枠（id, startedAt, elapsedMs, durationMs, building, phase）へ置き換えられる。
-// 置けない寸法（placements が false）の案は、controller が始めない案として「条件付き非表示」を記録する。
+// These forced snapshots test drawing only; real availability is measured separately at first grace.
 // CL03_SCREENSHOTS に保存先を渡すと画像（倍率1の舞台全体）を書く。
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,17 +19,28 @@ async function save(name, dataUrl) {
   await writeFile(`${SHOTS}/${name}.png`, Buffer.from(dataUrl.split(',')[1], 'base64'));
 }
 
-async function open(env, { effects = true } = {}) {
+async function open(env, { effects = true, cameoSeed = null, holdClaim = false } = {}) {
   await env.page.goto(`${env.url}tests/e2e/fixtures/extended96.html`);
   await env.page.waitForFunction(() => globalThis.__fixtureReady === true);
-  await env.page.evaluate(async ({ effects }) => {
+  await env.page.evaluate(async ({ effects, cameoSeed, holdClaim }) => {
     const a = __kamereoru;
+    const claims=[];
+    const createPort=a.createExtrasPort.bind(a);
+    a.createExtrasPort=(session,options)=>{
+      const port=createPort(session,cameoSeed===null?options:{...options,seed:cameoSeed});
+      const claim=port.claimCameoStart.bind(port);
+      port.claimCameoStart=state=>{
+        const pending=holdClaim?new Promise(resolve=>{globalThis.__releaseCameoClaim=async()=>resolve(await claim(state));}):claim(state);
+        claims.push(pending);return pending;
+      };
+      return port;
+    };
     await a.debugStart({ atMs: 1000, seed: 1, effects });
     cancelAnimationFrame(a.raf);
     const { readPlayView } = await import('/src/presentation/events.js');
     const base = readPlayView(a.session, 0, { lastEvalSuccess: false });
     const tp = {
-      a, base, stage: a.stage, ctrl: a.gameExtrasController, override: null, inputs: [], extras: [],
+      a, base, claims, stage: a.stage, ctrl: a.gameExtrasController, override: null, inputs: [], extras: [],
       upd(t, over = {}) {
         const policeStage = over.policeStage ?? 0;
         const view = { ...base, t, running: true, phase: 'grace', building: 1 + Math.floor(t / 5000), passed: Math.floor(t / 5000), policeStage, ...over };
@@ -48,7 +59,7 @@ async function open(env, { effects = true } = {}) {
       return merged;
     };
     globalThis.__tp = tp;
-  }, { effects });
+  }, { effects, cameoSeed, holdClaim });
 }
 
 /** 建物 b の始まりから、警察1人が立ち位置へ着くまで進める（grace、50msごと）。返す値は次に使える t。 */
@@ -84,7 +95,7 @@ const measure = (page, { t, override }) => page.evaluate(({ t, override }) => {
 const CAMEO_NAMES = ['resident', 'cat', 'bird', 'bicycle', 'bus', 'policeCar', 'ufo', 'rainbow', 'chameleon'];
 
 for (const [width, height] of LAYOUTS) {
-  test(`street stories at ${width}x${height}: drawn only from the controller's cameo, placed ones leave wall and body pixels untouched`, async (t) => {
+  test(`render-only forced street snapshots at ${width}x${height}: comparison surfaces stay protected (not a play-availability measurement)`, async (t) => {
     const env = await launch({ width, height });
     try {
       await open(env);
@@ -126,7 +137,7 @@ for (const [width, height] of LAYOUTS) {
       assert.equal(s.shown.wallMismatches, 0); assert.equal(s.shown.bodyMismatches, 0);
       assert.ok((s.hidden.wallPixels - s.shown.wallPixels) / s.hidden.wallPixels <= 0.015);
       await save(`${width}x${height}-E056-static`, s.image);
-      t.diagnostic(`${width}x${height} placements (true=placed, false=conditionally hidden): ${JSON.stringify(facts)}`);
+      t.diagnostic(`${width}x${height} render-only settled-frame placements (not first-grace availability): ${JSON.stringify(facts)}`);
       assert.deepEqual(env.errors, []);
     } finally { await env.close(); }
   });
@@ -203,11 +214,12 @@ test('a null cameo draws nothing and never falls back to the old director: a bac
   const env = await launch({ width: 402, height: 874 });
   try {
     await open(env);
-    const r = await env.page.evaluate((CAMEO_NAMES) => {
+    const r = await env.page.evaluate(async (CAMEO_NAMES) => {
       const tp = __tp;
       const seenOffered = new Set();
       let shownWithoutOffer = 0; let shownWithOffer = 0; let frames = 0;
-      for (let t = 1000; t <= 80000; t += 100) {
+      let actualArtworkFrames=0;
+      for (let t = 1000; t <= 80000; t += 16) {
         const phase = (t % 5000) < 1400 ? 'grace' : 'eval';
         tp.upd(t, { phase, policeStage: 0 });
         const offered = tp.extras.at(-1).cameo;
@@ -217,11 +229,137 @@ test('a null cameo draws nothing and never falls back to the old director: a bac
         if (offered) seenOffered.add(offered.id);
         if (drawn && !offered) shownWithoutOffer += 1;
         if (drawn && offered) shownWithOffer += 1;
+        if(offered&&(pools.visibleArtwork??[]).some(name=>CAMEO_NAMES.includes(name)||name==='residentFace'))actualArtworkFrames++;
+        // Await the real persistence claims, without a wall-clock sleep or a replacement output.
+        if(frames%4===0)await Promise.all(tp.claims);
       }
-      return { frames, shownWithoutOffer, shownWithOffer, offered: [...seenOffered], steps: tp.inputs.length };
+      return { frames, shownWithoutOffer, shownWithOffer, actualArtworkFrames, offered: [...seenOffered], steps: tp.inputs.length };
     }, CAMEO_NAMES);
     assert.equal(r.steps, r.frames, 'one step per frame (the old director is not stepping a second time)');
     assert.equal(r.shownWithoutOffer, 0, 'no background cameo group without a controller cameo');
+    assert.ok(r.offered.length>=2,`at least two actual cameos must occur: ${JSON.stringify(r)}`);
+    assert.ok(r.shownWithOffer>0&&r.actualArtworkFrames>0,'the test observes actual added artwork as well as offered slots');
     assert.deepEqual(env.errors, []);
   } finally { await env.close(); }
 });
+
+// Real acceptance path: no replacement snapshot, real placements, real persisted start claims.
+test('real E020 claim: the actual stage offers a placement, draws nothing before persistence, then draws the claimed story',async()=>{
+  const env=await launch({width:402,height:700});
+  try{
+    await open(env,{cameoSeed:1100,holdClaim:true});
+    const before=await env.page.evaluate(()=>{
+      __tp.upd(1000,{phase:'eval'});__tp.upd(2000,{phase:'grace'});
+      return {placement:__tp.inputs.at(-1).placements.railway,cameo:__tp.ctrl.snapshot().cameo,stats:__tp.stats(),hasClaim:typeof __releaseCameoClaim==='function'};
+    });
+    assert.equal(before.placement,true);assert.equal(before.hasClaim,true);
+    assert.equal(before.cameo,null);assert.equal(before.stats.storySprites,0);
+    const after=await env.page.evaluate(async()=>{
+      await __releaseCameoClaim();await Promise.all(__tp.claims);
+      __tp.upd(2016,{phase:'grace'});
+      return {cameo:__tp.ctrl.snapshot().cameo,stats:__tp.stats()};
+    });
+    assert.equal(after.cameo?.id,20);
+    assert.ok(after.stats.storySprites>=1&&after.stats.storySprites<=3);
+    assert.ok(after.stats.visibleArtwork.some(name=>name.startsWith('crossing')));
+    assert.deepEqual(env.errors,[]);
+  }finally{await env.close();}
+});
+
+for(const [width,height] of LAYOUTS){
+  test(`real first-grace placements at ${width}x${height}: scan all 49 opportunities instead of settled synthetic poses`,async(t)=>{
+    const env=await launch({width,height});
+    try{
+      await open(env);
+      const rows=await env.page.evaluate(async()=>{
+        const rows=[];
+        for(let building=2;building<=50;building++){
+          const start=(building-1)*5000;
+          for(let time=start-800;time<start;time+=16)__tp.upd(time,{phase:'eval',policeStage:0});
+          __tp.upd(start,{phase:'grace',policeStage:0});
+          rows.push({building,t:start,...__tp.inputs.at(-1)});
+          await Promise.all(__tp.claims);
+        }
+        return rows;
+      });
+      assert.equal(rows.length,49);
+      assert.equal(new Set(rows.map(row=>row.building)).size,49);
+      for(const row of rows){assert.equal(row.phase,'grace');assert.equal(row.t,(row.building-1)*5000);}
+      const counts=Object.fromEntries(['railway','water','robot','bird'].map(key=>[key,rows.filter(row=>row.placements[key]).length]));
+      assert.ok(counts.railway>0&&counts.robot>0,'the sweep must observe usable real placements');
+      if(SHOTS){await mkdir(SHOTS,{recursive:true});await writeFile(`${SHOTS}/${width}x${height}-first-grace.json`,JSON.stringify({width,height,counts,rows},null,2));}
+      t.diagnostic(`first-grace placement counts out of 49: ${JSON.stringify({width,height,...counts})}`);
+      assert.deepEqual(env.errors,[]);
+    }finally{await env.close();}
+  });
+
+  test(`real midpoint at ${width}x${height}: delivery after the entry reaction and a fully visible static flag, with best 25`,async(t)=>{
+    const env=await launch({width,height});
+    try{
+      await open(env);
+      await env.page.evaluate(()=>__tp.stage.setBestDistance(25));
+      const trace=await env.page.evaluate(async()=>{
+        const tp=__tp,delivery=[],staticFrames=[];
+        const {captureAtlasCell}=await import('/tests/presentation/atlas-capture.mjs');
+        const atlas=await (await fetch('/src/presentation/assets/atlas.json')).json();
+        let renderScene,renderCamera;
+        const renderer=tp.stage.renderer,originalRender=renderer.render;
+        renderer.render=function(scene,camera){renderScene=scene;renderCamera=camera;return originalRender.call(this,scene,camera);};
+        let passed=false,deliveryImage=null,staticCapture=null;
+        const pixels=()=>{
+          const canvas=tp.stage.renderer.domElement,copy=document.createElement('canvas');
+          copy.width=canvas.width;copy.height=canvas.height;
+          const ctx=copy.getContext('2d',{willReadFrequently:true});ctx.drawImage(canvas,0,0);
+          const data=ctx.getImageData(0,0,copy.width,copy.height).data;
+          const result={data,width:copy.width,height:copy.height};copy.width=copy.height=0;return result;
+        };
+        for(let time=118000;time<=128000;time+=16){
+          if(!passed&&time>=124990){tp.ctrl.event({type:'pass',building:25,t:124990});passed=true;}
+          const phase=time%5000<1400?'grace':'eval';
+          tp.upd(time,{phase,policeStage:0});
+          const frame=tp.ctrl.snapshot().cameo,stats=tp.stats();
+          if(frame?.id===56&&frame.phase==='delivery'){
+            delivery.push({t:time,elapsed:frame.elapsedMs,sprites:stats.storySprites,busy:tp.inputs.at(-1).actorBusy.hero});
+            if(!deliveryImage&&frame.elapsedMs>=900&&stats.storySprites>0)deliveryImage=tp.image();
+          }
+          if(frame?.id===56&&frame.phase==='static'){
+            staticFrames.push({t:time,shown:stats.staticFlag});
+            if(!staticCapture&&stats.staticFlag){
+              const canvas=renderer.domElement;
+              const captured=captureAtlasCell({scene:renderScene,camera:renderCamera,renderer,cellIndex:atlas.street.midFlag.index,columns:atlas.columns,rows:atlas.rows,viewport:{width:canvas.width,height:canvas.height},read:()=>({pixels:pixels(),comparison:tp.stage.checkComparisonSurfaces()})});
+              const image=tp.image(),shownPixels=captured.shown.pixels,hiddenPixels=captured.hidden.pixels;
+              const shown=captured.shown.comparison,hidden=captured.hidden.comparison;
+              let count=0,l=Infinity,r=-Infinity,top=Infinity,bottom=-Infinity;
+              for(let i=0;i<shownPixels.data.length;i+=4){
+                if(Math.max(...[0,1,2].map(k=>Math.abs(shownPixels.data[i+k]-hiddenPixels.data[i+k])))<=24)continue;
+                const x=(i/4)%shownPixels.width,y=Math.floor((i/4)/shownPixels.width);
+                count++;l=Math.min(l,x);r=Math.max(r,x);top=Math.min(top,y);bottom=Math.max(bottom,y);
+              }
+              staticCapture={t:time,image,count,bounds:{l,r,t:top,b:bottom},projected:captured.projected,width:shownPixels.width,height:shownPixels.height,shown,hidden};
+            }
+          }
+          if((time-118000)%64===0)await Promise.all(tp.claims);
+        }
+        renderer.render=originalRender;
+        return {delivery,staticFrames,deliveryImage,staticCapture};
+      });
+      assert.ok(trace.delivery.length>0,'a real persisted delivery must start');
+      assert.ok(trace.delivery[0].t>=125600&&trace.delivery[0].t<126500,`delivery starts inside the reserved window after reaction: ${trace.delivery[0].t}`);
+      assert.equal(trace.delivery[0].busy,false);
+      assert.ok(trace.delivery.some(row=>row.sprites>0),'delivery must actually draw');
+      const capture=trace.staticCapture;
+      assert.ok(capture,'the real delivery must become a drawn static flag');
+      assert.ok(capture.count>=10,`nonempty visible flag pixels: ${capture.count}`);
+      assert.ok(capture.projected.l>=8&&capture.projected.t>=8&&capture.projected.r<=capture.width-8&&capture.projected.b<=capture.height-8,`actual flag instance projects wholly inside the canvas: ${JSON.stringify(capture.projected)}`);
+      assert.ok(capture.bounds.l>=8&&capture.bounds.t>=8&&capture.bounds.r<capture.width-8&&capture.bounds.b<capture.height-8,`whole visible flag stays 8px inside canvas: ${JSON.stringify(capture.bounds)}`);
+      assert.equal(capture.shown.wallMismatches,0);assert.equal(capture.shown.bodyMismatches,0);
+      assert.ok((capture.hidden.wallPixels-capture.shown.wallPixels)/capture.hidden.wallPixels<=.015);
+      await save(`${width}x${height}-real-midpoint-delivery`,trace.deliveryImage);
+      await save(`${width}x${height}-real-midpoint-static`,capture.image);
+      const facts={...trace,deliveryImage:undefined,staticCapture:{...capture,image:undefined}};
+      if(SHOTS){await mkdir(SHOTS,{recursive:true});await writeFile(`${SHOTS}/${width}x${height}-real-midpoint.json`,JSON.stringify(facts,null,2));}
+      t.diagnostic(`real midpoint: ${JSON.stringify({width,height,start:trace.delivery[0].t,deliveryFrames:trace.delivery.length,drawnFrames:trace.delivery.filter(row=>row.sprites>0).length,staticAt:capture.t,flagPixels:capture.count,bounds:capture.bounds})}`);
+      assert.deepEqual(env.errors,[]);
+    }finally{await env.close();}
+  });
+}

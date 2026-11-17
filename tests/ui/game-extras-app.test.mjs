@@ -4,38 +4,60 @@ import {parseHTML} from 'linkedom';
 import {App} from '../../src/app.js';
 import {GameSession} from '../../src/game/session.js';
 import {MemoryStore} from '../../src/storage/memory-store.js';
+import {createExtendedStepper} from '../../src/scene/stage.js';
 let app;const frames=new Map();let seq=0;
 const settle=async()=>{for(let i=0;i<5;i++)await new Promise(r=>setImmediate(r));};
 afterEach(()=>{app?.disposeStage();frames.clear();app=null;});
 
-function setup(presentationSet,{drawable=true}={}){
+function setup(presentationSet,{drawable=true,realStepper=false}={}){
  const {window,document}=parseHTML('<html><body><main id="root"></main></body></html>');
  Object.assign(globalThis,{document,Node:window.Node,requestAnimationFrame:fn=>(frames.set(++seq,fn),seq),cancelAnimationFrame:n=>frames.delete(n),addEventListener:()=>{}});
  const audio={settings:{},setMusic(){},setSettings(){},setBuilding(){},setArea(){},setFinale(){},setPoliceStage(){},setDanger(){},startGameAudio(){},stopGameAudio(){},stopSfx(){},async suspend(){},play(){}};
  let controller,lastView,defaultPresentationSet,stepCalls=0;
- const order=[],ticks=[],controllerEvents=[],stageEvents=[];
+ const order=[],ticks=[],controllerEvents=[],stageEvents=[],inputs=[];
  app=new App(document.querySelector('#root'),{audio,stageFactory:async(_host,options)=>{
   defaultPresentationSet=options.presentationSet;
   // Mirrors the CL05 explicit wrapper: only the stage selects the extended path.
   const opts=presentationSet?{...options,presentationSet}:options;
   controller=opts.gameExtrasController;
   const step=controller.step.bind(controller);
-  controller.step=input=>{stepCalls++;return step(input);};
+  controller.step=input=>{stepCalls++;inputs.push(input);return step(input);};
+  const stepper=realStepper?createExtendedStepper({controller}):null;
   const event=controller.event.bind(controller);
   controller.event=input=>{controllerEvents.push(structuredClone(input));return event(input);};
-  return {dispose(){},resize(){},presentationEvent:event=>stageEvents.push(structuredClone(event)),setBestDistance(){},fx(){},update(args){
+  return {dispose(){stepper?.dispose();},resize(){},forcePresentationEffect(){return true;},presentationStats(){return {};},presentationEvent:event=>stageEvents.push(structuredClone(event)),setBestDistance(){},fx(){},update(args){
    order.push('stage');lastView=args.presentation;
-   if(opts.presentationSet==='extended96')controller.step({...args.presentation,actorBusy:{hero:false,police:false},drawable,placements:{}});
+   if(opts.presentationSet==='extended96'){
+    if(stepper)stepper.step(args.presentation,{drawable,placements:{railway:true,water:true,robot:true,bird:true,existing:{12:true}}});
+    else controller.step({...args.presentation,actorBusy:{hero:false,police:false},drawable,placements:{}});
+   }
   }};
  }});
  app.store=new MemoryStore();app.flags={openingSeen:true,alertGuideSeen:true};app.initializeGuides=async()=>({version:1,basic:{consumed:true},brightness:{consumed:true}});app.api={configured:false};
- return {order,ticks,controllerEvents,stageEvents,get controller(){return controller;},get lastView(){return lastView;},get defaultPresentationSet(){return defaultPresentationSet;},get stepCalls(){return stepCalls;},observeBonus(){
+ return {order,ticks,controllerEvents,stageEvents,inputs,get controller(){return controller;},get lastView(){return lastView;},get defaultPresentationSet(){return defaultPresentationSet;},get stepCalls(){return stepCalls;},observeBonus(){
   const tick=app.bonusPresentation.tick;
   app.bonusPresentation.tick=args=>{order.push('bonus');ticks.push(args);return tick(args);};
  }};
 }
 const inspect=session=>JSON.stringify({state:session.state,history:session.recorder.entries,saveSeq:session.saveSeq});
 async function frame(){[...frames.values()].at(-1)();await settle();}
+
+test('verification warmup uses real stage intervals without permanently suppressing the next claimed cameo or mutating the run',async()=>{
+ const view=setup('extended96',{realStepper:true});
+ app.runtime={...app.runtime,isVerification:true};
+ await app.debugStart({atMs:30000,seed:1});
+ const session=app.session,before=inspect(session);
+ await app.debugPresentation({effectId:21});
+ assert.equal(inspect(session),before);
+ const warmup=view.inputs.slice();
+ assert.equal(warmup[0].t,27000);assert.equal(warmup.at(-1).t,30000);
+ const advance=(t,phase)=>app.stage.update({t,color:session.state.color,policeStage:0,presentation:{...view.lastView,t,building:7,passed:6,phase,running:true,hidden:false,moving:true,policeStage:0,lastEvalSuccess:false,matchState:null,guideActive:false,guidanceActive:false,warningActive:false,evaluationSegments:[]}});
+ advance(30100,'eval');advance(31000,'grace');
+ await settle();advance(31016,'grace');
+ assert.equal(view.controller.snapshot().cameo?.id,14,'a real claim succeeds after warmup; slow-frame suppression must not be latched');
+ assert.ok(warmup.slice(1).every(input=>input.frameIntervalMs>0&&input.frameIntervalMs<=16));
+ assert.equal(inspect(session),before);
+});
 
 test('explicit extended96 forwards the real post-stage badge to batchless evaluation bonus ticks with no extra step or run changes',async()=>{
  const view=setup('extended96');
