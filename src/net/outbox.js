@@ -4,7 +4,7 @@
 // - 全片がそろってからサーバーが「完全受付」を返す。受付証と照会情報を端末へ保存できてから送信待ちを外す。
 // - 1件の恒久的な拒否や失敗が、ほかの記録の送信を止めない。
 import { ApiError, sha256Hex, uuid } from './api.js';
-import { canSendRecord } from './destination.js';
+import { canSendRecord, isOwnerStatus } from './destination.js';
 import { readMetrics } from './result-metrics.js';
 import { validateVerifiedScore } from './verified-score.js';
 
@@ -176,7 +176,7 @@ export async function refreshRecords({ api, store, playId, isCurrent = () => tru
       const byId = new Map((data.items ?? []).map((x) => [x.playId, x]));
       for (const r of batch) {
         const s = byId.get(r.playId);
-        if (!s || s.error || typeof s.status !== 'string' || !isCurrent() || requests.get(r.playId) !== token) continue;
+        if (!isOwnerStatus(s) || !isCurrent() || requests.get(r.playId) !== token) continue;
         const next = { ...r, destination: api.destination, metrics: readMetrics(s), status: s.status, official: s.official ?? null, corrections: s.corrections ?? [], reviewRequested: s.reviewRequests > 0, lastCheckedAt: Date.now() };
         const verifiedScore = validateVerifiedScore(s.verifiedScore, {
           playId: r.playId, responsePlayId: s.playId, rulesVersion: r.summary?.rulesVersion, summary: r.summary, status: s.status,
