@@ -7,7 +7,6 @@ import {
   createGame,
   rankAverage,
   formatRankAverage,
-  hsvToHex,
   classifyMatch,
   isEvalTime,
 } from './rules/v1/index.js';
@@ -20,7 +19,7 @@ import { audioSettings, backButton, button, dialog, languageSelect, nameField, s
 import { createRankingView } from './ui/ranking.js';
 import { createRecordsView } from './ui/record-status.js';
 import { buildHomeShareText, buildResultShareText, shareToX } from './ui/share.js';
-import { t, setLanguage, getLanguage, formatNumber, formatPercent2, formatMatch, formatSeconds, onLanguageChange } from './i18n/i18n.js';
+import { t, setLanguage, getLanguage, formatNumber, formatPercent2, onLanguageChange } from './i18n/i18n.js';
 import { isSupportedLanguage, resolveLanguage } from './i18n/languages.js';
 import { openStore, TAB_ID, StaleWriterError } from './storage/store.js';
 import { normalizeExtras, readDirector, applyBadgeClaim, applyCameoClaim } from './storage/presentation-extras.js';
@@ -48,8 +47,7 @@ import { mountPresentationHud } from './presentation/hud-view.js';
 import { normalizeGuideProgress, claimGroup, GUIDE_PROGRESS_KEY } from './guidance/progress.js';
 import { createGuidance } from './guidance/session.js';
 import { mountGuidance } from './guidance/view.js';
-import { createGuidePractice } from './guidance/practice.js';
-import { createPractice } from './practice/session.js';
+import { PRACTICE_STEPS, createGuidePractice } from './guidance/practice.js';
 import { normalizeName } from './shared/name.js';
 import { loadRuntimeConfig } from './config/runtime.js';
 import { createApi, uuid } from './net/api.js';
@@ -1802,278 +1800,115 @@ export class App {
   }
 
   // ---------- 練習 ----------
-  async showPracticeMenu() {
-    this.disposeStage();
-    const token = (this.practiceToken = {});
-    const gen = this.screenGeneration;
-    const history = await this.store.listPractice().catch(() => []);
-    if (this.practiceToken !== token || this.screenGeneration !== gen) return;
-    const historyList = h(
-      'ul',
-      { class: 'practice-history' },
-      history.map((p) =>
-        h('li', {}, [
-          h('strong', {}, t(`practice.kind.${p.kind}`)),
-          ' ',
-          new Date(p.completedAt).toLocaleString(),
-          ' ',
-          p.questions.map((q) => (q.status === 'succeeded' ? '○' : '—')).join(' '),
-        ]),
-      ),
-    );
+  showPracticeMenu() {
     const el = h('main', { class: 'screen practice-menu' }, [
       h('h1', {}, t('practice.title')),
-      h('p', { class: 'note' }, t('practice.intro')),
-      button('practice.kind.brightness', () => this.startPractice('brightness'), { primary: true, testid: 'practice-brightness' }),
-      button('practice.kind.basic', () => this.startPractice('basic'), { testid: 'practice-basic' }),
-      button('guidance.practice',()=>this.showGuidePracticeMenu(),{testid:'practice-guides'}),
-      section('practice.history', [history.length ? historyList : h('p', { class: 'note' }, t('practice.noHistory'))]),
+      ...PRACTICE_STEPS.map(step => button(
+        `practice.step${step}`, () => this.startGuidePractice(step),
+        { primary: step === 1, testid: `guide-practice-${step}` },
+      )),
       backButton(() => this.showHome()),
     ]);
     this.mount(el, () => this.showPracticeMenu());
   }
 
-  showGuidePracticeMenu(){
-    this.disposeStage();
-    const el=h('main',{class:'screen practice-menu'},[
-      h('h1',{},t('guidance.practice')),
-      ...[1,2,3,4].map(step=>button(`guidance.step${step}`,()=>this.startGuidePractice(step),{testid:`guide-practice-${step}`})),
-      button('guidance.back',()=>this.showPracticeMenu()),
-    ]);
-    this.mount(el,()=>this.showGuidePracticeMenu());
-  }
-
-  async startGuidePractice(step){
-    const token=(this.practiceToken={});
-    const gen=this.screenGeneration;
-    const isRequestCurrent=()=>this.practiceToken===token&&this.screenGeneration===gen;
-    try{
-      await this.audio.prepare();
-    }catch{
-      /* 音の準備に失敗しても練習の開始・進行は止めない */
-    }
-    if(!isRequestCurrent())return null;
-    const seed=1,practice=createGuidePractice({step,seed}),course=createGame({seed,rules:RULES_V1}).course;
-    const stageBox=h('div',{class:'stage','data-testid':'stage'}),guideHost=h('div',{class:'guidance-host'}),actions=h('div',{class:'guide-practice-actions',hidden:true});
-    let paused=false,viewUI,completedSoundPlayed=false;
-    const ctrlAudio=this.controlAudioCallbacks();
-    const controls=createControls({
-      onChange:color=>{practice.setColor(color);render();},
-      onLockedTap:()=>this.audio.play('locked'),
-      ...ctrlAudio,
-    });
-    const pause=button('game.pause',()=>{paused=!paused;clock(performance.now(),true);controls.setEnabled(!paused);},{testid:'guide-practice-pause'});
-    const finish=()=>{
-      if(!completedSoundPlayed){completedSoundPlayed=true;this.audio.play('guideClear');}
-      actions.hidden=false;controls.setEnabled(false);
-    };
-    const render=()=>{const v=practice.view();viewUI?.render(v);if(v.complete)finish();};
-    actions.append(button('guidance.again',()=>this.startGuidePractice(step),{testid:'guide-practice-again'}),button('guidance.choose',()=>this.showGuidePracticeMenu(),{testid:'guide-practice-choose'}),button('guidance.back',()=>this.showPracticeMenu(),{testid:'guide-practice-back'}));
-    const tools=h('div',{class:'guide-practice-tools'},[pause,button('guidance.back',()=>this.showGuidePracticeMenu(),{testid:'guide-practice-exit'})]);
-    const el=h('main',{class:'screen game guide-practice'},[h('div',{class:'stage-wrap'},[stageBox,tools,guideHost,actions]),controls.el]);
-    this.mount(el);this.practiceToken=token;this.setMenuMusic('practice');
-    const id=`${this.screenGeneration}:practice`,scope=createPresentationScope({id,kind:'game'});this.presentationScope=scope;
-    const current=()=>this.practiceToken===token&&this.presentationScope===scope&&scope.isCurrent(id);
-    this.controls=controls;scope.own(()=>{practice.dispose();cancelAnimationFrame(this.raf);});
-    const clock=createVisiblePresentationClock({visibilityTarget:document});scope.own(clock.dispose);
-    viewUI=mountGuidance({host:guideHost,controls});scope.own(viewUI.dispose);
-    const stage=await this.stageFactory(stageBox,{course,decorations:makeDecorations(seed)});
-    if(!current()){stage.dispose();return null;}
-    this.stage=stage;
-    controls.layout();controls.setValues(practice.view().color);controls.setLocked(step<3);
-    if(step%2===1)stage.showPractice(practice.view().target);
-    this.guidePractice=practice;scope.own(()=>{if(this.guidePractice===practice)this.guidePractice=null;});
-    const loop=now=>{
-      if(!current())return;
-      const frame=clock(now,document.hidden||paused);const v=practice.tick(frame.dt*1000);scope.tick(v.elapsed);
-      if(!document.hidden){if(v.stationary)stage.renderPractice(v.color,v.target,{building:v.building});else stage.update({t:(v.building-1)*5000+v.elapsed,color:v.color,walking:!paused&&!v.complete,presentation:{...v,t:v.elapsed,phase:'grace',running:!paused&&!v.complete,guidanceActive:true,policeStage:0,passed:0,combo:0,matchState:null}});}
-      render();this.raf=requestAnimationFrame(loop);
-    };
-    render();this.raf=requestAnimationFrame(loop);return practice;
-  }
-
-  async startPractice(kind) {
+  async startGuidePractice(step) {
     const token = (this.practiceToken = {});
-    const gen = this.screenGeneration;
-    const isRequestCurrent = () => this.practiceToken === token && this.screenGeneration === gen;
+    const generation = this.screenGeneration;
     try {
       await this.audio.prepare();
     } catch {
-      /* 音の準備に失敗しても練習の開始・進行は止めない */
+      // 音が使えない端末でも練習を始められる。
     }
-    if (!isRequestCurrent()) return null;
-    this.audio.play('confirm');
-    const practice = createPractice({ kind, seed: randomSeed() });
-    let showValue = false;
-    let paused = false;
-    let reviewing = false;
+    if (this.practiceToken !== token || this.screenGeneration !== generation) return null;
+
+    const seed = 1;
+    const rules = RULES_V1;
+    const practice = createGuidePractice({ step, seed, rules });
+    const initial = practice.view();
     const stageBox = h('div', { class: 'stage', 'data-testid': 'stage' });
-    const counter = h('span', { class: 'practice-counter', 'data-testid': 'practice-counter' });
-    const difficulty = h('span', { class: 'practice-difficulty' });
-    const valueEl = h('span', { class: 'practice-value', hidden: true, 'data-testid': 'practice-value' });
-    const state = h('div', { class: 'match-word practice-state', 'aria-live': 'polite' });
-    const toggle = button('practice.showValue', () => {
-      showValue = !showValue;
-      valueEl.hidden = !showValue;
-      toggle.textContent = t(showValue ? 'practice.hideValue' : 'practice.showValue');
-    }, { className: 'btn-small', testid: 'practice-toggle' });
-    const exit = button('practice.exit', () => {
-      if (!practice.touched) return this.showPracticeMenu();
-      paused = true;
-      dialog(this.layer, {
-        titleKey: 'practice.exitTitle',
-        bodyKey: 'practice.exitBody',
-        actions: [
-          { key: 'practice.keepGoing', primary: true, onClick: () => (paused = false) },
-          { key: 'practice.exitConfirm', danger: true, onClick: () => this.showPracticeMenu() },
-        ],
-      });
-    }, { className: 'btn-small', testid: 'practice-exit' });
-    const skipBtn = button('practice.skip', () => onSkip(), { testid: 'practice-skip' });
-    const nextBtn = button('practice.next', () => onNext(), { primary: true, testid: 'practice-next' });
-    const review = h('div', { class: 'practice-review', hidden: true });
-    const ctrlAudio = this.controlAudioCallbacks();
+    const guideHost = initial.stationary ? h('div', { class: 'guidance-host' }) : null;
+    let paused = false;
+    let guide;
     const controls = createControls({
-      onChange: (c) => practice.setColor(c),
+      onChange: color => { practice.setColor(color); render(practice.view()); },
       onLockedTap: () => this.audio.play('locked'),
-      ...ctrlAudio,
+      ...this.controlAudioCallbacks(),
     });
-    const el = h('main', { class: 'screen game practice' }, [
-      h('div', { class: 'stage-wrap' }, [
-        stageBox,
-        h('div', { class: 'hud' }, [h('div', { class: 'hud-left' }, [counter, difficulty]), valueEl, h('div', { class: 'hud-right' }, [toggle, exit])]),
-        state,
-        review,
-      ]),
-      h('div', { class: 'practice-actions' }, [skipBtn, nextBtn]),
-      controls.el,
+    const pause = button('game.pause', () => {
+      paused = !paused;
+      clock(performance.now(), true);
+      controls.setEnabled(!paused);
+    }, { testid: 'guide-practice-pause' });
+    const tools = h('div', { class: 'guide-practice-tools' }, [
+      pause, button('guidance.back', () => this.showPracticeMenu(), { testid: 'guide-practice-exit' }),
     ]);
-    this.mount(el, null);
+    const actions = h('div', { class: 'guide-practice-actions', hidden: true }, [
+      button('guidance.again', () => this.startGuidePractice(step), { testid: 'guide-practice-again' }),
+      button('guidance.back', () => this.showPracticeMenu(), { testid: 'guide-practice-choose' }),
+    ]);
+    const render = view => {
+      guide?.render(view);
+      if (view.complete && actions.hidden) {
+        tools.hidden = true;
+        actions.hidden = false;
+        controls.setEnabled(false);
+        this.audio.play('guideClear');
+      }
+    };
+    const el = h('main', { class: 'screen game guide-practice' }, [
+      h('div', { class: 'stage-wrap' }, [stageBox, tools, guideHost, actions]), controls.el,
+    ]);
+    this.mount(el);
     this.practiceToken = token;
     this.setMenuMusic('practice');
     const id = `${this.screenGeneration}:practice`;
     const scope = createPresentationScope({ id, kind: 'game' });
     this.presentationScope = scope;
-    const current = () => this.practiceToken === token && this.presentationScope === scope && scope.isCurrent(id) && el.isConnected;
+    const current = () => this.practiceToken === token && this.presentationScope === scope && scope.isCurrent(id);
     this.controls = controls;
-    scope.own(() => cancelAnimationFrame(this.raf));
-    controls.layout();
-    controls.setValues(practice.color);
-    controls.setLocked(kind === 'basic');
-    const stage = await this.stageFactory(stageBox, { course: { targets: [practice.question.target] }, decorations: [{ heightScale: 100, kind: 'house', windows: 2, trimTone: 0, sign: -1 }] });
-    if (!current()) {
-      stage.dispose();
-      return null;
+    scope.own(() => { practice.dispose(); cancelAnimationFrame(this.raf); });
+    const clock = createVisiblePresentationClock({ visibilityTarget: document });
+    scope.own(clock.dispose);
+    controls.setValues(initial.color);
+    controls.setLocked(!initial.brightnessUnlocked);
+    controls.setEnabled(false);
+    if (guideHost) {
+      guide = mountGuidance({ host: guideHost, controls });
+      scope.own(guide.dispose);
     }
+    const stage = await this.stageFactory(stageBox, { course: practice.course, decorations: makeDecorations(seed) });
+    if (!current()) { stage.dispose(); return null; }
     this.stage = stage;
-    this.practice = practice;
-    scope.own(() => {
-      if (this.practice === practice) this.practice = null;
-    });
-    this.stage.showPractice(practice.question.target);
-    const layoutFrame = requestAnimationFrame(() => {
-      if (!current()) return;
-      controls.layout();
-      this.stage?.resize();
-    });
-    scope.own(() => cancelAnimationFrame(layoutFrame));
+    this.guidePractice = practice;
+    scope.own(() => { if (this.guidePractice === practice) this.guidePractice = null; });
+    controls.layout();
+    controls.setEnabled(!paused);
+    if (initial.stationary) stage.showPractice(initial.target);
 
-    const refresh = () => {
-      const q = practice.question;
-      counter.textContent = t('practice.counter', { n: q.number, total: 3 });
-      difficulty.textContent = t(`practice.difficulty.${q.difficulty}`);
-      const m = practice.currentMatch();
-      valueEl.textContent = t('practice.value', { value: formatMatch(m), best: formatMatch(q.bestMatch) });
-      state.textContent = q.status === 'succeeded' ? t('practice.success') : t(matchWordKey(m));
-      state.dataset.state = q.status === 'succeeded' ? 'success' : classifyMatch(m);
-      skipBtn.disabled = q.status !== 'active' || reviewing;
-      nextBtn.disabled = q.status === 'active' && !reviewing;
-      nextBtn.textContent = t(q.number === 3 ? 'practice.seeResult' : 'practice.next');
-    };
-    const onSkip = () => {
-      if (!practice.skip()) return;
-      this.audio.play('back');
-      reviewing = true;
-      const q = practice.question;
-      clear(review);
-      review.append(
-        h('h3', {}, t('practice.reviewTitle')),
-        h('div', { class: 'swatches' }, [
-          h('div', { class: 'swatch-box' }, [h('div', { class: 'swatch', style: { background: hsvToHex(q.target) } }), h('span', {}, t('practice.target'))]),
-          h('div', { class: 'swatch-box' }, [h('div', { class: 'swatch', style: { background: hsvToHex(q.lastColor) } }), h('span', {}, t('practice.lastColor'))]),
-        ]),
-        h('p', {}, t('practice.lastMatch', { value: formatMatch(q.lastMatch) })),
-      );
-      review.hidden = false;
-      controls.setEnabled(false);
-      refresh();
-    };
-    const onNext = () => {
-      if (!practice.next()) return;
-      this.audio.play('confirm');
-      reviewing = false;
-      review.hidden = true;
-      controls.setEnabled(true);
-      if (practice.finished) {
-        this.finishPractice(practice);
-        return;
-      }
-      controls.setValues(practice.color);
-      this.stage.showPractice(practice.question.target);
-      refresh();
-    };
-    let last = performance.now();
-    let wasSucceeded = false;
-    const loop = () => {
+    const loop = now => {
       if (!current()) return;
-      const now = performance.now();
-      const dt = now - last;
-      last = now;
-      if (!paused && !reviewing && document.visibilityState === 'visible') practice.tick(Math.min(dt, 250));
-      if (practice.question.status === 'succeeded' && !wasSucceeded) {
-        this.audio.play('success');
-        this.stage.fx('success');
+      const frame = clock(now, document.hidden || paused);
+      const view = practice.tick(frame.dt * 1000);
+      scope.tick(view.elapsed);
+      if (!document.hidden) {
+        if (view.stationary) {
+          stage.renderPractice(view.color, view.target, { building: view.building });
+        } else {
+          const walking = !paused && !view.complete;
+          const t = (view.building - 1) * rules.buildingMs + Math.min(view.elapsed, rules.buildingMs - 1);
+          stage.update({ t, color: view.color, walking, presentation: {
+            ...view, t, phase: 'grace', running: walking, guidanceActive: false,
+            policeStage: 0, passed: 0, combo: 0, matchState: null,
+          } });
+        }
       }
-      wasSucceeded = practice.question.status === 'succeeded';
-      refresh();
-      this.stage.renderPractice(practice.color, practice.question.target);
-      this.raf = requestAnimationFrame(loop);
+      render(view);
+      if (!view.complete) this.raf = requestAnimationFrame(loop);
     };
-    refresh();
+    render(initial);
     this.raf = requestAnimationFrame(loop);
     return practice;
-  }
-
-  async finishPractice(practice) {
-    const generation = this.screenGeneration;
-    const token = this.practiceToken;
-    const result = practice.result();
-    await this.store.addPractice(result).catch(() => {});
-    // 保存は完了させるが、その間に離れた画面や新しい練習は上書きしない。
-    if (this.screenGeneration !== generation || this.practiceToken !== token) return;
-    this.disposeStage();
-    const rows = result.questions.map((q) =>
-      h('tr', {}, [
-        h('td', {}, String(q.number)),
-        h('td', {}, t(q.status === 'succeeded' ? 'practice.result.success' : 'practice.result.skipped')),
-        h('td', {}, formatMatch(q.bestMatch)),
-        h('td', {}, q.firstSuccessMs == null ? '—' : formatSeconds(q.firstSuccessMs)),
-      ]),
-    );
-    const el = h('main', { class: 'screen practice-result' }, [
-      h('h1', {}, t('practice.resultTitle')),
-      h('table', { class: 'practice-table' }, [
-        h('thead', {}, [h('tr', {}, ['#', t('practice.result.status'), t('practice.result.best'), t('practice.result.time')].map((x) => h('th', {}, x)))]),
-        h('tbody', {}, rows),
-      ]),
-      h('div', { class: 'result-actions' }, [
-        button('practice.again', () => this.startPractice(practice.kind), { primary: true }),
-        button('practice.toMain', () => this.startFlow(this.nameRaw)),
-        button('common.home', () => this.showHome()),
-      ]),
-    ]);
-    this.mount(el, null);
-    this.audio.play('result');
   }
 
   // ---------- そのほかの画面 ----------

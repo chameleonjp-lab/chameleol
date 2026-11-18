@@ -144,6 +144,9 @@ export default {
   "result.status.underReview": "Em nova revisão.",
 
   "practice.title": "Treino",
+  "practice.step1": "① Acerte a cor sem se mover, com guia",
+  "practice.step2": "② Acerte a cor em movimento, sem guia",
+  "practice.step3": "③ Ajuste a cor e a barra de brilho sem se mover, com guias",
   "practice.intro": "Três perguntas por vez. Sem limite de tempo e sem polícia. A avaliação é a mesma do jogo principal.",
   "practice.kind.basic": "Treino básico (paleta)",
   "practice.kind.brightness": "Treino de brilho (paleta + barra)",

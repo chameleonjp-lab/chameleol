@@ -144,6 +144,9 @@ export default {
   "result.status.underReview": "重新審查中。",
 
   "practice.title": "練習",
+  "practice.step1": "① 原地依照提示調色",
+  "practice.step2": "② 移動中自行調色（無提示）",
+  "practice.step3": "③ 原地依照提示調整調色盤和亮度條",
   "practice.intro": "每次 3 題。沒有時間限制，也沒有警察。判定標準與正式遊戲相同。",
   "practice.kind.basic": "基礎練習（調色盤）",
   "practice.kind.brightness": "亮度練習（調色盤＋亮度條）",

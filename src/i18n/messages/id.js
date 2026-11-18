@@ -144,6 +144,9 @@ export default {
   "result.status.underReview": "Sedang diperiksa ulang.",
 
   "practice.title": "Latihan",
+  "practice.step1": "① Cocokkan warna di tempat dengan panduan",
+  "practice.step2": "② Cocokkan warna sambil bergerak tanpa panduan",
+  "practice.step3": "③ Atur palet dan bilah kecerahan di tempat dengan panduan",
   "practice.intro": "Tiga soal setiap kali. Tanpa batas waktu dan tanpa polisi. Dinilai sama seperti permainan utama.",
   "practice.kind.basic": "Latihan dasar (palet)",
   "practice.kind.brightness": "Latihan kecerahan (palet + bilah)",

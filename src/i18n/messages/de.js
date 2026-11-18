@@ -144,6 +144,9 @@ export default {
   "result.status.underReview": "Wird erneut geprüft.",
 
   "practice.title": "Übung",
+  "practice.step1": "① Farbe im Stand mit Hilfe anpassen",
+  "practice.step2": "② Farbe in Bewegung ohne Hilfe anpassen",
+  "practice.step3": "③ Farbe und Helligkeit im Stand mit Hilfen anpassen",
   "practice.intro": "Drei Aufgaben pro Runde. Kein Zeitlimit und keine Polizei. Bewertet wie im Hauptspiel.",
   "practice.kind.basic": "Grundübung (Palette)",
   "practice.kind.brightness": "Helligkeitsübung (Palette + Leiste)",

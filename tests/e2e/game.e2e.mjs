@@ -87,7 +87,7 @@ test('PLAY-06: 19→20棟の猶予でバーを解放（位置不変・明るさ1
     await page.click('[data-testid=quit-confirm]');
     await page.waitForSelector('[data-testid=home-start]');
     await page.click('[data-testid=home-practice]');
-    assert.equal(await page.isDisabled('[data-testid=practice-brightness]'), false);
+    assert.equal(await page.isDisabled('[data-testid=guide-practice-3]'), false);
     await page.click('.btn-back');
     await page.click('[data-testid=home-start]');
     await page.waitForFunction(() => globalThis.__kamereoru.session?.running === true, null, { timeout: 8000 });
