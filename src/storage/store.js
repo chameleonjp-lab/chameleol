@@ -120,7 +120,8 @@ export class Store {
     return req(tx.objectStore(storeName).getAll());
   }
 
-  async put(storeName, value, key) {
+  async put(storeName, value, key, beforeWrite) {
+    if (beforeWrite && !beforeWrite()) return;
     const tx = this.tx([storeName], 'readwrite');
     if (key === undefined) tx.objectStore(storeName).put(value);
     else tx.objectStore(storeName).put(value, key);

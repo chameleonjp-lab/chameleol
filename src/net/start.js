@@ -128,9 +128,9 @@ export function createLaunch({ launchId, ranked, playId = null, secret = null, g
   return { launchId, ranked, playId, secret, gameVersion, destination, startedAt: Date.now(), sent: false };
 }
 
-export async function recordLaunch(store, options) {
+export async function recordLaunch(store, options, enter) {
   const launch = createLaunch(options);
-  await store.put('launches', launch);
+  await store.put('launches', launch, undefined, enter);
 }
 
 export async function flushLaunches(api, store) {

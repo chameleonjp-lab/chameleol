@@ -42,7 +42,8 @@ export class MemoryStore {
     return v === undefined ? undefined : structuredClone(v);
   }
 
-  async put(name, value, key) {
+  async put(name, value, key, beforeWrite) {
+    if (beforeWrite && !beforeWrite()) return;
     this.bucket(name).set(key ?? this.keyOf(name, value), structuredClone(value));
   }
 

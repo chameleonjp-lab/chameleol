@@ -313,21 +313,39 @@ test('opening practice before a start can use the save slot leaves the real data
   const s=await setup(),{page}=s.env;
   try {
     await openHome(page,s.env.url);
-    for(const name of ['', '予約だけ']){
-      await page.evaluate(()=>{
-        const a=__kamereoru;
-        const begin=a.store.beginRun.bind(a.store);
-        globalThis.__entered=false;
-        const wait=new Promise(resolve=>{globalThis.__resumeWrite=resolve;});
-        a.store.beginRun=async(...args)=>{a.store.beginRun=begin;globalThis.__entered=true;await wait;return begin(...args);};
-      });
+    for (const [name, fallback] of [['',false], ['予約だけ',false], ['',true], ['予約だけ',true]]) {
+      await page.evaluate((fallback) => {
+        const store = __kamereoru.store;
+        const begin = store.beginRun.bind(store);
+        const put = store.put.bind(store);
+        globalThis.__entered = false;
+        const gate = new Promise(resolve => { globalThis.__resumeWrite = resolve; });
+        let finish;
+        globalThis.__writeFinished = new Promise(resolve => { finish = resolve; });
+        const hold = async (write, args) => {
+          globalThis.__entered = true;
+          await gate;
+          try { return await write(...args); } finally { finish(); }
+        };
+        store.beginRun = async (...args) => {
+          store.beginRun = begin;
+          if (!fallback) return hold(begin, args);
+          store.put = (...args) => {
+            if (args[0] !== 'launches') return put(...args);
+            store.put = put;
+            return hold(put, args);
+          };
+          throw new Error('snapshot storage unavailable');
+        };
+      }, fallback);
       await page.fill('#name-input',name);
       await page.click('[data-testid=home-start]');
       await page.waitForFunction(()=>globalThis.__entered);
+      assert.equal(await page.locator('[data-testid=home-practice]').count(), 1);
       await page.click('[data-testid=home-practice]');
       await page.evaluate(async()=>{
         __resumeWrite();
-        await new Promise(resolve=>setTimeout(resolve,0));
+        await __writeFinished;
         await __kamereoru.flushNetwork();
       });
       assert.deepEqual(await page.evaluate(async()=>{

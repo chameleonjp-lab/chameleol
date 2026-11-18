@@ -793,8 +793,8 @@ export class App {
     // The store owns the run slot. Admit the actual screen in the same turn as
     // its writes, after checking competing runs, before another tab can flush.
     const enter = () => {
-      if (!this.isStartCurrent(attempt)) return false;
       if (playing) return true;
+      if (!this.isStartCurrent(attempt)) return false;
       attempt.record = null;
       if (secret) this.playSecrets.set(session, secret);
       this.savedRun = null;
@@ -827,19 +827,22 @@ export class App {
         }
       }
     }
-    if (!playing && !enter()) return;
+    if (!playing && !this.isStartCurrent(attempt)) return;
+    if (!generation) {
+      // The fallback write can wait too. Keep the home controls available
+      // until it admits this run, using the same boundary as beginRun.
+      try {
+        await recordLaunch(this.store, launch, enter);
+      } catch {
+        await recordLaunch(this.volatileNetwork, launch, enter);
+        if (playing) this.notices.push('notice.launchNotSaved');
+      }
+      if (!playing) return;
+      this.notices.push('notice.saveFailed');
+    } else if (!playing && !enter()) return;
     if (this.session === session) {
       this.generation = generation;
       this.memoryOnly = !generation;
-    }
-    if (!generation) {
-      this.notices.push('notice.saveFailed');
-      try {
-        await recordLaunch(this.store, launch);
-      } catch {
-        this.notices.push('notice.launchNotSaved');
-        await recordLaunch(this.volatileNetwork, launch);
-      }
     }
     resolveStorage();
     this.flushNetwork();
