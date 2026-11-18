@@ -133,12 +133,13 @@ export function languageSelect({ onChange, home = false, undetermined = false })
   });
   if (undetermined) {
     // 日本語を明示的に選んだときも change が発生するよう、未選択の項目を設ける。
-    select.append(h('option', { value: '', disabled: true, hidden: true }, 'language'));
+    select.append(h('option', { value: '', selected: true, disabled: true, hidden: true }, 'language'));
   }
   for (const lang of SUPPORTED_LANGUAGES) {
-    select.append(h('option', { value: lang.id, lang: lang.id }, lang.name));
+    const option = h('option', { value: lang.id, lang: lang.id }, lang.name);
+    if (!undetermined && lang.id === getLanguage()) option.selected = true;
+    select.append(option);
   }
-  select.value = undetermined ? '' : getLanguage();
   select.addEventListener('change', () => onChange(select.value));
   return h('label', { class: home ? 'home-language' : 'setting-row' }, [h('span', {}, label), select]);
 }
