@@ -1,3 +1,4 @@
+import { createFallbackPortrait } from './result-fallback-portrait.js';
 // 結果の描画口（IF03）。App の resultCardPorts へ渡す：
 //   new App(root, { resultCardPorts: ({ result, host, scope }) => createResultCardPorts({ result, host, scope }) })
 // 呼ばれる順番：factory → onChange（初回。mount より先）→ mount（controller.snapshot() を読む）→ パネルの初回登録。
@@ -70,6 +71,7 @@ export function createResultCardPorts({ result, scope = null } = {}) {
     createRenderer: createResultRenderer,
     destroyRenderer: destroyResultRenderer,
     createResultPortrait,
+    createFallbackPortrait,
     drawResultCard,
     getLayoutKey: () => CARD_LAYOUT_KEY,
     onChange,

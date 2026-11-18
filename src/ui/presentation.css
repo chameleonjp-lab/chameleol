@@ -233,3 +233,11 @@
 .result-turn-note:empty{display:none}
 .result-turn-hint{margin:0;font-size:14px;line-height:1.4;text-align:center;color:#d7e5ff}
 @media(orientation:landscape) and (max-height:500px){.result-turn-stage{max-width:220px}}
+
+/* The full-clear scene and its eye-glance use the same posed No.28 as the share image. */
+.result-screen-cleared .result-photo .result-portrait {
+  background-image: url('../presentation/assets/portraits/clear-scene.png') !important;
+  background-size: 200% 100% !important;
+  background-position: left center !important;
+}
+.result-screen-cleared .result-photo.is-reacting .result-portrait { background-position: right center !important; }

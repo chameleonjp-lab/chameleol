@@ -45,7 +45,7 @@ export function createRankingView({ api, name = null, pageSize = 30, result = fa
   more.hidden = true;
   const el = h('div', { class: result ? 'ranking ranking-result' : 'ranking' }, [h('p', { class: 'rank-note' }, t('ranking.note')), meta, mine, status, list, h('div', { class: 'row' }, [result ? null : more, refresh])]);
   let state = null;
-  let seq = 0;
+  let seq = 0, mineSeq = 0;
 
   function render() {
     clear(list);
@@ -60,14 +60,24 @@ export function createRankingView({ api, name = null, pageSize = 30, result = fa
     const my = ++seq;
     status.textContent = t('ranking.loading');
     el.classList.add('loading');
+    let restarted = false;
     try {
       do {
         const page = await api.get('ranking', { limit: pageSize, ...params });
         if (my !== seq) return;
-        if (page.version === params.version && params.after != null && page.nextAfter != null && page.nextAfter <= params.after) {
-          throw new Error('ranking_cursor_stalled');
+        if (!Number.isSafeInteger(page.version) || !Array.isArray(page.rows)) throw Error('ranking_page_invalid');
+        const replaced = params.after != null && (params.version !== page.version || page.restarted);
+        if (replaced) {
+          if (restarted || !page.restarted || params.version === page.version) {
+            params = {};
+            throw Error('ranking_version_changed');
+          }
+          restarted = true;
         }
+        if (page.nextAfter != null && (!Number.isSafeInteger(page.nextAfter) || !page.rows.length ||
+            page.nextAfter <= (replaced ? 0 : params.after ?? 0))) throw Error('ranking_cursor_stalled');
         state = mergeRankingPage(params.after != null ? state : null, page);
+        if (page.rows.some(row => row.rank > 30)) state.nextAfter = null;
         render();
         if (!result || state.nextAfter == null) break;
         params = { version: state.version, after: state.nextAfter };
@@ -83,11 +93,12 @@ export function createRankingView({ api, name = null, pageSize = 30, result = fa
   }
 
   async function loadMine() {
+    const request = ++mineSeq;
     mine.textContent = '';
     if (!name) return;
     try {
       const r = await api.post('rank', { name });
-      if (r.rank != null) {
+      if (request === mineSeq && r.rank != null) {
         mine.append(t('ranking.mine'), ' ', isolatedText(name), ' ', t('ranking.mineValue', { rank: formatNumber(r.rank), buildings: formatNumber(r.buildings), average: formatPercent2(r.average) }));
       }
     } catch {
@@ -110,7 +121,7 @@ export function createRankingView({ api, name = null, pageSize = 30, result = fa
     return fetchPage({ version: state.version, after: state.nextAfter });
   }
 
-  return { el, load, loadMore, dispose() { seq += 1; }, get state() {
+  return { el, load, loadMore, dispose() { seq += 1; mineSeq += 1; }, get state() {
     return state;
   } };
 }

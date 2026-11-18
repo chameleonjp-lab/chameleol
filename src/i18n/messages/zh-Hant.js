@@ -1,5 +1,11 @@
 // 繁體中文
 export default {
+  releaseRunRank: "本局排名：第{rank}名，共{total}局（累計{total}局）",
+  releaseClearOrdinal: "首次通關順序：第{ordinal}位",
+  releaseCorrectedResult: "本局結果",
+  releasePending: "正在統計",
+  releaseCopy: "複製內文",
+  releasePassed: "已通過{count}棟建築",
   "app.title": "Kamereoru",
   "app.tagline": "把身體變成建築的顏色，躲開警察",
   "app.version": "版本 {v} / 規則 {rules}",
@@ -258,7 +264,7 @@ export default {
   "share.manual": "請選取並複製下面的文字",
   "share.hashtag": "#Kamereoru",
   "share.home.title": "Kamereoru",
-  "share.home.body": "把身體顏色調成建築的顏色，躲開警察的遊戲。",
+  "share.home.body": "變色龍偷走了寶石！變成牆壁的顏色，甩開追來的警察吧。",
   "share.result.title": "我玩了 Kamereoru",
   "share.result.cleared": "成功逃過了 50 棟建築！",
   "share.result.values": "{buildings} 棟・平均吻合度 {average}",

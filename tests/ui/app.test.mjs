@@ -385,3 +385,16 @@ test('訂正で50棟を下回ると結果の見出し・走破表示・地図が
     assert.equal(app.lastResult.summary.buildings, 50);
   }
 });
+
+test('leaving for practice while opening storage creates neither a playable save nor a launch', async () => {
+  const entered=deferred(), resume=deferred(), finished=deferred();
+  const begin=app.store.beginRun.bind(app.store);
+  mock.method(app.store,'beginRun',async (...args)=>{entered.resolve();await resume.promise;try{return await begin(...args);}finally{finished.resolve();}});
+  const go=app.startFlow('');
+  await entered.promise;
+  app.showPracticeMenu();
+  resume.resolve();await finished.promise;await go;await flush();
+  assert.equal((await app.store.loadRun())?.status === 'active',false);
+  assert.deepEqual(await app.store.getAll('launches'),[]);
+  assert.equal(app.session,null);
+});

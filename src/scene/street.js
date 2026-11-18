@@ -1452,6 +1452,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const tick = createVisiblePresentationClock({ visibilityTarget: document });
       const currentEnding = { kind, duration, done: {} };
       ending = currentEnding;
+      hero.setClearColors(kind === 'cleared');
       reactions?.reset();
       travelTongue?.cancel();
       hero.jewel.position.copy(jewelHome); // 宝石は常に尻尾の元の位置から出す（開始演出を飛ばしても胸からは出さない）
@@ -1546,6 +1547,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       fx.clear();
     },
     resetEnding() {
+      hero.setClearColors(false);
       for (const finish of cutsceneCleanups) finish();
       ending = null;
       darkPlane.visible = false;

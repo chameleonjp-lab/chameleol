@@ -1,5 +1,11 @@
 // Русский
 export default {
+  releaseRunRank: "Место в этой игре: {rank} из {total} (всего игр: {total})",
+  releaseClearOrdinal: "Порядок первого прохождения: {ordinal}",
+  releaseCorrectedResult: "Результат этой игры",
+  releasePending: "Подсчитываем места",
+  releaseCopy: "Скопировать текст",
+  releasePassed: "Пройдено зданий: {count}",
   "app.title": "Kamereoru",
   "app.tagline": "Подбери цвет тела под дома и сбеги от полиции",
   "app.version": "Версия {v} / Правила {rules}",
@@ -258,7 +264,7 @@ export default {
   "share.manual": "Выделите и скопируйте текст ниже",
   "share.hashtag": "#Kamereoru",
   "share.home.title": "Kamereoru",
-  "share.home.body": "Игра, в которой подбираешь цвет тела под дома, чтобы сбежать от полиции.",
+  "share.home.body": "Хамелеон украл драгоценный камень! Меняй цвет под стены и ускользни от полиции.",
   "share.result.title": "Я сыграл в Kamereoru",
   "share.result.cleared": "Сбежал через все 50 домов!",
   "share.result.values": "Домов: {buildings}, среднее совпадение {average}",

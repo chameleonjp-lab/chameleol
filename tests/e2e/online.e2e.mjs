@@ -286,3 +286,56 @@ test('名無しの50棟：開始の応答が失われても同じ開始を再送
     await fixture.close();
   }
 });
+
+test('a successful launch with a broken reply still delivers exactly one real named result',async()=>{
+  const s=await setup(), {page}=s.env;
+  const launches=[];
+  try {
+    await page.route('**/kamereoru/launch', async route=>{
+      launches.push(route.request().postDataJSON().launchId);
+      if(launches.length!==1)return route.continue();
+      const response=await route.fetch();
+      assert.equal(response.status(),200);
+      return route.fulfill({response,body:'{"ok":'});
+    });
+    await openHome(page,s.env.url);
+    const meta=await rankedPlay(page,'再送確認',6500);
+    await quitToHome(page);
+    await page.evaluate(()=>__kamereoru.flushNetwork());
+    const [counts]=await s.q('select (select count(*)::int from private.kamereoru_launches) as starts, (select count(*)::int from private.kamereoru_results where play_id=$1) as results',[meta.playId]);
+    assert.deepEqual(counts,{starts:1,results:1});
+    assert.ok(launches.length>=2);
+    assert.deepEqual([...new Set(launches)],[meta.launchId]);
+  } finally { await s.close(); }
+});
+
+test('opening practice before a start can use the save slot leaves the real database and device uncounted',async()=>{
+  const s=await setup(),{page}=s.env;
+  try {
+    await openHome(page,s.env.url);
+    for(const name of ['', '予約だけ']){
+      await page.evaluate(()=>{
+        const a=__kamereoru;
+        const begin=a.store.beginRun.bind(a.store);
+        globalThis.__entered=false;
+        const wait=new Promise(resolve=>{globalThis.__resumeWrite=resolve;});
+        a.store.beginRun=async(...args)=>{a.store.beginRun=begin;globalThis.__entered=true;await wait;return begin(...args);};
+      });
+      await page.fill('#name-input',name);
+      await page.click('[data-testid=home-start]');
+      await page.waitForFunction(()=>globalThis.__entered);
+      await page.click('[data-testid=home-practice]');
+      await page.evaluate(async()=>{
+        __resumeWrite();
+        await new Promise(resolve=>setTimeout(resolve,0));
+        await __kamereoru.flushNetwork();
+      });
+      assert.deepEqual(await page.evaluate(async()=>{
+        const a=__kamereoru;
+        return [!!document.querySelector('.screen.game'),(await a.store.loadRun())?.status==='active',(await a.store.getAll('launches')).length];
+      }),[false,false,0]);
+      await page.evaluate(()=>__kamereoru.showHome());
+    }
+    assert.equal((await s.q('select count(*)::int as n from private.kamereoru_launches'))[0].n,0);
+  }finally{await s.close();}
+});

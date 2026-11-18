@@ -1,5 +1,11 @@
 // ไทย
 export default {
+  releaseRunRank: "อันดับรอบนี้: {rank} จาก {total} รอบ (เล่นทั้งหมด {total} รอบ)",
+  releaseClearOrdinal: "ลำดับที่ผ่านครบครั้งแรก: {ordinal}",
+  releaseCorrectedResult: "ผลการเล่นรอบนี้",
+  releasePending: "กำลังคำนวณอันดับ",
+  releaseCopy: "คัดลอกข้อความ",
+  releasePassed: "ผ่านอาคารแล้ว {count} หลัง",
   "app.title": "Kamereoru",
   "app.tagline": "เปลี่ยนสีตัวให้เข้ากับตึก แล้วหนีตำรวจให้พ้น",
   "app.version": "เวอร์ชัน {v} / กติกา {rules}",
@@ -258,7 +264,7 @@ export default {
   "share.manual": "กรุณาเลือกและคัดลอกข้อความด้านล่าง",
   "share.hashtag": "#Kamereoru",
   "share.home.title": "Kamereoru",
-  "share.home.body": "เกมเปลี่ยนสีตัวให้เข้ากับตึกเพื่อหนีตำรวจ",
+  "share.home.body": "กิ้งก่าคาเมเลียนขโมยอัญมณีมาแล้ว! เปลี่ยนสีให้กลืนกับกำแพงเพื่อหนีตำรวจ",
   "share.result.title": "เล่น Kamereoru แล้ว",
   "share.result.cleared": "หนีรอดครบ 50 ตึก!",
   "share.result.values": "{buildings} ตึก・ความตรงเฉลี่ย {average}",

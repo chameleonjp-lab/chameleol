@@ -55,8 +55,18 @@ export function createResultCardController({result,locale='en',layoutKey='defaul
         result.resultRendererOwner??=createResultRendererOwner({createRenderer:ports.createRenderer,destroyRenderer:ports.destroyRenderer});
         lease=await result.resultRendererOwner.acquire('portrait',{signal});
         if(!current(rev)||signal.aborted){lease?.release();return;}
-        if(!lease)throw Error('Rendering context unavailable');
-        portrait=await ports.createResultPortrait({hero,signal,rendererLease:lease});
+        if (lease) {
+          try {
+            portrait=await ports.createResultPortrait({hero,signal,rendererLease:lease});
+          } catch (error) {
+            if (!ports.createFallbackPortrait || signal.aborted) throw error;
+          } finally { lease.release(); lease=null; }
+        }
+        if (!current(rev) || signal.aborted) { safeDispose(portrait); return; }
+        if (!portrait) {
+          if (!ports.createFallbackPortrait) throw Error('Rendering context unavailable');
+          portrait=await ports.createFallbackPortrait({hero,signal});
+        }
         if(!current(rev)||signal.aborted){safeDispose(portrait);return;}
         const image=portrait?.image,w=image?.width??image?.naturalWidth,h=image?.height??image?.naturalHeight;
         if(!image || !Number.isFinite(w)||!Number.isFinite(h)||w<=0||h<=0||w*h*4>691200){safeDispose(portrait);throw Error('Invalid portrait image');}

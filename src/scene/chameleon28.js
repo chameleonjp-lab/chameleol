@@ -555,6 +555,29 @@ export function createChameleon(design = CHAMELEON28) {
   }
   animate(0, { walking: false });
 
+  // Only the finish pose allocates the seven surface colors; the eye decal,
+  // tongue, outlines and jewel retain their original materials.
+  let clearSurfaces = null;
+  function setClearColors(enabled = true) {
+    if (!clearSurfaces && !enabled) return;
+    if (!clearSurfaces) {
+      clearSurfaces = [];
+      const regions = [
+        ['#fa5366', [casque]], ['#ff9950', [skull, snout]], ['#ffda55', eyes.map(eye => eye.pivot)],
+        ['#6ec95d', [torso]], ['#3dcdd1', arms.map(arm => arm.shoulder)],
+        ['#5888ed', legs.map(leg => leg.pivot)], ['#a86add', [tail]],
+      ];
+      for (const [hex, nodes] of regions) {
+        const color = createToonMaterial(hex3(hex), P.gloss);
+        mats.push(color);
+        for (const node of nodes) node.traverse(mesh => {
+          if (mesh.material === bodyMat || mesh.material === eyeMat) clearSurfaces.push({mesh, normal:mesh.material, color});
+        });
+      }
+    }
+    for (const {mesh, normal, color} of clearSurfaces) mesh.material = enabled ? color : normal;
+  }
+
   return {
     group,
     jewel,
@@ -564,6 +587,7 @@ export function createChameleon(design = CHAMELEON28) {
     comparePoint,
     /** 街の覆い（ステンシル）用：比較する面の材質（体色のトゥーンだけ） */
     comparisonMaterials: [bodyMat],
+    setClearColors,
     actorParts: { head, eyes: eyes.map(e => e.pivot), arms: arms.map(a => a.shoulder), hands: arms.map(a => a.hand), legs: legs.map(l => l.pivot), feet: legs.map(l => l.foot), jaw, mouth, tail, jewel, setTailGuard, tailGeometry: tailGeo },
     setColor(rgb) {
       bodyMat.uniforms.uColor.value.setRGB(rgb[0], rgb[1], rgb[2]);

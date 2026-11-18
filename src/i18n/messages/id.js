@@ -1,5 +1,11 @@
 // Bahasa Indonesia
 export default {
+  releaseRunRank: "Peringkat permainan ini: {rank} dari {total} (total {total} permainan)",
+  releaseClearOrdinal: "Urutan pertama kali menamatkan permainan: {ordinal}",
+  releaseCorrectedResult: "Hasil permainan ini",
+  releasePending: "Menghitung peringkat",
+  releaseCopy: "Salin teks",
+  releasePassed: "Gedung yang dilewati: {count}",
   "app.title": "Kamereoru",
   "app.tagline": "Samakan warna tubuhmu dengan gedung dan kabur dari polisi",
   "app.version": "Versi {v} / Aturan {rules}",
@@ -258,7 +264,7 @@ export default {
   "share.manual": "Pilih dan salin teks di bawah",
   "share.hashtag": "#Kamereoru",
   "share.home.title": "Kamereoru",
-  "share.home.body": "Gim tempat kamu menyamakan warna tubuh dengan gedung untuk kabur dari polisi.",
+  "share.home.body": "Bunglon mencuri permata! Samakan warna tubuh dengan dinding untuk lolos dari kejaran polisi.",
   "share.result.title": "Aku main Kamereoru",
   "share.result.cleared": "Berhasil kabur dari 50 gedung!",
   "share.result.values": "{buildings} gedung, rata-rata kecocokan {average}",

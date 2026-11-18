@@ -3,7 +3,8 @@
 // - 大きい結果は分割して送る。各片は 結果番号・順番・総数・全体の長さ・内容の指紋 を付ける。
 // - 全片がそろってからサーバーが「完全受付」を返す。受付証と照会情報を端末へ保存できてから送信待ちを外す。
 // - 1件の恒久的な拒否や失敗が、ほかの記録の送信を止めない。
-import { ApiError, sha256Hex, uuid } from './api.js';
+import { createLaunch, flushLaunches, savedOwnerSecret } from './start.js';
+import { wasUnconfirmedSuccess, ApiError, sha256Hex, uuid } from './api.js';
 import { canSendRecord, isOwnerStatus } from './destination.js';
 import { readMetrics } from './result-metrics.js';
 import { validateVerifiedScore } from './verified-score.js';
@@ -39,6 +40,8 @@ export async function makeOutboxItem({ snapshot, summary, secret, gameVersion })
     launchId: snapshot.meta.launchId,
     requiresLaunch: snapshot.meta.requiresLaunch === true,
     destination: snapshot.meta.destination,
+    gameVersion: gameVersion ?? snapshot.meta.gameVersion,
+    requestId: snapshot.meta.requestId,
     resultId: uuid(),
     ranked: true,
     name: snapshot.meta.name,
@@ -105,24 +108,41 @@ export async function settleAccepted(store, item, receipt) {
  * 送信待ちをすべて試す。1件ずつ独立に扱い、失敗は記録して次へ進む。
  * 戻り値：{ accepted, retryable, permanent }
  */
-export async function flushOutbox({ api, store, onUpdate = () => {} }) {
+export async function flushOutbox({ api, store, ownerStore = store, onUpdate = () => {} }) {
   const summary = { accepted: 0, retryable: 0, permanent: 0 };
   if (!api.configured) return summary;
   const items = (await store.getAll('outbox')).sort((a, b) => a.createdAt - b.createdAt);
   for (const item of items) {
     if (item.destination !== undefined && item.destination !== api.destination) continue;
-    if (item.state === 'permanent_failed') {
+    if (item.state === 'permanent_failed' && !(item.secret && item.destination === api.destination && wasUnconfirmedSuccess(item.lastError))) {
       summary.permanent += 1;
       continue;
     }
     try {
+      if (!item.secret) {
+        const secret = await savedOwnerSecret(ownerStore, item);
+        if (!secret) {
+          summary.retryable += 1;
+          onUpdate({playId:item.playId, state:'retryable_failed'});
+          continue;
+        }
+        item.secret = secret;
+        if (!await store.updateOutbox(item, {secret})) continue;
+      }
       if (item.destination === undefined) {
         if (!await canSendRecord(api, item)) continue;
         item.destination = api.destination;
       }
       if (item.launchId) {
-        const launch = await store.getOne('launches', item.launchId);
-        if (item.requiresLaunch && launch?.rejected) throw new ApiError(launch.rejected);
+        let launch = await store.getOne('launches', item.launchId);
+        if (!launch && item.requiresLaunch && item.liveUnsaved && item.destination === api.destination) {
+          const saved = await ownerStore.getOne('launches', item.launchId).catch(() => null);
+          if (saved && saved.destination !== item.destination) continue;
+          await store.put('launches', saved ?? createLaunch(item));
+          await flushLaunches(api, store);
+          launch = await store.getOne('launches', item.launchId);
+        }
+        if (item.requiresLaunch && launch?.rejected) throw new ApiError(launch.rejected, {retryable: wasUnconfirmedSuccess(launch.rejected)});
         if ((launch && !launch.sent) || (item.requiresLaunch && !launch)) {
           summary.retryable += 1;
           onUpdate({ playId: item.playId, state: 'retryable_failed' });

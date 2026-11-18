@@ -1,5 +1,7 @@
 // 日本語
+import { releaseJa } from '../release-ja.js';
 export default {
+  ...releaseJa,
   'bonus.card.title': 'ボーナス',
   'bonus.precision': '精密擬態',
   'bonus.precisionHigh': '超精密擬態',

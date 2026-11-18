@@ -1,5 +1,11 @@
 // English
 export default {
+  releaseRunRank: "This run ranked {rank} of {total} ({total} plays in all)",
+  releaseClearOrdinal: "First clear order: {ordinal}",
+  releaseCorrectedResult: "This run’s result",
+  releasePending: "Calculating rank",
+  releaseCopy: "Copy text",
+  releasePassed: "Buildings cleared: {count}",
   'app.title': 'Kamereoru',
   'app.tagline': 'Match your body to the buildings and escape the police',
   'app.version': 'Version {v} / Rules {rules}',
@@ -258,7 +264,7 @@ export default {
   'share.manual': 'Please select and copy the text below',
   'share.hashtag': '#Kamereoru',
   'share.home.title': 'Kamereoru',
-  'share.home.body': 'A game where you match your body color to buildings to escape the police.',
+  'share.home.body': "You stole a jewel! Match the wall colors and help the chameleon escape the police.",
   'share.result.title': 'I played Kamereoru',
   'share.result.cleared': 'Escaped all 50 buildings!',
   'share.result.values': '{buildings} buildings, average match {average}',

@@ -48,7 +48,7 @@ const click = (window, node) => node.dispatchEvent(new window.Event('click', { b
 
 test('the product ports expose exactly the drawing ports and none of the test-only substitutes (D01)', () => {
   const ports = createResultCardPorts({ result: {}, host: null, scope: scopeStub() });
-  assert.deepEqual(Object.keys(ports).sort(), ['createRenderer', 'createResultPortrait', 'describeResources', 'destroyRenderer', 'drawResultCard', 'getLayoutKey', 'mount', 'onChange', 'panels'].sort());
+  assert.deepEqual(Object.keys(ports).sort(), ['createFallbackPortrait', 'createRenderer', 'createResultPortrait', 'describeResources', 'destroyRenderer', 'drawResultCard', 'getLayoutKey', 'mount', 'onChange', 'panels'].sort());
   for (const key of FORBIDDEN) assert.equal(key in ports, false, `${key} must not be defined`);
   assert.equal(ports.getLayoutKey(), 'card-1200x630-v1');
   assert.deepEqual(ports.panels.map((p) => p.id), ['model', 'turn']);

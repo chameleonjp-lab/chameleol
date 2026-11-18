@@ -174,7 +174,7 @@ function drawBackground(ctx, model) {
   g.addColorStop(1, '#14183a');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
-  if (model?.passed === 50) {
+  if (model?.passed === 50 && model.endReason === 'cleared') {
     ctx.save();
     ctx.fillStyle = 'rgba(255,224,102,0.10)';
     for (let a = 0; a < 360; a += 20) {
@@ -347,7 +347,7 @@ function drawGameName(ctx, lang) {
 }
 
 function drawTitlePlate(ctx, info, model, lang) {
-  const full = model?.passed === 50;
+  const full = model?.passed === 50 && model.endReason === 'cleared';
   ctx.save();
   ctx.fillStyle = '#232a5e';
   roundRect(ctx, 592, 112, 572, 176, 18);

@@ -303,3 +303,68 @@ test('unsaved named finish in a live tab retries the original item and persists 
   assert.deepEqual(app.api.calls.filter(x => x.path === 'complete').map(x => x.body.resultId), [it.resultId,it.resultId]);
   app.store.close();
 });
+
+test('persisted ambiguous success can recover with the original result and owner, but an explicit refusal stays final', async () => {
+  const {flushLaunches} = await import('../../src/net/start.js');
+  const store = await fresh(), api = fakeServer();
+  const delivered = [];
+  const post = api.post.bind(api);
+  api.post = async (path,body) => { if(path !== 'launch') return post(path,body); delivered.push(body); return {ok:true,counted:false}; };
+  const records = [];
+  for (const code of ['http_200','forbidden']) {
+    const it = {...await item(),requiresLaunch:true,state:'permanent_failed',lastError:code};
+    records.push(it);
+    await store.put('outbox',it);
+    await store.put('launches',{launchId:it.launchId,playId:it.playId,ranked:true,destination:it.destination,secret:null,gameVersion:'t',sent:true,rejected:code});
+  }
+  await flushLaunches(api,store);
+  await flushOutbox({api,store});
+  assert.deepEqual(delivered.map(x=>[x.launchId,x.secret]),[[records[0].launchId,records[0].secret]]);
+  assert.equal((await store.getOne('records',records[0].playId))?.resultId,records[0].resultId);
+  assert.equal((await store.getOne('outbox',records[1].playId))?.state,'permanent_failed');
+  store.close();
+});
+
+test('a live named result can resend its original launch when persistent storage cannot be read', async () => {
+  const {App} = await import('../../src/app.js');
+  const app=new App(null,{audio:{}});
+  app.store=await fresh();
+  const result={...await item(),requiresLaunch:true};
+  const api=fakeServer(), requests=[];
+  const post=api.post.bind(api);
+  api.post=async(path,body)=>{requests.push([path,body]);return path==='launch'?{ok:true,counted:false}:post(path,body);};
+  app.api=api;
+  await app.sendUnsaved(result);
+  assert.equal(requests[0]?.[0],'launch');
+  assert.deepEqual([requests[0][1].playId,requests[0][1].launchId,requests[0][1].secret],[result.playId,result.launchId,result.secret]);
+  assert.equal((await app.store.getOne('records',result.playId))?.resultId,result.resultId);
+  app.store.close();
+});
+
+test('a resumed named session retains its whole result while the owner information is temporarily unavailable',async()=>{
+  const {App}=await import('../../src/app.js');
+  const {GameSession}=await import('../../src/game/session.js');
+  const {TAB_ID}=await import('../../src/storage/store.js');
+  const app=new App(null,{audio:{}}), api=fakeServer();
+  app.store=await fresh();app.api=api;
+  const meta={playId:uuid(),launchId:uuid(),requestId:uuid(),ranked:true,name:'再開',seed:147,gameVersion:'t',requiresLaunch:true,destination:api.destination};
+  const session=new GameSession(meta);
+  const gen=await app.store.beginRun(TAB_ID,session.snapshot(),{...meta,sent:true});
+  session.quit();
+  const end=await app.persistEnd(session,gen);
+  assert.equal(end.saved,true);
+  assert.equal(end.result.ranked,true);
+  assert.equal((await app.store.getAll('localResults')).length,0);
+  const id=end.result.resultId;
+  await flushOutbox({api,store:app.store});
+  assert.equal(api.calls.length,0);
+  const start={requestId:meta.requestId,status:'accepted',secret:randomSecret(),launchId:meta.launchId,response:{playId:meta.playId}};
+  await app.store.put('starts',{...start,destination:'other'});
+  await flushOutbox({api,store:app.store});
+  assert.equal(api.calls.length,0);
+  await app.store.put('starts',{...start,destination:meta.destination});
+  await flushOutbox({api,store:app.store});
+  assert.equal((await app.store.getOne('records',meta.playId))?.resultId,id);
+  assert.equal(api.calls.at(-1).body.secret,start.secret);
+  app.store.close();
+});

@@ -21,6 +21,7 @@ export class MemoryStore {
   keyOf(name, value) {
     if (name === 'runs') return value.slot;
     if (name === 'launches') return value.launchId;
+    if (name === 'starts') return value.requestId;
     return value.playId ?? value.launchId ?? value.requestId ?? value.id ?? value.slot;
   }
 
@@ -69,9 +70,10 @@ export class MemoryStore {
     return (await this.getOne('runs', RUN_SLOT)) ?? null;
   }
 
-  async beginRun(tabId, snapshot, launch = null) {
+  async beginRun(tabId, snapshot, launch = null, enter = () => true) {
     const current = this.bucket('runs').get(RUN_SLOT);
     if (current?.status === 'active') throw Object.assign(new Error('active_run_exists'), { code: 'active_run_exists' });
+    if (!enter()) return null;
     const generation = (current?.generation ?? 0) + 1;
     if (launch) this.put('launches', launch);
     await this.put('runs', { slot: RUN_SLOT, status: 'active', playId: snapshot.meta.playId, owner: tabId, generation, snapshot });

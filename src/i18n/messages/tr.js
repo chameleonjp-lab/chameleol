@@ -1,5 +1,11 @@
 // Türkçe
 export default {
+  releaseRunRank: "Bu oyundaki sıra: {rank}/{total} (toplam {total} oyun)",
+  releaseClearOrdinal: "İlk bitiriş sırası: {ordinal}",
+  releaseCorrectedResult: "Bu oyunun sonucu",
+  releasePending: "Sıralama hesaplanıyor",
+  releaseCopy: "Metni kopyala",
+  releasePassed: "Geçilen bina sayısı: {count}",
   "app.title": "Kamereoru",
   "app.tagline": "Rengini binalara uydur ve polisten kaç",
   "app.version": "Sürüm {v} / Kurallar {rules}",
@@ -258,7 +264,7 @@ export default {
   "share.manual": "Lütfen aşağıdaki metni seçip kopyala",
   "share.hashtag": "#Kamereoru",
   "share.home.title": "Kamereoru",
-  "share.home.body": "Polisten kaçmak için rengini binalara uydurduğun bir oyun.",
+  "share.home.body": "Bukalemun bir mücevher çaldı! Duvarların rengine bürün ve polisten kaç.",
   "share.result.title": "Kamereoru oynadım",
   "share.result.cleared": "50 binanın hepsinden kaçtım!",
   "share.result.values": "{buildings} bina, ortalama uyum {average}",

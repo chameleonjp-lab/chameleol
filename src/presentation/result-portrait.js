@@ -48,7 +48,8 @@ export function destroyResultRenderer(renderer) {
 export function createPosedHero(hero, { createModel = createChameleon, colorOf = rgbFloat, outlineOf = outlineForBuilding } = {}) {
   const rig = createModel();
   try {
-    if (hero?.hsv) rig.setColor(colorOf(hero.hsv));
+    if (hero?.status === 'rainbow') rig.setClearColors();
+    else if (hero?.hsv) rig.setColor(colorOf(hero.hsv));
     rig.setOutlineStyle(outlineOf(Number.isInteger(hero?.outlineBuilding) ? hero.outlineBuilding : 1));
     rig.animate(0.7, { walking: false });
     rig.group.rotation.y = -0.35;
