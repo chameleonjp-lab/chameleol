@@ -1,5 +1,11 @@
 // Deutsch
 export default {
+  releaseRunRank: "Rang dieses Laufs: {rank} von {total} (insgesamt {total} Läufe)",
+  releaseClearOrdinal: "Reihenfolge beim ersten Erfolg: Platz {ordinal}",
+  releaseCorrectedResult: "Ergebnis dieses Laufs",
+  releasePending: "Rang wird berechnet",
+  releaseCopy: "Text kopieren",
+  releasePassed: "Gebäude geschafft: {count}",
   "app.title": "Kamereoru",
   "app.tagline": "Pass deine Farbe den Gebäuden an und entkomme der Polizei",
   "app.version": "Version {v} / Regeln {rules}",
@@ -258,7 +264,7 @@ export default {
   "share.manual": "Bitte markiere den Text unten und kopiere ihn",
   "share.hashtag": "#Kamereoru",
   "share.home.title": "Kamereoru",
-  "share.home.body": "Ein Spiel, in dem du deine Farbe den Gebäuden anpasst, um der Polizei zu entkommen.",
+  "share.home.body": "Das Chamäleon hat einen Edelstein gestohlen! Nimm die Farbe der Wände an und entkomme der Polizei.",
   "share.result.title": "Ich habe Kamereoru gespielt",
   "share.result.cleared": "Allen 50 Gebäuden entkommen!",
   "share.result.values": "{buildings} Gebäude, durchschnittliche Übereinstimmung {average}",

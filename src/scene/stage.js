@@ -1,6 +1,8 @@
 // 描画の入口。WebGLが使えれば Three.js の街、使えなければ仮の図形（DOM）で同じ判定・同じ色を見せる。
 import { RULES_V1, hsvToHex } from '../rules/v1/index.js';
 import { h } from '../ui/dom.js';
+import { clearPortraitUrl } from '../presentation/result-fallback-portrait.js';
+import { createVisiblePresentationClock } from './presentation-clock.js';
 import { startShopEscape } from './opening.js';
 import { outlineForBuilding } from './chameleon-outline.js';
 
@@ -103,7 +105,7 @@ export function createDomStage(container, { course, rules = RULES_V1, presentati
   const jewel = shop ? h('i', { class: 'dom-stolen-jewel', hidden: true }) : null;
   if (shop) { root.prepend(shop); root.append(jewel); }
   container.append(root);
-  let escape = null;
+  let escape = null, stopClearEnding = null;
   function placeStreet(block) {
     const W = root.clientWidth * 0.62, anchor = root.clientWidth * 0.32;
     const current = Math.max(1, Math.floor(block) + 1);
@@ -167,8 +169,31 @@ export function createDomStage(container, { course, rules = RULES_V1, presentati
     presentationStats:()=>({mode,activeIds:[],enabled:false,staticDecorations:0,ambientParticles:0,drawCalls:0,geometries:0,textures:0}),
     forcePresentationEffect:()=>false,
     fx() {},
-    async playEnding(_kind, { signal, onFrame = () => {} } = {}) {
-      if (!signal?.aborted) onFrame(0);
+    async playEnding(kind, { signal, onFrame = () => {} } = {}) {
+      if (signal?.aborted || disposed) return;
+      onFrame(0);
+      if (kind !== 'cleared') return;
+      hero.classList.add('dom-hero-cleared');
+      hero.style.setProperty('--clear-portrait', 'url("' + clearPortraitUrl + '")');
+      const clock = createVisiblePresentationClock({visibilityTarget:document});
+      await new Promise(resolve => {
+        let frame;
+        const stop = () => {
+          cancelAnimationFrame(frame);
+          signal?.removeEventListener('abort',stop);
+          clock.dispose(); stopClearEnding=null; resolve();
+        };
+        const step = now => {
+          if (signal?.aborted || disposed) return stop();
+          const {elapsed}=clock(now,document.hidden);
+          if (!document.hidden) onFrame(elapsed);
+          if (elapsed>=3000) stop();
+          else if (stopClearEnding) frame=requestAnimationFrame(step);
+        };
+        stopClearEnding=stop;
+        signal?.addEventListener('abort',stop,{once:true});
+        frame=requestAnimationFrame(step);
+      });
     },
     async playOpening({ sceneT = rules.buildingMs * 0.4, color, signal, playbackRate = 1, onCue = () => {} } = {}) {
       if (!shop) return;
@@ -195,12 +220,13 @@ export function createDomStage(container, { course, rules = RULES_V1, presentati
       await escape.finished;
       escape = null;
     },
-    resetEnding() {},
+    resetEnding() { stopClearEnding?.(); hero.classList.remove('dom-hero-cleared'); },
     stats: () => ({ objects: root.querySelectorAll('*').length }),
     resize() {},
     dispose() {
       disposed = true;
       escape?.stop();
+      stopClearEnding?.();
       stepper?.dispose();
       root.remove();
     },

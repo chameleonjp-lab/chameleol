@@ -1,5 +1,11 @@
 // Italiano
 export default {
+  releaseRunRank: "Posizione in questa partita: {rank} su {total} ({total} partite in tutto)",
+  releaseClearOrdinal: "Ordine della prima vittoria: {ordinal}",
+  releaseCorrectedResult: "Risultato di questa partita",
+  releasePending: "Calcolo della classifica",
+  releaseCopy: "Copia il testo",
+  releasePassed: "Edifici superati: {count}",
   "app.title": "Kamereoru",
   "app.tagline": "Prendi il colore dei palazzi e scappa dalla polizia",
   "app.version": "Versione {v} / Regole {rules}",
@@ -258,7 +264,7 @@ export default {
   "share.manual": "Seleziona e copia il testo qui sotto",
   "share.hashtag": "#Kamereoru",
   "share.home.title": "Kamereoru",
-  "share.home.body": "Un gioco in cui prendi il colore dei palazzi per scappare dalla polizia.",
+  "share.home.body": "Il camaleonte ha rubato una gemma! Prendi il colore dei muri per sfuggire alla polizia.",
   "share.result.title": "Ho giocato a Kamereoru",
   "share.result.cleared": "Sono scappato da tutti i 50 palazzi!",
   "share.result.values": "{buildings} palazzi, corrispondenza media {average}",

@@ -19,30 +19,32 @@ export function createApi({ base, destination, fetchImpl = null, timeoutMs = 800
     if (!configured) throw new ApiError('not_configured', { retryable: false });
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
     const timer = setTimeout(() => controller?.abort(), timeout);
-    let res;
     try {
-      res = await doFetch(`${base.replace(/\/$/, '')}/${path}`, {
+      const res = await doFetch(`${base.replace(/\/$/, '')}/${path}`, {
         method,
         headers: { 'content-type': 'application/json', ...headers },
         body: body == null ? undefined : JSON.stringify(body),
         signal: controller?.signal,
         cache: 'no-store',
       });
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        if (controller?.signal.aborted) throw new ApiError('timeout', {retryable: true});
+      }
+      if (res.ok && data?.ok === true) return data;
+      const incomplete = res.ok && !(data?.ok === false && typeof data.error === 'string');
+      const code = incomplete ? 'invalid_response' : data?.error ?? `http_${res.status}`;
+      const retryable = incomplete || res.status === 0 || res.status >= 500 || res.status === 429 ||
+        res.status === 408 || data?.retryable === true;
+      throw new ApiError(code, {retryable, status: res.status, detail: data?.detail ?? null});
     } catch (err) {
-      throw new ApiError(err?.name === 'AbortError' ? 'timeout' : 'network', { retryable: true });
+      if (err instanceof ApiError) throw err;
+      throw new ApiError(controller?.signal.aborted || err?.name === 'AbortError' ? 'timeout' : 'network', {retryable: true});
     } finally {
       clearTimeout(timer);
     }
-    let data = null;
-    try {
-      data = await res.json();
-    } catch {
-      data = null;
-    }
-    if (res.ok && data && data.ok === true) return data;
-    const code = data?.error ?? `http_${res.status}`;
-    const retryable = res.status === 0 || res.status >= 500 || res.status === 429 || res.status === 408 || data?.retryable === true;
-    throw new ApiError(code, { retryable, status: res.status, detail: data?.detail ?? null });
   }
 
   return {
@@ -56,6 +58,9 @@ export function createApi({ base, destination, fetchImpl = null, timeoutMs = 800
     },
   };
 }
+
+// Earlier clients stored an unreadable successful response as a permanent http_2xx failure.
+export const wasUnconfirmedSuccess = code => typeof code === 'string' && /^http_2\d\d$/.test(code);
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

@@ -1556,3 +1556,11 @@ body {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+.dom-hero.dom-hero-cleared {
+  background: transparent var(--clear-portrait) center bottom / contain no-repeat !important;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.dom-hero-cleared > *, .dom-hero-cleared::before, .dom-hero-cleared::after { visibility: hidden; }

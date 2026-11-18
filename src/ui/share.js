@@ -19,7 +19,7 @@ export function buildResultShareText({ run }) {
   const { locale, endReason, score, buildings } = run;
   const lines = [t('share.result.title', null, locale)];
   if (buildings === 50 && endReason === 'cleared') lines.push(t('share.result.cleared', null, locale));
-  else lines.push(t(locale === 'ja' ? 'releasePassed' : 'card.passed', { count:formatNumber(buildings, {}, locale) }, locale));
+  else lines.push(t('releasePassed', { count:formatNumber(buildings, {}, locale) }, locale));
   if (score !== null) lines.push(t('card.score', { score:formatNumber(score, {}, locale) }, locale));
   const {rank,ordinal} = formatRunMetrics(run);
   if (ordinal) lines.push(ordinal);

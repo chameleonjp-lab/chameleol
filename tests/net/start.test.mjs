@@ -179,3 +179,51 @@ test('unknown legacy status text cannot establish ownership', async () => {
   assert.deepEqual(api.calls.map(call => call.path), ['status']);
   store.close();
 });
+
+test('an interrupted successful launch response retries the same launch once connectivity returns', async () => {
+  const {createApi} = await import('../../src/net/api.js');
+  const store = await fresh();
+  const launch = {launchId: uuid(), ranked: true, playId: uuid(), secret: 'original', destination: 'test', gameVersion: 't'};
+  await recordLaunch(store, launch);
+  const bodies = [];
+  const api = createApi({base: 'https://test.invalid', destination: 'test', fetchImpl: async (_url, options) => {
+    bodies.push(JSON.parse(options.body));
+    return bodies.length === 1 ? new Response('{"ok":') : Response.json({ok:true, counted:false});
+  }});
+  await flushLaunches(api, store);
+  assert.equal((await store.getOne('launches', launch.launchId)).sent, false);
+  await flushLaunches(api, store);
+  assert.deepEqual(bodies, [bodies[0], bodies[0]]);
+  assert.equal(bodies[1].secret, launch.secret);
+  assert.equal((await store.getOne('launches', launch.launchId)).sent, true);
+  store.close();
+});
+
+test('the request timeout remains active while the successful response body is stalled', async () => {
+  const {createApi} = await import('../../src/net/api.js');
+  const api = createApi({base:'https://test.invalid', timeoutMs:15, fetchImpl:async (_url,{signal}) => ({
+    ok:true, status:200, json:() => new Promise((resolve,reject) => {
+      const finish = setTimeout(() => resolve({ok:true}),100);
+      signal.addEventListener('abort', () => { clearTimeout(finish); reject(signal.reason); }, {once:true});
+    }),
+  })});
+  await assert.rejects(api.get('stats'), {code:'timeout',retryable:true});
+});
+
+test('a cancelled start stays abandoned when a delayed network failure arrives', async () => {
+  const store = await fresh();
+  const started = Promise.withResolvers(), delayed = Promise.withResolvers();
+  const api = {configured:true, destination:'test',post:async path => {
+    if (path === 'abandon') return {ok:true};
+    started.resolve(); return delayed.promise;
+  }};
+  const record = await createStartRequest(store, {name:'A', launchId:uuid(), destination:'test', gameVersion:'t'});
+  let current = true;
+  const request = sendStartRequest(api,store,record,{delays:[],isCurrent:()=>current});
+  await started.promise; current=false;
+  await abandonStart(api,store,record);
+  delayed.reject(new ApiError('network',{retryable:true}));
+  await request;
+  assert.equal((await store.getOne('starts',record.requestId)).status,'abandoned');
+  store.close();
+});

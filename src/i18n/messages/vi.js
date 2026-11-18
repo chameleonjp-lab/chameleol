@@ -1,5 +1,11 @@
 // Tiếng Việt
 export default {
+  releaseRunRank: "Hạng lượt này: {rank} trên {total} (tổng cộng {total} lượt chơi)",
+  releaseClearOrdinal: "Thứ tự lần đầu về đích: {ordinal}",
+  releaseCorrectedResult: "Kết quả lượt này",
+  releasePending: "Đang tính thứ hạng",
+  releaseCopy: "Sao chép nội dung",
+  releasePassed: "Số tòa nhà đã vượt qua: {count}",
   "app.title": "Kamereoru",
   "app.tagline": "Đổi màu cơ thể theo tòa nhà và trốn khỏi cảnh sát",
   "app.version": "Phiên bản {v} / Luật {rules}",
@@ -258,7 +264,7 @@ export default {
   "share.manual": "Hãy chọn và sao chép nội dung bên dưới",
   "share.hashtag": "#Kamereoru",
   "share.home.title": "Kamereoru",
-  "share.home.body": "Trò chơi đổi màu cơ thể theo tòa nhà để trốn khỏi cảnh sát.",
+  "share.home.body": "Tắc kè hoa đã trộm một viên ngọc! Đổi màu theo bức tường để thoát khỏi cảnh sát.",
   "share.result.title": "Mình đã chơi Kamereoru",
   "share.result.cleared": "Đã trốn qua cả 50 tòa nhà!",
   "share.result.values": "{buildings} tòa nhà, độ khớp trung bình {average}",

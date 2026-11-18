@@ -179,3 +179,13 @@ test('the shared PNG and screen both draw this run’s rank, denominator and fir
     assert.doesNotMatch(next.ctx.texts.map(row=>row.text).join(' '),/位／|人目/);
   }
 });
+
+test('a correction to 50 buildings keeps a quit card free of the clear-only sunburst',()=>{
+  const rays = endReason => {
+    const canvas=fakeCanvas();
+    drawResultCard(canvas,{model:model({passed:50,endReason}),locale:'ja'});
+    return canvas.ctx.ops.filter(op=>op[0]==='moveTo' && op[1]===880 && op[2]===-40).length;
+  };
+  assert.equal(rays('quit'),0);
+  assert.ok(rays('cleared')>0);
+});

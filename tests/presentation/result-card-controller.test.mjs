@@ -148,3 +148,13 @@ test('saving during a metrics change revokes the old image URL before the view i
   assert.equal(c.getImageUrl(),null);assert.ok(p.count.revoked.includes(old));await settle();
   assert.notEqual(c.getImageUrl(),old);releaseResultCardResources(r);
 });
+
+test('a missing 3D context uses the matching simple portrait to prepare a shareable PNG',async()=>{
+  const p=ports(),r=result();p.createRenderer=()=>null;
+  const appearances=[];
+  p.createFallbackPortrait=async({hero})=>{appearances.push(hero.status);return {image:{width:240,height:290},dispose(){}};};
+  const c=createResultCardController({result:r,ports:p});await settle();
+  assert.deepEqual(appearances,['rainbow']);
+  assert.equal(c.snapshot().prepared?.file.type,'image/png');
+  releaseResultCardResources(r);
+});

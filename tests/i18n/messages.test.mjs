@@ -104,8 +104,9 @@ test('SHARE-TEST-01: 共有文は選んだ言語で作り、未確定の順位�
     const official=buildResultShareText({run});
     const pending=buildResultShareText({run:{...run,rankState:'pending',runRank:null,totalPlays:null,clearOrdinal:null}});
     assert.ok(official.includes(t('share.result.title', null, lang)), lang);
-    assert.match(official, /3位／4人中/);
-    assert.doesNotMatch(pending, /3位／4人中/);
+    const rankText = t('releaseRunRank', {rank:'3',total:'4'}, lang);
+    assert.ok(official.includes(rankText), lang);
+    assert.ok(!pending.includes(rankText), lang);
     assert.equal(/[0-9a-f]{8}-[0-9a-f]{4}/.test(official), false);
   }
   const url = buildIntentUrl({ text: 'a&b #x\n改行', url: 'https://example.invalid/game/' });
@@ -146,5 +147,13 @@ test('genuinely missing result text retains its emergency fallback and unknown-k
   } finally {
     for (const [lang, values] of saved) keys.forEach((key, i) => { MESSAGES[lang][key] = values[i]; });
     USED_FALLBACKS.clear();
+  }
+});
+
+test('all 15 release dictionaries include the rank, clear order, pending and sharing text',()=>{
+  const keys=['releaseRunRank','releaseClearOrdinal','releaseCorrectedResult','releasePending','releaseCopy','releasePassed'];
+  for(const locale of LANGUAGE_IDS) for(const key of keys){
+    assert.equal(typeof MESSAGES[locale][key],'string',locale+' '+key);
+    if(locale!=='ja') assert.notEqual(MESSAGES[locale][key],MESSAGES.ja[key],locale+' '+key);
   }
 });

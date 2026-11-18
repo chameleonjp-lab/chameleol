@@ -1,5 +1,11 @@
 // 한국어
 export default {
+  releaseRunRank: "이번 플레이 순위: {total}회 중 {rank}위 (누적 {total}회)",
+  releaseClearOrdinal: "첫 완주 순서: {ordinal}번째",
+  releaseCorrectedResult: "이번 플레이 결과",
+  releasePending: "순위 집계 중",
+  releaseCopy: "본문 복사",
+  releasePassed: "건물 {count}채 통과",
   "app.title": "Kamereoru",
   "app.tagline": "몸 색을 건물에 맞추고 경찰에게서 도망치자",
   "app.version": "버전 {v} / 규칙 {rules}",
@@ -258,7 +264,7 @@ export default {
   "share.manual": "아래 본문을 선택해 복사해 주세요",
   "share.hashtag": "#Kamereoru",
   "share.home.title": "Kamereoru",
-  "share.home.body": "건물 색에 몸 색을 맞춰 경찰에게서 도망치는 게임.",
+  "share.home.body": "보석을 훔친 카멜레온! 벽 색깔에 맞춰 몸을 숨기고 경찰을 따돌리세요.",
   "share.result.title": "Kamereoru를 플레이했어요",
   "share.result.cleared": "50개 건물에서 도망쳤다!",
   "share.result.values": "{buildings}개 건물・평균 일치도 {average}",

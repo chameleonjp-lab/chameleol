@@ -73,3 +73,25 @@ test('standalone results show the unavailable message without querying rankings'
   assert.equal(requests, 0);
   assert.equal(view.el.querySelector('.rank-status').textContent, t('ranking.notConfigured'));
 });
+
+test('repeatedly retired rank pages stop for a manual retry and never mix versions',async()=>{
+  let calls=0;
+  const view=createRankingView({result:true,api:{get:async()=>{
+    calls++;
+    if(calls===7) throw Error('test circuit breaker');
+    return page([{...rows(1)[0],name:'版'+calls}],1,calls,calls>1);
+  }}});
+  await view.load();
+  assert.ok(calls < 7,'pagination must stop when its replacement is retired too');
+  assert.ok(view.el.querySelector('.rank-status button'));
+  assert.equal(view.el.querySelectorAll('.rank-row').length,1);
+});
+
+test('an earlier personal best cannot append a second or obsolete value after refresh',async()=>{
+  const old=Promise.withResolvers();
+  let n=0;
+  const view=createRankingView({name:'A',api:{get:async()=>page([]),post:()=>++n===1?old.promise:Promise.resolve({rank:1,buildings:50,average:9900})}});
+  await view.load();await view.load();
+  old.resolve({rank:8,buildings:7,average:8000});await new Promise(resolve=>setImmediate(resolve));
+  assert.doesNotMatch(view.el.querySelector('.rank-mine').textContent,/80\.00%/);
+});

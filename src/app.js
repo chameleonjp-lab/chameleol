@@ -52,7 +52,7 @@ import { PRACTICE_STEPS, createGuidePractice } from './guidance/practice.js';
 import { normalizeName } from './shared/name.js';
 import { loadRuntimeConfig } from './config/runtime.js';
 import { createApi, uuid } from './net/api.js';
-import { abandonStart, createLaunch, createStartRequest, flushLaunches, recordLaunch, sendStartRequest } from './net/start.js';
+import { savedOwnerSecret, abandonStart, createLaunch, createStartRequest, flushLaunches, recordLaunch, sendStartRequest } from './net/start.js';
 import { flushOutbox, makeOutboxItem, refreshRecords, requestReview } from './net/outbox.js';
 
 const SAVE_INTERVAL_MS = 5000; // 試作値：通過時に加えて、ゲーム内5秒ごとに保存
@@ -259,7 +259,7 @@ export class App {
     for (const store of [this.store, this.volatileNetwork]) {
       try {
         await flushLaunches(this.api, store);
-        const sent = await flushOutbox({ api: this.api, store, onUpdate: u => this.onOutboxUpdate(u) });
+        const sent = await flushOutbox({ api: this.api, store, ownerStore: this.store, onUpdate: u => this.onOutboxUpdate(u) });
         accepted += sent.accepted;
       } catch {
         // Retry when connectivity or storage recovers.
@@ -788,10 +788,27 @@ export class App {
     };
     const launch = createLaunch({ ...meta, playId: ranked ? playId : null, secret });
     const session = new GameSession(meta);
-    let generation = 0;
+    let generation = 0, playing, resolveStorage;
+    const storageReady = new Promise(resolve => { resolveStorage = resolve; });
+    // The store owns the run slot. Admit the actual screen in the same turn as
+    // its writes, after checking competing runs, before another tab can flush.
+    const enter = () => {
+      if (playing) return true;
+      if (!this.isStartCurrent(attempt)) return false;
+      attempt.record = null;
+      if (secret) this.playSecrets.set(session, secret);
+      this.savedRun = null;
+      this.foreignRun = null;
+      this.generation = 0;
+      this.memoryOnly = true;
+      this.takenOver = false;
+      this.saveWarned = false;
+      playing = this.showGame(session, { fresh: true, storageReady });
+      return true;
+    };
     for (let saveAttempt = 0; saveAttempt < 2; saveAttempt += 1) {
       try {
-        generation = await this.store.beginRun(TAB_ID, session.snapshot(), launch);
+        generation = await this.store.beginRun(TAB_ID, session.snapshot(), launch, enter);
         break;
       } catch (err) {
         if (err?.code !== 'active_run_exists') break;
@@ -810,27 +827,26 @@ export class App {
         }
       }
     }
-    if (!this.isStartCurrent(attempt)) return;
-    if (secret) this.playSecrets.set(session, secret);
-    this.savedRun = null;
-    this.foreignRun = null;
-    this.generation = generation;
-    this.memoryOnly = !generation;
-    this.takenOver = false;
-    this.saveWarned = false;
-    if (!generation) this.notices.push('notice.saveFailed');
-    // 実際に本編を始めた：開始通知を端末へ保存してから送る（名前ありの開始予約だけでは数えない）
-    try {
-      // A run whose snapshot could not be persisted still keeps a launch when possible.
-      if (!generation) await recordLaunch(this.store, launch);
-    } catch {
-      this.notices.push('notice.launchNotSaved');
-      await recordLaunch(this.volatileNetwork, launch);
-      flushLaunches(this.api, this.volatileNetwork).catch(() => {});
+    if (!playing && !this.isStartCurrent(attempt)) return;
+    if (!generation) {
+      // The fallback write can wait too. Keep the home controls available
+      // until it admits this run, using the same boundary as beginRun.
+      try {
+        await recordLaunch(this.store, launch, enter);
+      } catch {
+        await recordLaunch(this.volatileNetwork, launch, enter);
+        if (playing) this.notices.push('notice.launchNotSaved');
+      }
+      if (!playing) return;
+      this.notices.push('notice.saveFailed');
+    } else if (!playing && !enter()) return;
+    if (this.session === session) {
+      this.generation = generation;
+      this.memoryOnly = !generation;
     }
-    if (!this.isStartCurrent(attempt)) return;
-    flushLaunches(this.api, this.store).catch(() => {});
-    await this.showGame(session, { fresh: true });
+    resolveStorage();
+    this.flushNetwork();
+    await playing;
     this.finishStartAttempt(attempt, 'started');
   }
 
@@ -956,7 +972,7 @@ export class App {
     return progress;
   }
 
-  async showGame(session, { fresh }) {
+  async showGame(session, { fresh, storageReady }) {
     this.verificationPreviewScope=null;
     this.session = session;
     releaseResultCardResources(this.lastResult);
@@ -1025,6 +1041,10 @@ export class App {
     controls.setValues(session.state.color);
     controls.setLocked(!session.state.brightnessUnlocked);
     controls.setEnabled(false); // 時計が動くまで操作しない（表示と判定の色をずらさない）
+    if (storageReady) {
+      await storageReady;
+      if (!current()) return;
+    }
     const initialProgress = await this.initializeGuides(session, fresh);
     if (!current()) return;
     const generation = this.generation;
@@ -1526,13 +1546,8 @@ export class App {
   }
 
   async secretForSession(session) {
-    const { ranked, playId, requestId, launchId } = session.meta;
-    if (!ranked) return null;
-    const cached = this.playSecrets.get(session);
-    if (cached) return cached;
-    if (!requestId) return null;
-    const start = await this.store.getOne('starts', requestId).catch(() => null);
-    return start?.status === 'accepted' && start.response?.playId === playId && start.launchId === launchId ? start.secret : null;
+    if (!session.meta.ranked) return null;
+    return this.playSecrets.get(session) ?? await savedOwnerSecret(this.store, session.meta).catch(() => null);
   }
 
   /** 終了の確定：結果と履歴を端末へ先に保存してから、演出と送信を行う。 */
@@ -1543,7 +1558,7 @@ export class App {
     const presentation={playId:session.meta.playId,buildings:summary.buildings,rankAverage:summary.rankAverage,maxCombo:summary.maxCombo,endedAt,cleared:summary.endReason==='cleared'};
     let result;
     const secret = await this.secretForSession(session);
-    if (session.meta.ranked && secret) {
+    if (session.meta.ranked) {
       result = await makeOutboxItem({ snapshot: snap, summary, secret, gameVersion: session.meta.gameVersion });
     } else {
       result = { playId: session.meta.playId, ranked: false, name: session.meta.name, summary, endedAt: Date.now() };
@@ -1632,9 +1647,7 @@ export class App {
   }
 
   async sendUnsaved(item) {
-    const launch = await this.store.getOne('launches', item.launchId).catch(() => null);
-    if (launch) await this.volatileNetwork.put('launches', launch);
-    await this.volatileNetwork.put('outbox', { ...item, state: 'pending' });
+    await this.volatileNetwork.put('outbox', { ...item, state: 'pending', liveUnsaved: true });
     return this.flushNetwork();
   }
 

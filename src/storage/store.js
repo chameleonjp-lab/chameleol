@@ -120,7 +120,8 @@ export class Store {
     return req(tx.objectStore(storeName).getAll());
   }
 
-  async put(storeName, value, key) {
+  async put(storeName, value, key, beforeWrite) {
+    if (beforeWrite && !beforeWrite()) return;
     const tx = this.tx([storeName], 'readwrite');
     if (key === undefined) tx.objectStore(storeName).put(value);
     else tx.objectStore(storeName).put(value, key);
@@ -171,7 +172,7 @@ export class Store {
    * 新しいプレイを始める。進行中の欄があれば拒否する（先に endRun / settleRun で保全する）。
    * 戻り値：このタブの世代。
    */
-  async beginRun(tabId, snapshot, launch = null) {
+  async beginRun(tabId, snapshot, launch = null, enter = () => true) {
     const tx = this.tx(launch ? ['runs', 'launches'] : ['runs'], 'readwrite');
     const runs = tx.objectStore('runs');
     let generation = 0;
@@ -180,6 +181,11 @@ export class Store {
       tx.abort();
       await done(tx).catch(() => {});
       throw Object.assign(new Error('active_run_exists'), { code: 'active_run_exists' });
+    }
+    if (!enter()) {
+      tx.abort();
+      await done(tx).catch(() => {});
+      return null;
     }
     generation = (current?.generation ?? 0) + 1;
     if (launch) tx.objectStore('launches').add(launch);

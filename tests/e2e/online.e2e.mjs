@@ -286,3 +286,74 @@ test('名無しの50棟：開始の応答が失われても同じ開始を再送
     await fixture.close();
   }
 });
+
+test('a successful launch with a broken reply still delivers exactly one real named result',async()=>{
+  const s=await setup(), {page}=s.env;
+  const launches=[];
+  try {
+    await page.route('**/kamereoru/launch', async route=>{
+      launches.push(route.request().postDataJSON().launchId);
+      if(launches.length!==1)return route.continue();
+      const response=await route.fetch();
+      assert.equal(response.status(),200);
+      return route.fulfill({response,body:'{"ok":'});
+    });
+    await openHome(page,s.env.url);
+    const meta=await rankedPlay(page,'再送確認',6500);
+    await quitToHome(page);
+    await page.evaluate(()=>__kamereoru.flushNetwork());
+    const [counts]=await s.q('select (select count(*)::int from private.kamereoru_launches) as starts, (select count(*)::int from private.kamereoru_results where play_id=$1) as results',[meta.playId]);
+    assert.deepEqual(counts,{starts:1,results:1});
+    assert.ok(launches.length>=2);
+    assert.deepEqual([...new Set(launches)],[meta.launchId]);
+  } finally { await s.close(); }
+});
+
+test('opening practice before a start can use the save slot leaves the real database and device uncounted',async()=>{
+  const s=await setup(),{page}=s.env;
+  try {
+    await openHome(page,s.env.url);
+    for (const [name, fallback] of [['',false], ['予約だけ',false], ['',true], ['予約だけ',true]]) {
+      await page.evaluate((fallback) => {
+        const store = __kamereoru.store;
+        const begin = store.beginRun.bind(store);
+        const put = store.put.bind(store);
+        globalThis.__entered = false;
+        const gate = new Promise(resolve => { globalThis.__resumeWrite = resolve; });
+        let finish;
+        globalThis.__writeFinished = new Promise(resolve => { finish = resolve; });
+        const hold = async (write, args) => {
+          globalThis.__entered = true;
+          await gate;
+          try { return await write(...args); } finally { finish(); }
+        };
+        store.beginRun = async (...args) => {
+          store.beginRun = begin;
+          if (!fallback) return hold(begin, args);
+          store.put = (...args) => {
+            if (args[0] !== 'launches') return put(...args);
+            store.put = put;
+            return hold(put, args);
+          };
+          throw new Error('snapshot storage unavailable');
+        };
+      }, fallback);
+      await page.fill('#name-input',name);
+      await page.click('[data-testid=home-start]');
+      await page.waitForFunction(()=>globalThis.__entered);
+      assert.equal(await page.locator('[data-testid=home-practice]').count(), 1);
+      await page.click('[data-testid=home-practice]');
+      await page.evaluate(async()=>{
+        __resumeWrite();
+        await __writeFinished;
+        await __kamereoru.flushNetwork();
+      });
+      assert.deepEqual(await page.evaluate(async()=>{
+        const a=__kamereoru;
+        return [!!document.querySelector('.screen.game'),(await a.store.loadRun())?.status==='active',(await a.store.getAll('launches')).length];
+      }),[false,false,0]);
+      await page.evaluate(()=>__kamereoru.showHome());
+    }
+    assert.equal((await s.q('select count(*)::int as n from private.kamereoru_launches'))[0].n,0);
+  }finally{await s.close();}
+});
