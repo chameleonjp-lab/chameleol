@@ -1455,6 +1455,10 @@ body {
 
 /* ---------- 横向き・短い画面 ---------- */
 @media (orientation: landscape) and (max-height: 560px) {
+  /* Keep the sky below the two score lines predictable across system fonts. */
+  .hud-left {
+    line-height: 1.25;
+  }
   .screen.game {
     grid-template-rows: minmax(0, 1fr);
     grid-template-columns: minmax(0, 1fr) auto;
