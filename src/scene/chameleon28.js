@@ -454,7 +454,7 @@ export function createChameleon(design = CHAMELEON28) {
     hand.position.set(0, -armLen, 0);
     splay.add(hand);
     rig.add(shoulder);
-    arms.push({ shoulder, side });
+    arms.push({ shoulder, hand, side });
   }
 
   // ---- 脚と足 ----
@@ -564,7 +564,7 @@ export function createChameleon(design = CHAMELEON28) {
     comparePoint,
     /** 街の覆い（ステンシル）用：比較する面の材質（体色のトゥーンだけ） */
     comparisonMaterials: [bodyMat],
-    actorParts: { head, eyes: eyes.map(e => e.pivot), arms: arms.map(a => a.shoulder), legs: legs.map(l => l.pivot), feet: legs.map(l => l.foot), jaw, mouth, tail, jewel, setTailGuard, tailGeometry: tailGeo },
+    actorParts: { head, eyes: eyes.map(e => e.pivot), arms: arms.map(a => a.shoulder), hands: arms.map(a => a.hand), legs: legs.map(l => l.pivot), feet: legs.map(l => l.foot), jaw, mouth, tail, jewel, setTailGuard, tailGeometry: tailGeo },
     setColor(rgb) {
       bodyMat.uniforms.uColor.value.setRGB(rgb[0], rgb[1], rgb[2]);
       eyeMat.uniforms.uColor.value.setRGB(rgb[0] + (1 - rgb[0]) * tint, rgb[1] + (1 - rgb[1]) * tint, rgb[2] + (1 - rgb[2]) * tint);

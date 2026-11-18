@@ -182,9 +182,9 @@ export function createDomStage(container, { course, rules = RULES_V1, presentati
           const anchor = width * 0.32;
           const winX = anchor + (-1 - pose.block + 0.60) * width * 0.62;
           const jump = pose.jump * 28;
-          const carryX = anchor + 22 - 42 * pose.stowed;
+          const carryX = anchor + 31 - 51 * pose.stowed;
           const winHeight = root.clientHeight * 0.22;
-          const carryHeight = 80 + jump - 45 * pose.stowed;
+          const carryHeight = 42 + jump - 14 * pose.stowed;
           hero.style.transform = `translateY(${-jump}px)`;
           shop.style.setProperty('--alarm', Math.round(100 * pose.alarm) + '%');
           jewel.style.left = `${winX + (carryX - winX) * pose.pickup}px`;

@@ -1512,7 +1512,11 @@ export function createThreeStage(container, { course, decorations, rules = RULES
           hero.jewel.visible = pose.stowed < 1;
           if (hero.jewel.visible) {
             // 同じ宝石を展示台→体の横→尻尾の順に移す。途中で親や模型を差し替えない。
-            carried.set(jewelHome.x + 1.65, jewelHome.y + 1.65, jewelHome.z + 0.55).lerp(jewelHome, pose.stowed);
+            hero.actorParts.hands[0].getWorldPosition(carried);
+            hero.jewel.parent.worldToLocal(carried);
+            carried.x += 0.22;
+            carried.z += 0.18;
+            carried.lerp(jewelHome, pose.stowed);
             hero.jewel.position.copy(hero.jewel.parent.worldToLocal(v3.copy(display))).lerp(carried, pose.pickup);
             hero.jewel.scale.setScalar(2.15 - pose.stowed * 1.15);
             hero.jewel.rotation.y += dt * 3;

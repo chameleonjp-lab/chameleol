@@ -312,9 +312,10 @@ test('first theft runs from the display to the stationary guide without moving t
           const windows = shop.getObjectByName('opening-shop-windows');
           const display = shop.localToWorld(shop.userData.displayPoint.clone());
           const gem = hero.jewel.getWorldPosition(display.clone());
+          const hand = hero.actorParts.hands[0].getWorldPosition(display.clone());
           window.escapeFrames.push({
             opening: inOpening, x: hero.group.parent.position.x, camera: camera.position.toArray(),
-            jewel: hero.jewel.visible, displayDistance: gem.distanceTo(display), glass: windows.material.color.getHex(),
+            jewel: hero.jewel.visible, handDistance: gem.distanceTo(hand), displayDistance: gem.distanceTo(display), glass: windows.material.color.getHex(),
           });
         };
         return stage;
@@ -341,7 +342,7 @@ test('first theft runs from the display to the stationary guide without moving t
     const opening = frames.filter(f => f.opening);
     const last = opening.at(-1), next = frames[frames.lastIndexOf(last) + 1];
     assert.ok(opening[0].jewel && opening[0].displayDistance < 0.001);
-    assert.ok(opening.some(f => f.jewel && f.displayDistance > 2));
+    assert.ok(opening.filter(f => f.jewel && f.displayDistance > 2 && f.handDistance < 0.35).length >= 3, 'the gem stays in the front hand while running');
     assert.ok(new Set(opening.map(f => f.glass)).size > 3, 'actual display windows pulse');
     assert.ok(opening.every((f, i) => !i || (f.x >= opening[i - 1].x && f.x - opening[i - 1].x < 1)));
     assert.equal(last.jewel, false);

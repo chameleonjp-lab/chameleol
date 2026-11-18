@@ -467,7 +467,20 @@ export function createJewelryShop(width, height) {
   const gemColors = [0x9ff3ff, 0xff7ab6, 0xffe066, 0x8affc1, 0xc4a1ff];
   const gemGeo = tmp(new THREE.OctahedronGeometry(0.28));
   // 大きな水色のダイヤを店の目印にする。文字を読まなくても宝石店とわかる。
-  lm.add(gemGeo, T([0, height * 0.855, 0.65], [0, 0.35, 0], [3.6, 2.65, 1.7]), gemColors[0]);
+  const emblemGeo = gemGeo.clone();
+  const facets = [];
+  const normals = emblemGeo.attributes.normal;
+  for (let i = 0; i < normals.count; i++) {
+    const tint = normals.getY(i) > 0 ? (normals.getX(i) < 0 ? 0xeeffff : 0x91f2fa) : 0x42afc9;
+    new THREE.Color(tint).toArray(facets, i * 3);
+  }
+  emblemGeo.setAttribute('color', new THREE.Float32BufferAttribute(facets, 3));
+  const emblemMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+  const emblem = new THREE.Mesh(emblemGeo, emblemMat);
+  emblem.position.set(0, height * 0.855, 0.72);
+  emblem.scale.set(3.6, 2.65, 1.7);
+  emblem.rotation.y = 0.35;
+  group.add(emblem);
   for (const side of [-1, 1]) {
     lm.add(gemGeo, T([side * width * 0.27, height * 0.855, 0.62], [0, 0, 0], [1.2, 1.4, 1]), gemColors[side < 0 ? 1 : 2]);
   }
@@ -522,6 +535,8 @@ export function createJewelryShop(width, height) {
     glassGeo.dispose();
     litMat.dispose();
     glassMat.dispose();
+    emblemGeo.dispose();
+    emblemMat.dispose();
   };
   return group;
 }
