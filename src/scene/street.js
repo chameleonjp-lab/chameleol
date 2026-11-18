@@ -21,6 +21,7 @@ import { createChameleon, createFerret, createJewelryShop } from './characters.j
 import { outlineForBuilding } from './chameleon-outline.js';
 import { SKY, TOD, rgbFloat } from './palette-colors.js';
 import { createEffects } from './effects.js';
+import { startShopEscape } from './opening.js';
 import { createGamePresentationClock, createVisiblePresentationClock, resolvePresentationMode, createExtendedStepper, composePlacements, NO_PLACEMENTS, IDLE_BUSY } from './stage.js';
 import { createTravelTongue } from './travel-tongue.js';
 import { createPresentationScope } from '../presentation/scope.js';
@@ -879,7 +880,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     if (disposed) return;
     // Projection calibration uses the origin, then returns to the exact displayed world pose.
     // A deferred layout or a paused resize must not move a frozen scene back to building1.
-    const cameraPose=lastArgs?{position:camera.position.clone(),quaternion:camera.quaternion.clone()}:null;
+    const cameraPose=(lastArgs || opening)?{position:camera.position.clone(),quaternion:camera.quaternion.clone()}:null;
     const rect = container.getBoundingClientRect();
     viewW = Math.max(1, rect.width);
     viewH = Math.max(1, rect.height);
@@ -1488,91 +1489,57 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       });
     },
     /** 初回の開始演出：警報の鳴る宝石店から飛び出し、宝石を尻尾に隠す。onCue は音を合わせるための合図。 */
-    async playOpening({ signal, onCue = () => {} } = {}) {
-      const tick = createVisiblePresentationClock({ visibilityTarget: document });
-      const duration = 2800;
-      const done = {};
+    async playOpening({ sceneT = rules.buildingMs * PRACTICE_X / W, color, signal, onCue = () => {} } = {}) {
       opening = true;
       fx.clear();
-      hero.jewel.visible = true;
-      return new Promise((resolve) => {
-        let frameId = null;
-        let finished = false;
-        const finish = () => {
-          if (finished) return;
-          finished = true;
-          if (frameId != null) cancelAnimationFrame(frameId);
-          tick.dispose();
-          cutsceneCleanups.delete(finish);
-          signal?.removeEventListener('abort', finish);
-          opening = false;
-          heroRoot.position.y = SIDEWALK_Y;
-          hero.jewel.visible = false;
-          hero.jewel.position.copy(jewelHome);
-          hero.jewel.rotation.y = 0;
-          alarmMat?.color.set(0x6a1a1a);
-          fx.clear();
-          resolve();
-        };
-        cutsceneCleanups.add(finish);
-        signal?.addEventListener('abort', finish, { once: true });
-        const step = (timestamp) => {
-          if (signal?.aborted || disposed || !opening) { finish(); return; }
-          const { elapsed: now, dt } = tick(timestamp, document.hidden);
-          if (document.hidden && !signal?.aborted && !disposed) { frameId = requestAnimationFrame(step); return; }
+      if (color) hero.setColor(rgbFloat(color));
+      assignSlots(1);
+      ferretRoots.forEach((root, i) => { root.visible = ferretShadows[i].visible = false; });
+      const display = shop ? shop.localToWorld(shop.userData.displayPoint.clone()) : new THREE.Vector3(-4, 2.4, 0.64);
+      const carried = jewelHome.clone();
+      const dim = new THREE.Color(0x6a1a1a), bright = new THREE.Color(0xff523b);
+      const escape = startShopEscape({
+        destination: sceneT / rules.buildingMs, reducedMotion, signal,
+        draw(pose, dt) {
           worldClock += dt;
-          const k = Math.min(1, now / duration);
-          const once = (name, at, fn) => {
-            if (k >= at && !done[name]) {
-              done[name] = true;
-              fn();
-            }
-          };
-          const x = -W * 0.6 + k * W * 0.6;
-          const y = Math.max(0, Math.sin(k * Math.PI * 2) * 1.2 * (1 - k));
-          setTimeOfDay(1, 0);
-          assignSlots(1);
-          placeWorld(x);
-          placeHero(x, y);
-          once('alarm', 0, () => onCue('alarm'));
-          once('burst', 0.03, () => {
-            fx.emit('glass', x + 0.4, SIDEWALK_Y + 1.8, HERO_Z - 0.6);
-            onCue('glassBurst');
-            onCue('jump');
-          });
-          once('land', 0.5, () => {
-            fx.emit('dust', x, SIDEWALK_Y + 0.12, HERO_Z, { count: 4 });
-            onCue('land');
-          });
-          once('hide', 0.82, () => {
-            hero.jewel.getWorldPosition(v3);
-            fx.emit('gem', v3.x, v3.y, v3.z + 0.3, { count: 6 });
-            onCue('jewel');
-          });
-          if (alarmMat) alarmMat.color.set(Math.floor(now / 150) % 2 ? 0xff3b3b : 0x6a1a1a);
-          hero.jewel.position.set(jewelHome.x + (1 - k) * 1.5, jewelHome.y + (1 - k) * 1.6, jewelHome.z);
-          hero.jewel.rotation.y += dt * 5;
-          hero.jewel.visible = k < 0.85;
-          hero.animate(dt, { walking: true });
-          ferretRoots.forEach((r, i) => {
-            r.visible = false;
-            ferretShadows[i].visible = false;
-          });
+          playerX = pose.block * W;
+          setTimeOfDay(1, Math.max(0, pose.block));
+          placeWorld(playerX, worldClock * 1000);
+          placeHero(playerX, pose.jump);
+          hero.animate(dt, { walking: pose.walking });
+          shop?.userData.setAlarm(pose.alarm);
+          alarmMat?.color.lerpColors(dim, bright, pose.alarm);
+          hero.jewel.visible = pose.stowed < 1;
+          if (hero.jewel.visible) {
+            // 同じ宝石を展示台→体の横→尻尾の順に移す。途中で親や模型を差し替えない。
+            carried.set(jewelHome.x + 1.65, jewelHome.y + 1.65, jewelHome.z + 0.55).lerp(jewelHome, pose.stowed);
+            hero.jewel.position.copy(hero.jewel.parent.worldToLocal(v3.copy(display))).lerp(carried, pose.pickup);
+            hero.jewel.scale.setScalar(2.15 - pose.stowed * 1.15);
+            hero.jewel.rotation.y += dt * 3;
+          }
           fx.update(dt, camQuat);
-          if (shop) {
-            shop.visible = true;
-            shopExtras.visible = true;
-          }
           drawFrame();
-          if (k >= 1) {
-            finish();
-            return;
+        },
+        onCue(name) {
+          if (name === 'glassBurst') fx.emit('glass', display.x, display.y, display.z + 0.1);
+          if (name === 'land') fx.emit('dust', playerX, SIDEWALK_Y + 0.12, HERO_Z, { count: 4 });
+          if (name === 'jewel') {
+            hero.jewel.parent.localToWorld(v3.copy(jewelHome));
+            fx.emit('gem', v3.x, v3.y, v3.z + 0.3, { count: 6 });
           }
-          frameId = requestAnimationFrame(step);
-        };
-        if (signal?.aborted || disposed) finish();
-        else frameId = requestAnimationFrame(step);
+          onCue(name);
+        },
       });
+      cutsceneCleanups.add(escape.stop);
+      await escape.finished;
+      cutsceneCleanups.delete(escape.stop);
+      opening = false;
+      if (disposed) return;
+      hero.jewel.visible = false;
+      hero.jewel.position.copy(jewelHome);
+      hero.jewel.scale.setScalar(1);
+      hero.jewel.rotation.y = 0;
+      fx.clear();
     },
     resetEnding() {
       for (const finish of cutsceneCleanups) finish();

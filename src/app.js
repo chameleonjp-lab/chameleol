@@ -1276,7 +1276,7 @@ export class App {
 
     if (fresh) {
       if (!this.flags.openingSeen) {
-        await this.playOpening();
+        await this.playOpening(guidance.view());
         if (!current()) return;
         await this.setFlag('openingSeen', true);
       }
@@ -1292,7 +1292,7 @@ export class App {
     }
   }
 
-  async playOpening() {
+  async playOpening({ sceneT, color } = {}) {
     const ctrl = new AbortController();
     this.presentationScope?.own(() => ctrl.abort());
     const skip = button('common.skip', () => {
@@ -1300,7 +1300,7 @@ export class App {
       ctrl.abort();
     }, { className: 'btn-skip', testid: 'skip-opening' });
     this.layer.append(skip);
-    await this.stage.playOpening({ signal: ctrl.signal, onCue: (name) => this.audio.play(name) });
+    await this.stage.playOpening({ sceneT, color, signal: ctrl.signal, onCue: (name) => this.audio.play(name) });
     skip.remove();
   }
 

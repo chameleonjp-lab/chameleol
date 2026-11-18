@@ -1,6 +1,7 @@
 // 描画の入口。WebGLが使えれば Three.js の街、使えなければ仮の図形（DOM）で同じ判定・同じ色を見せる。
 import { RULES_V1, hsvToHex } from '../rules/v1/index.js';
 import { h } from '../ui/dom.js';
+import { startShopEscape } from './opening.js';
 import { outlineForBuilding } from './chameleon-outline.js';
 
 export { createGamePresentationClock, createVisiblePresentationClock } from './presentation-clock.js';
@@ -87,7 +88,7 @@ function webglAvailable() {
 }
 
 /** 仮の図形の舞台。現在と次の壁、体色の比較面だけを出す。 */
-export function createDomStage(container, { course, rules = RULES_V1, presentationSet, gameExtrasController } = {}) {
+export function createDomStage(container, { course, rules = RULES_V1, presentationSet, gameExtrasController, showOpeningShop = false } = {}) {
   const mode = resolvePresentationMode({ presentationSet, gameExtrasController });
   // extended96 では簡易表示でも1フレーム1回 step する（評価区間と一度だけの取得処理を落とさない）。描く物は無い。
   const stepper = mode === 'extended96' ? createExtendedStepper({ controller: gameExtrasController }) : null;
@@ -96,7 +97,31 @@ export function createDomStage(container, { course, rules = RULES_V1, presentati
   const hero = h('div', { class: 'dom-hero' }, [h('div', { class: 'dom-hero-eye' })]);
   const police = [h('div', { class: 'dom-police' }), h('div', { class: 'dom-police' })];
   const root = h('div', { class: 'dom-stage' }, [...walls, ...police, hero]);
+  const shop = showOpeningShop ? h('div', { class: 'dom-wall dom-jewelry-shop', 'aria-hidden': 'true' }, [
+    h('i', { class: 'dom-shop-sign' }), h('i', { class: 'dom-shop-windows' })
+  ]) : null;
+  const jewel = shop ? h('i', { class: 'dom-stolen-jewel', hidden: true }) : null;
+  if (shop) { root.prepend(shop); root.append(jewel); }
   container.append(root);
+  let escape = null;
+  function placeStreet(block) {
+    const W = root.clientWidth * 0.62, anchor = root.clientWidth * 0.32;
+    const current = Math.max(1, Math.floor(block) + 1);
+    walls.forEach((wall, i) => {
+      const index = current - 1 + i;
+      const valid = index >= 1 && index <= rules.buildingCount;
+      wall.style.display = valid ? 'block' : 'none';
+      if (!valid) return;
+      wall.style.background = hsvToHex(course.targets[index - 1]);
+      wall.style.width = `${W - 6}px`;
+      wall.style.transform = `translateX(${(index - 1 - block) * W + anchor}px)`;
+    });
+    if (shop) {
+      shop.hidden = block >= 1.5;
+      shop.style.width = `${W - 6}px`;
+      shop.style.transform = `translateX(${(-1 - block) * W + anchor}px)`;
+    }
+  }
   let target = null;
   // 簡易表示の輪郭も同じ段階表を使う。段階が変わった時だけ CSS 変数を書く。
   let outlineInfo = null;
@@ -115,22 +140,14 @@ export function createDomStage(container, { course, rules = RULES_V1, presentati
     outlineStyle: () => ({ stage: outlineInfo.stage, thickness: outlineInfo.thickness, rgb: [...outlineInfo.rgb] }),
     update({ t, color, policeStage = 0, presentation }) {
       if (disposed) return;
-      const W = root.clientWidth * 0.62;
-      const playerX = (t / rules.buildingMs) * W;
-      const current = Math.floor(t / rules.buildingMs) + 1;
-      applyOutline(presentation?.building ?? Math.min(rules.buildingCount, current)); // 立体の舞台と同じく棟は50で止める
-      walls.forEach((wall, i) => {
-        const index = current - 1 + i;
-        const valid = index >= 1 && index <= rules.buildingCount;
-        wall.style.display = valid ? 'block' : 'none';
-        if (!valid) return;
-        wall.style.background = hsvToHex(course.targets[index - 1]);
-        wall.style.width = `${W - 6}px`;
-        wall.style.transform = `translateX(${(index - 1) * W - playerX + root.clientWidth * 0.32}px)`;
-      });
+      stepper?.step(presentation, { drawable: false });
+      if (escape) return;
+      const block = t / rules.buildingMs;
+      const current = Math.floor(block) + 1;
+      applyOutline(presentation?.building ?? Math.min(rules.buildingCount, current));
+      placeStreet(block);
       hero.style.background = hsvToHex(color);
       police.forEach((p, i) => p.classList.toggle('visible', policeStage > i));
-      stepper?.step(presentation, { drawable: false });
     },
     showPractice(tg) {
       target = tg;
@@ -153,12 +170,37 @@ export function createDomStage(container, { course, rules = RULES_V1, presentati
     async playEnding(_kind, { signal, onFrame = () => {} } = {}) {
       if (!signal?.aborted) onFrame(0);
     },
-    async playOpening() {},
+    async playOpening({ sceneT = rules.buildingMs * 0.4, color, signal, onCue = () => {} } = {}) {
+      if (!shop) return;
+      hero.style.background = hsvToHex(color ?? { h: 12000, s: 7000, v: 9000 });
+      escape = startShopEscape({
+        destination: sceneT / rules.buildingMs, signal, onCue,
+        reducedMotion: globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+        draw(pose) {
+          placeStreet(pose.block);
+          const width = root.clientWidth;
+          const anchor = width * 0.32;
+          const winX = anchor + (-1 - pose.block + 0.60) * width * 0.62;
+          const jump = pose.jump * 28;
+          const carryX = anchor + 22 - 42 * pose.stowed;
+          const winHeight = root.clientHeight * 0.22;
+          const carryHeight = 80 + jump - 45 * pose.stowed;
+          hero.style.transform = `translateY(${-jump}px)`;
+          shop.style.setProperty('--alarm', Math.round(100 * pose.alarm) + '%');
+          jewel.style.left = `${winX + (carryX - winX) * pose.pickup}px`;
+          jewel.style.bottom = `calc(18% + ${winHeight + (carryHeight - winHeight) * pose.pickup}px)`;
+          jewel.hidden = pose.stowed === 1;
+        },
+      });
+      await escape.finished;
+      escape = null;
+    },
     resetEnding() {},
     stats: () => ({ objects: root.querySelectorAll('*').length }),
     resize() {},
     dispose() {
       disposed = true;
+      escape?.stop();
       stepper?.dispose();
       root.remove();
     },

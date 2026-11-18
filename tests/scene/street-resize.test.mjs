@@ -26,7 +26,7 @@ function fixture(width,height){
  let rect={width,height};const canvasSizes=[];
  const skyPos=new Float32Array(18),skyGeo=new THREE.BufferGeometry();skyGeo.setAttribute('position',new THREE.BufferAttribute(skyPos,3));
  const starGeo=new THREE.BufferGeometry();starGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
- const env={disposed:false,lastArgs:null,extended:true,viewW:1,viewH:1,hudBottom:76,
+ const env={disposed:false,lastArgs:null,opening:false,extended:true,viewW:1,viewH:1,hudBottom:76,
   container:{getBoundingClientRect:()=>rect},renderer:{setSize:(w,h)=>canvasSizes.push([w,h])},
   camera:new THREE.PerspectiveCamera(44,.78,.5,700),THREE,CAM:{dx:3.2,y:5.2,z:22,lookDx:6,lookY:4.2,lookZ:0,fov:44},
   SCREEN_X:.38,SCREEN_Y:.31,SIDEWALK_Y:.22,HERO_Z:2.5,
@@ -84,4 +84,18 @@ test('real resize retains a current quaternion as well as translation and leaves
  c.position.set(123.4,5.17,22);c.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),.025));c.updateMatrixWorld(true);
  const before=pose(c);f.env.lastArgs={t:60100};f.resize();
  assert.deepEqual(pose(c),before);assert.equal(f.env.lastArgs.t,60100);f.dispose();
+});
+
+test('resizing before the tutorial keeps the camera outside the shop', () => {
+  const f = fixture(402, 514);
+  try {
+    f.resize();
+    f.env.opening = true;
+    f.env.camera.position.x -= 6;
+    const before = pose(f.env.camera);
+    f.setRect(874, 402);
+    f.resize();
+    assert.deepEqual(pose(f.env.camera), before);
+    assert.equal(f.env.camera.aspect, 874 / 402);
+  } finally { f.dispose(); }
 });

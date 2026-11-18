@@ -214,3 +214,30 @@ test('legacy80 DOM stage keeps its stats shape and hides nothing new', () => {
   assert.deepEqual(Object.keys(stage.presentationStats()).sort(), ['activeIds', 'ambientParticles', 'drawCalls', 'enabled', 'geometries', 'mode', 'staticDecorations', 'textures']);
   stage.dispose();
 });
+
+test('simple stage shows the display jewel and skipping goes directly to the guide wall', async (t) => {
+  const oldFrame = globalThis.requestAnimationFrame, oldCancel = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = () => 1;
+  globalThis.cancelAnimationFrame = () => {};
+  t.after(() => {
+    if (oldFrame) globalThis.requestAnimationFrame = oldFrame; else delete globalThis.requestAnimationFrame;
+    if (oldCancel) globalThis.cancelAnimationFrame = oldCancel; else delete globalThis.cancelAnimationFrame;
+  });
+  const stage = domStage({ showOpeningShop: true });
+  try {
+    const root = document.body.lastElementChild.firstElementChild;
+    Object.defineProperties(root, { clientWidth: { value: 402 }, clientHeight: { value: 500 } });
+    const shop = root.querySelector('.dom-jewelry-shop'), jewel = root.querySelector('.dom-stolen-jewel');
+    const ctrl = new AbortController(), color = { h: 3000, s: 5000, v: 10000 };
+    const opening = stage.playOpening({ sceneT: 2000, color, signal: ctrl.signal, onCue() { assert.fail('skip must be silent'); } });
+    assert.equal(jewel.hidden, false);
+    const start = shop.style.transform;
+    ctrl.abort();
+    await opening;
+    assert.equal(jewel.hidden, true);
+    assert.notEqual(shop.style.transform, start);
+    const before = shop.style.transform;
+    stage.update({ t: 2000, color });
+    assert.equal(shop.style.transform, before);
+  } finally { stage.dispose(); }
+});

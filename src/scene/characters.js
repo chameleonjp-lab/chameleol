@@ -435,6 +435,7 @@ export function createFerret() {
 /** 宝石店（初回の開始演出用の建物）。正面は z=0、地面は y=0。奥は -z に伸びる箱。描画は2個。 */
 export function createJewelryShop(width, height) {
   const group = new THREE.Group();
+  group.name = 'opening-jewelry-shop';
   const depth = Math.max(3.5, width * 0.45);
   const lm = new Merge(); // 照明を受ける面
   const gm = new Merge(); // ガラス（照明なし）
@@ -465,7 +466,11 @@ export function createJewelryShop(width, height) {
   box(width * 0.78, height * 0.115, 0.1, 0x7a3e9d, 0, height * 0.855, 0.43);
   const gemColors = [0x9ff3ff, 0xff7ab6, 0xffe066, 0x8affc1, 0xc4a1ff];
   const gemGeo = tmp(new THREE.OctahedronGeometry(0.28));
-  for (let i = 0; i < 5; i += 1) lm.add(gemGeo, T([-width * 0.3 + i * width * 0.15, height * 0.855, 0.62], [0, 0, 0], [1, 1.25, 1]), gemColors[i]);
+  // 大きな水色のダイヤを店の目印にする。文字を読まなくても宝石店とわかる。
+  lm.add(gemGeo, T([0, height * 0.855, 0.65], [0, 0.35, 0], [3.6, 2.65, 1.7]), gemColors[0]);
+  for (const side of [-1, 1]) {
+    lm.add(gemGeo, T([side * width * 0.27, height * 0.855, 0.62], [0, 0, 0], [1.2, 1.4, 1]), gemColors[side < 0 ? 1 : 2]);
+  }
 
   // ショーウィンドウ：枠・ガラス・宝石の展示台
   const winW = width * 0.27;
@@ -478,6 +483,11 @@ export function createJewelryShop(width, height) {
     box(winW * 0.96, 0.05, 0.12, 0x8fc7ea, x, winY + winH * 0.1, 0.34, 0, gm);
     box(winW * 0.9, 0.22, 0.6, 0x4a3a2f, x, winY - winH * 0.34, 0.5);
     for (let i = 0; i < 3; i += 1) {
+      if (sx > 0 && i === 1) {
+        // この台の宝石だけが実際に窓から離れ、主人公の尻尾に収まる。
+        group.userData.displayPoint = new THREE.Vector3(x, winY - winH * 0.34 + 0.48, 0.64);
+        continue;
+      }
       const k = 0.55 + (i === 1 ? 0.2 : 0);
       lm.add(gemGeo, T([x + (i - 1) * winW * 0.27, winY - winH * 0.34 + 0.35, 0.5], [0, 0, 0], [k, k, k]), gemColors[(i + (sx > 0 ? 2 : 0)) % 5]);
     }
@@ -501,7 +511,11 @@ export function createJewelryShop(width, height) {
   const glassGeo = gm.geometry();
   const litMat = makeLitMaterial();
   const glassMat = new THREE.MeshBasicMaterial({ vertexColors: true });
-  group.add(new THREE.Mesh(litGeo, litMat), new THREE.Mesh(glassGeo, glassMat));
+  const windows = new THREE.Mesh(glassGeo, glassMat);
+  windows.name = 'opening-shop-windows';
+  const unlit = new THREE.Color(0xffffff), alarm = new THREE.Color(0xff3524);
+  group.userData.setAlarm = (strength) => glassMat.color.lerpColors(unlit, alarm, strength);
+  group.add(new THREE.Mesh(litGeo, litMat), windows);
   tmpGeos.forEach((g) => g.dispose());
   group.userData.dispose = () => {
     litGeo.dispose();
