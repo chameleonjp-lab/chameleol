@@ -78,11 +78,15 @@ test('ソースで使う翻訳キーは、すべて辞書にある', () => {
   assert.ok(used.size > 150, `used ${used.size}`);
 });
 
-test('LANG-TEST-02: 保存した言語→対応するブラウザ言語→未対応のみなら英語→言語情報なしなら日本語', () => {
+test('LANG-TEST-02: 保存した言語→対応するブラウザ言語→対応する言語がなければ日本語', () => {
   assert.equal(resolveLanguage('th', ['fr-FR']), 'th');
   assert.equal(resolveLanguage(null, ['fr-CA', 'en']), 'fr');
   assert.equal(resolveLanguage(undefined, ['xx-YY', 'de-AT']), 'de');
-  assert.equal(resolveLanguage(null, ['xx', 'yy']), 'en');
+  assert.equal(resolveLanguage(null, ['xx', 'yy']), 'ja');
+  assert.equal(resolveLanguage(null, ['xx', 'yy'], null), null);
+  assert.equal(resolveLanguage(null, [], null), null);
+  assert.equal(resolveLanguage(null, ['ja-JP'], null), 'ja');
+  assert.equal(resolveLanguage('ja', ['xx'], null), 'ja');
   assert.equal(resolveLanguage(null, []), 'ja');
   assert.equal(resolveLanguage('xx', null), 'ja');
   assert.equal(languageFromLocale('zh-TW'), 'zh-Hant');

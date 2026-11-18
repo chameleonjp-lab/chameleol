@@ -21,6 +21,7 @@ test('LANG-TEST-01: 15言語でホーム・設定・あそびかた・停止・�
       await openHome(page, env.url);
       const M = MESSAGES[lang.id];
       assert.equal(await page.getAttribute('html', 'lang'), lang.id);
+      assert.equal(await page.getByRole('combobox', { name: M['settings.languageTitle'], exact: true }).inputValue(), lang.id);
       assert.equal((await page.textContent('[data-testid=home-start]')).trim(), M['home.start'], `${lang.id} start`);
       assert.equal((await page.textContent('.name-help')).trim(), M['name.help'], `${lang.id} help`);
       let o = await noOverflow(page);
@@ -53,12 +54,33 @@ test('LANG-TEST-01: 15言語でホーム・設定・あそびかた・停止・�
   }
 });
 
-test('LANG-TEST-02: 未対応の言語だけなら英語。端末に保存できなくても、その画面で言語を切り替えられる', async () => {
+test('LANG-TEST-02: 未対応の端末は日本語で始まり、ホームの language から明示的に選んだ言語を保存する', async () => {
   const env = await launch({ languages: ['xx-YY', 'zz'] });
   const { page, context } = env;
   try {
     await openHome(page, env.url);
-    assert.equal(await page.getAttribute('html', 'lang'), 'en');
+    assert.equal(await page.getAttribute('html', 'lang'), 'ja');
+    const chooser = page.getByRole('combobox', { name: 'language', exact: true });
+    assert.equal(await chooser.inputValue(), '');
+    for (const size of [{ width: 402, height: 874 }, { width: 874, height: 402 }]) {
+      await page.setViewportSize(size);
+      const rect = await chooser.boundingBox();
+      const header = await page.locator('.home-header').boundingBox();
+      assert.ok(rect && header && Math.abs(rect.x - header.x) <= 1 && Math.abs(rect.y - header.y) <= 1);
+      assert.ok(rect.width >= 44 && rect.height >= 44 && rect.y + rect.height <= size.height);
+    }
+    assert.equal(await page.locator('.home-language span').innerText(), 'language');
+    await chooser.selectOption('ja');
+    await page.waitForFunction(async () => (await window.__kamereoru.store.get('lang')) === 'ja');
+    await page.reload();
+    await page.waitForSelector('#home-lang-select');
+    assert.equal(await page.getByRole('combobox', { name: '言語', exact: true }).inputValue(), 'ja');
+    await page.selectOption('#home-lang-select', 'fr');
+    await page.waitForFunction(async () => (await window.__kamereoru.store.get('lang')) === 'fr');
+    await page.reload();
+    await page.waitForSelector('#home-lang-select');
+    assert.equal(await page.getAttribute('html', 'lang'), 'fr');
+    assert.equal(await page.getByRole('combobox', { name: 'Langue', exact: true }).inputValue(), 'fr');
   } finally {
     await env.close();
   }

@@ -126,15 +126,21 @@ export function nameField({ value = '', onChange = () => {} } = {}) {
   } };
 }
 
-export function languageSelect({ onChange }) {
-  const select = h('select', { class: 'lang-select', id: 'lang-select', 'aria-label': t('settings.language') });
-  for (const lang of SUPPORTED_LANGUAGES) {
-    const opt = h('option', { value: lang.id }, lang.name);
-    if (lang.id === getLanguage()) opt.selected = true;
-    select.append(opt);
+export function languageSelect({ onChange, home = false, undetermined = false }) {
+  const label = home ? (undetermined ? 'language' : t('settings.languageTitle')) : t('settings.language');
+  const select = h('select', {
+    class: 'lang-select', id: home ? 'home-lang-select' : 'lang-select', 'aria-label': label,
+  });
+  if (undetermined) {
+    // 日本語を明示的に選んだときも change が発生するよう、未選択の項目を設ける。
+    select.append(h('option', { value: '', disabled: true, hidden: true }, 'language'));
   }
+  for (const lang of SUPPORTED_LANGUAGES) {
+    select.append(h('option', { value: lang.id, lang: lang.id }, lang.name));
+  }
+  select.value = undetermined ? '' : getLanguage();
   select.addEventListener('change', () => onChange(select.value));
-  return h('label', { class: 'setting-row' }, [h('span', {}, t('settings.language')), select]);
+  return h('label', { class: home ? 'home-language' : 'setting-row' }, [h('span', {}, label), select]);
 }
 
 export function audioSettings({ mixer, onChange }) {

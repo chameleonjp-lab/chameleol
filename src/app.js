@@ -21,7 +21,7 @@ import { createRankingView } from './ui/ranking.js';
 import { createRecordsView } from './ui/record-status.js';
 import { buildHomeShareText, buildResultShareText, shareToX } from './ui/share.js';
 import { t, setLanguage, getLanguage, formatNumber, formatPercent2, formatMatch, formatSeconds, onLanguageChange } from './i18n/i18n.js';
-import { resolveLanguage } from './i18n/languages.js';
+import { isSupportedLanguage, resolveLanguage } from './i18n/languages.js';
 import { openStore, TAB_ID, StaleWriterError } from './storage/store.js';
 import { normalizeExtras, readDirector, applyBadgeClaim, applyCameoClaim } from './storage/presentation-extras.js';
 import { MemoryStore } from './storage/memory-store.js';
@@ -106,8 +106,11 @@ export class App {
     } catch {
       /* 読めなくても既定で続ける */
     }
-    const langs = globalThis.navigator?.languages?.length ? navigator.languages : navigator.language ? [navigator.language] : [];
-    setLanguage(resolveLanguage(savedLang, langs));
+    const device = globalThis.navigator;
+    const langs = [...(device?.languages ?? []), device?.language];
+    const preferred = resolveLanguage(savedLang, langs, null);
+    this.languageUndetermined = preferred === null;
+    setLanguage(preferred ?? 'ja');
     this.audio.setSettings((await this.safeGet('audio')) ?? {});
     this.flags = (await this.safeGet('flags')) ?? {};
     this.nameRaw = (await this.safeGet('nameRaw')) ?? '';
@@ -330,6 +333,7 @@ export class App {
     const el = h('main', { class: 'screen home' }, [
       h('div', { class: 'home-sky', 'aria-hidden': 'true' }),
       h('header', { class: 'home-header' }, [
+        languageSelect({ home: true, undetermined: this.languageUndetermined, onChange: (id) => this.changeLanguage(id) }),
         homeArt,
         h('h1', { class: 'title' }, t('app.title')),
         h('p', { class: 'subtitle' }, t('app.tagline')),
@@ -1353,7 +1357,7 @@ export class App {
     }
     const box = h('div', { class: 'pause-settings', id: 'pause-settings' }, [
       audioSettings({ mixer: this.audio, onChange: (c) => this.safeSet('audio', this.audio.setSettings(c)) }),
-      languageSelect({ onChange: (id) => this.changeLanguage(id, () => this.showPause(reason, { settingsOpen: true })) }),
+      languageSelect({ undetermined: this.languageUndetermined, onChange: (id) => this.changeLanguage(id, () => this.showPause(reason, { settingsOpen: true })) }),
     ]);
     panel.append(box);
     toggle.setAttribute('aria-expanded', 'true');
@@ -2128,7 +2132,7 @@ export class App {
     this.disposeStage();
     const el = h('main', { class: 'screen settings' }, [
       h('h1', {}, t('settings.title')),
-      section('settings.languageTitle', [languageSelect({ onChange: (id) => this.changeLanguage(id, () => this.showSettings()) })]),
+      section('settings.languageTitle', [languageSelect({ undetermined: this.languageUndetermined, onChange: (id) => this.changeLanguage(id, () => this.showSettings()) })]),
       section('settings.soundTitle', [audioSettings({ mixer: this.audio, onChange: (c) => this.safeSet('audio', this.audio.setSettings(c)) })]),
       section('settings.dataTitle', [
         h('p', { class: 'note' }, t('settings.dataNote')),
@@ -2148,8 +2152,10 @@ export class App {
   }
 
   async changeLanguage(id, after) {
+    if (!isSupportedLanguage(id)) return;
     const previousLayer = this.layer;
-    if (!setLanguage(id)) return;
+    this.languageUndetermined = false;
+    setLanguage(id);
     // 通常画面は言語変更通知で再描画済み。停止画面だけ、ここで直ちに更新する。
     if (this.layer === previousLayer) after?.();
     const layer = this.layer;
