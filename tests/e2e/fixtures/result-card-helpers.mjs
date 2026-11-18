@@ -1,6 +1,7 @@
 // CL02 の e2e の共通部品（実 App＋実 ports の入口 fixtures/result-card.html を開く道具）。
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 
 export const id = (name) => `[data-testid="${name}"]`;
 export const FIXTURE = 'tests/e2e/fixtures/result-card.html';
@@ -113,7 +114,21 @@ export async function advanceUntil(page, predicate, { step = 50, limit = 120 } =
 }
 
 export async function toReady(page) {
-  assert.equal(await advanceUntil(page, async () => (await cardState(page)) === 'ready'), true, 'the card becomes ready');
+  // Presentation timers use page.clock. Rendering and canvas.toBlob finish on
+  // the browser's native task queue, independently of simulated frame count.
+  const deadline = performance.now() + 15_000;
+  let snapshot;
+  do {
+    snapshot = await page.evaluate(() => {
+      const card = __kamereoru.resultCardController?.snapshot();
+      return {state:card?.state, revision:card?.revision, encodes:globalThis.__pendingEncodes ?? 0};
+    });
+    if (snapshot.state === 'ready') return;
+    assert.ok(['pending','sharing'].includes(snapshot.state), `card preparation stopped: ${JSON.stringify(snapshot)}`);
+    if (!snapshot.encodes) await page.clock.runFor(50);
+    await delay(20);
+  } while (performance.now() < deadline);
+  assert.fail(`card remained unready after 15 seconds: ${JSON.stringify(snapshot)}`);
 }
 
 export const liveWebgl = (page) => page.evaluate(() => [...__webgl].filter((c) => c.width > 0 && c.height > 0).length);

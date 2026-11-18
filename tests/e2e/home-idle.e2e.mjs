@@ -24,7 +24,12 @@ async function timedHome(options = {}) {
   await env.page.clock.install({ time: new Date('2030-01-01T00:00:00Z') });
   await env.page.clock.pauseAt(new Date('2030-01-01T00:00:00Z'));
   await env.page.addInitScript(() => {
-    globalThis.requestAnimationFrame = (callback) => setTimeout(() => callback(performance.now()), 10);
+    let frameDelay = 10;
+    globalThis.requestAnimationFrame = (callback) => setTimeout(() => callback(performance.now()), frameDelay);
+    globalThis.__scheduleInitialHomePaint = () => {
+      frameDelay = 0;
+      try { __kamereoru.showcase.resize(); } finally { frameDelay = 10; }
+    };
     globalThis.cancelAnimationFrame = (handle) => clearTimeout(handle);
     Math.random = () => 0.5;
   });
@@ -96,6 +101,23 @@ async function homeReady(page) {
   await waitUntil(page, () => !!globalThis.__kamereoru?.showcase?.stats);
   assert.equal(await page.locator('canvas.showcase-canvas').count(), 1);
 }
+// The first ResizeObserver delivery can resize (and clear) the WebGL surface
+// after its constructor drew. Present the resulting frame at the frozen 0ms
+// timestamp, before inspecting the composited pixels.
+async function presentInitialHomeFrame(page) {
+  const before = await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise(resolve => {
+      const observer = new ResizeObserver(() => { observer.disconnect(); resolve(); });
+      observer.observe(document.querySelector('.home-art'));
+    });
+    const renders = __kamereoru.showcase.stats().renderCount;
+    __scheduleInitialHomePaint();
+    return renders;
+  });
+  await page.clock.runFor(0);
+  assert.ok((await stats(page)).renderCount > before, 'a post-layout frame was rendered at 0ms');
+}
 async function capture(page, name) {
   await mkdir(evidenceDir, { recursive: true });
   const png = await page.locator('canvas.showcase-canvas').screenshot({ path: `${evidenceDir}/${name}.png`, animations: 'disabled' });
@@ -150,6 +172,7 @@ for (const [width, height] of [[402, 700], [402, 874], [874, 402]]) {
     const env = await timedHome({ width, height });
     const { page } = env;
     try {
+      await presentInitialHomeFrame(page);
       const resources = [];
       let elapsed = 0;
       for (const [at, rgb] of [[0, [88, 196, 60]], [250, [105, 196, 60]], [500, [122, 196, 60]], [12000, [88, 196, 60]]]) {
