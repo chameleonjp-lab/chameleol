@@ -358,6 +358,8 @@ export function createChameleon(design = CHAMELEON28) {
   const jawDrop = P.jaw * 1.5;
   const jaw = ellipsoid(headRx * 0.62, headRy * 0.26, headRz * 0.7);
   jaw.position.set(headRx * 0.38, -headRy * 0.62 - jawDrop, 0);
+  // 顎の膨らみは描かない（2026-11-18 本人指示）。既存の姿勢・反応が参照するため部品としては残す。
+  jaw.visible = false;
   head.add(jaw);
 
   // 口の線：頭と鼻先の表面に沿わせる（+z 側）

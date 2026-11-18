@@ -14,14 +14,15 @@ const { outlineForBuilding, OUTLINE_STAGES, DEFAULT_OUTLINE_RGB } = await import
 });
 
 // 仕様 DES-02 と docs/requirements/chameleol-design-followups.json の outline に一致させる表。
+// 2026-11-18 本人指示：色は全段階で現行の濃い色、段階は太さだけで変える。
 const TABLE = [
-  { stage: 0, from: 1, to: 10, thickness: 0.0255, rgb: 158 / 255 },
-  { stage: 1, from: 11, to: 15, thickness: 0.034, rgb: 139 / 255 },
-  { stage: 2, from: 16, to: 20, thickness: 0.0425, rgb: 120 / 255 },
-  { stage: 3, from: 21, to: 25, thickness: 0.051, rgb: 101 / 255 },
-  { stage: 4, from: 26, to: 30, thickness: 0.0595, rgb: 82 / 255 },
-  { stage: 5, from: 31, to: 35, thickness: 0.068, rgb: 63 / 255 },
-  { stage: 6, from: 36, to: 39, thickness: 0.0765, rgb: 44 / 255 },
+  { stage: 0, from: 1, to: 10, thickness: 0.0255, rgb: 0.1059 },
+  { stage: 1, from: 11, to: 15, thickness: 0.034, rgb: 0.1059 },
+  { stage: 2, from: 16, to: 20, thickness: 0.0425, rgb: 0.1059 },
+  { stage: 3, from: 21, to: 25, thickness: 0.051, rgb: 0.1059 },
+  { stage: 4, from: 26, to: 30, thickness: 0.0595, rgb: 0.1059 },
+  { stage: 5, from: 31, to: 35, thickness: 0.068, rgb: 0.1059 },
+  { stage: 6, from: 36, to: 39, thickness: 0.0765, rgb: 0.1059 },
   { stage: 7, from: 40, to: 50, thickness: 0.085, rgb: 0.1059 },
 ];
 
@@ -84,13 +85,13 @@ test('stage 7 keeps the current 0.085 thickness and 0.1059 colour exactly', () =
   assert.deepEqual([...DEFAULT_OUTLINE_RGB], [0.1059, 0.1059, 0.1059]);
 });
 
-test('thickness and colour move together: thicker means darker', () => {
+test('only the thickness changes: thicker means a harder building, the colour stays the current dark grey', () => {
   need();
   assert.equal(OUTLINE_STAGES.length, 8);
   for (let i = 1; i < OUTLINE_STAGES.length; i++) {
     assert.ok(OUTLINE_STAGES[i].thickness > OUTLINE_STAGES[i - 1].thickness);
-    assert.ok(OUTLINE_STAGES[i].rgb[0] < OUTLINE_STAGES[i - 1].rgb[0]);
   }
+  for (const row of OUTLINE_STAGES) assert.deepEqual([...row.rgb], [...DEFAULT_OUTLINE_RGB]);
 });
 
 test('anything that is not an integer 1..50 falls back to the first stage', () => {
@@ -155,7 +156,7 @@ test('setOutlineStyle rewrites the existing material only and leaves police, inn
   assert.equal(outlineMaterials(hero.group)[0], heroMat, 'same material instance');
   assert.equal(outlineMeshes(hero.group).length, meshCount);
   assert.equal(heroMat.uniforms.uThick.value, 0.0255);
-  for (const c of rgbOf(heroMat)) assert.ok(Math.abs(c - 158 / 255) < 1e-6);
+  for (const c of rgbOf(heroMat)) assert.ok(Math.abs(c - 0.1059) < 1e-6);
   assert.deepEqual(snapshot(hero.group), heroBefore, 'body toon colours and dark inner materials unchanged');
   assert.deepEqual(hero.comparisonMaterials[0].uniforms.uColor.value.toArray(), bodyColor);
   assert.deepEqual(outlineMaterials(police.group).map(m => [m.uniforms.uThick.value, rgbOf(m)]), policeBefore, 'police outline unchanged');
@@ -193,11 +194,11 @@ test('same stage does not write again; a new stage writes once', () => {
   assert.equal(hero.getOutlineStyle().writes, 1);
   for (let i = 0; i < 1000; i++) hero.setOutlineStyle(outlineForBuilding(1 + (i % 10)));
   assert.equal(hero.getOutlineStyle().writes, 1, 'buildings 1..10 share stage 0');
-  const before = rgbOf(mat)[0];
+  const before = mat.uniforms.uThick.value;
   hero.setOutlineStyle(outlineForBuilding(11));
   assert.equal(hero.getOutlineStyle().writes, 2);
   assert.equal(mat.uniforms.uThick.value, 0.034);
-  assert.notEqual(rgbOf(mat)[0], before);
+  assert.notEqual(mat.uniforms.uThick.value, before);
   hero.setOutlineStyle(outlineForBuilding(45));
   assert.equal(hero.getOutlineStyle().writes, 3);
   assert.equal(mat.uniforms.uThick.value, 0.085);

@@ -23,8 +23,7 @@ export const STORE_CLOSE_FROM = 0.5;
 const MOUTH_CAVITY = Object.freeze({ x: 0.6, y: -0.135, rx: 0.12, ry: 0.075, rz: 0.2 });
 /** 口の中の色（暗い赤）。色の空間変換は通さない。 */
 const MOUTH_INSIDE = 0x6b1f33;
-/** 下あごを下げる量（口の開き1のとき）。 */
-const JAW_DROP = 0.07;
+
 /** 舌の上面へ沈める量（浮いて見える隙間をなくす）。 */
 const DIAMOND_SINK = 0.008;
 /** ダイヤの寸法：既存宝石（半径0.2）を縦 1.15・横と奥行 0.85 に伸ばし、全体を 1.2 倍。 */
@@ -190,7 +189,7 @@ function paintDiamond({ geometry, faces, colors }, glow) {
  * 呼ぶ順番：prepareBase() → 基本歩行・既存反応 → controller.step → apply(extra.travelTongue)。
  */
 export function createTravelTongue(hero) {
-  const { head, jewel, actorParts: { jaw, mouth, eyes } } = hero;
+  const { head, jewel, actorParts: { mouth, eyes } } = hero;
   const ledger = createPoseLedger();
   const rig = createTongueRig(hero, { name: 'travel-tongue' });
   const mesh = rig.mesh;
@@ -272,9 +271,9 @@ export function createTravelTongue(hero) {
         if (mesh.visible || diamond.visible) hide();
         return;
       }
-      ledger.add(jaw.position, 'y', -JAW_DROP * pose.mouthOpen);
-      ledger.add(mouth.position, 'y', -0.025 * pose.mouthOpen);
+      // 口を開けている間は、閉じた口の線を隠す（口が二つに見えないように）。
       setCavity(pose.mouthOpen);
+      if (cavity.visible) ledger.set(mouth, 'visible', false);
       // Keep the mouth in front of the torso even at the one-officer maximal glance.
       // The ledger restores the existing head pose on every cancel/next base frame.
       ledger.set(head.rotation, 'y', 0);
