@@ -177,28 +177,24 @@ test('GAME-17: クリアの演出を飛ばしても、結果とクリアボー�
   }
 });
 
-test('PRACT-05: 練習の3問をすべてスキップしても答え合わせを経て終了でき、直近の練習に残る', async () => {
+test('PRACT-05: 途中で戻る、同じ練習をやり直す、一覧からホームに戻る', async () => {
   const env = await launch();
   const { page } = env;
   try {
     await openHome(page, env.url);
     await page.click('[data-testid=home-practice]');
-    await page.click('[data-testid=practice-basic]');
-    for (let i = 0; i < 3; i += 1) {
-      await page.waitForSelector('[data-testid=practice-skip]:not([disabled])');
-      await page.click('[data-testid=practice-skip]');
-      await page.waitForSelector('.practice-review:not([hidden])');
-      await page.click('[data-testid=practice-next]');
-    }
-    await page.waitForSelector('.practice-table');
-    const rows = await page.$$eval('.practice-table tbody tr', (trs) => trs.map((tr) => [...tr.children].map((td) => td.textContent)));
-    assert.equal(rows.length, 3);
-    assert.ok(rows.every((r) => r[3] === '—'), '未成功の時間は「—」');
-    await page.click('text=ホームへ');
-    await page.click('[data-testid=home-practice]');
-    await page.waitForSelector('[data-testid=practice-basic]');
-    await page.waitForSelector('.practice-history li');
-    assert.equal(await page.$$eval('.practice-history li', (x) => x.length), 1);
+    await page.click('[data-testid=guide-practice-3]');
+    await page.click('[data-testid=guide-practice-exit]');
+    await page.click('[data-testid=guide-practice-1]');
+    const target = page.locator('.palette-guide-target');
+    await target.waitFor({ state: 'visible' });
+    const ring = await target.boundingBox();
+    await page.mouse.click(ring.x + ring.width / 2, ring.y + ring.height / 2);
+    await page.click('[data-testid=guide-practice-again]');
+    await target.waitFor({ state: 'visible' });
+    await page.click('[data-testid=guide-practice-exit]');
+    await page.click('.practice-menu .btn-back');
+    await page.waitForSelector('[data-testid=home-start]');
     assert.deepEqual(env.errors, []);
   } finally {
     await env.close();

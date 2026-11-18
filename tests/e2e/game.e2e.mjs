@@ -61,7 +61,7 @@ test('SAVE-01/02: 停止で壁を覆い時計を止め、再開は3秒のカウ�
   }
 });
 
-test('PLAY-06: 19→20棟の猶予でバーを解放（位置不変・明るさ100%のまま）、20棟目到達で練習を解放', async () => {
+test('PLAY-06: 19→20棟の猶予でバーを解放（位置不変・明るさ100%のまま）、20棟目到達を記録', async () => {
   const env = await launch();
   const { page } = env;
   try {
@@ -81,13 +81,13 @@ test('PLAY-06: 19→20棟の猶予でバーを解放（位置不変・明るさ1
     assert.deepEqual(await page.locator('.palette').boundingBox(), paletteBefore);
     await page.waitForFunction(() => globalThis.__kamereoru.session?.state.reached20 === true, null, { timeout: 5000 });
     await page.waitForFunction(() => globalThis.__kamereoru.flags.brightnessPractice === true, null, { timeout: 3000 });
-    // PLAY-07: 途中終了して新しく始めると、本編のバーは再びロック。練習の解放は残る
+    // PLAY-07: 途中終了して新しく始めると、本編のバーは再びロック。練習では引き続きバーを使える
     await page.click('[data-testid=pause]');
     await page.click('[data-testid=pause-home]');
     await page.click('[data-testid=quit-confirm]');
     await page.waitForSelector('[data-testid=home-start]');
     await page.click('[data-testid=home-practice]');
-    assert.equal(await page.isDisabled('[data-testid=practice-brightness]'), false);
+    assert.equal(await page.isDisabled('[data-testid=guide-practice-3]'), false);
     await page.click('.btn-back');
     await page.click('[data-testid=home-start]');
     await page.waitForFunction(() => globalThis.__kamereoru.session?.running === true, null, { timeout: 8000 });

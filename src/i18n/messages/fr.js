@@ -144,6 +144,9 @@ export default {
   "result.status.underReview": "En réexamen.",
 
   "practice.title": "Entraînement",
+  "practice.step1": "① Ajuste la couleur sur place avec un guide",
+  "practice.step2": "② Ajuste la couleur en mouvement sans guide",
+  "practice.step3": "③ Ajuste la couleur et la luminosité sur place avec des guides",
   "practice.intro": "Trois questions à chaque fois. Pas de limite de temps ni de police. Jugé comme dans le jeu principal.",
   "practice.kind.basic": "Entraînement de base (palette)",
   "practice.kind.brightness": "Entraînement à la luminosité (palette + barre)",

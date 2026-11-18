@@ -144,6 +144,9 @@ export default {
   "result.status.underReview": "Đang được xem xét lại.",
 
   "practice.title": "Luyện tập",
+  "practice.step1": "① Đứng yên và chỉnh màu theo hướng dẫn",
+  "practice.step2": "② Vừa di chuyển vừa chỉnh màu, không có hướng dẫn",
+  "practice.step3": "③ Đứng yên và chỉnh bảng màu cùng thanh độ sáng theo hướng dẫn",
   "practice.intro": "Mỗi lần 3 câu. Không giới hạn thời gian và không có cảnh sát. Chấm giống như trò chơi chính.",
   "practice.kind.basic": "Luyện tập cơ bản (bảng màu)",
   "practice.kind.brightness": "Luyện tập độ sáng (bảng màu + thanh)",

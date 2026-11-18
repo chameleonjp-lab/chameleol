@@ -144,6 +144,9 @@ export default {
   "result.status.underReview": "Yeniden inceleniyor.",
 
   "practice.title": "Alıştırma",
+  "practice.step1": "① Olduğun yerde ipucuyla rengi eşleştir",
+  "practice.step2": "② Hareket ederken ipucu olmadan rengi eşleştir",
+  "practice.step3": "③ Olduğun yerde ipuçlarıyla rengi ve parlaklığı ayarla",
   "practice.intro": "Her seferinde üç soru. Süre sınırı ve polis yok. Ana oyundakiyle aynı ölçüyle değerlendirilir.",
   "practice.kind.basic": "Temel alıştırma (palet)",
   "practice.kind.brightness": "Parlaklık alıştırması (palet + çubuk)",

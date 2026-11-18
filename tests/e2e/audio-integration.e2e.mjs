@@ -19,33 +19,26 @@ async function fits(page, selectors, width, height, scroll = false) {
   }
 }
 for (const [width,height] of [[402,874],[402,700],[874,402]]) {
-  test(`audio integration: playable screens and four guides ${width}x${height}`, { timeout: 150000 }, async () => {
+  test(`audio integration: playable screens and three practice choices ${width}x${height}`, { timeout: 150000 }, async () => {
     const env = await launch({width,height}); const {page}=env; const prefix=`${width}x${height}`;
     try {
       await openHome(page,env.url); await photo(page,`${prefix}-home`);
       await fits(page,[id('home-start'),id('home-practice')],width,height,true);
-      // Fixture: unlock brightness practice without replaying the first 20 buildings in every viewport.
-      await page.evaluate(()=>{__kamereoru.flags.brightnessPractice=true;});
-      for (const kind of ['basic','brightness']) {
-        await page.click(id('home-practice')); await page.click(id(`practice-${kind}`));
-        await page.waitForFunction(()=>!!__kamereoru.practice && !!__kamereoru.stage);
-        await fits(page,['.palette','.bar',id('practice-exit'),id('practice-skip')],width,height);
-        await photo(page,`${prefix}-practice-${kind}`);
-        for(let n=0;n<3;n++) {
-          await page.click(id('practice-skip')); await page.waitForSelector('.practice-review:not([hidden])');
-          await page.click(id('practice-next'));
-        }
-        await page.waitForSelector('.practice-table');
-        assert.equal(await page.locator('.practice-table tbody tr').count(),3);
-        await photo(page,`${prefix}-practice-${kind}-result`);
-        await page.getByRole('button',{name:'ホームへ',exact:true}).click();
-      }
-      await page.click(id('home-practice')); await page.click(id('practice-guides'));
-      for(const step of [1,2,3,4]) {
+      await page.click(id('home-practice'));
+      assert.equal(await page.locator('.practice-menu button').count(), 4); // 3 exercises and Back
+      for(const step of [1,2,3]) {
         await page.click(id(`guide-practice-${step}`));
         await page.waitForFunction(step=>__kamereoru.guidePractice?.view().step===step,step);
         await fits(page,['.palette','.bar',id('guide-practice-pause')],width,height);
         assert.equal(await page.locator(`${id('guide-go')},${id('guide-skip')}`).count(),0);
+        assert.equal(await page.locator('.guidance-panel').isVisible(), step !== 2);
+        assert.equal(await page.locator('.palette-guide-target').isVisible(), step !== 2);
+        assert.equal(await page.locator('.bar-guide-target').isVisible(), step === 3);
+        assert.equal(await page.locator('.bar-lock').isVisible(), step !== 3);
+        if (step === 3) {
+          await page.locator('.bar').tap();
+          assert.ok(await page.evaluate(() => __kamereoru.guidePractice.view().color.v < 10000));
+        }
         await page.click(id('guide-practice-pause'));
         assert.equal(await page.locator('.controls.disabled').count(),1);
         await page.click(id('guide-practice-pause'));
@@ -55,10 +48,9 @@ for (const [width,height] of [[402,874],[402,700],[874,402]]) {
           const r=await page.locator('.palette-guide-target').boundingBox();await page.mouse.click(r.x+r.width/2,r.y+r.height/2);
         }
         await page.waitForSelector(id('guide-practice-choose'),{state:'visible',timeout:10000});
-        await fits(page,[id('guide-practice-choose'),id('guide-practice-back')],width,height);
+        await fits(page,[id('guide-practice-choose'),id('guide-practice-again')],width,height);
         await page.click(id('guide-practice-choose'));
       }
-      await page.getByRole('button',{name:'練習に戻る',exact:true}).click();
       await page.locator('.btn-back').click();
       await startAnonymous(page); await photo(page,`${prefix}-game`);
       await fits(page,['.palette','.bar',id('pause')],width,height);
@@ -82,8 +74,8 @@ for (const [width,height] of [[402,874],[402,700],[874,402]]) {
 test('audio integration: tap, same color, drag, two fingers, cancel, lock and zero-volume recovery', {timeout:45000}, async()=>{
   const env=await launch();const {page}=env;
   try {
-    await openHome(page,env.url);await page.click(id('home-practice'));await page.click(id('practice-basic'));
-    await page.waitForFunction(()=>!!__kamereoru.practice&&!!__kamereoru.stage);
+    await openHome(page,env.url);await page.click(id('home-practice'));await page.click(id('guide-practice-1'));
+    await page.waitForFunction(()=>!!__kamereoru.guidePractice&&!!__kamereoru.stage);
     await page.evaluate(()=>{const a=__kamereoru;globalThis.__audioCalls=[];const play=a.audio.play.bind(a.audio);a.audio.play=(name,...rest)=>{__audioCalls.push(name);return play(name,...rest);};});
     const g=await page.evaluate(()=>__kamereoru.controls.router.geometry);
     const p={x:Math.round(g.palette.cx+g.palette.r*.6),y:Math.round(g.palette.cy)};
@@ -101,8 +93,8 @@ test('audio integration: tap, same color, drag, two fingers, cancel, lock and ze
     const send=(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points});
     await send('touchStart',[{...p,id:1}]);await send('touchMove',[{...q,id:1}]);await take();
     await send('touchCancel',[]);assert.ok(!(await take()).includes('colorRelease'));
-    // Brightness practice is a fixture-unlocked real screen; both pointers travel through DOM routing.
-    await page.evaluate(async()=>{__kamereoru.flags.brightnessPractice=true;await __kamereoru.startPractice('brightness');});
+    // Both pointers travel through the brightness practice screen's DOM routing.
+    await page.evaluate(async()=>{await __kamereoru.startGuidePractice(3);});
     await take();const geo=await page.evaluate(()=>__kamereoru.controls.router.geometry);
     const tp={x:Math.round(geo.palette.cx+geo.palette.r*.5),y:Math.round(geo.palette.cy),id:1};
     const tb={x:Math.round(geo.bar.x+geo.bar.w/2),y:Math.round(geo.bar.y+geo.bar.h*.5),id:2};
@@ -120,23 +112,23 @@ test('audio integration: delayed audio/render and rejected audio cannot resurrec
   const env=await launch();const {page}=env;
   try {
     await openHome(page,env.url);
-    await page.evaluate(()=>{const a=__kamereoru;globalThis.__prepareOriginal=a.audio.prepare;globalThis.__gates=[];a.audio.prepare=()=>new Promise(resolve=>__gates.push(resolve));globalThis.__first=a.startPractice('basic');globalThis.__second=a.startGuidePractice(2);});
+    await page.evaluate(()=>{const a=__kamereoru;globalThis.__prepareOriginal=a.audio.prepare;globalThis.__gates=[];a.audio.prepare=()=>new Promise(resolve=>__gates.push(resolve));globalThis.__first=a.startGuidePractice(1);globalThis.__second=a.startGuidePractice(2);});
     await page.evaluate(async()=>{__gates[0](true);await __first;});
     assert.equal(await page.locator(id('home-start')).count(),1);
     await page.evaluate(async()=>{__gates[1](true);await __second;__kamereoru.audio.prepare=__prepareOriginal;});
     assert.equal(await page.evaluate(()=>__kamereoru.guidePractice?.view().step),2);
     assert.equal(await page.locator('.practice').count(),0);
     await page.evaluate(()=>__kamereoru.showHome());
-    for(const guide of [false,true]) {
-      await page.evaluate(guide=>{const a=__kamereoru;globalThis.__oldPrepare=a.audio.prepare;a.audio.prepare=()=>new Promise(resolve=>{globalThis.__releaseAudio=resolve;});globalThis.__pending=guide?a.startGuidePractice(1):a.startPractice('basic');},guide);
+    for(const step of [1,2]) {
+      await page.evaluate(step=>{const a=__kamereoru;globalThis.__oldPrepare=a.audio.prepare;a.audio.prepare=()=>new Promise(resolve=>{globalThis.__releaseAudio=resolve;});globalThis.__pending=a.startGuidePractice(step);},step);
       await page.evaluate(()=>__kamereoru.showHome());await page.evaluate(async()=>{__releaseAudio(true);await __pending;__kamereoru.audio.prepare=__oldPrepare;});
       assert.equal(await page.locator(id('home-start')).count(),1);assert.equal(await page.locator('.stage-canvas').count(),0);
-      await page.evaluate(guide=>{const a=__kamereoru;globalThis.__oldFactory=a.stageFactory;a.stageFactory=async(...args)=>{const stage=await __oldFactory(...args);await new Promise(resolve=>{globalThis.__releaseStage=resolve;});return stage;};globalThis.__pending=guide?a.startGuidePractice(1):a.startPractice('basic');},guide);
+      await page.evaluate(step=>{const a=__kamereoru;globalThis.__oldFactory=a.stageFactory;a.stageFactory=async(...args)=>{const stage=await __oldFactory(...args);await new Promise(resolve=>{globalThis.__releaseStage=resolve;});return stage;};globalThis.__pending=a.startGuidePractice(step);},step);
       await page.waitForFunction(()=>typeof __releaseStage==='function');await page.evaluate(()=>__kamereoru.showHome());
       await page.evaluate(async()=>{__releaseStage();await __pending;delete globalThis.__releaseStage;__kamereoru.stageFactory=__oldFactory;});
       assert.equal(await page.locator(id('home-start')).count(),1);assert.equal(await page.locator('.stage-canvas').count(),0);
-      await page.evaluate(async guide=>{const a=__kamereoru;const original=a.audio.prepare;a.audio.prepare=()=>Promise.reject(new Error('test unavailable audio'));try{await(guide?a.startGuidePractice(1):a.startPractice('basic'));}finally{a.audio.prepare=original;}},guide);
-      assert.equal(await page.locator(guide?'.guide-practice':'.practice').count(),1);assert.equal(await page.locator('.stage-canvas').count(),1);
+      await page.evaluate(async step=>{const a=__kamereoru;const original=a.audio.prepare;a.audio.prepare=()=>Promise.reject(new Error('test unavailable audio'));try{await(a.startGuidePractice(step));}finally{a.audio.prepare=original;}},step);
+      assert.equal(await page.locator('.guide-practice').count(),1);assert.equal(await page.locator('.stage-canvas').count(),1);
       await page.evaluate(()=>__kamereoru.showHome());
     }
     assert.deepEqual(env.errors,[]);
@@ -146,8 +138,8 @@ test('audio integration: delayed audio/render and rejected audio cannot resurrec
 test('audio integration: guide back works before completion and pause cancels held input', {timeout:30000}, async()=>{
   const env=await launch();const {page}=env;
   try {
-    await openHome(page,env.url);await page.click(id('home-practice'));await page.click(id('practice-guides'));
-    for(const step of [1,2,3,4]) {
+    await openHome(page,env.url);await page.click(id('home-practice'));
+    for(const step of [1,2,3]) {
       await page.click(id(`guide-practice-${step}`));await page.waitForFunction(step=>__kamereoru.guidePractice?.view().step===step,step);
       if(step===1) {
         await page.evaluate(()=>{const a=__kamereoru;globalThis.__releaseCalls=[];const original=a.audio.play.bind(a.audio);a.audio.play=(name,...rest)=>{__releaseCalls.push(name);return original(name,...rest);};});

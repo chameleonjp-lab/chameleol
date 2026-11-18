@@ -202,14 +202,14 @@ test('G3: delayed brightness ownership permits countdown before the checkpoint a
 });
 
 for (const [width, height] of [[402, 700], [402, 874], [874, 402]]) {
-  test(`G4: all four practice guides preserve usable controls at ${width}x${height}`, async () => {
+  test(`G4: practice guides for stationary exercises align with controls at ${width}x${height}`, async () => {
     const env = await launch({ width, height });
     const { page } = env;
     try {
       await openHome(page, env.url);
       await page.clock.install({ time: new Date('2030-01-01T00:00:00Z') });
       await page.clock.pauseAt(new Date('2030-01-01T00:00:01Z'));
-      for (const step of [1, 2, 3, 4]) {
+      for (const step of [1, 3]) {
         await page.evaluate((step) => __kamereoru.debugGuide({ step }), step);
         await page.clock.runFor(32);
         await page.waitForSelector(selector('guidance'));

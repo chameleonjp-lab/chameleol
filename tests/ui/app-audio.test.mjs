@@ -1,7 +1,7 @@
 import { webcrypto } from 'node:crypto';
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 // 操作部品（createControls）と画面制御（App）の統合音声テスト：
-// - 問題B：通常練習（basic / brightness）および4段階ガイド練習（1〜4）の実起動と操作音
+// - 問題B：練習①〜③の起動・目印・操作音
 // - 問題D：単発タップ時の touchPalette / touchBar と colorStep の非重複、同色タップ後のドラッグ、2本指同時操作、取消時の colorRelease 抑止
 // - 問題E：音の準備（wakeMenuAudio）待ち中の画面遷移による古い操作音の破棄、背景復帰後の最初の操作音補完、消音・連打抑止時の不要な再準備防止
 import test from 'node:test';
@@ -168,6 +168,7 @@ function installMinimalDom() {
     setAttribute(k, v) {
       const val = String(v);
       this.attributes.set(k, val);
+      if (k === 'hidden') this.hidden = true;
       if (k === 'class') this._classList.syncFrom(val);
       if (k.startsWith('data-')) {
         const camel = k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -484,47 +485,33 @@ test('【問題D修正検証】createControls：指を動かさない単発タ�
   controls.destroy();
 });
 
-test('【問題B修正検証】App の通常練習（basic / brightness）および4段階ガイド練習（1〜4）がエラーなく起動・進行し、音が鳴る', async () => {
+test('【問題B修正検証】3つの練習で、操作音と完了音が鳴る', async () => {
   const root = document.createElement('div');
   document.body.append(root);
   const audio = createFakeAudio({ initiallyRunning: true });
   const app = new App(root, { audio, stageFactory: createFakeStageFactory() });
   await app.boot();
 
-  // 1. 通常練習（basic）の起動と操作音
+  app.showPracticeMenu();
+  assert.deepEqual([...root.querySelectorAll('.practice-menu [data-testid]')].map(el => el.dataset.testid),
+    ['guide-practice-1', 'guide-practice-2', 'guide-practice-3', 'common.back']);
+  await app.startGuidePractice(3);
   audio.events.length = 0;
-  await app.startPractice('basic');
-  assert.ok(app.controls, '通常練習(basic)で controls が生成される');
-  assert.equal(audio.music, 'practice');
-  app.controls.router.down(1, ...atPalette(9000, 6000));
-  app.controls.router.up(1);
-  assert.deepEqual(
-    audio.events.map((e) => e.name),
-    ['confirm', 'touchPalette', 'colorRelease'],
-    '通常練習(basic)で単発タップ時に confirm -> touchPalette -> colorRelease が鳴り colorStep は重複しない',
-  );
-
-  // 2. 通常練習（brightness）の起動とバー操作音
-  audio.events.length = 0;
-  await app.startPractice('brightness');
   app.controls.router.down(2, 346, 180);
   app.controls.router.up(2);
-  assert.deepEqual(
-    audio.events.map((e) => e.name),
-    ['confirm', 'touchBar', 'colorRelease'],
-    '通常練習(brightness)でバー単発タップ時に confirm -> touchBar -> colorRelease が鳴る',
-  );
+  assert.deepEqual(audio.events.map(e => e.name), ['touchBar', 'colorRelease']);
 
-  // 3. ガイド練習4段階（step 1〜4）のすべてが起動し、達成時に guideClear が鳴る
-  for (const step of [1, 2, 3, 4]) {
+  for (const step of [1, 2, 3]) {
     audio.events.length = 0;
     const gp = await app.startGuidePractice(step);
     assert.ok(gp, `ガイド練習 step=${step} が起動する`);
     const target = gp.view().target;
-    app.controls.onChange?.(target);
+    assert.equal(!!root.querySelector('.guidance-panel'), step !== 2);
+    assert.equal(root.querySelector('.palette-guide-target').style.display !== 'none', step !== 2);
+    assert.equal(root.querySelector('.bar-guide-target').style.display !== 'none', step === 3);
     gp.setColor(target);
     gp.tick(1000);
-    // 移動ガイド（step 2, 4）は5秒経過で完了
+    // ガイドなしの練習②は5秒経過で完了
     if (step % 2 === 0) gp.tick(5000);
     // render をトリガーするために微調整
     const p1 = atPalette(target.h, target.s);
@@ -543,7 +530,7 @@ test('【問題E修正検証】音の準備待ち中に画面が変わった場�
   const audio = createFakeAudio({ initiallyRunning: true });
   const app = new App(root, { audio, stageFactory: createFakeStageFactory() });
   await app.boot();
-  await app.startPractice('basic');
+  await app.startGuidePractice(1);
 
   // 1. 背景から復帰直後など audio.running === false の状態でパレット操作 → 準備完了前にホーム画面へ遷移
   audio.events.length = 0;
@@ -561,7 +548,7 @@ test('【問題E修正検証】音の準備待ち中に画面が変わった場�
   );
 
   // 2. 同じ練習画面に留まったまま準備が完了した場合は、最初の有効な操作音を補える
-  await app.startPractice('basic');
+  await app.startGuidePractice(1);
   audio.events.length = 0;
   audio.deferNextPrepare();
   app.controls.router.down(2, ...atPalette(18000, 6000));
@@ -664,7 +651,7 @@ test('【本編 showGame 統合検証】11・21・31・41棟の tierUp、40棟�
   globalThis.requestAnimationFrame=originalRaf;
 });
 
-test('【練習開始の競合・失敗検証】ガイド練習・通常練習で「準備中に戻る」「別の練習を選ぶ」「準備に失敗する」「同じ画面に留まった場合の正常開始」を検証', async () => {
+test('【練習開始の競合・失敗検証】練習で「準備中に戻る」「別の練習を選ぶ」「準備に失敗する」「同じ画面に留まった場合の正常開始」を検証', async () => {
   const root = document.createElement('div');
   document.body.append(root);
   const audio = createFakeAudio({ initiallyRunning: true });
@@ -672,7 +659,7 @@ test('【練習開始の競合・失敗検証】ガイド練習・通常練習�
   await app.boot();
 
   // 1. 「準備中に戻る」（ガイド練習）：音の準備中に練習メニューやホームへ戻った場合、準備完了後にガイド練習が勝手に開き直さない
-  app.showGuidePracticeMenu();
+  app.showPracticeMenu();
   assert.ok(root.querySelector('.screen.practice-menu'), 'ガイド練習メニューが表示されている');
   audio.deferNextPrepare();
   const staleGuidePromise = app.startGuidePractice(1);
@@ -691,27 +678,14 @@ test('【練習開始の競合・失敗検証】ガイド練習・通常練習�
   assert.ok(activeGuide, '同じ画面に留まった場合はガイド練習が始まる');
   audio.deferNextPrepare();
   const retryGuidePromise = app.startGuidePractice(1);
-  app.showGuidePracticeMenu();
+  app.showPracticeMenu();
   audio._resolvePrepare(true);
   const retryGuideResult = await retryGuidePromise;
   assert.equal(retryGuideResult, null, '再挑戦の音の準備中に一覧へ戻った場合も古い開始要求は取り消される');
   assert.equal(root.querySelector('.screen.guide-practice'), null, '一覧へ戻った後にガイド練習が勝手に開き直さない');
 
-  // 2. 「準備中に戻る」（通常練習）：音の準備中にホームやガイド練習一覧へ戻った場合、通常練習が勝手に開き直さない
-  await app.showPracticeMenu();
-  audio.events.length = 0;
-  audio.deferNextPrepare();
-  const stalePracticePromise = app.startPractice('basic');
-  app.showHome();
-  audio._resolvePrepare(true);
-  const stalePracticeResult = await stalePracticePromise;
-  assert.equal(stalePracticeResult, null, '通常練習でも準備中にホームへ戻った場合は開始要求が取り消される');
-  assert.equal(root.querySelector('.screen.practice'), null, '通常練習画面が勝手に開き直さない');
-  assert.ok(root.querySelector('.screen.home'), '戻った先のホーム画面が維持される');
-  assert.equal(audio.events.some((e) => e.name === 'confirm'), false, '取り消された通常練習の confirm 音は鳴らない');
-
   // 3. 「別の練習を選ぶ」（ガイド練習の連続選択）：準備中に step=1 → step=3 を連続選択した場合、最後の step=3 だけが開く
-  app.showGuidePracticeMenu();
+  app.showPracticeMenu();
   audio.deferNextPrepare();
   const guide1Promise = app.startGuidePractice(1);
   const guide3Promise = app.startGuidePractice(3);
@@ -723,59 +697,21 @@ test('【練習開始の競合・失敗検証】ガイド練習・通常練習�
   assert.equal(app.guidePractice.view().step, 3, 'step=3 のガイド練習が動作している');
   assert.equal(app.controls.el.classList.contains('bar-locked'), false, 'step=3 なので明るさバーのロックが解除されている');
 
-  // 4. 「別の練習を選ぶ」（通常練習の連続選択およびガイド練習との連続切り替え）
-  await app.showPracticeMenu();
-  audio.events.length = 0;
-  audio.deferNextPrepare();
-  const basicPromise = app.startPractice('basic');
-  const brightnessPromise = app.startPractice('brightness');
-  audio._resolvePrepare(true);
-  const [basicResult, brightnessResult] = await Promise.all([basicPromise, brightnessPromise]);
-  assert.equal(basicResult, null, '先に選んだ basic 練習は取り消される');
-  assert.ok(brightnessResult, '後から選んだ brightness 練習が起動する');
-  assert.equal(app.practice.kind, 'brightness', '現在の通常練習は brightness のみ');
-  assert.equal(app.controls.el.classList.contains('bar-locked'), false, 'brightness 練習なので明るさバーが使える');
-  assert.equal(audio.events.filter((e) => e.name === 'confirm').length, 1, 'confirm 音は採用された最後の練習の1回だけ鳴る');
-
-  // ガイド練習準備中に通常練習へ切り替えた場合
-  app.showGuidePracticeMenu();
-  audio.deferNextPrepare();
-  const crossGuidePromise = app.startGuidePractice(2);
-  const crossPracticePromise = app.startPractice('basic');
-  audio._resolvePrepare(true);
-  const [crossGuideResult, crossPracticeResult] = await Promise.all([crossGuidePromise, crossPracticePromise]);
-  assert.equal(crossGuideResult, null, '先のガイド練習要求は取り消される');
-  assert.ok(crossPracticeResult, '後の通常練習要求が起動する');
-  assert.ok(root.querySelector('.screen.practice'), '通常練習画面が表示されている');
-  assert.equal(root.querySelector('.screen.guide-practice'), null, 'ガイド練習画面は表示されない');
-
   // 5. 「準備に失敗する」（prepare() が false を返す場合、および例外 reject する場合）
-  app.showGuidePracticeMenu();
+  app.showPracticeMenu();
   audio.setPrepareMode('returnFalse');
   const guideWhenFalse = await app.startGuidePractice(2);
   assert.ok(guideWhenFalse, 'audio.prepare() が false を返しても同じ画面に留まっていればガイド練習が正常に始まる');
   assert.ok(root.querySelector('.screen.guide-practice'), 'ガイド練習画面がマウントされる');
 
-  app.showGuidePracticeMenu();
+  app.showPracticeMenu();
   audio.setPrepareMode('reject');
-  const guideWhenRejected = await app.startGuidePractice(4);
+  const guideWhenRejected = await app.startGuidePractice(3);
   assert.ok(guideWhenRejected, 'audio.prepare() が reject しても同じ画面に留まっていればガイド練習が正常に始まる');
-  assert.equal(app.guidePractice.view().step, 4, 'step=4 のガイド練習が正常に開始される');
-
-  await app.showPracticeMenu();
-  audio.setPrepareMode('returnFalse');
-  const practiceWhenFalse = await app.startPractice('basic');
-  assert.ok(practiceWhenFalse, 'audio.prepare() が false を返しても通常練習が正常に始まる');
-  assert.ok(root.querySelector('.screen.practice'), '通常練習画面がマウントされる');
-
-  await app.showPracticeMenu();
-  audio.setPrepareMode('reject');
-  const practiceWhenRejected = await app.startPractice('brightness');
-  assert.ok(practiceWhenRejected, 'audio.prepare() が reject しても通常練習が正常に始まる');
-  assert.equal(app.practice.kind, 'brightness', 'brightness 通常練習が正常に開始される');
+  assert.equal(app.guidePractice.view().step, 3, 'step=3 のガイド練習が正常に開始される');
 
   // 6. 「同じ画面に留まった場合には、正しく練習が始まる」（遅延 prepare 完了後の正常開始）
-  app.showGuidePracticeMenu();
+  app.showPracticeMenu();
   audio.deferNextPrepare();
   const stayGuidePromise = app.startGuidePractice(1);
   // 画面を移動せずに音の準備が完了する
@@ -783,15 +719,6 @@ test('【練習開始の競合・失敗検証】ガイド練習・通常練習�
   const stayGuideResult = await stayGuidePromise;
   assert.ok(stayGuideResult, '同じ画面に留まった場合はガイド練習が正常に始まる');
   assert.ok(root.querySelector('.screen.guide-practice'), 'ガイド練習画面が表示されている');
-  assert.equal(audio.music, 'practice', '練習BGMが設定される');
-
-  await app.showPracticeMenu();
-  audio.deferNextPrepare();
-  const stayPracticePromise = app.startPractice('basic');
-  audio._resolvePrepare(true);
-  const stayPracticeResult = await stayPracticePromise;
-  assert.ok(stayPracticeResult, '同じ画面に留まった場合は通常練習が正常に始まる');
-  assert.ok(root.querySelector('.screen.practice'), '通常練習画面が表示されている');
   assert.equal(audio.music, 'practice', '練習BGMが設定される');
 
   // 7. stageFactory の準備中に別画面へ戻った場合・別の練習を選んだ場合も古い stage を破棄して上書きしない
@@ -811,7 +738,7 @@ test('【練習開始の競合・失敗検証】ガイド練習・通常練習�
           },
         });
     });
-  const stagePendingPractice = app.startPractice('basic');
+  const stagePendingPractice = app.startGuidePractice(1);
   await new Promise((r) => setTimeout(r, 5));
   app.showHome();
   resolveStage();
@@ -843,26 +770,4 @@ test('途中保存から各音楽段階を復元すると到達済みtierUpは�
     app.disposeStage();
     root.remove();
   }
-});
-
-test('練習結果の保存待ち後に古い結果画面や結果音が現在画面を上書きしない', async () => {
-  const root = document.createElement('div');
-  document.body.append(root);
-  const audio = createFakeAudio({ initiallyRunning: true });
-  const app = new App(root, { audio, stageFactory: createFakeStageFactory() });
-  await app.boot();
-  const practice = await app.startPractice('basic');
-  for (let i = 0; i < 3; i += 1) { practice.skip(); practice.next(); }
-  let finishSave;
-  app.store.addPractice = () => new Promise((resolve) => { finishSave = resolve; });
-  const pending = app.finishPractice(practice);
-  app.showHome();
-  audio.events.length = 0;
-  finishSave();
-  await pending;
-  assert.ok(root.querySelector('.home'));
-  assert.equal(root.querySelector('.practice-result'), null);
-  assert.equal(audio.events.some((event) => event.name === 'result'), false);
-  app.disposeStage();
-  root.remove();
 });

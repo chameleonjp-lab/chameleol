@@ -44,16 +44,12 @@ export function languageFromLocale(locale) {
   return isSupportedLanguage(base) ? base : null;
 }
 
-/**
- * 表示言語を決める：保存した言語 → 対応するブラウザ言語 → 未対応のみなら英語 → 言語情報なしなら日本語。
- */
-export function resolveLanguage(saved, browserLanguages) {
+/** 保存した言語、端末の優先言語の順で選ぶ。判定できない場合だけ fallback を返す。 */
+export function resolveLanguage(saved, browserLanguages, fallback = 'ja') {
   if (isSupportedLanguage(saved)) return saved;
-  const list = Array.isArray(browserLanguages) ? browserLanguages.filter((x) => typeof x === 'string' && x.trim()) : [];
-  if (!list.length) return 'ja';
-  for (const tag of list) {
+  for (const tag of Array.isArray(browserLanguages) ? browserLanguages : []) {
     const id = languageFromLocale(tag);
     if (id) return id;
   }
-  return 'en';
+  return fallback;
 }

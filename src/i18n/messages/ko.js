@@ -144,6 +144,9 @@ export default {
   "result.status.underReview": "재심사 중입니다.",
 
   "practice.title": "연습",
+  "practice.step1": "① 제자리에서 안내에 따라 색 맞추기",
+  "practice.step2": "② 이동하면서 안내 없이 색 맞추기",
+  "practice.step3": "③ 제자리에서 안내에 따라 팔레트와 밝기 막대 맞추기",
   "practice.intro": "한 번에 3문제. 시간 제한도 경찰도 없습니다. 본편과 같은 기준으로 판정합니다.",
   "practice.kind.basic": "기본 연습 (팔레트)",
   "practice.kind.brightness": "밝기 연습 (팔레트 + 바)",

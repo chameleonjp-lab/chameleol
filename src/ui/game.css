@@ -147,6 +147,39 @@ h3 {
 .home-header {
   text-align: center;
 }
+.home-language {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 600;
+}
+.home-language::after {
+  content: '';
+  border: 4px solid transparent;
+  border-bottom: 0;
+  border-top-color: currentColor;
+}
+.home-language .lang-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.home-language:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .home-art {
   position: relative;
   margin: 0 auto;

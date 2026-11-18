@@ -171,6 +171,9 @@ export default {
   'result.status.underReview': '再審査中です。',
 
   'practice.title': '練習',
+  "practice.step1": "① その場でパレットを合わせる（ガイド付き）",
+  "practice.step2": "② 移動しながらパレットを合わせる（ガイドなし）",
+  "practice.step3": "③ その場でパレットと明るさバーを合わせる（ガイド付き）",
   'practice.intro': '1回3問。時間制限も警察もありません。本編と同じ基準で判定します。',
   'practice.kind.basic': '基本の練習（パレット）',
   'practice.kind.brightness': '明るさの練習（パレット＋バー）',

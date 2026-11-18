@@ -144,6 +144,9 @@ export default {
   "result.status.underReview": "En nueva revisión.",
 
   "practice.title": "Práctica",
+  "practice.step1": "① Iguala el color sin moverte, con guía",
+  "practice.step2": "② Iguala el color en movimiento, sin guía",
+  "practice.step3": "③ Iguala el color y el brillo sin moverte, con guías",
   "practice.intro": "Tres preguntas cada vez. Sin límite de tiempo y sin policía. Se juzga igual que en el juego principal.",
   "practice.kind.basic": "Práctica básica (paleta)",
   "practice.kind.brightness": "Práctica de brillo (paleta + barra)",

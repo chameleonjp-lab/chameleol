@@ -144,6 +144,9 @@ export default {
   "result.status.underReview": "In riesame.",
 
   "practice.title": "Allenamento",
+  "practice.step1": "① Abbina il colore da fermo con la guida",
+  "practice.step2": "② Abbina il colore in movimento senza guida",
+  "practice.step3": "③ Regola colore e luminosità da fermo con le guide",
   "practice.intro": "Tre domande alla volta. Nessun limite di tempo e niente polizia. Valutato come nel gioco principale.",
   "practice.kind.basic": "Allenamento di base (tavolozza)",
   "practice.kind.brightness": "Allenamento sulla luminosità (tavolozza + barra)",

@@ -144,6 +144,9 @@ export default {
   'result.status.underReview': 'Under re-review.',
 
   'practice.title': 'Practice',
+  "practice.step1": "① Match the color in place with a guide",
+  "practice.step2": "② Match the color while moving without a guide",
+  "practice.step3": "③ Match color and brightness in place with guides",
   'practice.intro': 'Three questions each time. No time limit and no police. Judged with the same standard as the main game.',
   'practice.kind.basic': 'Basic practice (palette)',
   'practice.kind.brightness': 'Brightness practice (palette + bar)',

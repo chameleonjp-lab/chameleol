@@ -172,7 +172,7 @@ test('個別ガイド：静止の練習は対象棟の段階、通常の静止�
   const { page } = env;
   try {
     await openHome(page, env.url);
-    for (const [step, want] of [[1, 0], [2, 0], [3, 2], [4, 3]]) {
+    for (const [step, want] of [[1, 0], [2, 0], [3, 2]]) {
       const r = await page.evaluate(async (step) => {
         await __kamereoru.debugGuide({ step });
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));

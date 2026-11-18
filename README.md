@@ -92,7 +92,7 @@ PR [#21](https://github.com/chameleonjp-lab/chameleol/pull/21)は取り込み済
 - [実装計画書](docs/superpowers/plans/2026-11-11-chameleol-effects80-plan.md)：工程の順序、変更する場所、接続口、確認手順。
 - [80要件とRICEの対応表](docs/requirements/chameleol-effects80.json)と[敵対的検証・修正記録](docs/reviews/2026-11-11-chameleol-effects80-adversarial-review.md)：元の番号、優先度、工程とレビューへの対応。
 
-2026-11-11の追加要件として、[初回ガイドと練習の実装計画](docs/superpowers/plans/2026-11-11-chameleol-guided-play-plan.md)を加えました。初回の1・2棟目と、明度初解放時の20・21棟目に、一致度と95%以上になる操作位置を示します。4段階は練習からいつでも個別に確認できます。ガイドはPR #12でmainへ取り込み済みで、演出80件の件数やRICE値には含めません。
+2026-11-11の追加要件として、[初回ガイドと練習の実装計画](docs/superpowers/plans/2026-11-11-chameleol-guided-play-plan.md)を加えました。初回の1・2棟目と、明度初解放時の20・21棟目に、一致度と95%以上になる操作位置を示します。練習メニューでは、①その場でパレットを合わせる（ガイド付き）、②移動しながらパレットを合わせる（ガイドなし）、③その場でパレットと明るさバーを合わせる（ガイド付き）の3つを初回から選べます。ガイドはPR #12でmainへ取り込み済みで、演出80件の件数やRICE値には含めません。
 
 ## 実装の進め方
 
