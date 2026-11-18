@@ -83,8 +83,14 @@ try {
     if (name) {
       await page.waitForFunction(() => globalThis.__kamereoru.lastResult?.netState === 'official');
       const metrics = await page.evaluate(() => globalThis.__kamereoru.lastResult.metrics);
-      if (buildings === 50) assert.equal(metrics.clearOrdinal, 1);
-      if (buildings === 7) assert.deepEqual(metrics, { runRank: 3, totalPlays: 4, clearOrdinal: null });
+      if (buildings === 50) {
+        assert.equal(metrics.clearOrdinal, 1);
+        assert.match(await page.locator('.result-clear-ordinal').textContent(), /1人目/);
+      }
+      if (buildings === 7) {
+        assert.deepEqual(metrics, { runRank: 3, totalPlays: 4, clearOrdinal: null });
+        assert.match(await page.locator('.result-rank').textContent(), /3位／4人中/);
+      }
     }
     if (buildings !== 7) await page.getByTestId('result-home').click();
   }
@@ -96,10 +102,15 @@ try {
   const gameTable = await response.json();
   assert.deepEqual(gameTable.rows.map(row => [row.name, row.rank, row.buildings]), [['A',1,50],['B',2,30]]);
   assert.deepEqual(await page.locator('.ranking-result .rank-name').allTextContents(), ['A','B']);
+  assert.deepEqual(await page.locator('.ranking-result .rank-buildings').allTextContents(), ['50棟','30棟']);
+  assert.deepEqual(await page.locator('.ranking-result .rank-no').allTextContents(), ['1位','2位']);
   await page.getByTestId('result-ranking').click();
   await page.locator('#bestRanking .rank-row').first().waitFor();
   assert.equal(page.url(), detail);
   assert.deepEqual(await page.locator('#bestRanking .rank-name').allTextContents(), ['A','B']);
+  assert.deepEqual(await page.locator('#bestRanking .rank-no').allTextContents(), ['1位','2位']);
+  assert.deepEqual(await page.locator('#bestRanking .rank-score').allTextContents(),
+    gameTable.rows.map(row => row.buildings+'棟 · '+(row.average / 100).toFixed(2)+'%'));
   assert.equal(await page.locator('#bestRanking').getAttribute('data-version'), String(gameTable.version));
   assert.deepEqual(observed.at(-1).rows, gameTable.rows);
   await page.waitForFunction(() => document.querySelector('#totalPlayCount')?.textContent === '4回');

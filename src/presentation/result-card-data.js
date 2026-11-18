@@ -100,7 +100,8 @@ export function projectRunResult(context, locale, displaySummary = applyVerified
   const wall = inRange(building, 1, 50) ? copyVisualColor(context.targets?.[building - 1]) : null;
   const appearance = clear ? { kind: 'rainbow', building: 50, hsv: null } :
     wall ? { kind: 'wall', building, hsv: wall } : { kind: 'unknown', building: null, hsv: null };
-  const metrics = readMetrics({status: context.ranked ? context.netState : 'unranked', metrics: context.metrics});
+  const eligible = official && inRange(buildings, 1, 50) && (context.official == null || corrected);
+  const metrics = readMetrics({status: eligible ? 'official' : null, metrics: context.metrics});
   const ranked = metrics.runRank !== null;
   let rankState = 'unranked';
   if (context.ranked) {

@@ -98,3 +98,11 @@ test('a missing wall is never guessed and projections cannot mutate the input wa
   const m=buildResultCardModel({displaySummary:s,run});
   assert.equal('name' in m,false);assert.equal('playId' in m,false);
 });
+test('a malformed explicit correction cannot pair its rank with the fallback scorecard', () => {
+  const context={ranked:true, summary:clear, netState:'official',
+    official:{buildings:51,rankAverage:9800}, metrics:{runRank:1,totalPlays:2,clearOrdinal:1}};
+  let run=projectRunResult(context,'ja');
+  assert.equal(run.buildings,50);assert.equal(run.runRank,null);assert.equal(run.clearOrdinal,null);
+  context.summary=summary(0);context.official=null;run=projectRunResult(context,'ja');
+  assert.equal(run.runRank,null);assert.equal(run.clearOrdinal,null);
+});

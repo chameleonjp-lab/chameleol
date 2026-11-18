@@ -169,3 +169,13 @@ test('runtime destination uses the effective absolute project URL, the environme
   assert.equal(config('verification', '/mock').destination, config('verification', 'http://localhost:3000/mock/').destination);
   assert.equal(config('verification', 'http://[').apiBase, null);
 });
+
+test('unknown legacy status text cannot establish ownership', async () => {
+  const store = await fresh();
+  const playId = uuid();
+  await store.put('launches', { launchId: uuid(), playId, secret: 's', ranked: true, sent: false });
+  const api = Object.assign(fakeApi(() => ({ ok: true, items: [{ playId, status: 'unknown_play' }] })), { destination: 'prod/A' });
+  await flushLaunches(api, store);
+  assert.deepEqual(api.calls.map(call => call.path), ['status']);
+  store.close();
+});

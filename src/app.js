@@ -53,7 +53,7 @@ import { normalizeName } from './shared/name.js';
 import { loadRuntimeConfig } from './config/runtime.js';
 import { createApi, uuid } from './net/api.js';
 import { abandonStart, createLaunch, createStartRequest, flushLaunches, recordLaunch, sendStartRequest } from './net/start.js';
-import { flushOutbox, makeOutboxItem, refreshRecords, requestReview, sendOne } from './net/outbox.js';
+import { flushOutbox, makeOutboxItem, refreshRecords, requestReview } from './net/outbox.js';
 
 const SAVE_INTERVAL_MS = 5000; // 試作値：通過時に加えて、ゲーム内5秒ごとに保存
 
@@ -74,6 +74,7 @@ export class App {
     this.stageFactory = stageFactory ?? createStage;
     this.resultCardPorts = resultCardPorts;
     this.store = null;
+    this.volatileNetwork = new MemoryStore();
     this.flags = {};
     this.nameRaw = '';
     this.session = null;
@@ -245,15 +246,34 @@ export class App {
     return new URL(`v/${v}/`, document.baseURI.replace(/v\/[^/]+\/$/, '')).href;
   }
 
-  async flushNetwork() {
-    if (!this.api.configured || this.memoryOnly) return;
-    try {
-      await flushLaunches(this.api, this.store);
-      const s = await flushOutbox({ api: this.api, store: this.store, onUpdate: (u) => this.onOutboxUpdate(u) });
-      if (s.accepted) await this.refreshStatuses();
-    } catch {
-      /* 次の機会に再送 */
+  flushNetwork() {
+    // Give each trigger a pass after earlier sends: a finish can be queued
+    // while the boot-time flush is already reading its batch.
+    this.networkQueue = (this.networkQueue ?? Promise.resolve()).then(() => this.sendPending());
+    return this.networkQueue;
+  }
+
+  async sendPending() {
+    if (!this.api.configured) return;
+    let accepted = 0;
+    for (const store of [this.store, this.volatileNetwork]) {
+      try {
+        await flushLaunches(this.api, store);
+        const sent = await flushOutbox({ api: this.api, store, onUpdate: u => this.onOutboxUpdate(u) });
+        accepted += sent.accepted;
+      } catch {
+        // Retry when connectivity or storage recovers.
+      }
     }
+    for (const record of await this.volatileNetwork.getAll('records')) {
+      try {
+        if (!await this.store.getOne('records', record.playId)) await this.store.put('records', record);
+        await this.volatileNetwork.delete('records', record.playId);
+      } catch {
+        // Keep the private receipt available for status polling in this tab.
+      }
+    }
+    if (accepted) await this.refreshStatuses();
   }
 
   applyResultRecord(record) {
@@ -804,7 +824,9 @@ export class App {
       // A run whose snapshot could not be persisted still keeps a launch when possible.
       if (!generation) await recordLaunch(this.store, launch);
     } catch {
-      if (!ranked) this.notices.push('notice.launchNotSaved');
+      this.notices.push('notice.launchNotSaved');
+      await recordLaunch(this.volatileNetwork, launch);
+      flushLaunches(this.api, this.volatileNetwork).catch(() => {});
     }
     if (!this.isStartCurrent(attempt)) return;
     flushLaunches(this.api, this.store).catch(() => {});
@@ -1610,19 +1632,10 @@ export class App {
   }
 
   async sendUnsaved(item) {
-    if (!this.api.configured) return;
-    try {
-      const receipt = await sendOne(this.api, item);
-      if (this.lastResult?.playId === item.playId) {
-        this.lastResult.netState = receipt.status;
-        this.renderResultStatus?.();
-      }
-    } catch {
-      if (this.lastResult?.playId === item.playId) {
-        this.lastResult.netState = 'retryable_failed';
-        this.renderResultStatus?.();
-      }
-    }
+    const launch = await this.store.getOne('launches', item.launchId).catch(() => null);
+    if (launch) await this.volatileNetwork.put('launches', launch);
+    await this.volatileNetwork.put('outbox', { ...item, state: 'pending' });
+    return this.flushNetwork();
   }
 
   pollResult(){
@@ -1636,13 +1649,15 @@ export class App {
   async pollResultFor(r, screen) {
     if (!r?.ranked || !this.api.configured) return;
     const isCurrent = () => this.lastResult === r && this.screenGeneration === screen;
-    const cached = await this.store.getOne('records', r.playId).catch(() => null);
+    const fallback = await this.volatileNetwork.getOne('records', r.playId);
+    const store = fallback ? this.volatileNetwork : this.store;
+    const cached = fallback ?? await store.getOne('records', r.playId).catch(() => null);
     if (!isCurrent() || !cached || cached.playId !== r.playId) return;
     if (cached.destination !== undefined && cached.destination !== this.api.destination) return;
     this.applyResultRecord(cached);
     for (let attempt = 0; attempt < 6 && isCurrent(); attempt += 1) {
       try {
-        const [record] = await refreshRecords({ api: this.api, store: this.store, playId: r.playId, isCurrent });
+        const [record] = await refreshRecords({ api: this.api, store, playId: r.playId, isCurrent });
         if (!isCurrent()) return;
         if (!record) throw new Error('status_unavailable');
         r.rankError = false;

@@ -282,3 +282,24 @@ test('a slower background status cannot overwrite a newer targeted official resu
   }
   store.close();
 });
+
+test('unsaved named finish in a live tab retries the original item and persists the owner receipt when storage recovers', async () => {
+  const { App } = await import('../../src/app.js');
+  const app = new App(null, { audio: {} });
+  app.store = await fresh();
+  app.memoryOnly = true;
+  const it = { ...await item(2, { jitter: 1 }), requiresLaunch: true };
+  await app.store.put('launches', { launchId: it.launchId, sent: true, destination: it.destination });
+  let unavailable = true;
+  app.api = fakeServer(path => path === 'complete' && unavailable
+    ? new ApiError('launch_not_received', { status: 409, retryable: true }) : null);
+  app.lastResult = { playId: it.playId, ranked: true };
+  await app.sendUnsaved(it);
+  assert.equal(app.lastResult.netState, 'retryable_failed');
+  unavailable = false;
+  await app.flushNetwork();
+  const receipt = await app.store.getOne('records', it.playId);
+  assert.equal(receipt?.secret, it.secret);
+  assert.deepEqual(app.api.calls.filter(x => x.path === 'complete').map(x => x.body.resultId), [it.resultId,it.resultId]);
+  app.store.close();
+});

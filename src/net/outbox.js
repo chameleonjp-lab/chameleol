@@ -164,13 +164,13 @@ export async function refreshRecords({ api, store, playId, isCurrent = () => tru
   // For a legacy row this owner-only lookup also verifies the original project.
   const records = rows.filter(r => r && (r.destination === undefined || r.destination === api.destination));
   const updated = [];
-  for (let i = 0; i < records.length; i += STATUS_BATCH_SIZE) {
-    const batch = records.slice(i, i + STATUS_BATCH_SIZE);
-    const requests = statusRequests.get(store) ?? new Map();
-    statusRequests.set(store, requests);
-    const token = Symbol();
-    for (const row of batch) requests.set(row.playId, token);
-    try {
+  const requests = statusRequests.get(store) ?? new Map();
+  statusRequests.set(store, requests);
+  const token = Symbol();
+  try {
+    for (let i = 0; i < records.length && isCurrent(); i += STATUS_BATCH_SIZE) {
+      const batch = records.slice(i, i + STATUS_BATCH_SIZE);
+      for (const row of batch) requests.set(row.playId, token);
       const data = await api.post('status', { items: batch.map((r) => ({ playId: r.playId, secret: r.secret })) });
       if (!isCurrent()) break;
       const byId = new Map((data.items ?? []).map((x) => [x.playId, x]));
@@ -187,15 +187,15 @@ export async function refreshRecords({ api, store, playId, isCurrent = () => tru
         const changed = JSON.stringify(next.corrections) !== JSON.stringify(r.corrections) || next.status !== r.status;
         if (changed) next.unseenChange = (r.unseenChange ?? false) || (r.status != null && r.status !== next.status) || next.corrections.length > (r.corrections?.length ?? 0);
         await store.put('records', next);
-        if (isCurrent() && requests.get(r.playId) === token) updated.push(next);
-      }
-    } finally {
-      for (const row of batch) {
-        if (requests.get(row.playId) === token) requests.delete(row.playId);
+        updated.push(next);
       }
     }
+    return isCurrent() ? updated.filter(row => requests.get(row.playId) === token) : [];
+  } finally {
+    for (const row of records) {
+      if (requests.get(row.playId) === token) requests.delete(row.playId);
+    }
   }
-  return updated;
 }
 
 export async function requestReview({ api, store, playId }) {
