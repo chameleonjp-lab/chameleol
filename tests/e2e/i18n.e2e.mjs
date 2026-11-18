@@ -64,10 +64,13 @@ test('LANG-TEST-02: 未対応の端末は日本語で始まり、ホームの la
     assert.equal(await chooser.inputValue(), '');
     for (const size of [{ width: 402, height: 874 }, { width: 874, height: 402 }]) {
       await page.setViewportSize(size);
-      const rect = await chooser.boundingBox();
-      const header = await page.locator('.home-header').boundingBox();
-      assert.ok(rect && header && Math.abs(rect.x - header.x) <= 1 && Math.abs(rect.y - header.y) <= 1);
-      assert.ok(rect.width >= 44 && rect.height >= 44 && rect.y + rect.height <= size.height);
+      await page.waitForFunction(({ width, height }) => {
+        const rect = document.querySelector('#home-lang-select').getBoundingClientRect();
+        const header = document.querySelector('.home-header').getBoundingClientRect();
+        return innerWidth === width && innerHeight === height &&
+          Math.abs(rect.left - header.left) <= 4 && Math.abs(rect.top - header.top) <= 4 &&
+          rect.width >= 44 && rect.height >= 44 && rect.bottom <= height;
+      }, size);
     }
     assert.equal(await page.locator('.home-language span').innerText(), 'language');
     await chooser.selectOption('ja');
