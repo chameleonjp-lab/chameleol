@@ -1,6 +1,6 @@
 // Deno（本番の Edge Function と同じ実行環境）で、サーバーの検証処理と色差の照合値が同じになることを確かめる。
 // scripts/cross-engine-check.mjs から呼ばれる。結果は1行1件の JSON。
-import { verifyResult } from '../supabase/functions/_shared/kamereoru/replay.ts';
+import { SUPPORTED_RULES, verifyResult } from '../supabase/functions/_shared/kamereoru/replay.ts';
 import { createGame, replayHistory, hsvToRgb8, rgb8ToLab, ciede2000, deltaEToMatchUnits, RULES_V1, rulesForVersion } from '../supabase/functions/_shared/kamereoru/rules/v1/index.js';
 
 const root = new URL('../', import.meta.url);
@@ -19,7 +19,7 @@ const { loadReplayFixtures } = await import('./replay-fixtures.mjs');
 for (const f of loadReplayFixtures()) {
   const r = replayHistory(createGame({ seed: f.seed, rules: rulesForVersion(f.rulesVersion) }), f.history);
   const same = JSON.stringify(r.summary) === JSON.stringify(f.expected);
-  if (!['kamereoru-rules-v1', 'kamereoru-rules-v3'].includes(f.rulesVersion)) {
+  if (!Object.hasOwn(SUPPORTED_RULES, f.rulesVersion)) {
     console.log(JSON.stringify({ engine: `Deno ${Deno.version.deno}`, check: `standalone replay ${f.name}`, ok: same }));
     continue;
   }

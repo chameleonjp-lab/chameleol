@@ -10,7 +10,8 @@ import { makeOutboxItem, flushOutbox, chunkOf, CHUNK_CHARS } from '../../src/net
 let n=0;const fresh=()=>openStore({indexedDB:new IDBFactory(),name:`bonus-outbox-${++n}`});
 function server(){
  const chunks=new Map();const completions=[];let fail=true;
- return {configured:true,chunks,completions,set retry(v){fail=v;},async post(path,b){
+ return {configured:true,destination:"verification:test",chunks,completions,set retry(v){fail=v;},async post(path,b){
+  if(path==='status')return {items:b.items.map(({playId})=>({playId,status:'not_received'}))};
   if(path==='chunk'){chunks.set(b.index,b.data);return {ok:true};}
   completions.push({resultId:b.resultId,playId:b.playId});if(fail)throw new ApiError('network',{retryable:true});
   return {playId:b.playId,resultId:b.resultId,status:'verifying'};

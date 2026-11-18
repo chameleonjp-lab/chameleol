@@ -100,7 +100,7 @@ test('normal loop: tongue, claimed street, police and real precision badge lead 
   await page.evaluate(()=>{__shareMode='cancel';});await page.locator(id('result-share')).click();
   await page.waitForFunction(()=>__shares.length===1&&__kamereoru.resultCardController.snapshot().state==='ready');
   const cancel=await page.evaluate(()=>({shares:__shares,opened:__opened.length,viewer:!!document.querySelector('.result-card-viewer'),manual:!!document.querySelector('.share-manual')}));
-  assert.equal(cancel.shares[0].files.length,1);assert.equal(cancel.shares[0].files[0].type,'image/png');assert.equal(cancel.shares[0].url,'https://example.invalid/normal');
+  assert.equal(cancel.shares[0].files.length,1);assert.equal(cancel.shares[0].files[0].type,'image/png');assert.equal(cancel.shares[0].url,'https://chameleonjp-lab.github.io/chameleol/');
   assert.equal(cancel.opened,0);assert.equal(cancel.viewer,false);assert.equal(cancel.manual,false);
   await page.locator(id('result-card-save')).click();await page.waitForFunction(()=>document.querySelector('.result-card-viewer-image')?.naturalWidth===1200);
   assert.ok((await heldBytes(page)).total<=BUDGET);

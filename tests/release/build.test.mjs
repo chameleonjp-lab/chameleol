@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 const root = mkdtempSync(join(tmpdir(), 'kamereoru-build-'));
 const source = new URL('../../', import.meta.url);
-const files = ['scripts', 'src', 'vendor', 'assets', 'index.html', 'package.json', 'supabase'];
+const files = ['scripts', 'src', 'vendor', 'assets', 'index.html', 'ranking-manifest.json', 'package.json', 'supabase'];
 for (const file of files) cpSync(new URL(file, source), join(root, file), { recursive: true });
 execFileSync('git', ['init', '-q'], { cwd: root });
 execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '--allow-empty', '-qm', 'test'], { cwd: root });
@@ -51,9 +51,9 @@ test('単独公開を指定するとランキングの接続先なしで本番�
 test('release metadata distinguishes preferred ranked and standalone rules while retaining all readable versions', () => {
   for (const options of [{ api: 'https://example.invalid/kamereoru' }, { standalone: '1' }]) {
     const release = build(options);
-    assert.equal(release.rulesVersion, options.standalone ? 'kamereoru-rules-v4' : 'kamereoru-rules-v3');
+    assert.equal(release.rulesVersion, 'kamereoru-rules-v4');
     assert.deepEqual(release.supportedRulesVersions, ['kamereoru-rules-v1', 'kamereoru-rules-v2', 'kamereoru-rules-v3', 'kamereoru-rules-v4']);
-    assert.equal(release.preferredRankedRulesVersion, 'kamereoru-rules-v3');
+    assert.equal(release.preferredRankedRulesVersion, 'kamereoru-rules-v4');
     assert.equal(release.defaultStandaloneRulesVersion, 'kamereoru-rules-v4');
     const versioned = JSON.parse(readFileSync(join(root, 'dist/v', release.assetVersion, 'release.json'), 'utf8'));
     assert.deepEqual(versioned, release);
@@ -65,4 +65,14 @@ test('standalone selection creates a separate asset version even without a confi
   const standalone = build({ env: 'verification', standalone: '1', args: ['--keep', 'dist'] });
   assert.notEqual(standalone.assetVersion, ranked.assetVersion);
   assert.deepEqual(standalone.keptVersions, [ranked.assetVersion]);
+});
+
+test('published game exposes its verified ranking manifest and only the production ranking API', () => {
+  const api = 'https://example.invalid/functions/v1/kamereoru';
+  const release = build({ api });
+  assert.equal(release.rankingApi, api);
+  const manifest = JSON.parse(readFileSync(join(root, 'dist/ranking-manifest.json'), 'utf8'));
+  assert.equal(manifest.submission_mode, 'verified');
+  assert.equal(build({ api, env: 'verification' }).rankingApi, null);
+  assert.equal(build({ standalone: '1' }).rankingApi, null);
 });

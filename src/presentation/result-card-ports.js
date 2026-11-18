@@ -32,10 +32,10 @@ export function createResultCardPorts({ result, scope = null } = {}) {
     }
   }
 
-  function mount({ host, controller, scope: mountScope, onTextShare } = {}) {
+  function mount({ host, controller, scope: mountScope, onTextShare, onCopyText } = {}) {
     if (state.disposed) return { dispose() {} };
     state.controller = controller ?? null;
-    const view = mountResultCardView({ host, controller, scope: null, onTextShare, initial: state.latest });
+    const view = mountResultCardView({ host, controller, scope: null, onTextShare, onCopyText, initial: state.latest });
     state.view = view;
     mountScope?.own?.(() => view.dispose());
     return {

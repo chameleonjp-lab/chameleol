@@ -1489,7 +1489,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       });
     },
     /** 初回の開始演出：警報の鳴る宝石店から飛び出し、宝石を尻尾に隠す。onCue は音を合わせるための合図。 */
-    async playOpening({ sceneT = rules.buildingMs * PRACTICE_X / W, color, signal, onCue = () => {} } = {}) {
+    async playOpening({ sceneT = rules.buildingMs * PRACTICE_X / W, color, signal, playbackRate = 1, onCue = () => {} } = {}) {
       opening = true;
       fx.clear();
       if (color) hero.setColor(rgbFloat(color));
@@ -1499,7 +1499,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       const carried = jewelHome.clone();
       const dim = new THREE.Color(0x6a1a1a), bright = new THREE.Color(0xff523b);
       const escape = startShopEscape({
-        destination: sceneT / rules.buildingMs, reducedMotion, signal,
+        destination: sceneT / rules.buildingMs, playbackRate, reducedMotion, signal,
         draw(pose, dt) {
           worldClock += dt;
           playerX = pose.block * W;

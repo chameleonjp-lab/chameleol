@@ -18,25 +18,25 @@ const response = (body, rulesVersion) => ({
 test('new start persists supported versions before transmission', async () => {
   const store = await fresh();
   try {
-    const record = await createStartRequest(store, { name: 'ねこ', launchId: uuid(), gameVersion: 't' });
-    assert.deepEqual(record.supportedRulesVersions, [V3, V1]);
-    assert.deepEqual((await store.getOne('starts', record.requestId)).supportedRulesVersions, [V3, V1]);
+    const record = await createStartRequest(store, { name: 'ねこ', launchId: uuid(), gameVersion: 't', destination: 'verification:test' });
+    assert.deepEqual(record.supportedRulesVersions, [V4, V3, V1]);
+    assert.deepEqual((await store.getOne('starts', record.requestId)).supportedRulesVersions, [V4, V3, V1]);
   } finally { store.close(); }
 });
 
-for (const [client, server, wanted] of [['old', 'old', V1], ['old', 'new', V1], ['new', 'old', V1], ['new', 'new', V3]]) {
+for (const [client, server, wanted] of [['old', 'old', V1], ['old', 'new', V1], ['new', 'old', V1], ['new', 'new', V4]]) {
   test(`${client} client accepts ${server} server selection ${wanted}`, async () => {
     const store = await fresh();
     try {
-      const record = await createStartRequest(store, { name: 'ねこ', launchId: uuid(), gameVersion: 't' });
+      const record = await createStartRequest(store, { name: 'ねこ', launchId: uuid(), gameVersion: 't', destination: 'verification:test' });
       if (client === 'old') {
         delete record.supportedRulesVersions;
         await store.put('starts', record);
       }
-      const api = { async post(path, body) {
+      const api = { destination: 'verification:test', async post(path, body) {
         assert.equal(path, 'start');
         const supported = body.supportedRulesVersions ?? [V1];
-        return response(body, server === 'new' && supported.includes(V3) ? V3 : V1);
+        return response(body, server === 'new' && supported.includes(V4) ? V4 : V1);
       } };
       const accepted = await sendStartRequest(api, store, await store.getOne('starts', record.requestId), { delays: [] });
       assert.equal(accepted.ok, true);
@@ -49,11 +49,11 @@ for (const [client, server, wanted] of [['old', 'old', V1], ['old', 'new', V1], 
 test('retry sends the saved capability list and validates against that list', async () => {
   const store = await fresh();
   try {
-    const record = await createStartRequest(store, { name: 'ねこ', launchId: uuid(), gameVersion: 't' });
+    const record = await createStartRequest(store, { name: 'ねこ', launchId: uuid(), gameVersion: 't', destination: 'verification:test' });
     record.supportedRulesVersions = [V1];
     await store.put('starts', record);
     const sent = [];
-    const api = { async post(path, body) {
+    const api = { destination: 'verification:test', async post(path, body) {
       sent.push(structuredClone(body));
       if (sent.length === 1) throw new ApiError('timeout', { retryable: true });
       return response(body, V3);
@@ -73,10 +73,10 @@ test('response validation rejects standalone, unknown, and unadvertised rules', 
   for (const version of [V4, 'unknown', 'kamereoru-rules-v2']) {
     assert.ok(validateStartResponse(response(expected, version), expected).includes('rulesVersion'));
   }
-  assert.ok(validateStartResponse(response(expected, V4), { ...expected, supportedRulesVersions: [V4] }).includes('rulesVersion'));
+  assert.deepEqual(validateStartResponse(response(expected, V4), { ...expected, supportedRulesVersions: [V4, V3, V1] }), []);
   assert.ok(validateStartResponse(response(expected, V3), { ...expected, supportedRulesVersions: [V1] }).includes('rulesVersion'));
   assert.ok(validateStartResponse(response(expected, V3), { ...expected, supportedRulesVersions: undefined }).includes('rulesVersion'));
-  for (const supportedRulesVersions of [null, [], [V3, V3], [V3, V1, V4], [V3, 'unknown'], 'kamereoru-rules-v3']) {
+  for (const supportedRulesVersions of [null, [], [V3, V3], [V3, V1, V4, V1], [V3, 'unknown'], 'kamereoru-rules-v3']) {
     assert.ok(validateStartResponse(response(expected, V3), { ...expected, supportedRulesVersions }).includes('rulesVersion'));
   }
 });

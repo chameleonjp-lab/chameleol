@@ -3,8 +3,8 @@
 // - 重複防止・1開始1結果・照合・順位の計算はデータベースの関数と制約で保証する。
 // - 頻度制限は接続元のハッシュ単位。名前では制限しない。同じ要求の正当な再送は新規として数えない。
 import { normalizeName } from './shared/name.js';
-import { RULES_V1, RULES_V3 } from './rules/v1/index.js';
-import { verifyResult } from './replay.ts';
+import { RULES_V1 } from './rules/v1/index.js';
+import { SUPPORTED_RULES, verifyResult } from './replay.ts';
 
 export interface Db {
   query(text: string, params?: unknown[]): Promise<any[]>;
@@ -162,9 +162,9 @@ export function createHandler(options: HandlerOptions) {
       need(typeof b.launchId === 'string' && UUID.test(b.launchId), 'bad_launch_id');
       need(typeof b.gameVersion === 'string' && VERSION.test(b.gameVersion), 'bad_game_version');
       const supported = b.supportedRulesVersions === undefined ? [RULES_V1.rulesVersion] : b.supportedRulesVersions;
-      need(Array.isArray(supported) && supported.length >= 1 && supported.length <= 2
+      need(Array.isArray(supported) && supported.length >= 1 && supported.length <= Object.keys(SUPPORTED_RULES).length
         && new Set(supported).size === supported.length
-        && supported.every((v: unknown) => v === RULES_V1.rulesVersion || v === RULES_V3.rulesVersion), 'unsupported_rules_versions');
+        && supported.every((v: unknown) => typeof v === 'string' && Object.hasOwn(SUPPORTED_RULES, v)), 'unsupported_rules_versions');
       const hash = await secretHash(b.secret);
       const n = normalizeName(b.name);
       if (!n.ok || n.empty) throw bad('bad_name', n.ok ? 'empty' : n.error);
@@ -243,7 +243,7 @@ export function createHandler(options: HandlerOptions) {
         hashes.push(await secretHash(item.secret));
       }
       await rate(req, 'status', limits.statusPer10m);
-      const rows = await call("select private.kamereoru_status($1::uuid[], array(select decode(x, 'hex') from unnest($2::text[]) as x)) as r", [ids, hashes]);
+      const rows = await call("select private.kamereoru_status_with_metrics($1::uuid[], array(select decode(x, 'hex') from unnest($2::text[]) as x)) as r", [ids, hashes]);
       background(processJobs(2));
       return json(200, { ok: true, items: rows[0].r });
     },
@@ -262,6 +262,12 @@ export function createHandler(options: HandlerOptions) {
       if (!n.ok || n.empty) return json(200, { ok: true, rank: null });
       await rate(req, 'read', limits.readPer10m);
       const rows = await call('select private.kamereoru_rank_of($1) as r', [n.key]);
+      return json(200, { ok: true, ...rows[0].r });
+    },
+
+    async stats(req) {
+      await rate(req, 'read', limits.readPer10m);
+      const rows = await call('select private.kamereoru_stats() as r');
       return json(200, { ok: true, ...rows[0].r });
     },
 
@@ -290,7 +296,7 @@ export function createHandler(options: HandlerOptions) {
     const url = new URL(req.url);
     const route = url.pathname.split('/').filter(Boolean).pop() ?? '';
     const fn = routes[route];
-    const allowed = route === 'ranking' ? req.method === 'GET' : req.method === 'POST';
+    const allowed = (route === 'ranking' || route === 'stats') ? req.method === 'GET' : req.method === 'POST';
     if (!fn || !allowed) return json(404, { ok: false, error: 'not_found' });
     try {
       return await fn(req, url);

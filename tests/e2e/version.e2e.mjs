@@ -74,7 +74,7 @@ test('単独公開版はランキング登録を表示せず、保存済みの�
     await page.reload();
     await page.waitForSelector('[data-testid=home-start]');
     assert.equal(await page.locator('.name-help').count(), 0);
-    assert.equal(await page.locator('[data-testid=home-ranking]').count(), 0);
+    assert.equal(await page.getAttribute('[data-testid=home-ranking]', 'href'), 'https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=chameleol');
     assert.equal(await page.locator('.notice-dev').count(), 0);
     await page.evaluate(async () => globalThis.__kamereoru.store.put('localResults', {
       playId: 'saved-offline', ranked: false, name: '', summary: { buildings: 4, rankAverage: 9123 }, endedAt: Date.now(),

@@ -75,4 +75,30 @@ begin
   end if;
 end $$;
 
+-- All-play ranks/clear ordinals are independent of the top-30 projection.
+do $$
+declare
+  id uuid;
+  item jsonb;
+begin
+  -- Existing rows include at least 32 better official runs at 50 buildings.
+  id := pg_temp.mk('圏外の走破', 50, 1000);
+  update private.kamereoru_results set end_reason = 'cleared' where play_id = id;
+  item := private.kamereoru_status_with_metrics(array[id], array[decode(repeat('ab', 32), 'hex')]) -> 0;
+  if (item #>> '{metrics,runRank}')::int <= 30 or item #>> '{metrics,clearOrdinal}' is distinct from '1' then
+    raise exception 'outside ranking: %', item;
+  end if;
+end $$;
+
+-- Inspect the normal planner with enough official runs to choose a selective index scan.
+do $$
+begin
+  for i in 1..600 loop
+    perform pg_temp.mk('比較用', 3, 9000);
+  end loop;
+end $$;
+analyze private.kamereoru_results;
+explain (analyze, costs off, timing off)
+select count(*) from private.kamereoru_ranked_runs where (buildings, rank_avg) > (50, 9997);
+
 select 'kamereoru_ranking: ok' as result;

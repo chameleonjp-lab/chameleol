@@ -4,14 +4,23 @@ import { h, isolatedText, clear } from './dom.js';
 import { t, formatNumber, formatPercent2 } from '../i18n/i18n.js';
 import { button } from './screens.js';
 
-/** 同じ集計版のページを重複・欠落なくつなぐ。版が変わったら先頭からにする。 */
+const DETAIL_URL = 'https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=chameleol';
+
+export function rankingLink(testid) {
+  return h('a', { class: 'btn ranking-link', href: DETAIL_URL, 'data-testid': testid }, t('home.ranking'));
+}
+
+/** 同じ集計版の続きを position でまとめ、版が切り替わったときは全行を交換する。 */
 export function mergeRankingPage(current, page) {
-  if (!current || current.version !== page.version || page.restarted) {
-    return { version: page.version, rows: page.rows.slice(), nextAfter: page.nextAfter, nameCount: page.nameCount, restarted: !!current && current.version !== page.version };
+  const restarted = !!current && (current.version !== page.version || page.restarted);
+  const rows = current && !restarted ? current.rows.slice() : [];
+  const seen = new Set(rows.map(r => r.position));
+  for (const row of page.rows) {
+    if (row.rank > 30 || seen.has(row.position)) continue;
+    rows.push(row);
+    seen.add(row.position);
   }
-  const seen = new Set(current.rows.map((r) => r.position));
-  const rows = current.rows.concat(page.rows.filter((r) => !seen.has(r.position)));
-  return { version: page.version, rows, nextAfter: page.nextAfter, nameCount: page.nameCount, restarted: false };
+  return { version: page.version, rows, nextAfter: page.nextAfter, nameCount: page.nameCount, restarted };
 }
 
 export function rankingRow(r) {
@@ -23,15 +32,18 @@ export function rankingRow(r) {
   ]);
 }
 
-export function createRankingView({ api, name = null, pageSize = 30 }) {
-  const list = h('ol', { class: 'rank-list' });
+export function createRankingView({ api, name = null, pageSize = 30, result = false, onRefresh }) {
+  const list = h('ol', { class: 'rank-list', tabindex: result ? 0 : null, 'aria-label': t('ranking.top') });
   const status = h('div', { class: 'rank-status', role: 'status' });
   const meta = h('p', { class: 'rank-meta' });
   const mine = h('p', { class: 'rank-mine' });
   const more = button('ranking.more', () => loadMore(), { className: 'btn-small' });
-  const refresh = button('ranking.refresh', () => load(), { className: 'btn-small' });
+  const refresh = button('ranking.refresh', () => {
+    onRefresh?.();
+    return load();
+  }, { className: 'btn-small' });
   more.hidden = true;
-  const el = h('div', { class: 'ranking' }, [h('p', { class: 'rank-note' }, t('ranking.note')), meta, mine, status, list, h('div', { class: 'row' }, [more, refresh])]);
+  const el = h('div', { class: result ? 'ranking ranking-result' : 'ranking' }, [h('p', { class: 'rank-note' }, t('ranking.note')), meta, mine, status, list, h('div', { class: 'row' }, [result ? null : more, refresh])]);
   let state = null;
   let seq = 0;
 
@@ -49,14 +61,22 @@ export function createRankingView({ api, name = null, pageSize = 30 }) {
     status.textContent = t('ranking.loading');
     el.classList.add('loading');
     try {
-      const page = await api.get('ranking', { limit: pageSize, ...params });
-      if (my !== seq) return; // 古い応答で新しい表示を上書きしない
-      state = mergeRankingPage(params.after != null ? state : null, page);
-      render();
+      do {
+        const page = await api.get('ranking', { limit: pageSize, ...params });
+        if (my !== seq) return;
+        if (page.version === params.version && params.after != null && page.nextAfter != null && page.nextAfter <= params.after) {
+          throw new Error('ranking_cursor_stalled');
+        }
+        state = mergeRankingPage(params.after != null ? state : null, page);
+        render();
+        if (!result || state.nextAfter == null) break;
+        params = { version: state.version, after: state.nextAfter };
+        status.textContent = t('ranking.loading');
+      } while (my === seq);
     } catch (err) {
       if (my !== seq) return;
       status.textContent = '';
-      status.append(t(err?.code === 'not_configured' ? 'ranking.notConfigured' : 'ranking.error'), ' ', button('common.retry', () => (params.after != null ? loadMore() : load()), { className: 'btn-small' }));
+      status.append(t(err?.code === 'not_configured' ? 'ranking.notConfigured' : 'ranking.error'), ' ', button('common.retry', () => fetchPage(params), { className: 'btn-small' }));
     } finally {
       if (my === seq) el.classList.remove('loading');
     }
@@ -77,6 +97,10 @@ export function createRankingView({ api, name = null, pageSize = 30 }) {
 
   function load() {
     state = null;
+    if (api.configured === false) {
+      status.textContent = t('ranking.notConfigured');
+      return Promise.resolve();
+    }
     loadMine();
     return fetchPage({});
   }
@@ -86,7 +110,7 @@ export function createRankingView({ api, name = null, pageSize = 30 }) {
     return fetchPage({ version: state.version, after: state.nextAfter });
   }
 
-  return { el, load, loadMore, get state() {
+  return { el, load, loadMore, dispose() { seq += 1; }, get state() {
     return state;
   } };
 }

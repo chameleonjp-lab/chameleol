@@ -100,10 +100,12 @@ test('LANG-TEST-02: 保存した言語→対応するブラウザ言語→対応
 
 test('SHARE-TEST-01: 共有文は選んだ言語で作り、未確定の順位を入れない。照会情報やIDを含めない', () => {
   for (const lang of LANGUAGE_IDS) {
-    const official = buildResultShareText({ result: { buildings: 50, rankAverage: 9235, endReason: 'cleared' }, officialRank: 3, lang });
-    const pending = buildResultShareText({ result: { buildings: 50, rankAverage: 9235, endReason: 'cleared' }, officialRank: null, lang });
+    const run={buildings:50,score:1840,endReason:'cleared',locale:lang,rankState:'official',runRank:3,totalPlays:4,clearOrdinal:1};
+    const official=buildResultShareText({run});
+    const pending=buildResultShareText({run:{...run,rankState:'pending',runRank:null,totalPlays:null,clearOrdinal:null}});
     assert.ok(official.includes(t('share.result.title', null, lang)), lang);
-    assert.ok(official.split('\n').length > pending.split('\n').length, `${lang}: rank only when official`);
+    assert.match(official, /3位／4人中/);
+    assert.doesNotMatch(pending, /3位／4人中/);
     assert.equal(/[0-9a-f]{8}-[0-9a-f]{4}/.test(official), false);
   }
   const url = buildIntentUrl({ text: 'a&b #x\n改行', url: 'https://example.invalid/game/' });

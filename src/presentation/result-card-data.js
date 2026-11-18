@@ -1,5 +1,7 @@
 // Read-only presentation projections. Never writes scores, snapshots or outbox items.
-import { rulesForVersion, RULES_V1 } from '../rules/v1/config.js';
+import { readMetrics } from '../net/result-metrics.js';
+import { applyVerifiedScore } from '../net/verified-score.js';
+import { rulesForVersion } from '../rules/v1/config.js';
 import { isValidHsv } from '../rules/v1/color.js';
 import { buildBonusResult } from './bonus-data.js';
 import { isSupportedLanguage } from '../i18n/languages.js';
@@ -83,17 +85,50 @@ function countBonus(summary,rules) {
   return count===ids.size?count:null;
 }
 
-export function buildResultCardModel({displaySummary,rules,evidence,locale='en',revision=0,verificationState=null} = {}) {
+const inRange = (value, min, max) => Number.isSafeInteger(value) && value >= min && value <= max;
+
+export function projectRunResult(context, locale, displaySummary = applyVerifiedScore(context.summary, context.verifiedScore)) {
+  const official = context.ranked && context.netState === 'official';
+  const corrected = official && inRange(context.official?.buildings, 1, 50) &&
+    inRange(context.official.rankAverage, 0, 10000);
+  const zero = context.ranked && context.netState === 'no_rank';
+  const buildings = zero ? 0 : corrected ? context.official.buildings : displaySummary.buildings;
+  const rankAverage = zero ? null : corrected ? context.official.rankAverage : displaySummary.rankAverage;
+  const { endReason } = displaySummary;
+  const clear = buildings === 50 && endReason === 'cleared';
+  const building = context.arrivedBuilding;
+  const wall = inRange(building, 1, 50) ? copyVisualColor(context.targets?.[building - 1]) : null;
+  const appearance = clear ? { kind: 'rainbow', building: 50, hsv: null } :
+    wall ? { kind: 'wall', building, hsv: wall } : { kind: 'unknown', building: null, hsv: null };
+  const eligible = official && inRange(buildings, 1, 50) && (context.official == null || corrected);
+  const metrics = readMetrics({status: eligible ? 'official' : null, metrics: context.metrics});
+  const ranked = metrics.runRank !== null;
+  let rankState = 'unranked';
+  if (context.ranked) {
+    const terminal = ['no_rank', 'rejected', 'permanent_failed'];
+    rankState = terminal.includes(context.netState) ? context.netState : ranked ? 'official' : 'pending';
+  }
+  return freezeProjection({
+    playId: context.playId, locale: isSupportedLanguage(locale) ? locale : 'ja', endReason,
+    buildings: inRange(buildings, 0, 50) ? buildings : null,
+    rankAverage: inRange(rankAverage, 0, 10000) ? rankAverage : null,
+    score: inRange(displaySummary.score?.total, 0, Number.MAX_SAFE_INTEGER) ? displaySummary.score.total : null,
+    rankState, runRank: ranked ? metrics.runRank : null, totalPlays: ranked ? metrics.totalPlays : null,
+    clearOrdinal: clear ? metrics.clearOrdinal : null,
+    appearance,
+  });
+}
+
+export function buildResultCardModel({displaySummary,rules,run = projectRunResult({summary: displaySummary}, 'ja', displaySummary),locale='en',revision=0,verificationState=null} = {}) {
   const canonical=resolveCardRules(displaySummary,rules);
-  const passed=canonical?displaySummary.buildings:null;
+  const passed=canonical?run.buildings:null;
   const rank=rankForPassed(passed);
   const count=canonical?countBonus(displaySummary,canonical):null;
-  const visual=evidence?.status==='ready' && canonical
-    ?selectBestVisual({summary:displaySummary,rules:canonical,visualSamples:evidence.data?.visualSamples}):null;
-  const hero=visual?{status:'matched',...visual,outlineBuilding:visual.building}
-    :{status:evidence?.status==='pending'?'pending':'missing',building:null,hsv:evidence?.status==='pending'?null:{...(canonical??RULES_V1).initialColor},outlineBuilding:1,average:null,instantMatch:null};
+  const { appearance, endReason, runRank, totalPlays, clearOrdinal, rankState } = run;
+  const hero={status:appearance.kind, building:appearance.building, hsv:appearance.hsv, outlineBuilding:appearance.building ?? 1};
   const states=['pending','sending','accepted','retryable_failed','permanent_failed','verifying','official','no_rank','pending_review','rejected','under_review'];
   return freezeProjection({revision:Number.isSafeInteger(revision)&&revision>=0?revision:0,locale:isSupportedLanguage(locale)?locale:'en',passed,
-    rankKey:rank?.rankKey??null,totalScore:Number.isSafeInteger(displaySummary?.score?.total)&&displaySummary.score.total>=0?displaySummary.score.total:null,
+    appearance, endReason, runRank, totalPlays, clearOrdinal, rankState,
+    rankKey:rank?.rankKey??null,totalScore:run.score,
     bonusCount:count,countState:count===null?'missing':'known',hero,verificationState:canonical?(states.includes(verificationState)?verificationState:null):'pending_review'});
 }

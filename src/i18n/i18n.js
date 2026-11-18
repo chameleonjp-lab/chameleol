@@ -1,5 +1,6 @@
 // 翻訳。辞書はすべて同梱し、通信できなくても言語を切り替えられるようにする。
 // 名前や内部IDは翻訳しない。数値の地域向け表示は画面だけに使い、送信・比較には使わない。
+import { releaseJa } from './release-ja.js';
 import { MESSAGES } from './messages/index.js';
 import { getLanguageLocale, isSupportedLanguage } from './languages.js';
 
@@ -34,7 +35,7 @@ function fill(template, params) {
 /** 文言を引く。見つからなければ英語、次に日本語、最後にキーそのもの。 */
 export function t(key, params, lang = current) {
   const dict = MESSAGES[lang] ?? MESSAGES.en;
-  const template = dict[key] ?? MESSAGES.en[key] ?? MESSAGES.ja[key] ?? key;
+  const template = dict[key] ?? MESSAGES.en[key] ?? MESSAGES.ja[key] ?? releaseJa[key] ?? key;
   return fill(template, params);
 }
 

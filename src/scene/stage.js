@@ -170,11 +170,11 @@ export function createDomStage(container, { course, rules = RULES_V1, presentati
     async playEnding(_kind, { signal, onFrame = () => {} } = {}) {
       if (!signal?.aborted) onFrame(0);
     },
-    async playOpening({ sceneT = rules.buildingMs * 0.4, color, signal, onCue = () => {} } = {}) {
+    async playOpening({ sceneT = rules.buildingMs * 0.4, color, signal, playbackRate = 1, onCue = () => {} } = {}) {
       if (!shop) return;
       hero.style.background = hsvToHex(color ?? { h: 12000, s: 7000, v: 9000 });
       escape = startShopEscape({
-        destination: sceneT / rules.buildingMs, signal, onCue,
+        destination: sceneT / rules.buildingMs, playbackRate, signal, onCue,
         reducedMotion: globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
         draw(pose) {
           placeStreet(pose.block);

@@ -216,3 +216,15 @@ test('PRACT-07: 練習の保存は本編の中断データ・回数に触れな�
   assert.equal(RUN_SLOT, 'main');
   store.close();
 });
+
+test('run and launch commit together, takeover and cancelled second reservation preserve the original launch', async () => {
+  const store = await fresh();
+  const snap = new GameSession(meta('actual')).snapshot();
+  const launch = { launchId: snap.meta.launchId, playId: snap.meta.playId, ranked: true, secret: 's', destination: 'verify/A', sent: false };
+  await store.beginRun('A', snap, launch);
+  assert.deepEqual(await store.getOne('launches', launch.launchId), launch);
+  await store.claimRun('B', snap.meta.playId);
+  await assert.rejects(store.beginRun('A', new GameSession(meta('cancel')).snapshot(), { ...launch, launchId: 'cancel' }), { code: 'active_run_exists' });
+  assert.deepEqual(await store.getAll('launches'), [launch]);
+  store.close();
+});

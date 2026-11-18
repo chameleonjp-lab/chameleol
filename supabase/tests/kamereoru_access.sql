@@ -22,9 +22,17 @@ begin
       raise exception 'public role can access %', t.relname;
     end if;
   end loop;
-  if n < 12 then
-    raise exception 'expected 12 kamereoru tables, found %', n;
+  if n < 13 then
+    raise exception 'expected at least 13 kamereoru tables, found %', n;
   end if;
+  for t in
+    select c.oid, c.relname from pg_class c join pg_namespace s on s.oid = c.relnamespace
+    where s.nspname = 'private' and c.relname like 'kamereoru\_%' and c.relkind = 'v'
+  loop
+    if has_table_privilege('anon', t.oid, 'SELECT') or has_table_privilege('authenticated', t.oid, 'SELECT') then
+      raise exception 'public role can read view %', t.relname;
+    end if;
+  end loop;
   for f in
     select p.oid, p.oid::regprocedure as sig
     from pg_proc p join pg_namespace s on s.oid = p.pronamespace

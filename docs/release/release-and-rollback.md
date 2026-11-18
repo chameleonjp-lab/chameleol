@@ -1,5 +1,51 @@
 # 公開と切り戻しの手順
 
+## オンライン版の公開前に開始台帳を照合する
+
+公開指示を受けた後、接続先がゲームと実験場の予定している本番プロジェクトであることを確認し、切替前の件数を次の読み取り専用SQLで記録する。旧版の表だけで実行できる。検証環境でも同じSQLを使う。
+
+```sql
+begin transaction isolation level repeatable read read only;
+
+select count(*) as total_plays,
+       count(*) filter (where ranked) as named_launches,
+       count(*) filter (where not ranked) as unnamed_launches
+from private.kamereoru_launches;
+
+select s.rules_version, r.status, count(*) as result_count,
+       count(*) filter (where l.launch_id is null) as missing_launch,
+       count(*) filter (where l.launch_id is not null
+                        and (not l.ranked or l.play_id is distinct from s.play_id)) as conflicting_launch
+from private.kamereoru_results r
+join private.kamereoru_starts s using (play_id)
+left join private.kamereoru_launches l on l.launch_id = s.launch_id
+group by s.rules_version, r.status
+order by s.rules_version, r.status;
+
+commit;
+```
+
+`total_plays` が順位表示の分母になる。結果が届く前に本編を閉じた回も含む。予約だけの回、匿名の終了、途中離脱の終了を補う必要はない。`missing_launch` または `conflicting_launch` に該当する結果があれば、その判定版の配信元・開始通知・再送状況を調べ、分母を裏付けられるまで数値の公開を保留する。調査記録には版別・状態別の件数を使う。送信待ちのデータを保持し、結果から開始時刻や回数を推定して埋めない。
+
+## 名前付き第4版と実験場の公開・切り戻し（今回）
+
+**PRで行える結合試験**　ゲームと実験場の両方の作業ブランチを取得する。ゲームで `npm ci` を実行し、テスト用のPlaywright Chromium、PostgreSQL、Python 3の `jsonschema` を用意する。ゲームのルートで次を実行する。
+
+```sh
+node scripts/smoke-release-ranking.mjs ../chameleonjp_lab
+```
+
+両方の公開用ファイルを一時フォルダに生成し、正式URLへのブラウザー通信を手元のファイルと使い捨ての受付サーバーへ振り向ける。名無し50棟→A50棟→B30棟→A7棟を通し、最後のAの3位／4人中と上位表のAの1位、両画面の順位表の版・行、マニフェスト、相互リンクを検査する。
+
+**本番は別の公開指示を受けてから行う。** 切替順は次のとおり。
+
+1. 現行の配信物、実験場・ゲームのリリース情報、API接続先、開始受付の設定を控える。冒頭の照合SQLで旧台帳の件数と不一致の理由を確認する。延べ開始回数を確認できるまで、数値表示の切替を保留する。
+2. ゲームの `20261118090000_release_ranked_v4.sql`、`20261118100000_release_metrics.sql` の順に適用し、新旧両対応のEdge Functionを先に配備する。新端末の候補はv4→v3→v1で、v4を提示して作った新予約には実開始が必要になる。既存の予約・終了待ちとv1のみの要求はその版で受付を続ける。
+3. 実験場側の詳細・読取部品を配信し、実験場の `docs/chameleonjp-lab/sql/chameleol-register.sql` で対象の登録行を反映する。公開オリジンからゲーム側APIの `GET stats`・`GET ranking` の読取疎通を確認する。
+4. ゲームは `KAMEREORU_ENV=production`、`KAMEREORU_PUBLIC_URL=https://chameleonjp-lab.github.io/chameleol/`、`KAMEREORU_API` に確認済みの本番APIを設定し、`KAMEREORU_STANDALONE` を外してビルドする。旧版の資源を保持した公開物について、生成した `release.json` の `rankingApi` と `preferredRankedRulesVersion`、マニフェスト、入口の接続先を照合してから切り替える。公開後は実験場の詳細とゲームで同じ版の順位表が読めることを確認する。
+
+切り戻すときはゲーム・実験場の配信物と接続先を控えた組み合わせに戻す。開始台帳、クリア受付順、既存成績、端末の送信待ち、v4までの再判定・送信受付を保持する。新規開始の版を制限する場合も、受付済みの版と種による再開・再送を確認する。
+
 ## PR #26と現在の単独公開（2026-11-17）
 
 [現在の実装・検証状態](../acceptance/pr26/completion-task4/evidence.md)と[本番・候補の比較票](pr26-candidate-comparison.md)を確認する。現行本番は `https://chameleonjp-kamereoru.chameleonjp.chatgpt.site/`、Sites version 5、commit `9c4a6ebad65414e4f659537d28f4bc3a93a1f55c`、assetVersion `0.1.0-f25f4a9ee1`、単独v2・API指定なしと照合した。従来の「現在の公開状態は未確認」は各資料の作成時点の記録である。
@@ -151,7 +197,7 @@ jobs:
 
 GitHub Pages では、ページの住所にリポジトリ名が入ります（このリポジトリの場合は `https://chameleonjp-lab.github.io/chameleol/`）。採用する場合は、この住所を `KAMEREORU_PUBLIC_URL` に指定します。ゲームのファイルはすべて相対的な住所で読み込みます。実際の公開先ではまだ確かめていません。
 
-## ボーナス版 v3/v4 の追加と切戻し
+## 以前のボーナス版 v3/v4 導入時の手順
 
 この実装PRは配備しない。本番DB適用・公開・実験場掲載は別の公開判断とする。
 

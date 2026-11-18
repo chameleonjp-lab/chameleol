@@ -26,7 +26,7 @@ function setup({ markup = true } = {}) {
   installFakeCanvas(window);
   const host = document.querySelector('main');
   if (markup) {
-    host.innerHTML = '<div class="result-burst"></div><h1 class="result-title">Cleared</h1><div class="result-main"></div><div class="result-actions"><button data-testid="result-again">Again</button><button data-testid="result-home">Home</button><button data-testid="result-share" class="btn-x">Share</button></div><div class="result-ranking"></div>';
+    host.innerHTML = '<div class="result-burst"></div><h1 class="result-title">Cleared</h1><div class="result-main"></div><div class="result-actions"><button data-testid="result-again">Again</button><a data-testid="result-ranking">Ranking</a><button data-testid="result-share" class="btn-x">Share</button></div><button data-testid="result-home">Home</button><div class="result-ranking"></div>';
   }
   return { document, window, host };
 }
@@ -102,7 +102,9 @@ test('mount moves the existing action nodes without cloning, replacing or double
   const order = [...host.children].map((c) => c.className.split(' ')[0]);
   assert.ok(order.indexOf('result-title') < order.indexOf('result-card') && order.indexOf('result-card') < order.indexOf('result-actions'));
   const kids = [...actions.children];
-  assert.ok(kids.indexOf(again) < kids.indexOf(share) && kids.indexOf(share) < kids.indexOf(host.querySelector('.result-card-secondary')) && kids.indexOf(host.querySelector('.result-card-secondary')) < kids.indexOf(home));
+  assert.deepEqual(kids, [again, host.querySelector('[data-testid="result-ranking"]'), share]);
+  assert.equal(home.nextElementSibling, host.querySelector('.result-ranking'));
+  assert.equal(home.nextElementSibling.nextElementSibling, host.querySelector('.result-card-secondary'));
   click(window, share);
   assert.equal(appClicks, 1);
   assert.equal(controller.calls.share, 1, 'one tap is one share() call, made by the App handler, never by the view');

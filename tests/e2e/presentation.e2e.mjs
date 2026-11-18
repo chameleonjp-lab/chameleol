@@ -278,16 +278,18 @@ test('effects80: changing result language restarts rank lookup and ignores the o
       const a = __kamereoru;
       await a.debugPresentation({ effectId: 78 });
       a.lastResult.ranked = true; a.lastResult.name = 'RankFixture'; a.lastResult.netState = 'official';
-      const summary = a.lastResult.summary;
-      const record = { status: 'official', official: { buildings: summary.buildings, rankAverage: summary.rankAverage } };
-      const get = a.store.getOne.bind(a.store);
-      a.store.getOne = (store, ...args) => store === 'records' ? Promise.resolve(record) : get(store, ...args);
+      const { summary, playId } = a.lastResult;
+      const official = { buildings: summary.buildings, rankAverage: summary.rankAverage };
+      await a.store.put('records', { playId, summary, official, status: 'official', secret: 'test-secret' });
       a.api.configured = true;
+      a.api.get = async () => ({ version: 1, rows: [], nameCount: 0, nextAfter: null });
       globalThis.__rankLanguage = { requests: [], resolves: [] };
-      a.api.post = (path) => {
-        if (path !== 'rank') return Promise.resolve({ ok: true });
-        __rankLanguage.requests.push(path);
-        return new Promise((resolve) => __rankLanguage.resolves.push(resolve));
+      a.api.post = (path, {items}) => {
+        if (path !== 'status') throw new Error('expected private status');
+        __rankLanguage.requests.push(items[0].playId);
+        return new Promise(resolve => __rankLanguage.resolves.push(rank => resolve({ items: [{
+          playId, status: 'official', official, metrics: {runRank: rank, totalPlays: 100, clearOrdinal: 1},
+        }] })));
       };
       __rankLanguage.old = a.pollResult();
     });
@@ -295,16 +297,16 @@ test('effects80: changing result language restarts rank lookup and ignores the o
     await page.evaluate(() => __kamereoru.changeLanguage('en'));
     await page.waitForFunction(() => __rankLanguage.requests.length === 2);
     await page.evaluate(async () => {
-      __rankLanguage.resolves[0]({ ok: true, rank: 99, buildings: 50, average: 10000 });
+      __rankLanguage.resolves[0](99);
       await __rankLanguage.old;
     });
-    assert.notEqual(await page.evaluate(() => __kamereoru.lastResult.rankedBest?.rank), 99);
+    assert.notEqual(await page.evaluate(() => __kamereoru.lastResult.metrics?.runRank), 99);
     await page.evaluate(async () => {
       const pending = __kamereoru.resultPoll.completion;
-      __rankLanguage.resolves[1]({ ok: true, rank: 3, buildings: 50, average: 10000 });
+      __rankLanguage.resolves[1](3);
       await pending;
     });
-    assert.equal(await page.evaluate(() => __kamereoru.lastResult.rankedBest.rank), 3);
+    assert.equal(await page.evaluate(() => __kamereoru.lastResult.metrics.runRank), 3);
     assert.match(await page.locator('.result-rank').textContent(), /3/);
     assert.deepEqual(env.errors, []);
   } finally { await env.close(); }

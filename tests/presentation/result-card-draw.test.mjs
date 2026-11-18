@@ -162,3 +162,20 @@ test('every one of the 27 titles in all 15 languages is a real string and fits i
   assert.equal(count, 405);
   assert.equal(rankForPassed(50).rankKey, 'legend');
 });
+
+test('the shared PNG and screen both draw this run’s rank, denominator and first clear ordinal', () => {
+  const clear = model({
+    passed:50, rankState:'official', runRank:3, totalPlays:128, clearOrdinal:7,
+    hero:{status:'rainbow',building:50,hsv:null,outlineBuilding:50},
+  });
+  for (const [width,height] of [[1200,630],[600,315]]) {
+    const canvas=fakeCanvas(width,height);
+    drawResultCard(canvas,{model:clear,locale:'ja'});
+    const text=canvas.ctx.texts.map(row=>row.text).join(' ');
+    assert.match(text,/3位／128人中/);assert.match(text,/初クリア時の順番：7人目/);
+    const anonymous={...clear,rankState:'unranked',runRank:null,totalPlays:null,clearOrdinal:null};
+    const next=fakeCanvas(width,height);
+    drawResultCard(next,{model:anonymous,locale:'ja'});
+    assert.doesNotMatch(next.ctx.texts.map(row=>row.text).join(' '),/位／|人目/);
+  }
+});

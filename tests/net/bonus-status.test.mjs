@@ -9,16 +9,16 @@ const VERSION = 'kamereoru-rules-v3';
 const kinds = ['precision5', 'precision10', 'steady', 'milestone', 'quick', 'allSuccess'];
 const totals = () => Object.fromEntries(kinds.map((kind) => [kind, { count: 0, points: 0 }]));
 
-function fixture({ zero = false } = {}) {
+function fixture({ zero = false, version = VERSION } = {}) {
   const bonus = { format: 'kamereoru-bonus-v1', points: zero ? 0 : 20, totals: totals(), awards: [] };
   if (!zero) {
     for (const [kind, tier, points] of [['precision', 10, 10], ['steady', null, 5], ['quick', null, 5]]) {
-      bonus.awards.push({ id: `${VERSION}:1:${kind}`, building: 1, kind, tier, points, earnedAtT: 5000 });
+      bonus.awards.push({ id: `${version}:1:${kind}`, building: 1, kind, tier, points, earnedAtT: 5000 });
       bonus.totals[kind === 'precision' ? 'precision10' : kind] = { count: 1, points };
     }
   }
   const verifiedScore = {
-    rulesVersion: VERSION,
+    rulesVersion: version,
     score: { pass: zero ? 0 : 20, accuracy: zero ? 0 : 80, combo: 0, clear: 0, bonus: bonus.points, total: zero ? 0 : 120 },
     bonus, perBuilding: zero ? [] : [[300000000000, 3000, 120]], maxCombo: zero ? 0 : 1,
   };
@@ -195,4 +195,13 @@ test('all 15 locales include bonus names, conditions, result explanations and sh
   for (const [language, messages] of Object.entries(MESSAGES)) {
     for (const key of keys) assert.equal(typeof messages[`bonus.${key}`], 'string', `${language}: bonus.${key}`);
   }
+});
+
+
+test('v4 corrections are applied only to their original verified play and version', async () => {
+  const { record, response, verifiedScore } = fixture({ version: 'kamereoru-rules-v4' });
+  const { saved } = await refresh(record, response);
+  assert.deepEqual(applyVerifiedScore(saved.summary, saved.verifiedScore).score, verifiedScore.score);
+  response.verifiedScore.score.total += 1;
+  assert.equal((await refresh(record, response)).saved.verifiedScore, undefined);
 });

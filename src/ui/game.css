@@ -1455,6 +1455,10 @@ body {
 
 /* ---------- 横向き・短い画面 ---------- */
 @media (orientation: landscape) and (max-height: 560px) {
+  /* Keep the sky below the two score lines predictable across system fonts. */
+  .hud-left {
+    line-height: 1.25;
+  }
   .screen.game {
     grid-template-rows: minmax(0, 1fr);
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1531,3 +1535,24 @@ body {
   gap: 8px;
 }
 .guide-practice-actions .btn { margin: 0; max-width: 100%; }
+
+.ranking-link {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+.ranking-result .rank-list {
+  --ranking-row-height: 2.75em;
+  max-block-size: calc(10 * var(--ranking-row-height));
+  overflow-y: auto;
+}
+.ranking-result .rank-row {
+  block-size: var(--ranking-row-height);
+  box-sizing: border-box;
+  padding-block: 0;
+}
+.ranking-result .rank-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

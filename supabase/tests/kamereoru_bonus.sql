@@ -15,6 +15,10 @@ begin
   if to_regprocedure('private.kamereoru_start(uuid,bytea,uuid,text,text,text,text,text)') is null then
     raise exception 'legacy function removed';
   end if;
+  first := private.kamereoru_start_compatible(gen_random_uuid(), secret, gen_random_uuid(), 'release', 'release', '0.1.0',
+    array['kamereoru-rules-v4','kamereoru-rules-v3','kamereoru-rules-v1']);
+  if first->>'rulesVersion' <> 'kamereoru-rules-v4' then raise exception 'v4 not selected'; end if;
+  if not (select requires_launch from private.kamereoru_starts where play_id=(first->>'playId')::uuid) then raise exception 'missing launch contract'; end if;
   first := private.kamereoru_start_compatible(req, secret, launch, 'bonus', 'bonus', '0.1.0', array['kamereoru-rules-v1','kamereoru-rules-v3']);
   if first->>'rulesVersion' <> 'kamereoru-rules-v3' then raise exception 'newest mutually supported version not chosen'; end if;
   update private.kamereoru_config set accepted_rules_versions=array['kamereoru-rules-v1'], accepting_ranked_starts=false;
@@ -34,7 +38,6 @@ begin
   exception when sqlstate 'KM409' then null; end;
   for candidate in select x from (values
     (array[]::text[]),
-    (array['kamereoru-rules-v4']),
     (array['kamereoru-rules-v2']),
     (array['future']),
     (array['kamereoru-rules-v1','kamereoru-rules-v1']),
