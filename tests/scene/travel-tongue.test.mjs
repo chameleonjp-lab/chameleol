@@ -95,17 +95,37 @@ test('five phases follow the design table at their boundaries and middles', () =
   close(p.mouthOpen, 0); close(p.gazeWeight, 0); close(p.headTilt, 0); close(p.storage, 0.001, 1e-9);
 });
 
+test('the head turns to the front over the prepare and back to its current pose over the store', (t) => {
+  const pose = (phase, u) => travel.travelTonguePose(frame(phase, u));
+  close(pose('prepare', 0).face, 0); close(pose('prepare', 1).face, 1);
+  for (const phase of ['extend', 'hold', 'retract']) for (const u of [0, 0.5, 1]) close(pose(phase, u).face, 1);
+  close(pose('store', 0).face, 1); close(pose('store', 1).face, 0);
+  for (let u = 0.1; u < 1; u += 0.1) assert.ok(pose('prepare', u).face >= pose('prepare', u - 0.1).face && pose('store', u).face <= pose('store', u - 0.1).face);
+  // The start and end angles follow whatever the walk/reactions wrote this frame.
+  const { hero, tongue } = fixture(t);
+  for (const glance of [-0.92, -0.4, 0.35]) {
+    for (const [phase, u, k] of [['prepare', 0, 1], ['prepare', 0.5, 0.5], ['hold', 0.5, 0], ['store', 0.5, 0.5], ['store', 1, 1]]) {
+      tongue.prepareBase();
+      hero.head.rotation.y = glance;
+      tongue.apply(frame(phase, u));
+      close(hero.head.rotation.y, glance * k, 1e-9, `${phase} ${u} from ${glance}`);
+    }
+    tongue.cancel();
+    close(hero.head.rotation.y, glance, 1e-12, 'cancel returns the exact current pose');
+  }
+});
+
 test('phases join without jumps and jewelVisible:false removes the diamond', () => {
   const edge = (a, b, keys) => {
     const x = travel.travelTonguePose(frame(a, 1));
     const y = travel.travelTonguePose(frame(b, 0));
     for (const key of keys) close(x[key], y[key], 1e-9, `${a}->${b} ${key}`);
   };
-  const keys = ['mouthOpen', 'gazeWeight', 'headTilt', 'extension', 'unroll', 'storage', 'diamond', 'lift'];
-  edge('prepare', 'extend', ['mouthOpen', 'gazeWeight', 'headTilt', 'extension', 'storage', 'lift']);
+  const keys = ['mouthOpen', 'gazeWeight', 'headTilt', 'extension', 'unroll', 'storage', 'diamond', 'lift', 'face'];
+  edge('prepare', 'extend', ['mouthOpen', 'gazeWeight', 'headTilt', 'extension', 'storage', 'lift', 'face']);
   edge('extend', 'hold', keys);
   edge('hold', 'retract', keys);
-  edge('retract', 'store', ['mouthOpen', 'headTilt', 'extension', 'unroll', 'lift', 'diamond']);
+  edge('retract', 'store', ['mouthOpen', 'headTilt', 'extension', 'unroll', 'lift', 'diamond', 'face']);
   assert.equal(travel.travelTonguePose(frame('hold', 0.5, { jewelVisible: false })).diamond, 0);
   assert.equal(travel.travelTonguePose(frame('hold', 0.5)).diamond, 1);
 });
@@ -183,7 +203,8 @@ test('cancelling, null frames and unknown phases restore every pose value writte
     tongue.prepareBase();
     hero.animate(0, { walking: false });
     tongue.apply(frame(phase, 0.5));
-    assert.equal(tongue.mesh.visible, true);
+    // 予備の中ほどは口を開けている途中で、舌はまだ口の中（描かない）。
+    assert.equal(tongue.mesh.visible, phase !== 'prepare', phase);
   }
   tongue.cancel();
   assert.equal(tongue.mesh.visible, false);
@@ -259,7 +280,9 @@ test('drawn parts: tube, outline, diamond and the open-mouth inside = 4 draw cal
   assert.equal(tongue.stats().drawCalls, 4);
   assert.equal(tongue.stats().mouthVisible, true);
   tongue.apply(frame('prepare', 0.5));
-  assert.equal(tongue.stats().drawCalls, 3);
+  assert.equal(tongue.stats().drawCalls, 1, 'opening mouth only: the stored tongue is not drawn');
+  tongue.apply(frame('prepare', 0.9));
+  assert.equal(tongue.stats().drawCalls, 3, 'the tongue tip peeks out of the open mouth');
   tongue.apply(frame('store', 1));
   assert.equal(tongue.stats().mouthVisible, false, 'the closed mouth draws no inside');
   tongue.apply(null);

@@ -9,8 +9,9 @@ import { polygonDistance } from '../scene/polygon-distance.mjs';
 
 const VIEWPORTS = [[402, 700], [402, 874], [874, 402]];
 const SHOTS = process.env.CL03_SCREENSHOTS || '';
-// 周期は 準備150→伸長250→保持350→収縮450→収納200（計1,400ms）。各段階の中央の時点。
-const PHASES = [['prepare', 75], ['extend', 275], ['hold', 575], ['retract', 975], ['store', 1300]];
+// 周期は 準備150→伸長250→保持350→収縮450→収納200（計1,400ms）。各段階の中央付近の時点。
+// 予備は口を開けてから舌の先が出る（予備の60%以降）ので、舌の見える120msで撮る。
+const PHASES = [['prepare', 120], ['extend', 275], ['hold', 575], ['retract', 975], ['store', 1300]];
 const START = 11000; // t=1000 から 500ms ごとに進めると、10,000ms 動いた所（機会の境界）
 
 async function save(name, dataUrl) {
@@ -201,7 +202,9 @@ for (const [width, height] of VIEWPORTS) {
           }
           m.diamondGap = geo.diamond ? polygonDistance(geo.diamond.hull, geo.body.hull) : null;
           m.tongueGap = polygonDistance(geo.tongue.hull, geo.body.hull);
-          assert.equal(m.shownHeadY, 0, `${phase}/${pose}: presentation faces the tongue while preserving the original glance in the ledger`);
+          // 伸長・保持・収縮は正面。予備・収納は今の向きと正面の間（なめらかに向きを変える途中）。
+          if (['extend', 'hold', 'retract'].includes(phase)) assert.equal(m.shownHeadY, 0, `${phase}/${pose}: presentation faces the tongue while preserving the original glance in the ledger`);
+          else assert.ok(Math.abs(m.shownHeadY) <= Math.abs(m.headY) + 1e-9 && (pose === 'natural' || m.shownHeadY > -0.92), `${phase}/${pose}: turning between the glance and the front (${m.shownHeadY})`);
           assert.ok(m.tongueGap >= 4, `${phase}/${pose}: the entire outlined tongue keeps 4px from the body (${m.tongueGap.toFixed(1)}px)`);
           if (geo.diamond) assert.ok(m.diamondGap >= 4, `${phase}/${pose}: the diamond keeps 4px from the body (${m.diamondGap.toFixed(1)}px)`);
           assert.equal(shown.wallMismatches, 0, `${phase}/${pose}: wall pixels unchanged`);

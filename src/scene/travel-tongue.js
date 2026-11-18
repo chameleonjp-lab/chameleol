@@ -19,6 +19,8 @@ export const MOUTH_OPEN_SHARE = 0.6;
 /** 収納（200ms）のうち、舌を口へしまい切るまでの割合と、口を閉じ始める割合。 */
 export const STORE_TONGUE_SHARE = 0.55;
 export const STORE_CLOSE_FROM = 0.5;
+/** これ以下の大きさは「口の中にしまい切った」とみなし、舌を描かない。 */
+export const TONGUE_INSIDE = 0.002;
 /** 開いた口の中（頭の座標）。舌の付け根を囲み、鼻先の少し前まで出る暗い楕円。縦は開き具合で伸ばす。 */
 const MOUTH_CAVITY = Object.freeze({ x: 0.6, y: -0.135, rx: 0.12, ry: 0.075, rz: 0.2 });
 /** 口の中の色（暗い赤）。色の空間変換は通さない。 */
@@ -67,7 +69,7 @@ function diamondGrow(unroll) {
 /**
  * controller の枠から姿勢を決める純粋な関数。枠が使えない（null・未知の段階）時は null を返す。
  * out を渡せば新しい物を作らずそこへ書く。
- * 戻り値 { mouthOpen, gazeWeight, headTilt, extension, unroll, storage, diamond, lift, glow, spin }。
+ * 戻り値 { mouthOpen, gazeWeight, headTilt, extension, unroll, storage, diamond, lift, glow, spin, face }。
  */
 export function travelTonguePose(frame, out = {}) {
   const duration = frame ? TRAVEL_PHASE_MS[frame.phase] : undefined;
@@ -84,7 +86,10 @@ export function travelTonguePose(frame, out = {}) {
   let lift = 0;
   let glow = 0;
   let spin = 0;
+  // 頭を正面へ向ける強さ。予備で0→1、伸長・保持・収縮は1、収納で1→0（その時点の通常の向きへ戻る）。
+  let face = 1;
   if (frame.phase === 'prepare') {
+    face = easeInOutCubic(u);
     // 先に口を開け（前半の60%）、開いてから舌の先を口の中から出す（後半の40%）。
     const e = easeOutCubic(u);
     const peek = smoothstep(MOUTH_OPEN_SHARE, 1, u);
@@ -121,6 +126,7 @@ export function travelTonguePose(frame, out = {}) {
     gazeWeight = 0.5 * (1 - e);
     headTilt = 0.02 * (1 - e);
     storage = 1 - 0.999 * easeInCubic(clamp01(u / STORE_TONGUE_SHARE));
+    face = 1 - easeInOutCubic(u);
   }
   // controller が宝石を出さない枠（jewelVisible:false）では、ダイヤも出さない。
   if (frame.jewelVisible === false) diamond = 0;
@@ -134,6 +140,7 @@ export function travelTonguePose(frame, out = {}) {
   out.lift = lift;
   out.glow = glow;
   out.spin = spin;
+  out.face = face;
   return out;
 }
 
@@ -274,9 +281,9 @@ export function createTravelTongue(hero) {
       // 口を開けている間は、閉じた口の線を隠す（口が二つに見えないように）。
       setCavity(pose.mouthOpen);
       if (cavity.visible) ledger.set(mouth, 'visible', false);
-      // Keep the mouth in front of the torso even at the one-officer maximal glance.
-      // The ledger restores the existing head pose on every cancel/next base frame.
-      ledger.set(head.rotation, 'y', 0);
+      // 振り返っていても、舌の間は口を胴の前へ出す。今の通常の向き（警戒・反応を反映した値）から
+      // 正面へ face の割合だけ寄せる。台帳が次の基本姿勢・取消のたびに元の向きへ戻す。
+      ledger.add(head.rotation, 'y', -clamp01(pose.face) * head.rotation.y);
       ledger.add(head.rotation, 'z', clamp(pose.headTilt, -0.04, 0.04));
       ledger.add(eyes[0].rotation, 'y', 0.18 * pose.gazeWeight);
       ledger.add(eyes[1].rotation, 'y', -0.18 * pose.gazeWeight);
@@ -284,6 +291,16 @@ export function createTravelTongue(hero) {
       ledger.set(jewel, 'visible', false);
       poseWrites += 1;
       const storage = clamp(pose.storage, 0.001, 1);
+      // 口の中にしまい切っている間（口を開けている途中・閉じる途中）は、舌を描かない。
+      if (storage <= TONGUE_INSIDE) {
+        if (mesh.visible || diamond.visible) {
+          rig.reset();
+          diamond.visible = false;
+          diamondShown = false;
+          last.extension = last.unroll = last.storage = last.lift = last.diamond = last.spin = last.glow = NaN;
+        }
+        return;
+      }
       const size = clamp(pose.diamond, 0, 1.2);
       // 止まっている間（同じ枠）は形・ダイヤを書き直さない。
       if (pose.extension === last.extension && pose.unroll === last.unroll && storage === last.storage && pose.lift === last.lift

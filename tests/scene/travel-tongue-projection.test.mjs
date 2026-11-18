@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createChameleon } from '../../src/scene/characters.js';
-import { createTravelTongue } from '../../src/scene/travel-tongue.js';
+import { createTravelTongue, travelTonguePose } from '../../src/scene/travel-tongue.js';
 import { VIEWPORTS, streetCamera } from '../presentation/street-fixture.mjs';
 import { polygonDistance, projectMesh } from './projection-fixture.mjs';
 
@@ -31,8 +31,16 @@ for (const [key, vp] of Object.entries(VIEWPORTS)) {
         const before = [hero.head.rotation.y, hero.head.rotation.z, hero.actorParts.jaw.position.y, hero.jewel.visible];
         const frame = { phase, phaseProgress: progress };
         tongue.apply(frame);
-        assert.equal(hero.head.rotation.y, 0, 'only the presentation head faces the tongue');
+        // 予備で今の向きから正面へ、収納で正面から今の向きへ、なめらかに回る。伸長・保持・収縮は正面。
+        const facing = turn * (1 - travelTonguePose(frame).face);
+        assert.ok(Math.abs(hero.head.rotation.y - facing) < 1e-9, `the presentation head turns toward the front (${hero.head.rotation.y} vs ${facing})`);
         root.updateMatrixWorld(true);
+        if (!tongue.mesh.visible) {
+          // 口の中にしまい切っている（描かない）。保護の対象になる舌は無い。
+          tongue.prepareBase();
+          assert.deepEqual([hero.head.rotation.y, hero.head.rotation.z, hero.actorParts.jaw.position.y, hero.jewel.visible], before, 'prepareBase restores the exact original pose');
+          continue;
+        }
         const body = projectMesh(torso, camera, vp);
         const projected = projectMesh(tongue.mesh, camera, vp, .085);
         const gap = polygonDistance(body, projected);
@@ -48,7 +56,7 @@ for (const [key, vp] of Object.entries(VIEWPORTS)) {
         }
         // A stopped/hidden controller repeats the same output. Resume starts by restoring the base.
         tongue.apply(frame);
-        assert.equal(hero.head.rotation.y, 0);
+        assert.ok(Math.abs(hero.head.rotation.y - facing) < 1e-9, 'the repeated frame does not accumulate');
         tongue.prepareBase();
         assert.deepEqual([hero.head.rotation.y, hero.head.rotation.z, hero.actorParts.jaw.position.y, hero.jewel.visible], before, 'prepareBase restores the exact original pose');
         tongue.apply(frame);

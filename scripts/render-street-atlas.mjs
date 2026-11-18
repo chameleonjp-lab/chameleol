@@ -121,9 +121,17 @@ const bird=(up)=>{
     `<path d="M56 79V94M68 79V94" fill="none" stroke="#e49263" stroke-width="4"/>`+`<ellipse cx="62" cy="98" rx="16" ry="5" fill="none" stroke="#f5e5cf" stroke-width="5"/><ellipse cx="62" cy="98" rx="16" ry="5" fill="none" stroke="#24394b" stroke-width="1.4"/>`+
     (up?'':`<path d="M92 30Q96 24 100 30Q100 36 96 36Q92 36 92 30Z" fill="#9fe6ff" stroke-width="2"/>`);
 };
-addClip('birdCarryA',fit(128,104,bird(true)));
-addClip('birdCarryB',fit(128,104,bird(false)));
-addClip('parcel',rect(20,38,88,74,'#c3a18c')+`<path d="M20 52H108" stroke="#a98771" stroke-width="3" fill="none"/>`+rect(56,38,16,74,'#f5e5cf')+rect(20,66,88,14,'#f5e5cf')+`<path d="M64 38Q50 18 64 14Q78 18 64 38" fill="none" stroke-width="5"/><g transform="rotate(10 94 54)">${rect(82,42,24,18,'#eecb69')}</g><circle cx="86" cy="46" r="2" fill="#24394b" stroke="none"/>`);
+// 2026-11-18（レビューC-1）：画面では鳥が約20pxに縮み、太さ3の線が見えなくなるため、
+// 同じ形を濃い色で太く描いた縁取りを下に敷く。色・形・区画の位置は変えない。
+// 線だけの部品（足・輪・持ち手）と汗のしずくは縁取りに含めない（持ち手の輪とひものつながりを保つ）。
+const silhouette=(body,width)=>`<g fill="${ink}" stroke="${ink}" stroke-width="${width}" stroke-linejoin="round" stroke-linecap="round">${
+  body.replace(/<(path|ellipse)[^>]* fill="none"[^>]*\/>/g,'').replace(/<path[^>]*#9fe6ff[^>]*\/>/g,'')
+    .replace(/ fill="(?!none)[^"]*"/g,'').replace(/ stroke="[^"]*"/g,'').replace(/ stroke-width="[^"]*"/g,'')}</g>`;
+const outlined=(body,width)=>silhouette(body,width)+body;
+addClip('birdCarryA',fit(128,104,outlined(bird(true),13)));
+addClip('birdCarryB',fit(128,104,outlined(bird(false),13)));
+const parcelBody=rect(20,38,88,74,'#c3a18c')+`<path d="M20 52H108" stroke="#a98771" stroke-width="3" fill="none"/>`+rect(56,38,16,74,'#f5e5cf')+rect(20,66,88,14,'#f5e5cf')+`<path d="M64 38Q50 18 64 14Q78 18 64 38" fill="none" stroke-width="5"/><g transform="rotate(10 94 54)">${rect(82,42,24,18,'#eecb69')}</g><circle cx="86" cy="46" r="2" fill="#24394b" stroke="none"/>`;
+addClip('parcel',outlined(parcelBody,16));
 addClip('rope',fit(16,128,`<path d="M8 0V128" fill="none" stroke="${ink}" stroke-width="10"/><path d="M8 0V128" fill="none" stroke="#8b6e5a" stroke-width="4.4"/>${Array.from({length:12},(_,j)=>`<path d="M5 ${j*11+2}L11 ${j*11+8}" stroke="#d1b093" stroke-width="1.6" fill="none"/>`).join('')}`));
 // 79: footprint (mitten shape, no outline; mirrored for the other foot).
 {const i=shapes.length,x=i%8*128,y=Math.floor(i/8)*128;cells.footprint={x,y,width:128,height:128,index:i};shapes.push(`<g transform="translate(${x} ${y})" stroke="none"><path d="M62 44C46 44 40 60 42 80C44 102 50 116 62 116C76 116 86 102 86 80C86 60 78 44 62 44Z" fill="#6e6a66"/><circle cx="52" cy="38" r="12" fill="#6e6a66"/><circle cx="74" cy="34" r="12" fill="#6e6a66"/><path d="M55 40Q63 52 71 38" fill="#6e6a66"/></g>`);}
