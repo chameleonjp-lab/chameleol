@@ -47,3 +47,22 @@ test('visibility events exclude hidden time even when no animation frame runs', 
   tick.dispose();
   tick.dispose();
 });
+
+test('shop escape stops at the supplied game position and the alarm follows the theft', async () => {
+  const { openingPose } = await import('../../src/scene/opening.js');
+  for (const destination of [0, 0.4]) {
+    const poses = Array.from({ length: 176 }, (_, i) => openingPose(i * 16, destination, false));
+    assert.equal(poses[0].block, -0.6);
+    assert.equal(poses[0].pickup, 0);
+    assert.equal(poses[0].alarm, 0);
+    assert.ok(poses.every((p, i) => i === 0 || p.block >= poses[i - 1].block));
+    assert.ok(poses.slice(-4).every(p => p.block === destination && p.stowed === 1 && p.alarm === 0));
+  }
+  const normal = [700, 1000, 1300].map(t => openingPose(t, 0.4, false).alarm);
+  assert.ok(Math.max(...normal) - Math.min(...normal) > 0.3);
+  for (const t of [700, 1000, 1300]) {
+    const pose = openingPose(t, 0.4, true);
+    assert.equal(pose.alarm, 0.8);
+    assert.equal(pose.jump, 0);
+  }
+});

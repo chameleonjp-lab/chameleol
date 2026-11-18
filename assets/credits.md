@@ -1,6 +1,6 @@
 # 素材の出典と使用条件
 
-2026年11月7日時点。カメレオるが配布物に含む素材と、そのもとになった資料を記録します。有償の素材は使っていません。
+2026年11月17日更新。カメレオるが配布物に含む素材と、そのもとになった資料を記録します。有償の素材は使っていません。
 
 ## 配布物に含むもの
 
@@ -34,6 +34,8 @@
 
 エディターの体色は `#58c43c`（色合い107.65°・鮮やかさ69.39%・明るさ76.86%）です。ゲームの初期色は、この色合いと鮮やかさを使い、明るさだけを100%にした `#72ff4e` にしました。1〜19棟は明るさを100%に固定する決まり（INPUT-02）があり、初期色もその範囲に入れる必要があるためです。ホーム画面の主人公は、エディターの `#58c43c` そのままで表示します（`src/scene/showcase.js`）。
 
+以下は初期実装時の履歴です。現在の公開版・対応規則は、リポジトリの `docs/release/pr26-candidate-comparison.md` で管理します。
+
 初期色を変えると1棟目の出題が変わるため、本来は判定規則の版（`rulesVersion`）を上げます。今回は公開前で、本番の記録がまだ1件もないため、版は `kamereoru-rules-v1` のまま照合例（`tests/replay/fixtures/`）と調整資料を作り直しました。公開後に変える時は版を上げます。
 
 ### 警察官（フェレット No.02）
@@ -44,10 +46,10 @@
 
 ### 結果画面の固定画像（追加演出80件）
 
-`src/presentation/assets/result-atlas.webp` は2048×2048pxの共用WebPです。5地区の背景は本作向けのCanvas図形、4姿勢（clear/detected/quit/proud）と目配せ反応（glance）の主人公は持ち主提供のNo.28設定と既存`src/scene/chameleon28.js`から制作時にChromium/Three.jsで描画しました。領域は`result-atlas.json`、再制作手順は`scripts/render-result-atlas.mjs`です。文字・成績は画像に含めず、表示時の撮影・画像生成・画像保存は行いません。Three.jsのライセンスは`vendor/three.LICENSE`を参照してください。
+`src/presentation/assets/result-atlas.webp` は1920×1520pxの共用WebPです（2026-11-17に実ファイルを確認）。5地区の背景は本作向けのCanvas図形、4姿勢（clear/detected/quit/proud）と目配せ反応（glance）の主人公は持ち主提供のNo.28設定と既存`src/scene/chameleon28.js`から制作時にChromium/Three.jsで描画しました。領域は`result-atlas.json`、再制作手順は`scripts/render-result-atlas.mjs`です。この固定画像には文字・成績を含めず、固定画像自体を表示時に作り直すことはありません。PR #26の結果カードは別の処理で、既存No.28モデルをその回の実色・輪郭で撮影し、成績・称号・ボーナス件数を1200×630pxのPNGへ事前生成します。共有・明示保存にはそのPNGを使います（`src/presentation/result-portrait.js`、`src/presentation/result-card-controller.js`）。Three.jsのライセンスは`vendor/three.LICENSE`を参照してください。
 
-### Street presentation atlas
+### 街の共用画像
 
-`src/presentation/assets/atlas.webp` is original vector artwork created for this game: five pavement patterns and landmarks, three shop interiors, two alley views, street props, eye/awning/window animation frames, and nine background cameo illustrations. The 1024×1024 WebP and its region definitions in `atlas.json` are produced deterministically from the SVG shapes in `scripts/render-street-atlas.mjs`, using librsvg/Cairo and Pillow at authoring time. No third-party artwork or runtime image generation is used.
+`src/presentation/assets/atlas.webp` は、このゲームのためにコードで作った図形をまとめた1024×1536pxのWebPです（2026-11-17に実ファイルを確認）。5地区の歩道と目印、店内と路地、街の小物、目・ひさし・窓の動き、従来の小芝居に加え、踏切・水と渦・ロボット・鳥と荷物とひも・中間旗の部品を含みます。領域は `atlas.json`、再制作は `scripts/render-street-atlas.mjs` のSVGから、制作時にlibrsvg/CairoとPillowで行います。外部の絵は使わず、実行時にこの画像を再生成しません。
 
-- `src/presentation/assets/detected.webp`: 480×720の発見表情。既存No.28モデルから `scripts/render-result-atlas.mjs` が制作時に描画。終了中に16MiBの結果アトラスを読み込まず、街と合わせて約5.32MiBの追加画像に収めるための共有素材。
+- `src/presentation/assets/detected.webp`: 480×720の発見表情。既存No.28モデルから `scripts/render-result-atlas.mjs` が制作時に描画。終了中に結果アトラスを読み込まずに使う共有素材。現在の街画像と合わせた展開後の大きさはRGBA換算で約7.32MiB（街6,291,456B＋発見表情1,382,400B）。

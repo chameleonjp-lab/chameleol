@@ -36,6 +36,10 @@ import { buildResultData } from './presentation/result-data.js';
 import { mountResultPresentation } from './presentation/result-view.js';
 import { captureEvidenceBase, releaseResultEvidence, resolveResultEvidence, startResultEvidence } from './presentation/result-evidence.js';
 import { createResultCardController, releaseResultCardResources } from './presentation/result-card-controller.js';
+import { createResultRendererOwner } from './presentation/result-renderer-owner.js';
+import { createResultCardPorts } from './presentation/result-card-ports.js';
+import { EXCLUDED_EFFECT_IDS, CAMEOS } from './presentation/catalog.js';
+import { createPrecisionBadge } from './presentation/precision-badge.js';
 import { createGameExtrasController } from './presentation/game-extras-controller.js';
 import { createEvaluationSegmentCollector } from './presentation/evaluation-segments.js';
 import { mountResultPanels } from './presentation/result-evidence-view.js';
@@ -646,34 +650,78 @@ export class App {
 
   async debugPresentation({effectId}={}) {
     if(!this.runtime.isVerification)throw new Error('verification_only');
-    const resultIds=[71,73,74,77,78,79,80,81,82,83,85,89,91,92,93,95,96,98,99,100];
+    const resultIds=[71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,89,90,91,92,93,94,95,96,98,99,100];
     const hudIds=[11,42,43,46,48,49,50,52,54,55,58];
-    const excluded=[20,34,39,44,45,51,56,67,68,69,72,75,76,84,86,87,88,90,94,97];
-    if(!Number.isInteger(effectId)||effectId<1||effectId>100||excluded.includes(effectId))throw new Error('excluded_effect');
+    if(!Number.isInteger(effectId)||effectId<1||effectId>100||EXCLUDED_EFFECT_IDS.includes(effectId))throw new Error('excluded_effect');
     if(resultIds.includes(effectId)){
-      const session=new GameSession({playId:uuid(),seed:1,debug:true,name:'',ranked:false});
-      for(let b=1;b<=50;b++){const target=session.game.course.targets[b-1];session.apply({type:'color',t:(b-1)*5000+1400,...target});}
-      session.apply({type:'tick',t:250000});
+      const session=new GameSession({playId:uuid(),seed:effectId===86?17:1,debug:true,name:'',ranked:false});
+      const recovery=effectId===86;
+      for(let b=1;b<=(recovery?16:50);b++){
+        const target=session.game.course.targets[b-1];
+        if(recovery&&b===13)session.apply({type:'color',t:61500,h:(target.h+18000)%36000,s:target.s,v:10000});
+        session.apply({type:'color',t:recovery&&b===13?63100:(b-1)*5000+1400,...target});
+      }
+      session.apply({type:'tick',t:recovery?80000:250000});
+      if(recovery)session.quit();
       releaseResultCardResources(this.lastResult);
-    releaseResultEvidence(this.lastResult);
-      this.lastResult={playId:session.meta.playId,name:'',summary:session.summary(),newBest:true,firstClearNow:true,firstClearAt:Date.now(),previous:{playId:'previous',buildings:40,rankAverage:9500,maxCombo:10,endedAt:1},targets:session.game.course.targets.map(c=>({...c})),arrivedBuilding:50,ranked:false};
+      releaseResultEvidence(this.lastResult);
+      this.lastResult={playId:session.meta.playId,name:'',summary:session.summary(),newBest:true,firstClearNow:!recovery,firstClearAt:recovery?null:Date.now(),previous:{playId:'previous',buildings:40,rankAverage:9500,maxCombo:10,endedAt:1},targets:session.game.course.targets.map(c=>({...c})),arrivedBuilding:Math.min(50,Math.floor(session.state.t/session.rules.buildingMs)+1),ranked:false};
+      this.lastResult.evidenceInput=Object.freeze({...captureEvidenceBase(session,this.lastResult.targets),originalSummary:this.lastResult.summary});
       this.session=null;this.showResult();
+      const panel={72:'frames',75:'model',76:'colors',84:'alert',86:'recovery',87:'streak',90:'turn'}[effectId];
+      if(panel)this.resultPanels.open(panel);
       if(effectId===96)this.resultPresentation.updateRank({state:'official',rank:1,label:'current'});
       if(effectId===99)this.resultPresentation.replayAccepted();
       if(effectId===100)this.root.querySelector('.result-portrait').click();
-      return this.resultPresentation.stats();
+      return {...this.resultPresentation.stats(),effectId,panel:panel??null};
     }
     const actorIds=[21,22,23,24,25,26,27,28,29,30,31,32,33,35,37,38,40];
-    const fixtureTimes={4:95000,5:95000,6:55000,7:95000,58:225000,59:246000,63:195000,65:30000};
+    const fixtureTimes={4:95000,5:95000,6:55000,7:95000,20:21500,34:41500,39:41500,44:2000,56:125500,58:225000,59:246000,63:195000,65:30000,67:26500,68:31500,69:21000};
     const fixtureTime=fixtureTimes[effectId];
-    if(!this.session||this.session.ended||!this.stage?.forcePresentationEffect||(fixtureTime!==undefined&&this.session.state.t!==fixtureTime))await this.debugStart({atMs:fixtureTime??(effectId>=57&&effectId!==65?200000:30000),seed:1});
+    if(!this.session||!this.session.meta.debug||this.session.running||this.session.meta.effects===false||this.session.ended||!this.stage?.forcePresentationEffect||(fixtureTime!==undefined&&this.session.state.t!==fixtureTime))await this.debugStart({atMs:fixtureTime??(effectId>=57&&effectId!==65?200000:30000),seed:1});
     if(effectId===65&&this.session.state.t>=195000)await this.debugStart({atMs:30000,seed:1});
     clear(this.layer);if(this.coverEl)this.coverEl.hidden=true;
+    this.verificationPreviewScope=this.presentationScope;
     this.stage.resetEnding?.();
     const view=readPlayView(this.session,1,{lastEvalSuccess:true});
+    if(effectId===44){
+      // Exercise the real 98%/500ms observer on this debug run, with an isolated display claim.
+      // A forced preview never writes the current play's extras, random stream or history.
+      const collector=createEvaluationSegmentCollector({session:this.session,restore:true});
+      const badge=createPrecisionBadge({claim:async()=>true});
+      for(const segment of collector.drain())await badge.consume(segment);
+      collector.dispose();
+      // Paint the frozen street without stepping the live extras controller.
+      // Sample the real badge after its fade-in, without advancing the paused session.
+      const previewTime=view.t+700;
+      this.stage.update({t:previewTime,color:view.color,matchState:view.matchState,walking:false,running:false});
+      this.bonusPresentation.tick({activeMs:previewTime,phase:view.phase,running:true,precisionBadge:badge.snapshot(previewTime)});
+      badge.dispose();
+      return {...this.bonusPresentation.stats(),effectId};
+    }
+    const legacyCameo=CAMEOS.find(row=>row.id===effectId);
+    if(legacyCameo||[20,34,39,56,67,68,69].includes(effectId)){
+      const police=[34,39].includes(effectId);
+      const previewView={...view,running:true,phase:'grace',policeStage:police?1:0,matchState:null,lastEvalSuccess:false};
+      // Warm the actual actor arrival with ordinary display intervals, without stepping the session.
+      for(let i=0;i<=Math.ceil(3000/16);i++){
+        const t=view.t-3000+Math.min(i*16,3000);
+        // Placement caches must see the building/phase that actually belongs to this warmup t.
+        // E069 plans at building5's real first grace, then draws elapsed1000 at the matching t=21000.
+        const building=Math.min(this.session.rules.buildingCount,Math.floor(t/this.session.rules.buildingMs)+1);
+        const phase=isEvalTime(t,this.session.rules)?'eval':'grace';
+        this.stage.update({t,color:view.color,policeStage:previewView.policeStage,walking:false,presentation:{...previewView,t,building,passed:building-1,phase,guideActive:true,guidanceActive:true,evaluationSegments:[]}});
+      }
+      const durationMs=legacyCameo?.ms??(effectId===56?1500:2000),elapsedMs=police?600:effectId===56?700:1000;
+      const extra={id:effectId,kind:effectId===34?'inquiry':'footprints',building:effectId===56?25:view.building,startedAt:view.t-elapsedMs,elapsedMs,durationMs,phase:effectId===56?'delivery':'story'};
+      this.stage.forcePresentationEffect(effectId,{cameo:police?null:extra,policeExtra:police?extra:null});
+      return {...this.stage.presentationStats(),effectId};
+    }
     if(actorIds.includes(effectId)){
       const police=[23,24,31,38].includes(effectId)?2:[25,32,33,35,37,40].includes(effectId)?1:0;
-      for(let i=0;i<=30;i++){const t=view.t-3000+i*100;this.stage.update({t,color:view.color,policeStage:police,walking:true,matchState:null,presentation:{...view,t,running:true,policeStage:police}});}
+      // Use normal display intervals: 30 consecutive 100ms frames permanently disable cameos.
+      // Clamp the last sample to the original end time, without advancing the game session.
+      for(let i=0;i<=Math.ceil(3000/16);i++){const t=view.t-3000+Math.min(i*16,3000);this.stage.update({t,color:view.color,policeStage:police,walking:true,matchState:null,presentation:{...view,t,running:true,policeStage:police}});}
     }else this.stage.update({t:view.t,color:view.color,policeStage:1,walking:false,presentation:view});
     if(hudIds.includes(effectId)){this.presentationHud.forceEffect(effectId,{...view,running:true});if([11,58].includes(effectId))this.stage.forcePresentationEffect(effectId);return this.presentationHud.stats();}
     if(effectId===60){
@@ -870,6 +918,7 @@ export class App {
   }
 
   async showGame(session, { fresh }) {
+    this.verificationPreviewScope=null;
     this.session = session;
     releaseResultCardResources(this.lastResult);
     releaseResultEvidence(this.lastResult);
@@ -994,7 +1043,7 @@ export class App {
     this.guidance = guidance;
     this.renderGuidance = renderGuide;
     scope.own(()=>{guidance.dispose();if(this.guidance===guidance){this.guidance=null;this.renderGuidance=null;}});
-    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,verification:this.runtime.isVerification,extrasPort,gameExtrasController});
+    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,presentationSet:'extended96',verification:this.runtime.isVerification,extrasPort,gameExtrasController});
     if (!current()) { stageView.dispose(); return; }
     this.stage = stageView;
     stageView.setBestDistance?.(local?.buildings??null);
@@ -1131,6 +1180,11 @@ export class App {
     let wasSearching = false;
     const loop = () => {
       if (this.session !== session || !current()) return;
+      // A verification preview is a frozen drawing while the debug run is paused.
+      // Resuming uses the ordinary loop again; no preview value enters the controller.
+      if(this.runtime.isVerification&&this.verificationPreviewScope===scope&&!session.running){
+        this.raf=requestAnimationFrame(loop);return;
+      }
       const now = performance.now();
       guidance.tick(now);
       if (session.running) {
@@ -1166,7 +1220,7 @@ export class App {
       if (instant.update(s)) {
         cue('success');
         this.stage?.fx('success');
-        const event={ type:'instantSuccess',t:s.t,building:s.evalBuilding };stageView.presentationEvent(event);presentationHud.event(event);
+        const event={ type:'instantSuccess',t:s.t,building:s.evalBuilding };stageView.presentationEvent(event);presentationHud.event(event);gameExtrasController.event(event);
       }
       refreshHud();
       const matchState = s.matchUnits == null ? null : classifyMatch(s.matchUnits);
@@ -1183,7 +1237,8 @@ export class App {
       renderGuide();
       const activeNotice=[...banner.querySelectorAll('.toast-warn')].some(node=>!node.hidden);
       const quiet=Boolean(guideView.step)||stage>0||activeNotice;
-      bonusPresentation.tick({activeMs:s.t,phase:playView.phase,guideActive:Boolean(guideView.step),warningActive:stage>0||activeNotice,running:session.running});
+      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step),guideActive:Boolean(guideView.step),moving:session.running&&!guideView.stationary,warningActive:activeNotice,hidden:!!document.hidden,evaluationSegments:evaluationCollector.drain()}});
+      bonusPresentation.tick({activeMs:s.t,phase:playView.phase,guideActive:Boolean(guideView.step),warningActive:stage>0||activeNotice,running:session.running,precisionBadge:quiet||session.meta.effects===false?null:gameExtrasController.snapshot().precisionBadge});
       const batch=pendingBonus;
       if(batch)bonusPresentation.show(batch,s.t,{quiet});
       const bonusVisible=bonusPresentation.stats().visible;
@@ -1202,7 +1257,6 @@ export class App {
       const selected=choosePassCue({batch:suppressed?null:batch,cues:candidates});
       cueCandidates=[];pendingBonus=null;
       if(selected&&!document.hidden)this.audio.play(selected.name,selected.opts);
-      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step),guideActive:Boolean(guideView.step),moving:session.running&&!guideView.stationary,warningActive:activeNotice,hidden:!!document.hidden,evaluationSegments:evaluationCollector.drain()}});
       this.raf = requestAnimationFrame(loop);
     };
 
@@ -1222,7 +1276,7 @@ export class App {
 
     if (fresh) {
       if (!this.flags.openingSeen) {
-        await this.playOpening();
+        await this.playOpening(guidance.view());
         if (!current()) return;
         await this.setFlag('openingSeen', true);
       }
@@ -1238,7 +1292,7 @@ export class App {
     }
   }
 
-  async playOpening() {
+  async playOpening({ sceneT, color } = {}) {
     const ctrl = new AbortController();
     this.presentationScope?.own(() => ctrl.abort());
     const skip = button('common.skip', () => {
@@ -1246,7 +1300,7 @@ export class App {
       ctrl.abort();
     }, { className: 'btn-skip', testid: 'skip-opening' });
     this.layer.append(skip);
-    await this.stage.playOpening({ signal: ctrl.signal, onCue: (name) => this.audio.play(name) });
+    await this.stage.playOpening({ sceneT, color, signal: ctrl.signal, onCue: (name) => this.audio.play(name) });
     skip.remove();
   }
 
@@ -1666,9 +1720,13 @@ export class App {
     const resultHost=h('div',{class:'result-supplement'});el.querySelector('.result-actions').after(resultHost);
     // 任意のふり返りパネル。解析は lastResult の持ち物で、言語の描き直しでは始め直さない。
     const evidence=startResultEvidence(r);
-    // Claude supplies drawing ports; the default path exposes real data without inventing a visual.
+    // Normal start supplies real drawing ports; injected lightweight Apps may omit the canvas ports.
     const cardPorts=(typeof this.resultCardPorts==='function'?this.resultCardPorts({result:r,host:el,scope}):this.resultCardPorts)??{};
-    const resultLayoutKey=()=>cardPorts.getLayoutKey?.()??`${globalThis.innerWidth??this.root.clientWidth??0}:${globalThis.innerHeight??this.root.clientHeight??0}`;
+    // Optional E090 can open during the portrait's initial presentation delay.
+    // Its lease and the later card capture must share the same owner from first render.
+    r.resultRendererOwner??=createResultRendererOwner({createRenderer:cardPorts.createRenderer,destroyRenderer:cardPorts.destroyRenderer});
+    // A fixed PNG drawing layout must not mask viewport changes and keep an old File shareable.
+    const resultLayoutKey=()=>JSON.stringify([cardPorts.getLayoutKey?.()??null,globalThis.innerWidth??this.root.clientWidth??0,globalThis.innerHeight??this.root.clientHeight??0]);
     cardController=createResultCardController({result:r,locale:getLanguage(),layoutKey:resultLayoutKey(),ports:{...cardPorts,
       getPublicUrl:()=>this.runtime.publicUrl,
       onChange:snapshot=>{if(resultCurrent()){this.resultCardSnapshot=snapshot;cardPorts.onChange?.(snapshot);}},
@@ -2157,7 +2215,7 @@ export class App {
 }
 
 export async function start(root = document.getElementById('app')) {
-  const app = new App(root);
+  const app = new App(root, { resultCardPorts: createResultCardPorts });
   globalThis.__kamereoru = app; // 検証用（自動ブラウザ試験から状態を読む）
   await app.boot();
   return app;

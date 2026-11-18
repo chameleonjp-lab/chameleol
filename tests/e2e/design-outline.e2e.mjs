@@ -9,7 +9,8 @@ const VIEWPORTS = [[402, 700], [402, 874], [874, 402]];
 const SHOTS = process.env.T1_SCREENSHOTS || '';
 const STAGE_OF = (b) => (b <= 10 ? 0 : b <= 15 ? 1 : b <= 20 ? 2 : b <= 25 ? 3 : b <= 30 ? 4 : b <= 35 ? 5 : b <= 39 ? 6 : 7);
 const THICK = [0.0255, 0.034, 0.0425, 0.051, 0.0595, 0.068, 0.0765, 0.085];
-const GRAY = [158, 139, 120, 101, 82, 63, 44, 27];
+// 2026-11-18 本人指示：線の色は全段階で現行の濃い灰色（27）。段階は太さだけで変わる。
+const GRAY = [27, 27, 27, 27, 27, 27, 27, 27];
 const hex = ([r, g, b]) => `#${[r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('')}`;
 
 async function save(name, dataUrl) {
@@ -229,7 +230,7 @@ test('保存からの再開：最初に描いた画面から当該棟の線（31
   } finally { await env.close(); }
 });
 
-test('外周線の画素：段階0は明るい灰色、段階7は現行の濃い灰色で、主人公のまわりに実際に出る（倍率2）', async () => {
+test('外周線の画素：全段階が現行の濃い灰色で、段階が進むほど線が太く（線の画素が多く）なる（倍率2）', async () => {
   const env = await launch({ scale: 2 });
   const { page } = env;
   try {
@@ -237,18 +238,13 @@ test('外周線の画素：段階0は明るい灰色、段階7は現行の濃い
     await page.evaluate(() => __kamereoru.debugStart({ atMs: 5000 * 3 + 2500, seed: 1 }));
     const t = 5000 * 3 + 2500;
     const thin = await heroZone(page, { building: 1, t, gray: GRAY[0] });
-    const b11 = await heroZone(page, { building: 11, t, gray: GRAY[1] });
     const mid = await heroZone(page, { building: 26, t, gray: GRAY[4] });
     const thick = await heroZone(page, { building: 40, t, gray: GRAY[7] });
     const again = await heroZone(page, { building: 1, t, gray: GRAY[0] });
-    for (const r of [thin, b11, mid, thick]) assert.ok(r.found, '主人公の体色の画素が見つかる');
-    assert.ok(thin.line > 300, `段階0の灰色の線が主人公のまわりに出る (${thin.line})`);
-    assert.ok(mid.line > 300, `段階4の線 (${mid.line})`);
-    assert.ok(thick.line > 300, `40棟では 27±4 の現行の線が主人公のまわりに出る (${thick.line})`);
-    // 内部の黒線の証拠：同じ位置で、線の色が45より明るい11棟と26棟を比べる（街の絵の違いが混ざる1棟との比べは使わない）
-    assert.ok(Math.abs(b11.dark - mid.dark) <= b11.dark * 0.005, `11棟と26棟の暗い画素の差は0.5%以下 (${b11.dark} / ${mid.dark})`);
-    assert.ok(thick.dark > mid.dark, `線が45以下になる40棟は26棟より暗い画素が多い (${thick.dark} / ${mid.dark})`);
-    assert.ok(thick.dark > thin.dark, '段階7は外周が濃い黒に近いので、暗い画素が段階0より多い');
+    for (const r of [thin, mid, thick]) assert.ok(r.found, '主人公の体色の画素が見つかる');
+    assert.ok(thin.line > 100, `段階0でも濃い線が主人公のまわりに出る (${thin.line})`);
+    assert.ok(mid.line > thin.line, `段階4は段階0より線が太い (${mid.line} / ${thin.line})`);
+    assert.ok(thick.line > mid.line, `段階7は段階4より線が太い (${thick.line} / ${mid.line})`);
     assert.ok(thin.dark > 30, `内側の黒線（目の渦・瞳・口）は段階0でも残る (${thin.dark})`);
     assert.equal(again.url, thin.url, '同じ段階へ戻せば同じ画素（前の値を引きずらない）');
     assert.deepEqual(env.errors, []);
@@ -330,13 +326,14 @@ for (const [width, height] of VIEWPORTS) {
         results.push({ b, stage: r.outline.stage });
       }
       assert.equal(results.length, 10);
-      // 内側の黒線（目の渦・瞳・口）は、1棟でも40棟でも同じように残る。外周の灰色だけが段階で変わる
+      // 内側の黒線（目の渦・瞳・口）は、1棟でも40棟でも同じように残る。外周の線の太さだけが段階で変わる
       const t4 = 5000 * 3 + 2500;
       const lo = await heroZone(page, { building: 1, t: t4, gray: GRAY[0] });
       const hi = await heroZone(page, { building: 40, t: t4, gray: GRAY[7] });
       assert.ok(lo.found && hi.found);
       assert.ok(lo.dark > 30, `1棟でも内側の黒線が残る (${lo.dark})`);
-      assert.ok(lo.line > 100, `1棟の灰色の線が出る (${lo.line})`);
+      assert.ok(lo.line > 100, `1棟でも濃い線が出る (${lo.line})`);
+      assert.ok(hi.line > lo.line, `40棟は1棟より線が太い (${hi.line} / ${lo.line})`);
       assert.ok(hi.dark >= lo.dark, '40棟は外周の分だけ暗い画素が多い');
       assert.deepEqual(env.errors, []);
     } finally { await env.close(); }

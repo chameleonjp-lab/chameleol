@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { MESSAGES } from '../../src/i18n/messages/index.js';
 import { LANGUAGE_IDS, SUPPORTED_LANGUAGES, resolveLanguage, languageFromLocale } from '../../src/i18n/languages.js';
 import { t } from '../../src/i18n/i18n.js';
+import { FALLBACK_TEXT, USED_FALLBACKS, rtext, usedFallbackReport } from '../../src/presentation/result-card-text.js';
 import { buildResultShareText, buildIntentUrl } from '../../src/ui/share.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -62,15 +63,18 @@ test('ソースで使う翻訳キーは、すべて辞書にある', () => {
   const used = new Set();
   for (const f of sourceFiles(join(ROOT, 'src'))) {
     const text = readFileSync(f, 'utf8');
-    for (const m of text.matchAll(/\b(?:t|button|toast)\(\s*'([a-zA-Z0-9_.]+\.[a-zA-Z0-9_.]+)'/g)) used.add(m[1]);
-    for (const m of text.matchAll(/(?:titleKey|bodyKey|key): '([a-zA-Z0-9_.]+\.[a-zA-Z0-9_.]+)'/g)) used.add(m[1]);
+    for (const m of text.matchAll(/\b(?:t|tr|tx|rtext|button|toast)\(\s*['"]([a-zA-Z0-9_.]+\.[a-zA-Z0-9_.]+)['"]/g)) used.add(m[1]);
+    for (const m of text.matchAll(/(?:titleKey|bodyKey|labelKey|key): ['"]([a-zA-Z0-9_.]+\.[a-zA-Z0-9_.]+)['"]/g)) used.add(m[1]);
     for (const m of text.matchAll(/'((?:guide|howto|game|practice|result|records|settings|share|notice|start|storage|pause|ranking|name|controls|common|home)\.[a-zA-Z0-9_.]+)'/g)) used.add(m[1]);
   }
   for (const k of ['easy', 'standard', 'hard']) used.add(`practice.difficulty.${k}`);
   for (const k of ['basic', 'brightness']) used.add(`practice.kind.${k}`);
   for (const k of ['music', 'sfx', 'ambient']) used.add(`settings.${k}`);
-  const missing = [...used].filter((k) => !(k in MESSAGES.ja));
-  assert.deepEqual(missing, []);
+  for (const lang of LANGUAGE_IDS) {
+    const missing = [...used].filter((k) => !Object.hasOwn(MESSAGES[lang], k));
+    assert.deepEqual(missing, [], `${lang}: used keys must exist without falling back`);
+  }
+  for (const key of Object.keys(FALLBACK_TEXT)) assert.ok(used.has(key), `source coverage: ${key}`);
   assert.ok(used.size > 150, `used ${used.size}`);
 });
 
@@ -103,4 +107,38 @@ test('SHARE-TEST-01: 共有文は選んだ言語で作り、未確定の順位�
   const q = new URL(url).searchParams;
   assert.equal(q.get('text'), 'a&b #x\n改行');
   assert.equal(q.get('url'), 'https://example.invalid/game/');
+});
+
+test('new result text uses all 15 dictionaries, with exact placeholders and no routine fallback', () => {
+  USED_FALLBACKS.clear();
+  assert.equal(Object.keys(FALLBACK_TEXT).length, 15);
+  for (const lang of LANGUAGE_IDS) {
+    const dict = MESSAGES[lang];
+    assert.equal(Object.keys(dict).filter(key => key.startsWith('card.rank.')).length, 27, lang);
+    for (const key of Object.keys(FALLBACK_TEXT)) {
+      assert.ok(Object.hasOwn(dict, key), `${lang}.${key}`);
+      if (lang !== 'en') assert.notEqual(dict[key], MESSAGES.en[key], `${lang}.${key}: untranslated English`);
+      assert.deepEqual(placeholders(dict[key]), key === 'evidence.model.alt' ? ['arrived', 'passed'] : [], `${lang}.${key}`);
+      const rendered = rtext(key, { passed: 17, arrived: 18 }, lang);
+      assert.equal(rendered, dict[key].replace('{passed}', '17').replace('{arrived}', '18'), `${lang}.${key}`);
+      assert.doesNotMatch(rendered, /\{\w+\}/, `${lang}.${key}`);
+    }
+  }
+  assert.deepEqual(usedFallbackReport(), []);
+});
+
+test('genuinely missing result text retains its emergency fallback and unknown-key behavior', () => {
+  const keys = ['evidence.model.alt', 'card.shareFailed'];
+  const saved = LANGUAGE_IDS.map(lang => [lang, keys.map(key => MESSAGES[lang][key])]);
+  USED_FALLBACKS.clear();
+  try {
+    for (const lang of LANGUAGE_IDS) for (const key of keys) delete MESSAGES[lang][key];
+    assert.equal(rtext('evidence.model.alt', { passed: 7, arrived: 8 }, 'th'), 'City model. 7 of 50 buildings passed, reached building 8.');
+    assert.equal(rtext('card.shareFailed', undefined, 'th'), null);
+    assert.equal(rtext('unknown.result.label', undefined, 'th'), 'unknown.result.label');
+    assert.deepEqual(usedFallbackReport().map(row => row.key), ['card.shareFailed', 'evidence.model.alt']);
+  } finally {
+    for (const [lang, values] of saved) keys.forEach((key, i) => { MESSAGES[lang][key] = values[i]; });
+    USED_FALLBACKS.clear();
+  }
 });

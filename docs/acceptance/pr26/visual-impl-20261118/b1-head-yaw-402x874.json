@@ -1,0 +1,210 @@
+{
+ "before": [
+  {
+   "ms": -20,
+   "phase": null,
+   "progress": null,
+   "yaw": -0.92
+  },
+  {
+   "ms": 0,
+   "phase": "prepare",
+   "progress": 0,
+   "yaw": 0
+  },
+  {
+   "ms": 20,
+   "phase": "prepare",
+   "progress": 0.13,
+   "yaw": 0
+  },
+  {
+   "ms": 40,
+   "phase": "prepare",
+   "progress": 0.27,
+   "yaw": 0
+  },
+  {
+   "ms": 60,
+   "phase": "prepare",
+   "progress": 0.4,
+   "yaw": 0
+  },
+  {
+   "ms": 80,
+   "phase": "prepare",
+   "progress": 0.53,
+   "yaw": 0
+  },
+  {
+   "ms": 100,
+   "phase": "prepare",
+   "progress": 0.67,
+   "yaw": 0
+  },
+  {
+   "ms": 120,
+   "phase": "prepare",
+   "progress": 0.8,
+   "yaw": 0
+  },
+  {
+   "ms": 150,
+   "phase": "extend",
+   "progress": 0,
+   "yaw": 0
+  },
+  {
+   "ms": 1180,
+   "phase": "retract",
+   "progress": 0.96,
+   "yaw": 0
+  },
+  {
+   "ms": 1200,
+   "phase": "store",
+   "progress": 0,
+   "yaw": 0
+  },
+  {
+   "ms": 1240,
+   "phase": "store",
+   "progress": 0.2,
+   "yaw": 0
+  },
+  {
+   "ms": 1280,
+   "phase": "store",
+   "progress": 0.4,
+   "yaw": 0
+  },
+  {
+   "ms": 1320,
+   "phase": "store",
+   "progress": 0.6,
+   "yaw": 0
+  },
+  {
+   "ms": 1360,
+   "phase": "store",
+   "progress": 0.8,
+   "yaw": 0
+  },
+  {
+   "ms": 1400,
+   "phase": null,
+   "progress": null,
+   "yaw": -0.92
+  },
+  {
+   "ms": 1420,
+   "phase": null,
+   "progress": null,
+   "yaw": -0.92
+  }
+ ],
+ "after": [
+  {
+   "ms": -20,
+   "phase": null,
+   "progress": null,
+   "yaw": -0.92
+  },
+  {
+   "ms": 0,
+   "phase": "prepare",
+   "progress": 0,
+   "yaw": -0.92
+  },
+  {
+   "ms": 20,
+   "phase": "prepare",
+   "progress": 0.13,
+   "yaw": -0.911
+  },
+  {
+   "ms": 40,
+   "phase": "prepare",
+   "progress": 0.27,
+   "yaw": -0.85
+  },
+  {
+   "ms": 60,
+   "phase": "prepare",
+   "progress": 0.4,
+   "yaw": -0.684
+  },
+  {
+   "ms": 80,
+   "phase": "prepare",
+   "progress": 0.53,
+   "yaw": -0.374
+  },
+  {
+   "ms": 100,
+   "phase": "prepare",
+   "progress": 0.67,
+   "yaw": -0.136
+  },
+  {
+   "ms": 120,
+   "phase": "prepare",
+   "progress": 0.8,
+   "yaw": -0.029
+  },
+  {
+   "ms": 150,
+   "phase": "extend",
+   "progress": 0,
+   "yaw": 0
+  },
+  {
+   "ms": 1180,
+   "phase": "retract",
+   "progress": 0.96,
+   "yaw": 0
+  },
+  {
+   "ms": 1200,
+   "phase": "store",
+   "progress": 0,
+   "yaw": 0
+  },
+  {
+   "ms": 1240,
+   "phase": "store",
+   "progress": 0.2,
+   "yaw": -0.029
+  },
+  {
+   "ms": 1280,
+   "phase": "store",
+   "progress": 0.4,
+   "yaw": -0.236
+  },
+  {
+   "ms": 1320,
+   "phase": "store",
+   "progress": 0.6,
+   "yaw": -0.684
+  },
+  {
+   "ms": 1360,
+   "phase": "store",
+   "progress": 0.8,
+   "yaw": -0.891
+  },
+  {
+   "ms": 1400,
+   "phase": null,
+   "progress": null,
+   "yaw": -0.92
+  },
+  {
+   "ms": 1420,
+   "phase": null,
+   "progress": null,
+   "yaw": -0.92
+  }
+ ]
+}

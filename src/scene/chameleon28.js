@@ -358,6 +358,8 @@ export function createChameleon(design = CHAMELEON28) {
   const jawDrop = P.jaw * 1.5;
   const jaw = ellipsoid(headRx * 0.62, headRy * 0.26, headRz * 0.7);
   jaw.position.set(headRx * 0.38, -headRy * 0.62 - jawDrop, 0);
+  // 顎の膨らみは描かない（2026-11-18 本人指示）。既存の姿勢・反応が参照するため部品としては残す。
+  jaw.visible = false;
   head.add(jaw);
 
   // 口の線：頭と鼻先の表面に沿わせる（+z 側）
@@ -452,7 +454,7 @@ export function createChameleon(design = CHAMELEON28) {
     hand.position.set(0, -armLen, 0);
     splay.add(hand);
     rig.add(shoulder);
-    arms.push({ shoulder, side });
+    arms.push({ shoulder, hand, side });
   }
 
   // ---- 脚と足 ----
@@ -562,7 +564,7 @@ export function createChameleon(design = CHAMELEON28) {
     comparePoint,
     /** 街の覆い（ステンシル）用：比較する面の材質（体色のトゥーンだけ） */
     comparisonMaterials: [bodyMat],
-    actorParts: { head, eyes: eyes.map(e => e.pivot), arms: arms.map(a => a.shoulder), legs: legs.map(l => l.pivot), feet: legs.map(l => l.foot), jaw, mouth, tail, jewel, setTailGuard, tailGeometry: tailGeo },
+    actorParts: { head, eyes: eyes.map(e => e.pivot), arms: arms.map(a => a.shoulder), hands: arms.map(a => a.hand), legs: legs.map(l => l.pivot), feet: legs.map(l => l.foot), jaw, mouth, tail, jewel, setTailGuard, tailGeometry: tailGeo },
     setColor(rgb) {
       bodyMat.uniforms.uColor.value.setRGB(rgb[0], rgb[1], rgb[2]);
       eyeMat.uniforms.uColor.value.setRGB(rgb[0] + (1 - rgb[0]) * tint, rgb[1] + (1 - rgb[1]) * tint, rgb[2] + (1 - rgb[2]) * tint);

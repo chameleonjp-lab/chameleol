@@ -1,6 +1,6 @@
 // Original idea numbers are stable; excluded effects must never enter the catalog.
 export const EXCLUDED_EFFECT_IDS = Object.freeze([
-  20, 34, 39, 44, 45, 51, 56, 67, 68, 69, 72, 75, 76, 84, 86, 87, 88, 90, 94, 97,
+  45, 51, 88, 97,
 ]);
 export const ACCEPTED_EFFECT_IDS = Object.freeze(
   Array.from({ length: 100 }, (_, index) => index + 1).filter((id) => !EXCLUDED_EFFECT_IDS.includes(id)),
@@ -27,7 +27,7 @@ export function createCosmeticRng(seed=0xCA4E1E0) {
   return ()=>{state=(Math.imul(state,1664525)+1013904223)>>>0;return state/4294967296;};
 }
 export const CAMEOS=Object.freeze([{id:12,weight:15,ms:1200},{id:13,weight:12,ms:2000},{id:14,weight:15,ms:1500},{id:15,weight:12,ms:2000},{id:16,weight:10,ms:2000},{id:36,weight:12,ms:2000},{id:61,weight:3,ms:1500},{id:65,weight:6,ms:2000},{id:70,weight:5,ms:1200}]);
-// Keep the legacy visual director unchanged until Claude connects all adopted effects.
+// The explicit legacy mode keeps its original director; normal play uses this shared extended pool.
 export const EXTENDED_CAMEOS=Object.freeze([...CAMEOS,
   {id:20,weight:10,ms:2000},{id:67,weight:10,ms:2000},{id:68,weight:8,ms:2000},{id:69,weight:8,ms:2000},
 ].map(x=>Object.freeze({...x})));

@@ -1,0 +1,1041 @@
+{
+  "width": 874,
+  "height": 402,
+  "counts": {
+    "railway": 49,
+    "water": 48,
+    "robot": 49,
+    "bird": 0
+  },
+  "rows": [
+    {
+      "building": 2,
+      "t": 5000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 3,
+      "t": 10000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 4,
+      "t": 15000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 5,
+      "t": 20000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 6,
+      "t": 25000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 7,
+      "t": 30000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 8,
+      "t": 35000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 9,
+      "t": 40000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 10,
+      "t": 45000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 11,
+      "t": 50000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": true,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 12,
+      "t": 55000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 13,
+      "t": 60000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 14,
+      "t": 65000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 15,
+      "t": 70000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 16,
+      "t": 75000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 17,
+      "t": 80000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 18,
+      "t": 85000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 19,
+      "t": 90000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 20,
+      "t": 95000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 21,
+      "t": 100000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 22,
+      "t": 105000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 23,
+      "t": 110000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 24,
+      "t": 115000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 25,
+      "t": 120000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 26,
+      "t": 125000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": true,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": true,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 27,
+      "t": 130000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 28,
+      "t": 135000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 29,
+      "t": 140000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 30,
+      "t": 145000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": true,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 31,
+      "t": 150000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 32,
+      "t": 155000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 33,
+      "t": 160000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 34,
+      "t": 165000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 35,
+      "t": 170000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 36,
+      "t": 175000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 37,
+      "t": 180000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 38,
+      "t": 185000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 39,
+      "t": 190000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 40,
+      "t": 195000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 41,
+      "t": 200000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": true,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 42,
+      "t": 205000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 43,
+      "t": 210000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 44,
+      "t": 215000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 45,
+      "t": 220000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 46,
+      "t": 225000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 47,
+      "t": 230000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 48,
+      "t": 235000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 49,
+      "t": 240000,
+      "placements": {
+        "railway": true,
+        "water": true,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    },
+    {
+      "building": 50,
+      "t": 245000,
+      "placements": {
+        "railway": true,
+        "water": false,
+        "robot": true,
+        "bird": false,
+        "midpoint": false,
+        "policeSettled": false,
+        "existing": {
+          "12": true
+        }
+      },
+      "actorBusy": {
+        "hero": false,
+        "police": false
+      },
+      "drawable": true,
+      "phase": "grace"
+    }
+  ]
+}

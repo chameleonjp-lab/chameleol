@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { launch, openHome, startAnonymous } from './helpers.mjs';
 
-test('effects80: accepted requirements and catalog contain exactly 80 unique IDs; excluded 20 stay absent', async () => {
+test('effects catalog adopts 96/4 and preserves every original80 requirement', async () => {
   const requirements = JSON.parse(await readFile(new URL('../../docs/requirements/chameleol-effects80.json', import.meta.url), 'utf8'));
   const { ACCEPTED_EFFECT_IDS, EXCLUDED_EFFECT_IDS } = await import('../../src/presentation/catalog.js');
   const accepted = requirements.requirements.map((r) => r.id).sort((a, b) => a - b);
@@ -12,19 +12,22 @@ test('effects80: accepted requirements and catalog contain exactly 80 unique IDs
   assert.equal(new Set(accepted).size, 80);
   assert.equal(excluded.length, 20);
   assert.equal(new Set(excluded).size, 20);
-  assert.deepEqual([...ACCEPTED_EFFECT_IDS].sort((a, b) => a - b), accepted);
-  assert.deepEqual([...EXCLUDED_EFFECT_IDS].sort((a, b) => a - b), excluded);
+  const final=JSON.parse(await readFile(new URL('../../docs/requirements/chameleol-design-followups.json',import.meta.url),'utf8'));
+  assert.equal(ACCEPTED_EFFECT_IDS.length,final.acceptedOriginalEffectCount);
+  assert.deepEqual([...EXCLUDED_EFFECT_IDS],[45,51,88,97]);
+  assert.ok(accepted.every(id=>ACCEPTED_EFFECT_IDS.includes(id)));
+  assert.equal(ACCEPTED_EFFECT_IDS.filter(id=>!accepted.includes(id)).length,16);
   assert.deepEqual([...accepted, ...excluded].sort((a, b) => a - b), Array.from({ length: 100 }, (_, i) => i + 1));
   const assignments = Object.values(requirements.tasks).flat();
   assert.equal(assignments.length, 80);
   assert.deepEqual(assignments.sort((a, b) => a - b), accepted);
 });
 
-test('effects80: verification forces each accepted effect and rejects every excluded effect', async (t) => {
+test('effects80: explicit legacy fixture still draws each of the original80 effects', async (t) => {
   const requirements = JSON.parse(await readFile(new URL('../../docs/requirements/chameleol-effects80.json', import.meta.url), 'utf8'));
   const env = await launch();
   try {
-    await openHome(env.page, env.url);
+    await openHome(env.page,`${env.url}tests/e2e/fixtures/legacy80.html`);
     assert.equal(await env.page.evaluate(() => typeof __kamereoru.debugPresentation), 'function', 'verification API must be integrated');
     for (const requirement of requirements.requirements) {
       await t.test(`No.${requirement.id}: ${requirement.title}`, async () => {
@@ -40,7 +43,7 @@ test('effects80: verification forces each accepted effect and rejects every excl
         }
       });
     }
-    for (const { id: effectId } of requirements.excluded) {
+    for (const effectId of [45,51,88,97]) {
       const rejected = await env.page.evaluate(async (effectId) => {
         try { await __kamereoru.debugPresentation({ effectId }); return false; }
         catch { return true; }
@@ -175,7 +178,7 @@ test('effects80: renderer additions remain within draw, geometry and texture bud
 test('effects80: peak shop, actor props, ring, particles and cameo stay within renderer budgets', async (t) => {
   const env = await launch();
   try {
-    await openHome(env.page, env.url);
+    await openHome(env.page,`${env.url}tests/e2e/fixtures/legacy80.html`);
     const evidence = [];
     for (const atMs of [95000, 100000]) {
       const pair = [];

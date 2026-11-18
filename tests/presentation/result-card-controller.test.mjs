@@ -40,6 +40,48 @@ test('same-condition retry recovers failed encoding without automatically sharin
   const c=createResultCardController({result:r,ports:p});await settle();assert.equal(c.snapshot().state,'failed');const old=c.snapshot().revision;
   c.retry();await settle();assert.equal(c.snapshot().state,'ready');assert.ok(c.snapshot().revision>old);assert.equal(p.count.portraits,1);assert.equal(p.count.shares.length,0);releaseResultCardResources(r);
 });
+test('failed encoding releases its generation canvas before recovery views are notified',async()=>{
+  const p=ports(),r=result(),failedSizes=[];let canvas;
+  p.createCanvas=()=>canvas={};
+  const encode=p.encodePng;p.encodePng=async()=>{throw Error('PNG encode failure');};
+  p.onChange=snapshot=>{if(snapshot.state==='failed')failedSizes.push([canvas.width,canvas.height]);};
+  const c=createResultCardController({result:r,ports:p});await settle();
+  assert.equal(c.snapshot().state,'failed');assert.equal(c.snapshot().prepared,null);
+  assert.deepEqual(failedSizes,[[0,0]],'failure subscribers may restore an open E090 immediately');
+  p.encodePng=encode;c.retry();await settle();
+  assert.equal(c.snapshot().state,'ready');assert.equal(p.count.shares.length,0);
+  releaseResultCardResources(r);
+});
+test('ready subscribers never overlap their full-size views with the PNG generation canvas',async()=>{
+  const p=ports(),r=result(),sizes=[];let canvas;
+  p.createCanvas=()=>canvas={};
+  p.onChange=snapshot=>{if(snapshot.state==='ready')sizes.push([canvas.width,canvas.height]);};
+  const c=createResultCardController({result:r,ports:p});await settle();
+  r.netState='official';c.refresh();await settle();
+  assert.equal(c.snapshot().state,'ready');assert.ok(c.snapshot().prepared.file.size>0);
+  assert.deepEqual(sizes,[[0,0],[0,0]],'clients may expand the screen and E090 during ready notification');
+  releaseResultCardResources(r);
+});
+test('screen snapshots borrow the same portrait as the PNG without another image allocation',async()=>{
+  const p=ports(),r=result();let pngPortrait;
+  const draw=p.drawResultCard;p.drawResultCard=(canvas,args)=>{pngPortrait=args.portrait;draw(canvas,args);};
+  const c=createResultCardController({result:r,ports:p});
+  assert.equal(c.snapshot().portraitImage,null,'no image before capture');
+  await settle();assert.equal(c.snapshot().state,'ready');
+  assert.equal(c.snapshot().portraitImage,pngPortrait,'screen and PNG use the same borrowed image');
+  c.refresh({locale:'de'});await settle();
+  assert.equal(c.snapshot().portraitImage,pngPortrait);assert.equal(p.count.portraits,1);
+  c.dispose();assert.equal(c.snapshot().portraitImage,null,'disposed views cannot obtain the cached image');
+  releaseResultCardResources(r);assert.equal(p.count.disposed,1);
+});
+test('a pending replacement never exposes the previous hero image',async()=>{
+  const p=ports(),r=result();const c=createResultCardController({result:r,ports:p});await settle();
+  assert.ok(c.snapshot().portraitImage);
+  r.evidenceInput={};r.evidence={status:'pending',revision:1};c.refresh();
+  assert.equal(c.snapshot().model.hero.status,'pending');
+  assert.equal(c.snapshot().portraitImage,null);assert.equal(c.snapshot().prepared,null);
+  assert.equal(await c.share(),'unavailable');releaseResultCardResources(r);
+});
 test('late generation and disposal never replace or leak the current portrait and file',async()=>{
   const p=ports(),r=result();let complete,disposed=0;
   p.createResultPortrait=()=>new Promise(resolve=>complete=resolve);

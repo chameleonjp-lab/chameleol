@@ -285,3 +285,71 @@ test('G3: first stationary guide keeps draft out of game state and history until
     assert.deepEqual(env.errors, []);
   } finally { await env.close(); }
 });
+
+test('first theft runs from the display to the stationary guide without moving the camera at handoff', { timeout: 90000 }, async () => {
+  const env = await launch();
+  const { page } = env;
+  try {
+    await openHome(page, env.url);
+    await page.clock.install({ time: new Date('2030-01-01T00:00:00Z') });
+    await page.clock.pauseAt(new Date('2030-01-01T00:00:01Z'));
+    await page.evaluate(() => {
+      const app = __kamereoru, factory = app.stageFactory.bind(app);
+      window.escapeFrames = [];
+      app.stageFactory = async (host, opts) => {
+        const stage = await factory(host, { ...opts, verification: true });
+        if (stage.kind !== 'three') throw new Error('expected 3D jewelry shop');
+        const hero = stage.verificationHero(), render = stage.renderer.render.bind(stage.renderer);
+        const opening = stage.playOpening.bind(stage);
+        let inOpening = false;
+        stage.playOpening = async args => {
+          inOpening = true;
+          try { await opening(args); } finally { inOpening = false; }
+        };
+        stage.renderer.render = (scene, camera) => {
+          render(scene, camera);
+          const shop = scene.getObjectByName('opening-jewelry-shop');
+          const windows = shop.getObjectByName('opening-shop-windows');
+          const display = shop.localToWorld(shop.userData.displayPoint.clone());
+          const gem = hero.jewel.getWorldPosition(display.clone());
+          const hand = hero.actorParts.hands[0].getWorldPosition(display.clone());
+          window.escapeFrames.push({
+            opening: inOpening, x: hero.group.parent.position.x, camera: camera.position.toArray(),
+            jewel: hero.jewel.visible, handDistance: gem.distanceTo(hand), displayDistance: gem.distanceTo(display), glass: windows.material.color.getHex(),
+          });
+        };
+        return stage;
+      };
+    });
+    await page.locator(selector('home-start')).dispatchEvent('click');
+    await page.waitForSelector(selector('skip-opening'));
+    const photo = async name => {
+      if (!process.env.CL03_SCREENSHOTS) return;
+      await mkdir(process.env.CL03_SCREENSHOTS, { recursive: true });
+      await page.screenshot({ path: `${process.env.CL03_SCREENSHOTS}/opening-${name}.png` });
+    };
+    await photo('display');
+    for (let i = 1; i <= 28; i++) {
+      await page.clock.fastForward(100);
+      if (i === 10) await photo('escape');
+    }
+    await page.clock.runFor(64);
+    await page.locator('.palette-guide-target').waitFor({ state: 'visible' });
+    await photo('guide');
+    const { frames, t, step } = await page.evaluate(() => ({
+      frames: window.escapeFrames, t: __kamereoru.session.state.t, step: __kamereoru.guidance.view().step,
+    }));
+    const opening = frames.filter(f => f.opening);
+    const last = opening.at(-1), next = frames[frames.lastIndexOf(last) + 1];
+    assert.ok(opening[0].jewel && opening[0].displayDistance < 0.001);
+    assert.ok(opening.filter(f => f.jewel && f.displayDistance > 2 && f.handDistance < 0.35).length >= 3, 'the gem stays in the front hand while running');
+    assert.ok(new Set(opening.map(f => f.glass)).size > 3, 'actual display windows pulse');
+    assert.ok(opening.every((f, i) => !i || (f.x >= opening[i - 1].x && f.x - opening[i - 1].x < 1)));
+    assert.equal(last.jewel, false);
+    assert.ok(next && !next.opening);
+    assert.equal(last.x, next.x);
+    assert.deepEqual(last.camera, next.camera);
+    assert.deepEqual([t, step], [0, 1]);
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
