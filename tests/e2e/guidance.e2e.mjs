@@ -126,7 +126,7 @@ test('G3: hiding during the initial opening preserves the first guide after expl
       document.dispatchEvent(new Event('visibilitychange'));
     });
     await page.locator(selector('pause-resume')).dispatchEvent('click');
-    await page.clock.runFor(3300);
+    await page.clock.runFor(4100);
     assert.equal(await page.evaluate(() => __kamereoru.guidance.view().step), 1);
     assert.equal(await page.evaluate(() => __kamereoru.session.running), false);
     assert.equal(await page.isVisible('.palette-guide-target'), true);
@@ -323,15 +323,25 @@ test('first theft runs from the display to the stationary guide without moving t
     });
     await page.locator(selector('home-start')).dispatchEvent('click');
     await page.waitForSelector(selector('skip-opening'));
+    // Reloading or leaving during the escape must not give the next run a first opening.
+    assert.equal(await page.evaluate(() => __kamereoru.store.get('flags').then(f => f?.openingSeen)), true);
     const photo = async name => {
       if (!process.env.CL03_SCREENSHOTS) return;
       await mkdir(process.env.CL03_SCREENSHOTS, { recursive: true });
       await page.screenshot({ path: `${process.env.CL03_SCREENSHOTS}/opening-${name}.png` });
     };
     await photo('display');
-    for (let i = 1; i <= 28; i++) {
+    for (let i = 1; i <= 40; i++) {
       await page.clock.fastForward(100);
-      if (i === 10) await photo('escape');
+      if (i === 14) await photo('escape');
+      if (i === 39) {
+        assert.equal(await page.isVisible(selector('skip-opening')), true);
+        const state = await page.evaluate(() => __kamereoru.session.state);
+        assert.equal(state.t, 0);
+        assert.equal(state.alert, 0);
+        assert.equal(state.score.total, 0);
+        assert.equal(state.passed, 0);
+      }
     }
     await page.clock.runFor(64);
     await page.locator('.palette-guide-target').waitFor({ state: 'visible' });

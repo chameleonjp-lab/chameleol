@@ -76,16 +76,18 @@ for (const [w, h] of [[402, 700], [402, 874], [874, 402]]) {
           scrollW: document.documentElement.scrollWidth,
           card: rect('.result-card-canvas'), again: rect(id('result-again')), share: rect(id('result-share')),
           save: rect('.result-card-save'), text: rect('.result-card-text'), portrait: rect('.result-scene .result-portrait'), scene: rect('.result-scene'),
-          home: rect(id('result-home')),
+          home: rect(id('result-home')), board: rect('.result-ranking'),
         };
         function id(n) { return `[data-testid="${n}"]`; }
       });
       t.diagnostic(JSON.stringify(m));
-      for (const key of ['card', 'again', 'share', 'save', 'text']) {
+      for (const key of ['card', 'again', 'share']) {
         assert.ok(m[key], `${key} exists`);
         assert.ok(m[key].top >= 0 && m[key].bottom <= m.vh, `${key} inside the first screen (${m[key].top}..${m[key].bottom} of ${m.vh})`);
         assert.ok(m[key].left >= 0 && m[key].right <= m.vw, `${key} inside horizontally`);
       }
+      assert.ok(m.board.top >= m.home.bottom - 1, 'table follows the Home button');
+      for (const key of ['save', 'text']) assert.ok(m[key].top >= m.board.bottom - 1, key + ' follows the table');
       assert.ok(m.scrollW <= m.vw, `no horizontal overflow (${m.scrollW} > ${m.vw})`);
       assert.ok(m.portrait.top >= m.vh - 1 || m.portrait.bottom > m.vh, 'the second hero (photo) is not fully in the first screen');
       // 補足（No.71/80/93/99/100）は主操作の下に常時表示され、畳まれない
@@ -119,7 +121,7 @@ test('share: the tap calls navigator.share synchronously with one PNG; cancel ke
     assert.equal(tap.payload.files.length, 1);
     assert.equal(tap.payload.files[0].type, 'image/png');
     assert.ok(tap.payload.files[0].size > 0);
-    assert.equal(tap.payload.url, 'https://example.invalid/');
+    assert.equal(tap.payload.url, 'https://chameleonjp-lab.github.io/chameleol/');
     await advanceUntil(page, async () => (await cardState(page)) === 'ready', { limit: 20 });
     // 取消：本文の窓は自動で開かない
     await page.evaluate(() => { __shareMode = 'cancel'; document.querySelector('[data-testid="result-share"]').click(); });
@@ -135,7 +137,7 @@ test('share: the tap calls navigator.share synchronously with one PNG; cancel ke
     assert.equal(textShare.count, windowsBefore + 1, 'an explicit text-share tap opens exactly one posting window');
     const intent = new URL(textShare.url);
     assert.equal(intent.origin + intent.pathname, 'https://x.com/intent/post');
-    assert.equal(intent.searchParams.get('url'), 'https://example.invalid/');
+    assert.equal(intent.searchParams.get('url'), 'https://chameleonjp-lab.github.io/chameleol/');
     assert.ok(intent.searchParams.get('text').length > 0);
     // 再試行は自動共有しない
     const sharesBefore = await page.evaluate(() => __shares.length);

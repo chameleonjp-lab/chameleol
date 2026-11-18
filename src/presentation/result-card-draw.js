@@ -3,6 +3,7 @@
 // 名前・内部ID・seed・照会情報・未確定の順位は描かない（F11）。称号・件数・ベスト棟・実色は model（処理側）の値をそのまま使う。
 import { t, formatNumber } from '../i18n/i18n.js';
 import { drawDistrictSky, districtIndexForBuilding } from './result-sky.js';
+import { formatRunMetrics } from '../ui/share.js';
 import { rtext } from './result-card-text.js';
 
 export const CARD_W = 1200;
@@ -33,6 +34,8 @@ export function heroCaption(model, locale, { failed = false, portrait = null } =
   const hero = model?.hero;
   if (!hero || hero.status === 'pending') return t('evidence.pending', undefined, locale);
   if (failed && !portrait) return t('card.failed', undefined, locale);
+  if (hero.status === 'wall') return t('evidence.building', { building: hero.building }, locale);
+  if (hero.status === 'rainbow') return t('share.result.cleared', null, locale);
   if (hero.status === 'matched') {
     const colon = COLON_LOCALES.has(locale) ? '：' : ': ';
     return `${t('resultBestBuilding', undefined, locale)}${colon}${t('evidence.building', { building: hero.building }, locale)}`;
@@ -51,7 +54,8 @@ export function describeResultCard(model, locale, options = {}) {
   const bonusKnown = model?.countState === 'known' && Number.isSafeInteger(model?.bonusCount);
   const bonusNumber = bonusKnown ? formatNumber(model.bonusCount, {}, lang) : null;
   const passedNumber = Number.isSafeInteger(model?.passed) ? formatNumber(model.passed, {}, lang) : '—';
-  const showConfirming = Boolean(model?.rankKey) && CONFIRMING_STATES.includes(model?.verificationState);
+  const showConfirming = model?.rankState === 'pending' || (model?.rankState == null && Boolean(model?.rankKey) && CONFIRMING_STATES.includes(model?.verificationState));
+  const {rank,ordinal} = formatRunMetrics({...model,locale:lang});
   const caption = heroCaption(model, lang, options);
   const bonusText = bonusKnown ? `${countPre}${bonusNumber}${countPost}` : bonusMissingText(lang);
   const summary = `${title} · ${bonusText}`;
@@ -60,10 +64,10 @@ export function describeResultCard(model, locale, options = {}) {
     `${t('result.total', undefined, lang)} ${scorePre}${total}${scorePost}.`,
     `${bonusText}.`,
     `${passedPre}${passedNumber}${passedPost}.`,
-    `${caption}.`,
+    `${caption}.`, rank, ordinal,
     showConfirming ? `${t('card.confirming', undefined, lang)}.` : '',
   ].filter(Boolean).join(' ');
-  return { title, scorePre, scorePost, countPre, countPost, passedPre, passedPost, total, bonusNumber, bonusKnown, bonusText, passedNumber, showConfirming, caption, summary, label };
+  return { rank, ordinal, title, scorePre, scorePost, countPre, countPost, passedPre, passedPost, total, bonusNumber, bonusKnown, bonusText, passedNumber, showConfirming, caption, summary, label };
 }
 
 // ---------- 文字の収め方 ----------
@@ -214,7 +218,7 @@ function drawPhoto(ctx, model, portrait, caption, lang) {
   ctx.fill();
   ctx.restore();
   const hero = model?.hero;
-  const building = hero?.status === 'matched' ? hero.building : Math.min(50, (Number.isInteger(model?.passed) ? model.passed : 0) + 1);
+  const building = hero?.building ?? Math.min(50, (Number.isInteger(model?.passed) ? model.passed : 0) + 1);
   drawDistrictSky(ctx, districtIndexForBuilding(building), [48, 48, 492, 486]);
   ctx.save();
   ctx.beginPath();
@@ -412,7 +416,7 @@ export function drawResultCard(canvas, { model, portrait = null, locale, failed 
   const measurePart = (p, size) => { ctx.font = fontOf(p.weight, size); return ctx.measureText(p.text).width; };
 
   // 総得点の見出しと確認中の札
-  const confirmingText = t('card.confirming', undefined, lang);
+  const confirmingText = t(model?.rankState === 'pending' ? 'releasePending' : 'card.confirming', undefined, lang);
   let headingSize = 30;
   const mHead = (z) => { ctx.font = fontOf(700, z); return ctx.measureText(t('result.total', undefined, lang)).width; };
   let badgeSize = 26;
@@ -472,6 +476,13 @@ export function drawResultCard(canvas, { model, portrait = null, locale, failed 
   ];
   const passedFit = fitRow(measurePart, passedParts, 572);
   drawRowParts(ctx, passedFit, passedParts, 592, 592);
+  const metrics = [info.rank, info.ordinal].filter(Boolean).join(' · ');
+  if (metrics) {
+    ctx.font = fontOf(700, 23);
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.fillText(metrics, 592, 621, 572);
+  }
   ctx.restore();
   return { title: titleFit, score: scoreFit, bonus: bonusFit, passed: passedFit, headingSize, badgeSize };
 }

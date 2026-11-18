@@ -66,3 +66,51 @@ test('shop escape stops at the supplied game position and the alarm follows the 
     assert.equal(pose.jump, 0);
   }
 });
+
+test('shop escape scales visible frames and cues only; skip lands at the same guide', async (t) => {
+  const { startShopEscape, openingPose } = await import('../../src/scene/opening.js');
+  const destination = 0.4;
+  let frame, now = 0;
+  const visibility = new EventTarget();
+  visibility.hidden = false;
+  t.mock.method(performance, 'now', () => now);
+  globalThis.document = visibility;
+  globalThis.requestAnimationFrame = next => { frame = next; return 1; };
+  globalThis.cancelAnimationFrame = () => { frame = null; };
+  t.after(() => {
+    delete globalThis.requestAnimationFrame;
+    delete globalThis.cancelAnimationFrame;
+    delete globalThis.document;
+  });
+  for (const [rate, duration, skip] of [[0.7, 4000, false], [1, 2800, false], [0.7, 4000, true]]) {
+    const ctrl = new AbortController();
+    const cues = [];
+    let pose, delta;
+    const start = now;
+    const escape = startShopEscape({
+      destination, playbackRate: rate, signal: ctrl.signal,
+      draw(p, dt) { pose = p; delta = dt; },
+      onCue(cue) { cues.push([cue, now - start]); },
+    });
+    for (const elapsed of [duration * 0.16, duration * 0.48, duration * 0.82]) {
+      now = start + elapsed;
+      frame(now);
+      if (skip) break;
+    }
+    if (skip) {
+      ctrl.abort();
+      assert.equal(cues.length, 3);
+    } else {
+      assert.deepEqual(cues, [['glassBurst', duration * 0.16], ['alarm', duration * 0.16],
+        ['jump', duration * 0.16], ['land', duration * 0.48], ['jewel', duration * 0.82]]);
+      now = start + duration - 1;
+      frame(now);
+      assert.ok(frame);
+      frame(++now);
+      assert.ok(Math.abs(delta - rate / 1000) < 1e-9);
+    }
+    await escape.finished;
+    assert.equal(frame, null);
+    assert.deepEqual(pose, openingPose(2800, destination, false));
+  }
+});

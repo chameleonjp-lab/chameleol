@@ -1,6 +1,6 @@
 // Private status responses may correct auxiliary scores, never the stored result
 // or the ranking fields. Keep every corrected field together as one value.
-const RANKED_BONUS_VERSION = 'kamereoru-rules-v3';
+const RANKED_BONUS_VERSIONS = new Set(['kamereoru-rules-v3', 'kamereoru-rules-v4']);
 const BONUS_FORMAT = 'kamereoru-bonus-v1';
 const TOTAL_KEYS = ['precision5', 'precision10', 'steady', 'milestone', 'quick', 'allSuccess'];
 const SCORE_LIMITS = { pass: 1000, accuracy: 4000, combo: 880, clear: 200, bonus: 1200, total: 7280 };
@@ -10,7 +10,7 @@ const integer = (value, max, min = 0) => Number.isSafeInteger(value) && value >=
 const copy = (value) => structuredClone(value);
 
 function validDetails(value, summary) {
-  if (!object(value) || !object(summary) || value.rulesVersion !== RANKED_BONUS_VERSION || summary.rulesVersion !== value.rulesVersion) return false;
+  if (!object(value) || !object(summary) || !RANKED_BONUS_VERSIONS.has(value.rulesVersion) || summary.rulesVersion !== value.rulesVersion) return false;
   const buildings = summary.buildings;
   if (!integer(buildings, 50) || !['cleared', 'quit', 'detected'].includes(summary.endReason)) return false;
   const { score, bonus, perBuilding, maxCombo } = value;
@@ -61,7 +61,7 @@ function validDetails(value, summary) {
   return perBuilding.reduce((sum, row) => sum + row[2], 0) + score.clear + counts.allSuccess.points === score.total;
 }
 
-/** Accept only the matching authenticated status item's finalized v3 score. */
+/** Accept only the matching authenticated status item's finalized bonus score. */
 export function validateVerifiedScore(value, { playId, responsePlayId, rulesVersion, summary, status } = {}) {
   if (typeof playId !== 'string' || !playId || responsePlayId !== playId || rulesVersion !== summary?.rulesVersion) return null;
   if (!['official', 'no_rank'].includes(status) || (status === 'no_rank' ? summary?.buildings !== 0 : summary?.buildings === 0)) return null;

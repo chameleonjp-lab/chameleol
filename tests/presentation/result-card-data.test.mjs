@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { RULES_V1, rulesForVersion } from '../../src/rules/v1/config.js';
 import { MESSAGES } from '../../src/i18n/messages/index.js';
-import { rankForPassed, selectBestVisual, buildResultCardModel } from '../../src/presentation/result-card-data.js';
+import { rankForPassed, selectBestVisual, buildResultCardModel, projectRunResult } from '../../src/presentation/result-card-data.js';
 
 const spec = JSON.parse(readFileSync(new URL('../../docs/requirements/chameleol-design-followups.json',import.meta.url)));
 const clear = JSON.parse(readFileSync(new URL('../replay/fixtures/bonus-v3-clear.json',import.meta.url))).expected;
@@ -40,20 +40,43 @@ test('best building compares exact ratios, keeps early true ties and never falls
   s.perBuilding[1][0]=270000000000;
   assert.equal(selectBestVisual({summary:s,rules:RULES_V1,visualSamples:[sample(1),sample(2)]}).building,1);
   assert.equal(selectBestVisual({summary:s,rules:RULES_V1,visualSamples:[sample(2)]}),null);
-  assert.equal(model(s,{status:'ready',data:{visualSamples:[sample(2)]}}).hero.status,'missing');
+  assert.equal(model(s).hero.status,'unknown');
   s.perBuilding[0][1]=0;
   assert.equal(selectBestVisual({summary:s,rules:RULES_V1,visualSamples:[sample(1),sample(2)]}).building,2);
 });
-test('visual uses actual HSV, separates average from instant match and pins outline to selected building',()=>{
-  for(const n of [1,2,3,4]){
-    const s=summary(39,`kamereoru-rules-v${n}`);s.perBuilding[4]=[285000000000,3000,100];
-    const e={status:'ready',data:{visualSamples:[sample(5,5678,98000000)]}};
-    const m=model(s,e);
-    assert.equal(m.hero.building,5);assert.equal(m.hero.outlineBuilding,5);
-    assert.deepEqual(m.hero.hsv,{h:5678,s:6000,v:10000});
-    assert.equal(m.hero.average,95);assert.equal(m.hero.instantMatch,98);
+test('the wall at detection drives the share hero for every saved rules version',()=>{
+  for (const n of [1,2,3,4]) {
+    const s=summary(39,`kamereoru-rules-v${n}`);
+    const context={summary:s,arrivedBuilding:40,targets:Array.from({length:40},(_,i)=>sample(i,500+i).hsv)};
+    const run=projectRunResult(context,'ja');
+    const m=buildResultCardModel({displaySummary:s,run});
+    assert.equal(m.hero.building,40);assert.equal(m.hero.outlineBuilding,40);
+    assert.deepEqual(m.hero.hsv,context.targets[39]);
   }
-  assert.equal(model(summary(0)).hero.outlineBuilding,1);
+});
+test('official metrics require integers and a consistent denominator, and rank and ordinal disappear on review',()=>{
+  const context={playId:'p',ranked:true,summary:clear,netState:'official',
+    official:{buildings:50,rankAverage:9200},metrics:{runRank:3,totalPlays:4,clearOrdinal:1}};
+  let run=projectRunResult(context,'ja');
+  assert.deepEqual([run.score,run.runRank,run.totalPlays,run.clearOrdinal],[7280,3,4,1]);
+  assert.equal(run.appearance.kind,'rainbow');
+  context.metrics.totalPlays=2;run=projectRunResult(context,'ja');
+  assert.equal(run.runRank,null);assert.equal(run.clearOrdinal,null);
+  context.metrics={runRank:2,totalPlays:4,clearOrdinal:5};run=projectRunResult(context,'ja');
+  assert.equal(run.runRank,2);assert.equal(run.clearOrdinal,null);
+  for (const invalid of [0, 1.5, '3', NaN]) {
+    context.metrics={runRank:invalid,totalPlays:4,clearOrdinal:invalid};
+    run=projectRunResult(context,'ja');assert.equal(run.runRank,null);assert.equal(run.clearOrdinal,null);
+  }
+  context.metrics={runRank:3,totalPlays:4,clearOrdinal:1};
+  context.netState='under_review';run=projectRunResult(context,'ja');
+  assert.deepEqual([run.rankState,run.runRank,run.clearOrdinal],['pending',null,null]);
+  context.netState='official';context.official.buildings=7;run=projectRunResult(context,'ja');
+  assert.deepEqual([run.buildings,run.rankAverage,run.clearOrdinal],[7,9200,null]);
+  context.netState='no_rank';run=projectRunResult(context,'ja');
+  assert.deepEqual([run.buildings,run.rankAverage,run.clearOrdinal],[0,null,null]);
+  context.ranked=false;run=projectRunResult(context,'ja');
+  assert.equal(run.appearance.kind,'rainbow');assert.equal(run.rankState,'unranked');assert.equal(run.clearOrdinal,null);
 });
 test('bonus counts 156 awards independently from 7280 points and treats malformed or legacy data as missing',()=>{
   const m=model(clear);assert.equal(m.bonusCount,156);assert.equal(m.totalScore,7280);assert.equal(m.countState,'known');
@@ -65,10 +88,13 @@ test('bonus counts 156 awards independently from 7280 points and treats malforme
     const s=structuredClone(clear);corrupt(s);assert.equal(model(s).countState,'missing');assert.equal(model(s).bonusCount,null);
   }
 });
-test('pending differs from missing and projections are immutable without changing inputs',()=>{
-  const s=summary();const original=JSON.stringify(s);Object.freeze(s);
-  const pending=model(s,{status:'pending'});assert.equal(pending.hero.status,'pending');
-  for(const status of ['missing','failed']){const m=model(s,{status});assert.equal(m.hero.status,'missing');assert.deepEqual(m.hero.hsv,RULES_V1.initialColor);}
-  const m=model(s);assert.ok(Object.isFrozen(m)&&Object.isFrozen(m.hero)&&Object.isFrozen(m.hero.hsv));assert.equal(JSON.stringify(s),original);
+test('a missing wall is never guessed and projections cannot mutate the input wall',()=>{
+  const s=summary();const wall=sample(1).hsv;
+  const unknown=projectRunResult({summary:s},'ja');
+  assert.equal(unknown.appearance.kind,'unknown');assert.equal(unknown.appearance.hsv,null);
+  const run=projectRunResult({summary:s,targets:[wall],arrivedBuilding:1},'ja');
+  assert.ok(Object.isFrozen(run)&&Object.isFrozen(run.appearance.hsv));
+  assert.notEqual(run.appearance.hsv,wall);assert.equal(Object.isFrozen(wall),false);
+  const m=buildResultCardModel({displaySummary:s,run});
   assert.equal('name' in m,false);assert.equal('playId' in m,false);
 });

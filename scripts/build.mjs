@@ -66,7 +66,7 @@ for (const dir of sources) {
     contentHash.update(readFileSync(f));
   }
 }
-for (const file of ['index.html', 'assets/credits.md', 'scripts/build.mjs']) {
+for (const file of ['index.html', 'assets/credits.md', 'scripts/build.mjs', 'ranking-manifest.json']) {
   contentHash.update(file);
   contentHash.update(readFileSync(join(ROOT, file)));
 }
@@ -112,6 +112,7 @@ function entryHtml(prefix) {
   return html;
 }
 
+for (const dir of [DIST, vroot]) cpSync(join(ROOT, 'ranking-manifest.json'), join(dir, 'ranking-manifest.json'));
 writeFileSync(join(vroot, 'index.html'), entryHtml('./'));
 writeFileSync(join(DIST, 'index.html'), entryHtml(`./v/${assetVersion}/`));
 // GitHub Pages で Jekyll の処理を止める
@@ -119,15 +120,17 @@ writeFileSync(join(DIST, '.nojekyll'), '');
 
 const files = {};
 for (const f of [...walk(vroot)].sort()) files[relative(DIST, f)] = sha(readFileSync(f));
+files['ranking-manifest.json'] = sha(readFileSync(join(DIST, 'ranking-manifest.json')));
 files['index.html'] = sha(readFileSync(join(DIST, 'index.html')));
 const release = {
   gameVersion: GAME_VERSION,
   assetVersion,
   commit,
   env,
-  rulesVersion: (standalone ? RULES_V4 : RULES_V3).rulesVersion,
+  rankingApi: env === 'production' && !standalone ? api : null,
+  rulesVersion: RULES_V4.rulesVersion,
   supportedRulesVersions: [RULES_V1, RULES_V2, RULES_V3, RULES_V4].map((rules) => rules.rulesVersion),
-  preferredRankedRulesVersion: RULES_V3.rulesVersion,
+  preferredRankedRulesVersion: RULES_V4.rulesVersion,
   defaultStandaloneRulesVersion: RULES_V4.rulesVersion,
   generatorVersion: RULES_V1.generatorVersion,
   historyFormat: RULES_V1.historyFormat,

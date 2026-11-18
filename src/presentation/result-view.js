@@ -12,7 +12,7 @@ export function mountResultPresentation({host,data,scope,t=(key)=>key}){
  const bgRect=id=>(RESULT_ATLAS.backgrounds.find(b=>b.id===id)??RESULT_ATLAS.backgrounds[0]).rect,portraitRect=id=>(RESULT_ATLAS.portraits.find(p=>p.id===id)??RESULT_ATLAS.portraits[0]).rect;
  const scene=el('div','result-scene result-photo');sprite(scene,bgRect(data.backgroundId));
  const portrait=el('button','result-portrait',null,scene);portrait.type='button';portrait.setAttribute('aria-label',tr('resultPortraitReaction','Greet the chameleon'));sprite(portrait,portraitRect(data.portraitId));
- const restingPortraitRect=portraitRect(data.portraitId);
+ let restingPortraitRect=portraitRect(data.portraitId);
  const report=el('div','result-report result-details');
  const score=el('div','result-score',null,report);
  el('span','result-total-label',tr('result.total','Total score'),score);
@@ -42,7 +42,9 @@ export function mountResultPresentation({host,data,scope,t=(key)=>key}){
  el('p','result-combo',`${tr('resultMaxCombo','Maximum combo')}: ${'◆'.repeat(data.gems)} ${data.maxCombo}`,report);
  for(const [key,b] of [['resultBestBuilding',data.bestBuilding],['resultWorstBuilding',data.worstBuilding]])el('p','result-extreme',`${tr(key,key==='resultBestBuilding'?'Best building':'Toughest building')}: ${b?`${b.building} · ${formatRankAverage(b.rankAverage)}%`:'—'}`,report);
  if(data.newBest)el('p','result-new-best',tr('resultNewBest','New personal best'),report);
- if(data.firstClearNow){
+ function renderFirstClear(){
+   report.querySelector('.result-first-clear')?.remove();
+   if(!data.firstClearNow)return;
    const ticket=el('aside','result-first-clear result-ticket',null,report);
    const stamp=el('span','result-ticket-stamp','50',ticket);stamp.setAttribute('aria-hidden','true');
    const body=el('div','result-ticket-body',null,ticket);
@@ -54,6 +56,7 @@ export function mountResultPresentation({host,data,scope,t=(key)=>key}){
      const time=el('time','result-ticket-date',label,body);time.setAttribute('datetime',iso);
    }
  }
+ renderFirstClear();
  const badges=el('div','result-badges',null,report);for(const b of data.badges)el('span','result-badge',tr('resultBadge'+b,b),badges);
  el('p','result-speech',tr(data.speechKey,{resultSpeechClear:'We escaped!',resultSpeechBest:'A new personal best!',resultSpeechCombo:'What a streak!',resultSpeechOther:'Every street is another chance.'}[data.speechKey]),report);
  const cards=el('div','result-districts',null,report);for(const d of data.districts){const card=el('article','result-district',null,cards);sprite(card,bgRect(d.from));el('span','result-district-range',`${d.from}–${d.to}`,card);el('strong','result-district-average',d.rankAverage===null?tr('resultNoData','No results for this district yet.'):`${formatRankAverage(d.rankAverage)}%`,card)}
@@ -71,7 +74,17 @@ export function mountResultPresentation({host,data,scope,t=(key)=>key}){
  scope.own(dispose);if(reduced)finishNow();
  function updateData(next){
   if(disposed)return;
+  const previous = data;
   data=next;renderScore();
+  if (previous.summary.buildings !== data.summary.buildings) {
+    map.setAttribute('aria-label', `${data.summary.buildings}/50`);
+    data.mapCells.forEach((cell, i) => map.children[i].classList.toggle('is-passed', cell.passed));
+  }
+  if (previous.portraitId !== data.portraitId) {
+    restingPortraitRect = portraitRect(data.portraitId);
+    sprite(portrait, restingPortraitRect);
+  }
+  if (previous.firstClearNow !== data.firstClearNow) renderFirstClear();
   report.querySelector('.result-combo').textContent=`${tr('resultMaxCombo','Maximum combo')}: ${'◆'.repeat(data.gems)} ${data.maxCombo}`;
   const extremes=report.querySelectorAll('.result-extreme');
   for(const [i,key,b] of [[0,'resultBestBuilding',data.bestBuilding],[1,'resultWorstBuilding',data.worstBuilding]])extremes[i].textContent=`${tr(key,i===0?'Best building':'Toughest building')}: ${b?`${b.building} · ${formatRankAverage(b.rankAverage)}%`:'—'}`;
@@ -97,5 +110,5 @@ export function mountResultPresentation({host,data,scope,t=(key)=>key}){
   return {activeIds,rendererCount:0,renderers:0,webglRenderers:0,rafCount:0,disposed,finished,score:Number(visualScore.textContent),mapCells:shown(map)?map.children.length:0,gems:shown(report)?data.gems:0,districts:shown(report)?cards.children.length:0,colors:shown(colors)?colors.querySelectorAll('.result-color').length:0,badges:shown(badges)?badges.children.length:0};
  }
 
- return {stats,updateData,scoreElement:score,element:root,sceneElement:scene,detailsElement:report,tick,finishNow,dispose,replayAccepted(){if(!disposed){finishNow();sprite(portrait,restingPortraitRect);root.classList.remove('is-reacting');scene.classList.remove('is-reacting');const target=doc.querySelector('[data-testid="result-again"]');if(target){const from=portrait.getBoundingClientRect(),to=target.getBoundingClientRect(),bounds=PORTRAIT_BOUNDS[data.portraitId];const feetX=from.left+from.width*((bounds.minX+bounds.maxX+1)/2/bounds.width),feetY=from.top+from.height*((bounds.maxY+1)/bounds.height);portrait.style.setProperty('--result-jump-x',`${to.left+to.width/2-feetX}px`);portrait.style.setProperty('--result-jump-y',`${to.top-feetY}px`)}root.classList.add('is-replaying');scene.classList.add('is-replaying');scope.schedule('result-replay',150,()=>{root.classList.remove('is-replaying');scene.classList.remove('is-replaying')})}},updateRank(view){if(disposed)return;const valid=view?.state==='official'&&Number.isSafeInteger(view.rank)&&view.rank>0&&['current','personalBest'].includes(view.label);rank.hidden=!valid;if(!valid){rank.textContent='';return}const signature=`${view.rank}:${view.label}`;rank.textContent=tr(view.label==='current'?'resultCurrentRank':'resultPersonalBestRank',view.label==='current'?'This run’s official rank: {rank}':'Personal best rank: {rank}',{rank:view.rank});if(signature!==rankSignature){rank.classList.add('is-open');rankSignature=signature}}};
+ return {stats,updateData,rankElement:rank,scoreElement:score,element:root,sceneElement:scene,detailsElement:report,tick,finishNow,dispose,replayAccepted(){if(!disposed){finishNow();sprite(portrait,restingPortraitRect);root.classList.remove('is-reacting');scene.classList.remove('is-reacting');const target=doc.querySelector('[data-testid="result-again"]');if(target){const from=portrait.getBoundingClientRect(),to=target.getBoundingClientRect(),bounds=PORTRAIT_BOUNDS[data.portraitId];const feetX=from.left+from.width*((bounds.minX+bounds.maxX+1)/2/bounds.width),feetY=from.top+from.height*((bounds.maxY+1)/bounds.height);portrait.style.setProperty('--result-jump-x',`${to.left+to.width/2-feetX}px`);portrait.style.setProperty('--result-jump-y',`${to.top-feetY}px`)}root.classList.add('is-replaying');scene.classList.add('is-replaying');scope.schedule('result-replay',150,()=>{root.classList.remove('is-replaying');scene.classList.remove('is-replaying')})}},updateRank(view){if(disposed)return;const valid=view?.state==='official'&&Number.isSafeInteger(view.rank)&&view.rank>0&&['current','personalBest'].includes(view.label);rank.hidden=!valid;if(!valid){rank.textContent='';return}const signature=`${view.rank}:${view.label}`;rank.textContent=view.text??tr(view.label==='current'?'resultCurrentRank':'resultPersonalBestRank',view.label==='current'?'This run’s official rank: {rank}':'Personal best rank: {rank}',{rank:view.rank});if(signature!==rankSignature){rank.classList.add('is-open');rankSignature=signature}}};
 }

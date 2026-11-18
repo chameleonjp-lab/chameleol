@@ -119,14 +119,16 @@ test('名前ありで遊ぶ：開始受付→本編→途中終了→送信→�
     assert.equal(rows[0].buildings, passed);
     assert.equal(rows[0].display_name, 'テストさん');
     assert.equal(Number((await s.q('select count(*) as n from private.kamereoru_launches'))[0].n), 1);
-    // ランキング画面
-    await page.click('[data-testid=home-ranking]');
+    // 公開先へのリンクと同じ正式な一覧を結果画面から確認する。
+    const detailUrl = 'https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=chameleol';
+    assert.equal(await page.getAttribute('[data-testid=home-ranking]', 'href'), detailUrl);
+    await page.evaluate(() => __kamereoru.showResult());
     await page.waitForSelector('.rank-row');
-    const row = await page.textContent('.rank-row');
-    assert.match(row, /テストさん/);
-    assert.match(await page.textContent('.rank-mine'), /1/);
-    // 記録の確認状況
-    await page.click('.btn-back');
+    assert.match(await page.textContent('.rank-row'), /テストさん/);
+    assert.equal(await page.getAttribute('[data-testid=result-ranking]', 'href'), detailUrl);
+    await page.waitForSelector('.result-rank:not([hidden])');
+    assert.match(await page.textContent('.result-rank'), /1位／1人中/);
+    await page.click('[data-testid=result-home]');
     await page.click('[data-testid=home-records]');
     await page.waitForSelector('.record[data-state=official]');
     assert.deepEqual(s.env.errors, []);
@@ -230,5 +232,57 @@ test('ranked startup observes guide completion before checking its deadline', as
     });
     if (becomesReady) assert.deepEqual(await run(page, 'guide-ready'), { ranked: true });
     else await assert.rejects(run(page, 'guide-not-ready'), /ranked play did not start/);
+  }
+});
+
+test('名無しの50棟：開始の応答が失われても同じ開始を再送し、終了は端末にだけ保存する', async () => {
+  const fixture = await setup();
+  const { page, url } = fixture.env;
+  const posts = [];
+  try {
+    await page.route(fixture.api.base + '/**', async route => {
+      const request = route.request();
+      if (request.method() === 'POST') {
+        const path = new URL(request.url()).pathname.split('/').pop();
+        posts.push({ path, body: request.postDataJSON() });
+        if (path === 'launch' && posts.length === 1) {
+          // Commit the actual HTTP launch, then lose only its acknowledgement.
+          assert.equal((await route.fetch()).ok(), true);
+          await route.abort();
+          return;
+        }
+      }
+      await route.continue();
+    });
+    await openHome(page, url);
+    await page.click('[data-testid=home-start]');
+    await page.waitForSelector('[data-testid=stage]');
+    await waitAsync(page, () => __kamereoru.store.getAll('launches').then(rows => rows.length === 1));
+    await page.waitForFunction(() => !__kamereoru.startAttempt || __kamereoru.guidance);
+    await page.evaluate(async () => {
+      const app = globalThis.__kamereoru;
+      const { GameSession } = await import('/src/game/session.js');
+      const session = new GameSession(app.session.meta);
+      for (let i = 0; i < 50; i++) {
+        session.apply({ type: 'color', t: i * 5000, ...session.game.course.targets[i] });
+      }
+      session.apply({ type: 'tick', t: 250000 });
+      if (session.summary().endReason !== 'cleared') throw new Error('expected 50-building clear');
+      await app.persistEnd(session, app.generation);
+      await app.flushNetwork();
+    });
+    await waitAsync(page, () => __kamereoru.store.getAll('launches').then(rows => rows[0]?.sent));
+    assert.deepEqual(posts.map(call => call.path), ['launch', 'launch']);
+    assert.deepEqual(posts[0].body, posts[1].body);
+    assert.deepEqual(Object.keys(posts[0].body).sort(), ['gameVersion', 'launchId', 'playId', 'ranked', 'secret']);
+    assert.equal(posts[0].body.ranked, false);
+    const [counts] = await fixture.q('select (select count(*)::int from private.kamereoru_launches) AS starts, (select count(*)::int from private.kamereoru_results) AS results');
+    assert.deepEqual(counts, { starts: 1, results: 0 });
+    assert.deepEqual(await page.evaluate(async () => ({
+      buildings: (await __kamereoru.store.getAll('localResults'))[0].summary.buildings,
+      outbox: (await __kamereoru.store.getAll('outbox')).length,
+    })), { buildings: 50, outbox: 0 });
+  } finally {
+    await fixture.close();
   }
 });

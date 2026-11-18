@@ -79,7 +79,7 @@ for(const mode of ['files','payload','missing','failure']) {
       assert.equal(await page.evaluate(()=>__opened.length),0);
       await page.locator('.result-card-text').click();
       const intent=await page.evaluate(()=>({count:__opened.length,url:__opened.at(-1)}));
-      assert.equal(intent.count,1);assert.equal(new URL(intent.url).searchParams.get('url'),'https://example.invalid/');
+      assert.equal(intent.count,1);assert.equal(new URL(intent.url).searchParams.get('url'),'https://chameleonjp-lab.github.io/chameleol/');
       assert.deepEqual(env.errors,[]);
     } finally {await env.close();}
   });

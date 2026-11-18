@@ -54,6 +54,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  app.rerender = null;
   app.session = null;
   app.disposeStage();
   frames.clear();
@@ -316,4 +317,71 @@ test('再開準備中にホームへ戻る確認を開いたら、遅れた準�
   assert.equal(root.querySelectorAll('[data-testid="countdown"]').length, 0);
   assert.equal(app.session.running, false);
   await resuming;
+});
+
+test('ホームと各結果は実験場詳細へつながり、ホームに続いて上位表を1つ置く', () => {
+  const url = 'https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=chameleol';
+  assert.equal(root.querySelector('a[data-testid="home-ranking"]')?.getAttribute('href'), url);
+  mock.method(app, 'resultCardPorts', () => ({}));
+  for (const [buildings, endReason] of [[0, 'detected'], [50, 'cleared']]) {
+    app.lastResult = { playId: endReason, name: '', ranked: false, summary: { endReason, buildings, rankAverage: null, maxCombo: 0, score: {total: 0} } };
+    app.showResult();
+    assert.equal(root.querySelector('a[data-testid="result-ranking"]')?.getAttribute('href'), url);
+    assert.equal(root.querySelectorAll('.result-ranking').length, 1);
+    assert.ok(root.querySelector('[data-testid="result-home"]').nextElementSibling.matches('.result-ranking'));
+    assert.ok(root.querySelector('.result-ranking .rank-list'));
+  }
+});
+
+test('本人照会は今回の1件を取り直し、再審査では順位を外す', async () => {
+  const savedApi = app.api;
+  mock.method(app, 'resultCardPorts', () => ({}));
+  const calls = [], playId = 'run-A-7', official = { buildings: 7, rankAverage: 8231 };
+  const summary = { endReason: 'quit', buildings: 8, rankAverage: 9210, maxCombo: 2, score: { total: 880 } };
+  const metrics = { runRank: 3, totalPlays: 4, clearOrdinal: null };
+  let status = 'official';
+  const secret = 'only-this-play';
+  try {
+    app.api = { configured: true, get: async () => ({version: 1, rows: [], nextAfter: null, nameCount: 0}), post: async (route, body) => {
+      calls.push({ route, body });
+      return { items: [{ playId, status, official: status === 'official' ? official : null, metrics: status === 'official' ? metrics : null }] };
+    }};
+    await app.store.put('records', { playId: 'other', secret: 'other-secret' });
+    await app.store.put('records', { playId, status: 'pending_review', secret, summary });
+    app.lastResult = { playId, name: 'A', ranked: true, summary };
+    app.showResult();
+    await app.pollResult();
+    assert.deepEqual(calls, [{ route: 'status', body: { items: [{ playId, secret }] } }]);
+    assert.match(root.querySelector('.result-rank').textContent, /3位／4人中/);
+    assert.equal(root.querySelector('[data-testid=result-buildings]').textContent, '7 / 50');
+    assert.equal(root.querySelector('[data-testid=result-average]').textContent, '82.31%');
+    status = 'under_review';
+    click('.result-ranking [data-testid="ranking.refresh"]');
+    await flush();
+    assert.doesNotMatch(root.querySelector('.result-status').textContent, /3位/);
+    assert.equal(root.querySelector('.result-rank')?.textContent ?? '', '');
+    status = 'official';
+    document.dispatchEvent(new document.defaultView.Event('visibilitychange'));
+    await flush();
+    assert.match(root.querySelector('.result-rank').textContent, /3位／4人中/);
+  } finally { app.api = savedApi; }
+});
+
+test('訂正で50棟を下回ると結果の見出し・走破表示・地図が同時に更新される', () => {
+  mock.method(app, 'resultCardPorts', () => ({}));
+  const playId = 'reviewed-clear';
+  app.lastResult = {playId, ranked:true, name:'A', firstClearNow:true, netState:'pending_review',
+    summary:{buildings:50, endReason:'cleared', rankAverage:9000, maxCombo:3, score:{total:6191}}};
+  app.showResult();
+  assert.ok(root.querySelector('.result-screen-cleared .result-first-clear'));
+  for (const buildings of [49, 0, 50]) {
+    app.applyResultRecord({playId, status:buildings ? 'official' : 'no_rank', official:{buildings,rankAverage:9000},
+      metrics:{runRank:buildings ? 1 : null,totalPlays:4,clearOrdinal:buildings===50 ? 1:null}});
+    assert.equal(!!root.querySelector('.result-screen-cleared'), buildings === 50);
+    assert.equal(root.querySelector('h1').textContent === t('result.cleared'), buildings === 50);
+    assert.equal(!!root.querySelector('.result-first-clear'), buildings === 50);
+    assert.equal(root.querySelectorAll('.result-map-cell.is-passed').length, buildings);
+    assert.equal(root.querySelector('[data-testid=result-buildings]').textContent, buildings + ' / 50');
+    assert.equal(app.lastResult.summary.buildings, 50);
+  }
 });

@@ -19,5 +19,15 @@ export function loadRuntimeConfig(doc = globalThis.document, loc = globalThis.lo
       /* 保存できない環境 */
     }
   }
-  return Object.freeze({ apiBase, publicUrl, env, gameVersion, assetVersion, isVerification: env !== 'production' });
+  // Include the full endpoint: one host can proxy multiple projects.
+  // Relative endpoints are used by local verification servers.
+  if (apiBase) {
+    try {
+      apiBase = new URL(apiBase, doc?.baseURI ?? loc?.href).href.replace(/\/$/, '');
+    } catch {
+      apiBase = null;
+    }
+  }
+  const destination = JSON.stringify([env, apiBase]);
+  return Object.freeze({ apiBase, destination, publicUrl, env, gameVersion, assetVersion, isVerification: env !== 'production' });
 }

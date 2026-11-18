@@ -16,9 +16,10 @@ import { alertWordKey, createAlertStageTracker, createInstantSuccessTracker, mat
 import { createControls } from './ui/controls.js';
 import { h, clear, isolatedText } from './ui/dom.js';
 import { audioSettings, backButton, button, dialog, languageSelect, nameField, section, toast } from './ui/screens.js';
-import { createRankingView } from './ui/ranking.js';
+import { createRankingView, rankingLink } from './ui/ranking.js';
 import { createRecordsView } from './ui/record-status.js';
-import { buildHomeShareText, buildResultShareText, shareToX } from './ui/share.js';
+import { projectRunResult } from './presentation/result-card-data.js';
+import { GAME_URL, formatRunMetrics, buildHomeShareText, buildResultShareText, shareToX } from './ui/share.js';
 import { t, setLanguage, getLanguage, formatNumber, formatPercent2, onLanguageChange } from './i18n/i18n.js';
 import { isSupportedLanguage, resolveLanguage } from './i18n/languages.js';
 import { openStore, TAB_ID, StaleWriterError } from './storage/store.js';
@@ -51,7 +52,7 @@ import { PRACTICE_STEPS, createGuidePractice } from './guidance/practice.js';
 import { normalizeName } from './shared/name.js';
 import { loadRuntimeConfig } from './config/runtime.js';
 import { createApi, uuid } from './net/api.js';
-import { abandonStart, createStartRequest, flushLaunches, recordLaunch, sendStartRequest } from './net/start.js';
+import { abandonStart, createLaunch, createStartRequest, flushLaunches, recordLaunch, sendStartRequest } from './net/start.js';
 import { flushOutbox, makeOutboxItem, refreshRecords, requestReview, sendOne } from './net/outbox.js';
 
 const SAVE_INTERVAL_MS = 5000; // 試作値：通過時に加えて、ゲーム内5秒ごとに保存
@@ -68,7 +69,7 @@ export class App {
   constructor(root, { audio = null, stageFactory = null, resultCardPorts = null } = {}) {
     this.root = root;
     this.runtime = loadRuntimeConfig();
-    this.api = createApi({ base: this.runtime.apiBase });
+    this.api = createApi({ base: this.runtime.apiBase, destination: this.runtime.destination });
     this.audio = audio ?? createMixer();
     this.stageFactory = stageFactory ?? createStage;
     this.resultCardPorts = resultCardPorts;
@@ -116,7 +117,10 @@ export class App {
     onLanguageChange(() => this.rerender?.());
     document.addEventListener('visibilitychange', () => this.onVisibility());
     globalThis.addEventListener('pagehide', () => this.saveNow('pagehide'));
-    globalThis.addEventListener('online', () => this.flushNetwork());
+    globalThis.addEventListener('online', async () => {
+      await this.flushNetwork();
+      if (this.renderResultStatus) await this.pollResult();
+    });
     // 画面に触れた時に音を準備する（本編の外だけ。停止中は「再開」を押すまで音を出さない）
     document.addEventListener('pointerdown', () => this.wakeMenuAudio(), { passive: true });
     // ボタンの音：決定・戻る・そのほか。個別に鳴らしている所とは同じ音なので重ならない
@@ -252,18 +256,25 @@ export class App {
     }
   }
 
+  applyResultRecord(record) {
+    const r = this.lastResult;
+    if (record.playId !== r?.playId) return;
+    r.netState = record.status;
+    r.official = record.official;
+    r.metrics = record.metrics;
+    if (record.verifiedScore) r.verifiedScore = record.verifiedScore;
+    this.renderResultScore?.();
+    this.renderResultStatus?.();
+  }
+
   async refreshStatuses() {
+    const screen = this.screenGeneration, result = this.lastResult;
+    const isCurrent = () => this.screenGeneration === screen && this.lastResult === result;
     try {
-      const updated = await refreshRecords({ api: this.api, store: this.store });
-      if (updated.some((r) => r.unseenChange)) this.flags.recordsChanged = true;
-      const currentRecord=updated.find(r=>r.playId===this.lastResult?.playId);
-      if(currentRecord){
-        this.lastResult.netState=currentRecord.status;
-        this.lastResult.official=currentRecord.official;
-        if(currentRecord.verifiedScore)this.lastResult.verifiedScore=currentRecord.verifiedScore;
-        this.renderResultScore?.();
-        this.renderResultStatus?.();
-      }
+      const updated = await refreshRecords({ api: this.api, store: this.store, isCurrent });
+      if (updated.some(r => r.unseenChange)) this.flags.recordsChanged = true;
+      const record = updated.find(r => r.playId === result?.playId);
+      if (record && isCurrent()) this.applyResultRecord(record);
       return updated;
     } catch {
       return [];
@@ -343,7 +354,7 @@ export class App {
         continueBtn,
         h('div', { class: 'home-grid' }, [
           practiceBtn,
-          showOnline && button('home.ranking', () => this.showRanking(), { testid: 'home-ranking' }),
+          rankingLink('home-ranking'),
           button('home.howto', () => this.showHowTo(), { testid: 'home-howto' }),
           button('home.settings', () => this.showSettings(), { testid: 'home-settings' }),
           recordsBtn,
@@ -367,15 +378,15 @@ export class App {
 
   async shareHome() {
     this.audio.play('select');
-    const r = await shareToX({ text: buildHomeShareText({ lang: getLanguage() }), url: this.runtime.publicUrl });
+    const r = await shareToX({ text: buildHomeShareText({ lang: getLanguage() }), url: GAME_URL });
     if (r !== 'opened') this.showShareFallback(buildHomeShareText({ lang: getLanguage() }), r);
   }
 
   showShareFallback(text, mode) {
     const area = h('textarea', { class: 'share-manual', readonly: true, rows: '5' });
-    area.value = this.runtime.publicUrl ? `${text}\n${this.runtime.publicUrl}` : text;
+    area.value = `${text}\n${GAME_URL}`;
     dialog(this.layer, { titleKey: mode === 'copied' ? 'share.copied' : 'share.manual', body: area, actions: [{ key: 'common.close', primary: true }] });
-    area.select();
+    area.select?.();
   }
 
   // ---------- 開始 ----------
@@ -533,7 +544,7 @@ export class App {
   }
 
   async rankedStart(name, attempt) {
-    const record = await createStartRequest(this.store, { name, launchId: attempt.launchId, gameVersion: this.runtime.gameVersion });
+    const record = await createStartRequest(this.store, { destination: this.api.destination, name, launchId: attempt.launchId, gameVersion: this.runtime.gameVersion });
     if (!this.isStartCurrent(attempt)) {
       abandonStart(this.api, this.store, record).catch(() => {});
       return;
@@ -746,6 +757,8 @@ export class App {
       launchId,
       ranked,
       name: ranked ? name : '',
+      destination: this.api.destination,
+      requiresLaunch: startRecord?.requiresLaunch === true,
       requestId: startRecord?.requestId ?? null,
       seed: ranked ? startRecord.response.seed : randomSeed(),
       rulesVersion: ranked ? startRecord.response.rulesVersion : undefined,
@@ -753,11 +766,12 @@ export class App {
       assetVersion: this.runtime.assetVersion,
       startedAt: Date.now(),
     };
+    const launch = createLaunch({ ...meta, playId: ranked ? playId : null, secret });
     const session = new GameSession(meta);
     let generation = 0;
     for (let saveAttempt = 0; saveAttempt < 2; saveAttempt += 1) {
       try {
-        generation = await this.store.beginRun(TAB_ID, session.snapshot());
+        generation = await this.store.beginRun(TAB_ID, session.snapshot(), launch);
         break;
       } catch (err) {
         if (err?.code !== 'active_run_exists') break;
@@ -787,7 +801,8 @@ export class App {
     if (!generation) this.notices.push('notice.saveFailed');
     // 実際に本編を始めた：開始通知を端末へ保存してから送る（名前ありの開始予約だけでは数えない）
     try {
-      await recordLaunch(this.store, { launchId, ranked, playId: ranked ? playId : null, secret: ranked ? secret : null, gameVersion: this.runtime.gameVersion });
+      // A run whose snapshot could not be persisted still keeps a launch when possible.
+      if (!generation) await recordLaunch(this.store, launch);
     } catch {
       if (!ranked) this.notices.push('notice.launchNotSaved');
     }
@@ -1045,7 +1060,10 @@ export class App {
     this.guidance = guidance;
     this.renderGuidance = renderGuide;
     scope.own(()=>{guidance.dispose();if(this.guidance===guidance){this.guidance=null;this.renderGuidance=null;}});
-    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: fresh && !this.flags.openingSeen, presentationEnabled:session.meta.effects!==false,presentationSet:'extended96',verification:this.runtime.isVerification,extrasPort,gameExtrasController});
+    const firstOpening = fresh && !this.flags.openingSeen;
+    if (firstOpening) await this.setFlag('openingSeen', true);
+    if (!current()) return;
+    const stageView = await this.stageFactory(stageBox, { course: session.game.course, decorations, rules, showOpeningShop: firstOpening, presentationEnabled:session.meta.effects!==false,presentationSet:'extended96',verification:this.runtime.isVerification,extrasPort,gameExtrasController});
     if (!current()) { stageView.dispose(); return; }
     this.stage = stageView;
     stageView.setBestDistance?.(local?.buildings??null);
@@ -1277,10 +1295,9 @@ export class App {
     this.raf = requestAnimationFrame(loop);
 
     if (fresh) {
-      if (!this.flags.openingSeen) {
-        await this.playOpening(guidance.view());
+      if (firstOpening) {
+        await this.playOpening({ ...guidance.view(), playbackRate: 0.7 });
         if (!current()) return;
-        await this.setFlag('openingSeen', true);
       }
       if (this.session !== session || !current()) return;
       ready=true;
@@ -1294,7 +1311,7 @@ export class App {
     }
   }
 
-  async playOpening({ sceneT, color } = {}) {
+  async playOpening({ sceneT, color, playbackRate = 1 } = {}) {
     const ctrl = new AbortController();
     this.presentationScope?.own(() => ctrl.abort());
     const skip = button('common.skip', () => {
@@ -1302,7 +1319,7 @@ export class App {
       ctrl.abort();
     }, { className: 'btn-skip', testid: 'skip-opening' });
     this.layer.append(skip);
-    await this.stage.playOpening({ sceneT, color, signal: ctrl.signal, onCue: (name) => this.audio.play(name) });
+    await this.stage.playOpening({ sceneT, color, playbackRate, signal: ctrl.signal, onCue: (name) => this.audio.play(name) });
     skip.remove();
   }
 
@@ -1435,7 +1452,10 @@ export class App {
   }
 
   onVisibility() {
-    if (document.visibilityState !== 'hidden') return;
+    if (document.visibilityState !== 'hidden') {
+      if (this.renderResultStatus) this.pollResult();
+      return;
+    }
     this.countdownActive = false;
     const session = this.session;
     if (!session || session.ended) {
@@ -1613,37 +1633,29 @@ export class App {
     this.resultPoll=token;return token.completion;
   }
 
-  async pollResultFor(r,screen){
-    const current=()=>this.lastResult===r&&this.screenGeneration===screen;
-    if(!r?.ranked||!this.api.configured)return;
-    for (let i = 0; i < 6; i += 1) {
-      const rec = await this.store.getOne('records', r.playId).catch(() => null);
-      if(!current())return;
-      if (rec) {
-        r.netState = rec.status;
-        r.official = rec.official;
-        if(rec.verifiedScore)r.verifiedScore=rec.verifiedScore;
-        this.renderResultScore?.();
-        this.renderResultStatus?.();
-        if (rec.status !== 'verifying') break;
-      }
-      await new Promise((res) => setTimeout(res, 1500 * (i + 1)));
-      if(!current())return;
-      await this.refreshStatuses();
-    }
-    if(!current())return;
-    if (r.netState === 'official') {
+  async pollResultFor(r, screen) {
+    if (!r?.ranked || !this.api.configured) return;
+    const isCurrent = () => this.lastResult === r && this.screenGeneration === screen;
+    const cached = await this.store.getOne('records', r.playId).catch(() => null);
+    if (!isCurrent() || !cached || cached.playId !== r.playId) return;
+    if (cached.destination !== undefined && cached.destination !== this.api.destination) return;
+    this.applyResultRecord(cached);
+    for (let attempt = 0; attempt < 6 && isCurrent(); attempt += 1) {
       try {
-        const rankedBest=await this.api.post('rank',{name:r.name});
-        if(!current())return;
-        r.rankedBest=rankedBest;
+        const [record] = await refreshRecords({ api: this.api, store: this.store, playId: r.playId, isCurrent });
+        if (!isCurrent()) return;
+        if (!record) throw new Error('status_unavailable');
         r.rankError = false;
+        this.applyResultRecord(record);
+        if (record.status !== 'verifying' || attempt === 5) return;
       } catch {
-        if(!current())return;
-        r.rankedBest=null;
-        r.rankError=true;
+        if (isCurrent()) {
+          r.rankError = true;
+          this.renderResultStatus?.();
+        }
+        return;
       }
-      if(current())this.renderResultStatus?.();
+      await new Promise(resolve => setTimeout(resolve, 1500 * (attempt + 1)));
     }
   }
 
@@ -1656,15 +1668,16 @@ export class App {
     const resultScreen=this.screenGeneration+1;
     let resultPresentation=null,cardController=null;
     const resultCurrent=()=>this.lastResult===r&&this.screenGeneration===resultScreen;
-    const showOnline = this.runtime.isVerification || this.api.configured;
-    const reasonKey = { detected: 'result.detected', cleared: 'result.cleared', quit: 'result.quit' }[s.endReason];
+    const reasonKey = variant => variant === 'corrected' ? 'releaseCorrectedResult' : 'result.' + variant;
+    let variant = displayData.variant;
     const statusBox = h('div', { class: 'result-status', 'aria-live': 'polite' });
+    let rankingView, displayedOfficial;
     const rankingHost = h('div', { class: 'result-ranking' });
     const renderResultStatus = () => {
       if(!resultCurrent())return;
       cardController?.refresh({locale:getLanguage()});
-      if(!showOnline)return;
       clear(statusBox);
+      if (resultPresentation) statusBox.append(resultPresentation.rankElement);
       if (!r.ranked) {
         statusBox.append(h('p', { class: 'note' }, t(r.name ? 'result.status.unranked' : 'result.status.anonymous')));
         return;
@@ -1684,8 +1697,14 @@ export class App {
       }[r.netState] ?? 'result.status.pending';
       statusBox.append(h('p', {}, t(key)));
       if (r.netState === 'retryable_failed') statusBox.append(button('records.resend', () => this.flushNetwork().then(() => this.pollResult()), { className: 'btn-small' }));
-      const rankMatches=r.official&&r.summary.buildings===r.official.buildings&&r.summary.rankAverage===r.official.rankAverage&&r.summary.buildings===r.rankedBest?.buildings&&r.summary.rankAverage===r.rankedBest?.average;
-      resultPresentation?.updateRank({state:r.netState,rank:r.rankedBest?.rank??null,label:rankMatches?'current':'personalBest'});
+      const run = projectRunResult(r, getLanguage());
+      const officialKey = r.netState === 'official' ? JSON.stringify([run.buildings, run.rankAverage]) : null;
+      if (rankingView && officialKey !== displayedOfficial) rankingView.load();
+      displayedOfficial = officialKey;
+      const { rank, ordinal } = formatRunMetrics(run);
+      resultPresentation?.updateRank({ state: run.rankState, rank: run.runRank, label: 'current', text: rank });
+      if (ordinal) statusBox.append(h('p', { class: 'result-clear-ordinal' }, ordinal));
+      if (run.rankState === 'pending') statusBox.append(h('p', {}, t('releasePending')));
       if (r.rankError) statusBox.append(h('p', {}, [t('result.rankError'), ' ', button('common.retry', () => this.pollResult(), { className: 'btn-small' })]));
     };
     const localBests = h('p', { class: r.newBest ? 'result-best result-best-new' : 'result-best' });
@@ -1694,9 +1713,9 @@ export class App {
       const b = all?.[r.name || ''];
       if (b) localBests.textContent = t('result.localBest', { buildings: formatNumber(b.buildings), average: formatPercent2(b.rankAverage) });
     });
-    const el = h('main', { class: `screen result result-screen-${s.endReason}` }, [
+    const el = h('main', { class: `screen result result-screen-${variant}` }, [
       h('div', { class: 'result-burst', 'aria-hidden': 'true' }),
-      h('h1', { class: `result-title result-${s.endReason}` }, t(reasonKey)),
+      h('h1', { class: `result-title result-${variant}` }, t(reasonKey(variant))),
       h('div', { class: 'result-main' }, [
         h('div', { class: 'stat' }, [h('span', { class: 'stat-label' }, t('result.buildings')), h('span', { class: 'stat-value', 'data-testid': 'result-buildings' }, `${formatNumber(s.buildings)} / ${RULES_V1.buildingCount}`)]),
         h('div', { class: 'stat' }, [h('span', { class: 'stat-label' }, t('result.average')), h('span', { class: 'stat-value', 'data-testid': 'result-average' }, s.rankAverage == null ? '—' : formatPercent2(s.rankAverage))]),
@@ -1709,17 +1728,17 @@ export class App {
       statusBox,
       h('div', { class: 'result-actions' }, [
         button('result.again', () => this.startFlow(this.nameRaw), { primary: true, testid: 'result-again' }),
-        button('common.home', () => this.showHome(), { testid: 'result-home' }),
-        showOnline && button('home.ranking', () => this.showRanking(), {}),
+        rankingLink('result-ranking'),
         button('share.button', () => this.shareResult(), { className: 'btn-x', testid: 'result-share' }),
       ]),
+      button('common.home', () => this.showHome(), { testid: 'result-home' }),
       rankingHost,
     ]);
     this.mount(el, () => this.showResult());
     const scopeId = `${this.screenGeneration}:result`;
     const scope = createPresentationScope({ id: scopeId, kind: 'result' });
     this.presentationScope = scope;
-    const resultHost=h('div',{class:'result-supplement'});el.querySelector('.result-actions').after(resultHost);
+    const resultHost=h('div',{class:'result-supplement'});rankingHost.after(resultHost);
     // 任意のふり返りパネル。解析は lastResult の持ち物で、言語の描き直しでは始め直さない。
     const evidence=startResultEvidence(r);
     // Normal start supplies real drawing ports; injected lightweight Apps may omit the canvas ports.
@@ -1730,15 +1749,15 @@ export class App {
     // A fixed PNG drawing layout must not mask viewport changes and keep an old File shareable.
     const resultLayoutKey=()=>JSON.stringify([cardPorts.getLayoutKey?.()??null,globalThis.innerWidth??this.root.clientWidth??0,globalThis.innerHeight??this.root.clientHeight??0]);
     cardController=createResultCardController({result:r,locale:getLanguage(),layoutKey:resultLayoutKey(),ports:{...cardPorts,
-      getPublicUrl:()=>this.runtime.publicUrl,
+      getPublicUrl:()=>GAME_URL,
       onChange:snapshot=>{if(resultCurrent()){this.resultCardSnapshot=snapshot;cardPorts.onChange?.(snapshot);}},
     }});
     this.resultCardController=cardController;
     const refreshCardLayout=()=>cardController.refresh({locale:getLanguage(),layoutKey:resultLayoutKey()});
     globalThis.addEventListener?.('resize',refreshCardLayout);
-    const cardView=cardPorts.mount?.({host:el,controller:cardController,scope,onTextShare:()=>this.shareResultText()});
+    const cardView=cardPorts.mount?.({host:el,controller:cardController,scope,onTextShare:()=>this.shareResultText(),onCopyText:()=>this.copyResultText()});
     scope.own(()=>{globalThis.removeEventListener?.('resize',refreshCardLayout);cardView?.dispose?.();cardController.dispose();if(this.resultCardController===cardController){this.resultCardController=null;this.resultCardSnapshot=null;}});
-    const evidenceHost=h('div',{class:'result-evidence-host'});el.querySelector('.result-actions').after(evidenceHost);
+    const evidenceHost=h('div',{class:'result-evidence-host'});resultHost.before(evidenceHost);
     const panels=mountResultPanels({host:evidenceHost,t,state:resolveResultEvidence(r),panels:cardPorts.panels??[]});
     if(r.evidencePanelId)panels.open(r.evidencePanelId);
     const refreshEvidence=()=>{if(!resultCurrent())return;panels.update(resolveResultEvidence(r));r.evidencePanelId=panels.openId;};
@@ -1752,11 +1771,31 @@ export class App {
     el.querySelector('.result-main').append(resultPresentation.scoreElement);
     if(r.presentationPlayed)resultPresentation.finishNow();
     r.presentationPlayed=true;
-    let scoreSignature=JSON.stringify(r.verifiedScore??null);
-    const renderResultScore=()=>{if(!resultCurrent())return;cardController.refresh({locale:getLanguage()});const signature=JSON.stringify(r.verifiedScore??null);if(signature===scoreSignature)return;scoreSignature=signature;const data=buildResultData(r);resultPresentation.updateData(data);el.querySelector('[data-testid="result-max-combo"]').textContent=formatNumber(data.maxCombo);refreshEvidence();};
-    this.renderResultScore=renderResultScore;
-    scope.own(()=>{if(this.renderResultScore===renderResultScore)this.renderResultScore=null;});
-    if(r.ranked)this.store.getOne('records',r.playId).then(rec=>{if(!resultCurrent()||!rec?.verifiedScore)return;r.verifiedScore=rec.verifiedScore;renderResultScore();}).catch(()=>{});
+    let scoreSignature = JSON.stringify([r.verifiedScore, s.buildings, s.rankAverage]);
+    const renderResultScore = () => {
+      if (!resultCurrent()) return;
+      cardController.refresh({ locale: getLanguage() });
+      const run = projectRunResult(r, getLanguage());
+      el.querySelector('[data-testid="result-buildings"]').textContent = `${formatNumber(run.buildings)} / ${RULES_V1.buildingCount}`;
+      el.querySelector('[data-testid="result-average"]').textContent = formatPercent2(run.rankAverage);
+      const signature = JSON.stringify([r.verifiedScore, run.buildings, run.rankAverage]);
+      if (scoreSignature === signature) return;
+      scoreSignature = signature;
+      const data = buildResultData(r);
+      if (data.variant !== variant) {
+        el.classList.replace('result-screen-' + variant, 'result-screen-' + data.variant);
+        const title = el.querySelector('.result-title');
+        title.classList.replace('result-' + variant, 'result-' + data.variant);
+        title.textContent = t(reasonKey(data.variant));
+        variant = data.variant;
+      }
+      resultPresentation.updateData(data);
+      el.querySelector('[data-testid="result-max-combo"]').textContent = formatNumber(data.maxCombo);
+      refreshEvidence();
+    };
+    this.renderResultScore = renderResultScore;
+    scope.own(() => { if (this.renderResultScore === renderResultScore) this.renderResultScore = null; });
+    renderResultScore();
     this.renderResultStatus = renderResultStatus;
     renderResultStatus();
     scope.own(() => { if (this.renderResultStatus === renderResultStatus) this.renderResultStatus = null; });
@@ -1775,12 +1814,11 @@ export class App {
       r.bestPlayed = true; // 言語を切り替えて描き直しても、もう一度は鳴らさない
       scope.schedule('best-sound', 700, () => this.audio.play('best'));
     }
-    if (this.api.configured) {
-      const view = createRankingView({ api: this.api, name: null });
-      rankingHost.append(h('h2', { class: 'panel-title' }, t('ranking.top')), view.el);
-      view.load();
-      this.pollResult();
-    }
+    rankingView = createRankingView({ api: this.api, result: true, onRefresh: () => this.pollResult() });
+    rankingHost.append(h('h2', { class: 'panel-title' }, t('ranking.top')), rankingView.el);
+    scope.own(rankingView.dispose);
+    rankingView.load();
+    if (this.api.configured) this.pollResult();
   }
 
   shareResult() {
@@ -1788,15 +1826,22 @@ export class App {
     return this.shareResultText();
   }
 
+  resultShareText() {
+    return buildResultShareText({run:projectRunResult(this.lastResult, getLanguage())});
+  }
+
   async shareResultText() {
-    const { summary, official, rankedBest, netState } = this.lastResult;
-    // /rank は名前ごとのベスト。投稿する成績が今回の正式値とベストの両方に一致する時だけ順位を添える。
-    const matchesRankedBest = netState === 'official' && rankedBest?.rank != null && official != null &&
-      summary.buildings === official.buildings && summary.rankAverage === official.rankAverage &&
-      summary.buildings === rankedBest.buildings && summary.rankAverage === rankedBest.average;
-    const text = buildResultShareText({ result: summary, officialRank: matchesRankedBest ? rankedBest.rank : null, lang: getLanguage() });
-    const mode = await shareToX({ text, url: this.runtime.publicUrl });
+    const text = this.resultShareText();
+    const mode = await shareToX({text, url: GAME_URL});
     if (mode !== 'opened') this.showShareFallback(text, mode);
+  }
+
+  async copyResultText() {
+    const text = this.resultShareText();
+    let mode = 'copied';
+    try { await globalThis.navigator.clipboard.writeText(`${text}\n${GAME_URL}`); }
+    catch { mode = 'manual'; }
+    this.showShareFallback(text, mode);
   }
 
   // ---------- 練習 ----------

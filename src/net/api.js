@@ -11,7 +11,7 @@ export class ApiError extends Error {
   }
 }
 
-export function createApi({ base, fetchImpl = null, timeoutMs = 8000, headers = {} } = {}) {
+export function createApi({ base, destination, fetchImpl = null, timeoutMs = 8000, headers = {} } = {}) {
   const doFetch = fetchImpl ?? ((...args) => globalThis.fetch(...args));
   const configured = typeof base === 'string' && base.length > 0;
 
@@ -46,7 +46,7 @@ export function createApi({ base, fetchImpl = null, timeoutMs = 8000, headers = 
   }
 
   return {
-    configured,
+    configured, destination,
     post: (path, body, opts) => request('POST', path, body, opts),
     get: (path, params = {}, opts) => {
       const q = new URLSearchParams();

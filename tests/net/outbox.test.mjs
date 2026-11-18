@@ -14,7 +14,7 @@ const fresh = (opts) => openStore({ indexedDB: new IDBFactory(), name: `ob${(n +
 
 async function item(seed = 1, { jitter = 30 } = {}) {
   const live = simulatePlay(seed, { jitter });
-  const snapshot = { meta: { playId: uuid(), launchId: uuid(), rulesVersion: 'kamereoru-rules-v1', generatorVersion: 'kamereoru-course-v1', gameVersion: 't', seed, name: 'テスト' }, history: live.entries };
+  const snapshot = { meta: { destination: 'verification:test', playId: uuid(), launchId: uuid(), rulesVersion: 'kamereoru-rules-v1', generatorVersion: 'kamereoru-course-v1', gameVersion: 't', seed, name: 'テスト' }, history: live.entries };
   return makeOutboxItem({ snapshot, summary: summarize(live.state), secret: randomSecret(), gameVersion: 't' });
 }
 
@@ -24,7 +24,7 @@ function fakeServer(fail = () => null) {
   const results = new Map();
   const calls = [];
   return {
-    configured: true,
+    configured: true, destination: "verification:test",
     calls,
     results,
     async post(path, body) {
@@ -168,4 +168,117 @@ test('受付済みの記録が51件あっても、すべての状況を照会で
   } finally {
     store.close();
   }
+});
+
+test('outbox waits for the original destination and launch, then retains its credentials after a retryable 409', async () => {
+  const store = await fresh();
+  const it = { ...await item(2, { jitter: 1 }), destination: 'verify/A', launchId: uuid() };
+  const launch = { launchId: it.launchId, ranked: true, playId: it.playId, sent: false };
+  await store.put('outbox', it);
+  await store.put('launches', launch);
+  let waiting = true;
+  const api = Object.assign(fakeServer(path => path === 'complete' && waiting
+    ? new ApiError('launch_not_received', { retryable: true, status: 409 }) : null), { destination: 'prod/A' });
+  await flushOutbox({ api, store });
+  api.destination = it.destination;
+  await flushOutbox({ api, store });
+  assert.deepEqual(api.calls.map(call => call.path), []);
+  await store.put('launches', { ...launch, sent: true });
+  assert.equal((await flushOutbox({ api, store })).retryable, 1);
+  const pending = await store.getOne('outbox', it.playId);
+  for (const key of ['resultId','body','secret','destination']) assert.equal(pending[key], it[key]);
+  waiting = false;
+  assert.equal((await flushOutbox({ api, store })).accepted, 1);
+  assert.equal((await store.getOne('records', it.playId)).destination, it.destination);
+  store.close();
+});
+
+test('owner metrics are replaced as a unit, cleared on review or older servers and isolated by destination', async () => {
+  const store = await fresh();
+  const playId = 'local';
+  await store.put('records', { playId, secret: 's', destination: 'prod/A' });
+  await store.put('records', { playId: 'other', secret: 'x', destination: 'verify/A' });
+  let status = 'official', metrics = { runRank: 3, totalPlays: 4, clearOrdinal: null };
+  const api = { configured: true, destination: 'prod/A', async post(path, { items }) {
+    assert.deepEqual(items, [{ playId, secret: 's' }]);
+    return { items: [{ playId, status, metrics }] };
+  }};
+  assert.deepEqual((await refreshRecords({ api, store }))[0].metrics, metrics);
+  metrics = { runRank: 2, totalPlays: 4, clearOrdinal: 5 };
+  assert.deepEqual((await refreshRecords({api,store}))[0].metrics, {runRank:2,totalPlays:4,clearOrdinal:null});
+  metrics = { runRank: 7, totalPlays: 4, clearOrdinal: 2 };
+  assert.deepEqual((await refreshRecords({api,store}))[0].metrics, {runRank:null,totalPlays:4,clearOrdinal:null});
+  metrics = undefined;
+  assert.deepEqual((await refreshRecords({ api, store }))[0].metrics, { runRank: null, totalPlays: null, clearOrdinal: null });
+  status = 'under_review';
+  metrics = { runRank: 3, totalPlays: 4, clearOrdinal: 1 };
+  assert.deepEqual((await refreshRecords({ api, store }))[0].metrics, { runRank: null, totalPlays: 4, clearOrdinal: null });
+  store.close();
+});
+
+test('a late retry failure in another tab cannot recreate a settled outbox row', async () => {
+  const store = await fresh();
+  const it = await item(2, { jitter: 1 });
+  await store.put('outbox', it);
+  let arrived, release;
+  const pendingComplete = new Promise(resolve => { arrived = resolve; });
+  const delayed = new Promise(resolve => { release = resolve; });
+  const api = fakeServer();
+  const staleApi = { ...api, async post(path, body) {
+    if (path !== 'complete') return api.post(path, body);
+    arrived();
+    await delayed;
+    throw new ApiError('network', { retryable: true });
+  }};
+  const first = flushOutbox({ api: staleApi, store });
+  await pendingComplete;
+  assert.equal((await flushOutbox({ api, store })).accepted, 1);
+  release();
+  await first;
+  assert.equal((await store.getAll('outbox')).length, 0);
+  assert.equal((await store.getAll('records')).length, 1);
+  store.close();
+});
+
+test('terminal launch rejection ends retries for new contracts and preserves legacy completion', async () => {
+  const store = await fresh();
+  const api = fakeServer();
+  for (const requiresLaunch of [true, false]) {
+    const it = { ...await item(2, { jitter: 1 }), requiresLaunch };
+    await store.put('outbox', it);
+    await store.put('launches', { launchId: it.launchId, sent: true, rejected: 'forbidden' });
+    await flushOutbox({ api, store });
+    if (requiresLaunch) {
+      const held = await store.getOne('outbox', it.playId);
+      assert.equal(held.state, 'permanent_failed');
+      assert.equal(held.lastError, 'forbidden');
+      assert.equal(held.secret, it.secret);
+    } else {
+      assert.ok(await store.getOne('records', it.playId));
+    }
+  }
+  store.close();
+});
+
+test('a slower background status cannot overwrite a newer targeted official result or revocation', async () => {
+  const store = await fresh();
+  const playId = uuid();
+  const destination = 'verify/A';
+  await store.put('records', { playId, secret: 's', destination, status: 'verifying' });
+  for (const [older, newer] of [['verifying','official'], ['official','under_review']]) {
+    let arrived, release;
+    const pending = new Promise(resolve => { arrived = resolve; });
+    const delayed = new Promise(resolve => { release = resolve; });
+    const data = status => ({ items: [{ playId, status, metrics: { totalPlays: 4, runRank: status === 'official' ? 3 : null } }] });
+    const background = refreshRecords({ store, api: { configured: true, destination, async post() {
+      arrived(); await delayed; return data(older);
+    }}});
+    await pending;
+    const [current] = await refreshRecords({ store, playId, api: { configured: true, destination, post: async () => data(newer) } });
+    assert.equal(current.status, newer);
+    release();
+    assert.deepEqual((await background).map(row => row.status), []);
+    assert.equal((await store.getOne('records', playId)).status, newer);
+  }
+  store.close();
 });

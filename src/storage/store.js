@@ -138,6 +138,29 @@ export class Store {
     await done(tx);
   }
 
+  // An old tab may finish an upload after another tab has already acknowledged
+  // it. Both progress updates and settlement require the original pending row.
+  async updateOutbox(item, patch) {
+    const tx = this.tx(['outbox'], 'readwrite');
+    const queue = tx.objectStore('outbox');
+    const pending = await req(queue.get(item.playId));
+    if (pending?.resultId === item.resultId) queue.put({ ...pending, ...patch });
+    await done(tx);
+    return pending?.resultId === item.resultId;
+  }
+
+  async acceptOutbox(record) {
+    const tx = this.tx(['outbox', 'records'], 'readwrite');
+    const queue = tx.objectStore('outbox');
+    const pending = await req(queue.get(record.playId));
+    if (pending?.resultId === record.resultId) {
+      tx.objectStore('records').put(record);
+      queue.delete(record.playId);
+    }
+    await done(tx);
+    return pending?.resultId === record.resultId;
+  }
+
   // ---- 本編の欄 ----
   async loadRun() {
     const tx = this.tx(['runs']);
@@ -148,8 +171,8 @@ export class Store {
    * 新しいプレイを始める。進行中の欄があれば拒否する（先に endRun / settleRun で保全する）。
    * 戻り値：このタブの世代。
    */
-  async beginRun(tabId, snapshot) {
-    const tx = this.tx(['runs'], 'readwrite');
+  async beginRun(tabId, snapshot, launch = null) {
+    const tx = this.tx(launch ? ['runs', 'launches'] : ['runs'], 'readwrite');
     const runs = tx.objectStore('runs');
     let generation = 0;
     const current = await req(runs.get(RUN_SLOT));
@@ -159,6 +182,7 @@ export class Store {
       throw Object.assign(new Error('active_run_exists'), { code: 'active_run_exists' });
     }
     generation = (current?.generation ?? 0) + 1;
+    if (launch) tx.objectStore('launches').add(launch);
     runs.put({ slot: RUN_SLOT, status: 'active', playId: snapshot.meta.playId, owner: tabId, generation, snapshot, updatedAt: Date.now() });
     await done(tx);
     return generation;

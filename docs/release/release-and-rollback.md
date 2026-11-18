@@ -1,5 +1,32 @@
 # 公開と切り戻しの手順
 
+## オンライン版の公開前に開始台帳を照合する
+
+公開指示を受けた後、接続先がゲームと実験場の予定している本番プロジェクトであることを確認し、切替前の件数を次の読み取り専用SQLで記録する。旧版の表だけで実行できる。検証環境でも同じSQLを使う。
+
+```sql
+begin transaction isolation level repeatable read read only;
+
+select count(*) as total_plays,
+       count(*) filter (where ranked) as named_launches,
+       count(*) filter (where not ranked) as unnamed_launches
+from private.kamereoru_launches;
+
+select s.rules_version, r.status, count(*) as result_count,
+       count(*) filter (where l.launch_id is null) as missing_launch,
+       count(*) filter (where l.launch_id is not null
+                        and (not l.ranked or l.play_id is distinct from s.play_id)) as conflicting_launch
+from private.kamereoru_results r
+join private.kamereoru_starts s using (play_id)
+left join private.kamereoru_launches l on l.launch_id = s.launch_id
+group by s.rules_version, r.status
+order by s.rules_version, r.status;
+
+commit;
+```
+
+`total_plays` が順位表示の分母になる。結果が届く前に本編を閉じた回も含む。予約だけの回、匿名の終了、途中離脱の終了を補う必要はない。`missing_launch` または `conflicting_launch` に該当する結果があれば、その判定版の配信元・開始通知・再送状況を調べ、分母を裏付けられるまで数値の公開を保留する。調査記録には版別・状態別の件数を使う。送信待ちのデータを保持し、結果から開始時刻や回数を推定して埋めない。
+
 ## PR #26と現在の単独公開（2026-11-17）
 
 [現在の実装・検証状態](../acceptance/pr26/completion-task4/evidence.md)と[本番・候補の比較票](pr26-candidate-comparison.md)を確認する。現行本番は `https://chameleonjp-kamereoru.chameleonjp.chatgpt.site/`、Sites version 5、commit `9c4a6ebad65414e4f659537d28f4bc3a93a1f55c`、assetVersion `0.1.0-f25f4a9ee1`、単独v2・API指定なしと照合した。従来の「現在の公開状態は未確認」は各資料の作成時点の記録である。

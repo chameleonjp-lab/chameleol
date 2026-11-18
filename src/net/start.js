@@ -7,18 +7,19 @@
 // 開始通知（プレイ回数）：
 //   - スタート操作1回につき launchId を1つ。実際に本編を始めた時だけ、端末へ保存してから送る。
 //   - 名前ありの開始予約だけでは回数に入れない。再開・終了・再送では数えない。
-import { RULES_V1, RULES_V3 } from '../rules/v1/index.js';
+import { RULES_V1, RULES_V3, RULES_V4 } from '../rules/v1/index.js';
 import { randomSecret } from '../storage/store.js';
+import { canSendRecord } from './destination.js';
 import { ApiError, UUID_RE, sleep, uuid } from './api.js';
 
 export const START_RETRY_DELAYS = Object.freeze([700, 1600]); // 試作値
-const RANKED_RULES = [RULES_V3, RULES_V1];
+const RANKED_RULES = [RULES_V4, RULES_V3, RULES_V1];
 
 /** 開始受付の応答を検査する。HTTPの成功だけで受付成功としない。 */
 export function validateStartResponse(data, { requestId, name, gameVersion, rules = RULES_V1, supportedRulesVersions = [rules.rulesVersion] }) {
   const problems = [];
   const selectedRules = RANKED_RULES.find((candidate) => candidate.rulesVersion === data?.rulesVersion);
-  const validSupported = Array.isArray(supportedRulesVersions) && supportedRulesVersions.length >= 1 && supportedRulesVersions.length <= 2
+  const validSupported = Array.isArray(supportedRulesVersions) && supportedRulesVersions.length >= 1 && supportedRulesVersions.length <= RANKED_RULES.length
     && new Set(supportedRulesVersions).size === supportedRulesVersions.length
     && supportedRulesVersions.every((version) => RANKED_RULES.some((candidate) => candidate.rulesVersion === version));
   if (data?.requestId !== requestId) problems.push('requestId');
@@ -34,8 +35,10 @@ export function validateStartResponse(data, { requestId, name, gameVersion, rule
 /**
  * 開始要求を作って端末へ保存する（送信前）。
  */
-export async function createStartRequest(store, { name, launchId, gameVersion }) {
+export async function createStartRequest(store, { name, launchId, gameVersion, destination }) {
   const record = {
+    destination,
+    requiresLaunch: true,
     requestId: uuid(),
     secret: randomSecret(),
     launchId,
@@ -64,6 +67,7 @@ export async function sendStartRequest(api, store, record, { delays = START_RETR
     if (!isCurrent()) break;
     onAttempt(i + 1, delays.length + 1);
     try {
+      if (!await canSendRecord(api, record)) return { ok: false, error: new ApiError('destination_unknown') };
       record.attempts += 1;
       const data = await api.post('start', {
         requestId: record.requestId,
@@ -98,6 +102,7 @@ export async function abandonStart(api, store, record) {
   await store.put('starts', { ...latest, status: 'abandoned', abandonedAt: Date.now() });
   if (!api.configured) return;
   try {
+    if (!await canSendRecord(api, latest)) return;
     await api.post('abandon', { requestId: record.requestId, secret: record.secret });
     await store.put('starts', { ...latest, status: 'abandoned', abandonedAt: Date.now(), abandonSent: true });
   } catch {
@@ -108,8 +113,13 @@ export async function abandonStart(api, store, record) {
 /**
  * 実際に本編を始めた時の開始通知。端末へ保存してから送る（送れなくても次回起動・通信回復で再送）。
  */
-export async function recordLaunch(store, { launchId, ranked, playId = null, secret = null, gameVersion }) {
-  await store.put('launches', { launchId, ranked, playId, secret, gameVersion, startedAt: Date.now(), sent: false });
+export function createLaunch({ launchId, ranked, playId = null, secret = null, gameVersion, destination }) {
+  return { launchId, ranked, playId, secret, gameVersion, destination, startedAt: Date.now(), sent: false };
+}
+
+export async function recordLaunch(store, options) {
+  const launch = createLaunch(options);
+  await store.put('launches', launch);
 }
 
 export async function flushLaunches(api, store) {
@@ -119,14 +129,15 @@ export async function flushLaunches(api, store) {
   let failed = 0;
   for (const l of pending) {
     try {
+      if (!await canSendRecord(api, l)) continue;
       await api.post('launch', { launchId: l.launchId, ranked: l.ranked, playId: l.playId, secret: l.secret, gameVersion: l.gameVersion });
       // 送れた通知は秘密を外して残す（重複防止の記録）
-      await store.put('launches', { ...l, secret: null, sent: true, sentAt: Date.now() });
+      await store.put('launches', { ...l, destination: api.destination, secret: null, sent: true, sentAt: Date.now() });
       sent += 1;
     } catch (err) {
       failed += 1;
-      if (err instanceof ApiError && !err.retryable) {
-        await store.put('launches', { ...l, secret: null, sent: true, rejected: err.code, sentAt: Date.now() });
+      if (l.destination !== undefined && err instanceof ApiError && !err.retryable) {
+        await store.put('launches', { ...l, destination: api.destination, secret: null, sent: true, rejected: err.code, sentAt: Date.now() });
       }
     }
   }

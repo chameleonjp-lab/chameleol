@@ -285,7 +285,7 @@ export default {
   'share.manual': '下の本文を選んでコピーしてください',
   'share.hashtag': '#カメレオる',
   'share.home.title': 'カメレオる',
-  'share.home.body': '建物の色に体の色を合わせて、警察から逃げるゲーム。',
+  'share.home.body': '宝石を盗んだカメレオン、壁と同じ色に変身して警察から逃げ切ろう！',
   'share.result.title': 'カメレオるで遊んだよ',
   'share.result.cleared': '50棟を逃げきった！',
   'share.result.values': '{buildings}棟・平均一致度{average}',

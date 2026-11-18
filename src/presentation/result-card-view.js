@@ -68,7 +68,7 @@ export function cardViewState(snapshot) {
   };
 }
 
-export function mountResultCardView({ host, controller, scope, onTextShare, initial = null }) {
+export function mountResultCardView({ host, controller, scope, onTextShare, onCopyText, initial = null }) {
   const doc = host.ownerDocument;
   const win = doc.defaultView;
   let disposed = false;
@@ -104,16 +104,12 @@ export function mountResultCardView({ host, controller, scope, onTextShare, init
   const title = host.querySelector('.result-title');
   if (title) title.after(card); else host.prepend(card);
   const actions = host.querySelector('.result-actions');
-  const again = host.querySelector('[data-testid="result-again"]');
   const share = host.querySelector('[data-testid="result-share"]');
-  if (actions) card.after(actions);
-  if (share) {
-    share.classList.add('result-card-share');
-    if (again) again.after(share);
-  }
+  share?.classList.add('result-card-share');
   const secondary = el('div', 'result-card-secondary');
   secondary.setAttribute('data-testid', 'result-card-secondary');
-  if (share) share.after(secondary); else actions?.prepend(secondary);
+  const ranking = host.querySelector('.result-ranking');
+  if (ranking) ranking.after(secondary); else host.append(secondary);
   const mk = (cls, testid, onClick) => {
     const b = el('button', `btn btn-small ${cls}`, null, secondary);
     b.type = 'button';
@@ -123,6 +119,7 @@ export function mountResultCardView({ host, controller, scope, onTextShare, init
   };
   const saveBtn = mk('result-card-save', 'result-card-save', () => openViewer());
   const textBtn = mk('result-card-text', 'result-card-text', () => { try { onTextShare?.(); } catch { /* 本文共有の失敗で画面を止めない */ } });
+  const copyBtn = mk('result-card-copy', 'result-card-copy', () => onCopyText?.());
   const retryBtn = mk('result-card-retry', 'result-card-retry', () => { controller?.retry?.(); });
   retryBtn.hidden = true;
   const status = el('p', 'result-card-status', null, secondary);
@@ -152,6 +149,8 @@ export function mountResultCardView({ host, controller, scope, onTextShare, init
     const view = cardViewState(snapshot);
     saveBtn.textContent = tx('card.save');
     textBtn.textContent = tx('card.textShare');
+    copyBtn.textContent = tx('releaseCopy');
+    saveBtn.disabled = view.state === 'unavailable' && !view.prepared;
     retryBtn.textContent = tx('card.retry');
     retryBtn.hidden = !view.showRetry;
     if (share) {

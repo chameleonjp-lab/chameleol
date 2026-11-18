@@ -25,7 +25,7 @@ export function openingPose(elapsed, destination, reducedMotion) {
   };
 }
 
-export function startShopEscape({ destination, reducedMotion, signal, draw, onCue }) {
+export function startShopEscape({ destination, reducedMotion, signal, draw, onCue, playbackRate = 1 }) {
   const clock = createVisiblePresentationClock({ visibilityTarget: document });
   let frame, cue = 0, stopped = false, resolve;
   const finished = new Promise(done => { resolve = done; });
@@ -42,9 +42,10 @@ export function startShopEscape({ destination, reducedMotion, signal, draw, onCu
     stop();
   }
   function step(time) {
-    const { elapsed, dt } = clock(time, document.hidden);
+    const visible = clock(time, document.hidden);
+    const elapsed = visible.elapsed * playbackRate;
     if (!document.hidden) {
-      draw(openingPose(elapsed, destination, reducedMotion), dt);
+      draw(openingPose(elapsed, destination, reducedMotion), visible.dt * playbackRate);
       while (!stopped && cue < cues.length && elapsed >= cues[cue][0] * DURATION) onCue(cues[cue++][1]);
       if (elapsed >= DURATION) { stop(); return; }
     }

@@ -80,3 +80,17 @@ test('factory ports can acquire the shared renderer at first mount before portra
  assert.equal(lease.signal.aborted,true);assert.equal(counts().portraits,1);
  assert.equal(app.resultCardController.snapshot().state,'ready');
 });
+
+test('copying a result uses the confirmed text and canonical URL exactly once', async t=>{
+  setup();const nav=globalThis.navigator;
+  const previous=Object.getOwnPropertyDescriptor(nav,'clipboard');
+  t.after(()=>{if(previous)Object.defineProperty(nav,'clipboard',previous);else delete nav.clipboard;});
+  let copied;
+  Object.defineProperty(nav,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}});
+  setLanguage('ja');app.lastResult.netState='official';app.lastResult.metrics={runRank:3,totalPlays:4,clearOrdinal:1};
+  app.showResult();await settle();
+  await app.copyResultText();
+  assert.match(copied,/3位／4人中/);assert.match(copied,/1人目/);
+  assert.equal(copied.split('https://chameleonjp-lab.github.io/chameleol/').length,2);
+  assert.equal(document.querySelector('.share-manual').value,copied);
+});

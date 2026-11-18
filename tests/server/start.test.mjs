@@ -146,3 +146,19 @@ test('SEC-TEST-02: 開始の頻度を接続元ごとに制限し、同じ要求�
     await srv.close();
   }
 });
+
+test('an abandoned named reservation stays uncounted when a late launch arrives', { skip: SKIP }, async () => {
+  const srv = await freshServer('cancelled_launch');
+  try {
+    const start = await rankedStart(srv, '中止', { launch: false });
+    assert.equal((await srv.call('abandon', { requestId: start.requestId, secret: start.secret })).body.status, 'abandoned');
+    const late = await srv.call('launch', { launchId: start.launchId, ranked: true, playId: start.playId,
+      gameVersion: '0.1.0', secret: start.secret });
+    assert.equal(late.status, 409);
+    assert.equal(late.body.error, 'start_abandoned');
+    assert.equal(late.body.retryable, false);
+    assert.equal(await launches(srv), 0);
+    const stats = await srv.call('stats', null, { method: 'GET' });
+    assert.equal(stats.body.totalPlays, 0);
+  } finally { await srv.close(); }
+});

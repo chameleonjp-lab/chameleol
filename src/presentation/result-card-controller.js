@@ -1,7 +1,7 @@
 import { rulesForVersion } from '../rules/v1/config.js';
 import { applyVerifiedScore } from '../net/verified-score.js';
 import { resolveResultEvidence } from './result-evidence.js';
-import { buildResultCardModel } from './result-card-data.js';
+import { buildResultCardModel, projectRunResult } from './result-card-data.js';
 import { buildResultMiniatureModel } from './result-miniature-data.js';
 import { createResultRendererOwner } from './result-renderer-owner.js';
 import { sharePreparedResult } from '../ui/share-card.js';
@@ -24,7 +24,8 @@ export function createResultCardController({result,locale='en',layoutKey='defaul
   result.resultCardController?.dispose();
   let disposed=false,key=null,controller=null,canvas=null,prepared=null,model=null,miniature=null,state='pending',imageUrl=null;
   let revision=Number.isSafeInteger(result.cardRevision)?result.cardRevision:0;
-  let currentLocale=locale,currentLayout=layoutKey;
+  let currentLocale=locale,currentLayout=layoutKey,run=null;
+  let miniatureKey=null;
   const urlApi=ports.urlApi??globalThis.URL;
   const focusTarget=ports.focusTarget??globalThis;
   const visibilityTarget=ports.visibilityTarget??globalThis.document;
@@ -86,16 +87,24 @@ export function createResultCardController({result,locale='en',layoutKey='defaul
     let displaySummary;
     try{displaySummary=applyVerifiedScore(result.summary,result.verifiedScore);}catch{displaySummary={};}
     const evidence=resolveResultEvidence(result);
-    const nextKey=JSON.stringify([displaySummary,result.netState??null,currentLocale,currentLayout,evidence.status,evidence.revision,evidence.data]);
-    if(!force && nextKey===key)return snapshot();
+    run=projectRunResult(result,currentLocale,displaySummary);
+    const nextKey=JSON.stringify([run,displaySummary.rulesVersion,displaySummary.score,displaySummary.bonus,result.netState??null,currentLayout]);
+    // Evidence can finish after the card. Only update the optional miniature in that case.
+    const nextMiniatureKey=JSON.stringify([evidence.status,evidence.revision,result.arrivedBuilding,result.targets]);
+    const cardChanged=force || nextKey!==key;
+    if (cardChanged || nextMiniatureKey!==miniatureKey) {
+      miniature=buildResultMiniatureModel({displaySummary,arrivedBuilding:result.arrivedBuilding,targets:result.targets,evidence});
+      miniatureKey=nextMiniatureKey;
+      if (!cardChanged) notify();
+    }
+    if (!cardChanged) return snapshot();
     key=nextKey;revision++;result.cardRevision=revision;
     controller?.abort();clearCanvas();revokeImageUrl();prepared=null;
     controller=new AbortController();
     const rules=typeof displaySummary.rulesVersion==='string'?rulesForVersion(displaySummary.rulesVersion):null;
-    model=buildResultCardModel({displaySummary,rules,evidence,locale:currentLocale,revision,verificationState:result.ranked?result.netState:null});
-    miniature=buildResultMiniatureModel({displaySummary,arrivedBuilding:result.arrivedBuilding,targets:result.targets,evidence});
-    state='pending';notify();
-    if(model.hero.status!=='pending')void prepare(revision,controller.signal);
+    model=buildResultCardModel({displaySummary,rules,run,locale:currentLocale,revision,verificationState:result.ranked?result.netState:null});
+    state=run.appearance.kind==='unknown'?'unavailable':'pending';notify();
+    if(state==='pending')void prepare(revision,controller.signal);
     return snapshot();
   }
   const onReturn=()=>{
@@ -104,17 +113,19 @@ export function createResultCardController({result,locale='en',layoutKey='defaul
   };
   const api={snapshot,refresh,retry:()=>refresh({},true),revokeImageUrl,
     getImageUrl(){
+      refresh();
       if(disposed||!prepared||prepared.revision!==revision)return null;
       if(!imageUrl){try{imageUrl=urlApi?.createObjectURL?.(prepared.blob)??null;}catch{return null;}}
       return imageUrl;
     },
     async share(){
+      refresh();
       if(disposed || !prepared || prepared.revision!==revision || result.cardShareRequest)return 'unavailable';
       const request=Symbol('native-share');result.cardShareRequest=request;
       const rev=revision;state='sharing';notify();
       let outcome='failed';
       try{
-        const text=buildResultShareText({result:applyVerifiedScore(result.summary,result.verifiedScore),officialRank:null,lang:currentLocale});
+        const text=buildResultShareText({run});
         outcome=await sharePreparedResult({prepared,currentRevision:revision,text,url:ports.getPublicUrl?.(),navigator,shareImpl:ports.shareImpl});
       }catch{/* optional share failure never blocks replay or future attempts */}
       finally{

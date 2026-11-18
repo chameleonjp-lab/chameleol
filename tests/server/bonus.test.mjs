@@ -26,7 +26,7 @@ async function bonusStart(srv) {
 }
 
 function perfectBody(start, { quitAt = null } = {}) {
-  const rules = rulesForVersion(V3);
+  const rules = rulesForVersion(start.rulesVersion ?? V3);
   const game = createGame({ seed: start.seed, rules });
   const rec = createRecorder(rules);
   for (let i = 0; i < 50 && (quitAt == null || i * 5000 < quitAt); i += 1) rec.push({ type: 'color', t: i * 5000, ...game.course.targets[i] });
@@ -34,7 +34,7 @@ function perfectBody(start, { quitAt = null } = {}) {
   const { state } = replayHistory(game, rec.entries);
   const summary = summarize(state, rules);
   return {
-    body: { format: 'kamereoru-result-v1', playId: start.playId, launchId: start.launchId, seed: start.seed, rulesVersion: V3, generatorVersion: 'kamereoru-course-v1', gameVersion: '0.1.0', history: rec.entries, claimed: summary },
+    body: { format: 'kamereoru-result-v1', playId: start.playId, launchId: start.launchId, seed: start.seed, rulesVersion: rules.rulesVersion, generatorVersion: 'kamereoru-course-v1', gameVersion: '0.1.0', history: rec.entries, claimed: summary },
     summary,
   };
 }
@@ -63,7 +63,7 @@ test('old_new_start_matrix and invalid ranked version lists', { skip: SKIP }, as
     const oldReq = request(); delete oldReq.supportedRulesVersions;
     assert.equal((await srv.call('start', oldReq)).body.rulesVersion, V1);
     assert.equal((await srv.call('start', request())).body.rulesVersion, V3);
-    for (const invalid of [[], [V4], ['future'], [V1, V1], [V3, V1, V4], null, V3, [null]]) {
+    for (const invalid of [[], ['kamereoru-rules-v2'], ['future'], [V1, V1], [V3, V1, V4, V4], null, V3, [null]]) {
       const r = await srv.call('start', request(invalid));
       assert.equal(r.status, 422, JSON.stringify(invalid));
     }
@@ -228,7 +228,41 @@ test('bonus-only forged claims are recomputed while ranking mismatches stay unde
   assert.equal(verifyResult(badRank).status, 'pending_review');
   assert.equal(verifyResult(badRank).verdict.verifiedScore, undefined);
   const standalone = structuredClone(input);
-  standalone.rulesVersion = standalone.body.rulesVersion = V4;
+  standalone.rulesVersion = standalone.body.rulesVersion = 'kamereoru-rules-v2';
   assert.equal(verifyResult(standalone).verdict.reason, 'unsupported_rules_version');
   assert.equal(verifyResult(standalone).verdict.verifiedScore, undefined);
+});
+
+
+test('v4 ranked replay reproduces the published fixed pause fixture including every bonus', () => {
+  const f = JSON.parse(readFileSync(new URL('../replay/fixtures/bonus-v4-pause.json', import.meta.url)));
+  const start = { playId: uuid(), launchId: uuid(), seed: f.seed, rulesVersion: f.rulesVersion, generatorVersion: 'kamereoru-course-v1' };
+  const input = { ...start, acceptedAt: '2026-01-01T00:00:00Z', receivedAt: '2026-01-01T00:10:00Z',
+    body: { ...start, format: 'kamereoru-result-v1', history: f.history, claimed: f.expected } };
+  const verdict = verifyResult(input);
+  assert.equal(verdict.status, 'official');
+  assert.deepEqual(verdict.verdict.verifiedScore.bonus, f.expected.bonus);
+  assert.deepEqual(verdict.verdict.verifiedScore.score, f.expected.score);
+});
+
+test('new v4 reservation is bound to a launch and returns verified v4 score only to the owner', { skip: SKIP }, async () => {
+  const srv = await freshServer('v4_score', { processAfterComplete: false });
+  try {
+    const req = request([V4, V3, V1]);
+    const r = await srv.call('start', req);
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(r.body.rulesVersion, V4);
+    const start = { ...req, ...r.body };
+    const { requires_launch } = (await srv.sql("update private.kamereoru_starts set accepted_at=now()-interval '10 minutes' where request_id=$1 returning requires_launch", [req.requestId]))[0];
+    assert.equal(requires_launch, true);
+    const launch = await srv.call('launch', { ...req, playId: start.playId, ranked: true });
+    assert.equal(launch.status, 200, JSON.stringify(launch.body));
+    const { summary } = await submitBonus(srv, start);
+    await srv.handler.processJobs();
+    const own = await status(srv, start);
+    assert.equal(own.status, 'official');
+    assert.equal(own.verifiedScore.rulesVersion, V4);
+    assert.deepEqual(own.verifiedScore.score, summary.score);
+    assert.deepEqual((await status(srv, start, randomSecret())), { playId: start.playId, error: 'forbidden' });
+  } finally { await srv.close(); }
 });

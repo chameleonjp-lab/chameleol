@@ -167,3 +167,17 @@
 > 通常・走破とも「ホームへ」の直下に上位表を配置してください。10人までが見え、11人目から枠内をスクロールでき、30位同率の全員に届くようにしてください。初回4秒の宝石店では宝石を盗んだ瞬間とサイレンに見える窓がわかり、最終フレームが1棟目のガイドにつながるように調整してください。iPhoneの縦・横、文字拡大、簡易描画で確認した画面と、まだ実機で確認できていない箇所を返してください。集計・通信はChatGPT担当で、翻訳は両者の実装後に行います。
 
 参照資料：[既存ゲームの開始・再送処理](https://github.com/chameleonjp-lab/chameleol/blob/190e8c410723935825e3e9206555ee908ae7baf6/src/net/start.js)、[実験場詳細](https://github.com/chameleonjp-lab/chameleonjp_lab/blob/70bfea7fbf856dbc139f2ef90b2a641db646d693/ranking.html)、[タッケウ](https://github.com/chameleonjp-lab/takkeu)、[Xの投稿画面に渡せる項目](https://docs.x.com/x-for-websites/post-button/guides/web-intent)、[端末の共有機能](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/share)。
+
+### 実装ブランチからClaudeへ渡す結果データと試験例
+
+`src/presentation/result-card-data.js` の `projectRunResult(lastResult, locale)` は、この回の表示用データを返す。`appearance.kind === 'wall'` は `appearance.hsv`（h は0～35999、s・v は0～10000）と `appearance.building` を使う。`rainbow` は50棟走破の彩色、`unknown` は旧記録の色欠落を表す。後者では本文共有を使える。13棟目発見の入力例は `tests/presentation/result-card-controller.test.mjs` の `release image and native text` にある。
+
+`src/presentation/result-card-controller.js` が `drawResultCard(canvas, {model, portrait, locale})` を呼ぶ。画面と1200×630のPNGは同じ関数を使う。表示する値は `model.passed`、`model.totalScore`、`model.rankState`、`model.runRank`、`model.totalPlays`、`model.clearOrdinal`。順位行は `src/ui/share.js` の `formatRunMetrics(model)` で整形できる。確認待ちは `pending`、順位非登録は `unranked`。描画中の端末や通信先から数字を取得する必要はない。
+
+`src/presentation/result-portrait.js` の `createPosedHero(hero, deps)` には `hero.status`（wall／rainbow／unknown）、`hero.hsv`、`hero.outlineBuilding` が届く。虹色をゲーム内のNo.28と共有し、簡易描画でも同じ部位が同じ色になるよう仕上げてほしい。色や順位が変わるとコントローラーが共有可能なPNGをすぐ破棄する。画像保存・本文付きX・コピーは結果の上位表の後ろにある。`tests/e2e/result-card.e2e.mjs` の `share: the tap` で端末共有の呼び出しとキャンセル、`tests/e2e/result-card-resilience.e2e.mjs` の `share recovery` で保存とXの代替操作を確認できる。
+
+### 画面構造と宝石店の引き継ぎ
+
+ゲームの `src/app.js` の `showHome / showResult` に実験場詳細へのリンクがあり、結果の上位表は `src/ui/ranking.js` の `createRankingView` が描画する。「ホームへ」直下のリストと順位行の高さは保ち、長い名前と文字拡大時は列内で収める。確認例は `tests/ui/result-ranking.test.mjs` の境界同率・再試行と、`tests/e2e/online.e2e.mjs` のブラウザー試験。
+
+初回の `App.showGame` は `App.playOpening` に `playbackRate: 0.7` とガイドの `sceneT` を渡す。`replayOpening` の倍率は1。`src/scene/opening.js` の `startShopEscape` が換算済みの姿勢とフレーム差分を1度だけ渡すので、`street.js` と `stage.js` の描画はそのまま利用する。基準は `tests/scene/presentation-clock.test.mjs` の表示中640・1,920・3,280msの合図、`tests/e2e/guidance.e2e.mjs` の「first theft runs」の最終位置と次のガイドのカメラ。彩色・画像レイアウトの完成後、日本語文言とスクリーンショットを翻訳担当へ返す。

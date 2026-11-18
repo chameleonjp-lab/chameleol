@@ -144,73 +144,85 @@ test('SHARE-TEST-01: Xの投稿画面を開けない時は、本文とURLを手�
   }
 });
 
-test('結果画面では名前のベスト順位を示し、Xには今回の成績に合う順位だけを入れる', async (t) => {
+test('本人の今回順位と正式な棟数を結果とXに反映し、審査中は順位を外す', async () => {
   const env = await launch({ languages: ['ja-JP'] });
   const { page } = env;
-  let best;
+  let status = 'official';
+  const metrics = { runRank: 3, totalPlays: 4, clearOrdinal: null };
+  const detail = { buildings: 7, rankAverage: 8999 };
   try {
     await page.addInitScript(() => {
       localStorage.setItem('kamereoru.apiBase', '/test-api');
-      window.open = (url) => { window.lastShareUrl = url; return {}; };
+      window.open = url => { window.lastShareUrl = url; return {}; };
     });
-    await page.route('**/test-api/ranking?*', (route) => route.fulfill({ json: { ok: true, version: 1, rows: [], nextAfter: null, nameCount: 0, restarted: false } }));
-    await page.route('**/test-api/rank', (route) => route.fulfill({ json: { ok: true, rank: 3, name: 'Tester', ...best } }));
+    await page.route('**/test-api/ranking?*', route => route.fulfill({ json: {
+      ok: true, version: 1, rows: [], nextAfter: null, nameCount: 0, restarted: false,
+    } }));
+    await page.route('**/test-api/status', route => route.fulfill({ json: {
+      ok: true, items: route.request().postDataJSON().items.map(({playId}) => ({playId, status, official: detail, metrics})),
+    } }));
     await openHome(page, env.url);
-
-    async function showRun({ official = { buildings: 20, rankAverage: 9000 }, status = 'official' } = {}) {
-      await page.evaluate(async ({ official, status }) => {
-        const app = window.__kamereoru;
-        const playId = crypto.randomUUID();
-        await app.store.put('records', { playId, status, official });
-        app.lastResult = {
-          playId, ranked: true, name: 'Tester', netState: 'pending',
-          summary: { endReason: 'detected', buildings: 20, rankAverage: 9000, maxCombo: 2, score: { pass: 20, accuracy: 10, combo: 2, clear: 0, total: 32 } },
-        };
-        app.showResult();
-        await app.pollResult();
-      }, { official, status });
-    }
-
-    async function getShareText() {
-      // The main action shares the prepared image. Text/X is an explicit secondary action.
+    await page.evaluate(async () => {
+      const app = window.__kamereoru;
+      const playId = crypto.randomUUID();
+      const summary = { endReason: 'detected', buildings: 8, rankAverage: 9000, maxCombo: 2, score: { total: 320 } };
+      await app.store.put('records', { playId, secret: 'test-secret', summary, status: 'pending_review' });
+      app.lastResult = { playId, ranked: true, name: 'A', netState: 'pending', summary };
+      app.showResult();
+      await app.pollResult();
+    });
+    const shareText = async () => {
       await page.click('[data-testid=result-card-text]');
-      const url = await page.evaluate(() => window.lastShareUrl);
-      const text = new URL(url).searchParams.get('text');
-      assert.match(text, /20棟・平均一致度90\.00%/);
-      return text;
-    }
-
-    await t.test('より多く通過したベストの順位は、今回のX投稿に入らない', async () => {
-      best = { buildings: 21, average: 9000 };
-      await showRun();
-      assert.doesNotMatch(await getShareText(), /ランキング3位/);
-    });
-    await t.test('通過数が同じでも平均一致度が異なるベストの順位は、今回のX投稿に入らない', async () => {
-      best = { buildings: 20, average: 9001 };
-      await showRun();
-      assert.doesNotMatch(await getShareText(), /ランキング3位/);
-    });
-    await t.test('ベストと同じ記録なら、X投稿に順位を入れる', async () => {
-      best = { buildings: 20, average: 9000 };
-      await showRun();
-      assert.match(await getShareText(), /ランキング3位/);
-    });
-    await t.test('表示成績がサーバーで確定した今回の成績と違う場合は、X投稿に順位を入れない', async () => {
-      best = { buildings: 20, average: 9000 };
-      await showRun({ official: { buildings: 20, rankAverage: 8999 } });
-      assert.doesNotMatch(await getShareText(), /ランキング3位/);
-    });
-    await t.test('確認待ちでは、今回の成績とベストが同じでもX投稿に順位を入れない', async () => {
-      best = { buildings: 20, average: 9000 };
-      await showRun({ official: null, status: 'pending_review' });
-      assert.doesNotMatch(await getShareText(), /ランキング3位/);
-    });
-    await t.test('結果画面の順位は今回の成績と別に、ベスト記録の順位だと分かる', async () => {
-      best = { buildings: 21, average: 9000 };
-      await showRun();
-      assert.match(await page.textContent('.result-rank'), /ベスト.*3位/);
-    });
+      return new URL(await page.evaluate(() => window.lastShareUrl)).searchParams.get('text');
+    };
+    assert.match(await page.textContent('.result-rank'), /3位／4人中/);
+    const text = await shareText();
+    assert.match(text, /7棟/);
+    assert.match(text, /320点/);
+    assert.match(text, /3位／4人中/);
+    status = 'under_review';
+    await page.evaluate(() => __kamereoru.pollResult());
+    assert.equal(await page.locator('.result-rank').isVisible(), false);
+    assert.doesNotMatch(await shareText(), /3位／4人中/);
   } finally {
     await env.close();
   }
+});
+
+test('結果の上位表に10行が見え、枠内で同率30位の32行目までスクロールできる', async () => {
+  const env = await launch({ languages: ['ja-JP'] });
+  const { page } = env;
+  try {
+    await page.addInitScript(() => localStorage.setItem('kamereoru.apiBase', '/test-api'));
+    const rows = Array.from({length: 32}, (_, i) => ({
+      position:i+1, rank:Math.min(i+1,30), name:'長い名前'.repeat(4) + i, buildings:20, average:9000,
+    }));
+    await page.route('**/test-api/ranking?*', route => {
+      const after = new URL(route.request().url()).searchParams.get('after');
+      return route.fulfill({json: {ok:true, rows:after ? rows.slice(30) : rows.slice(0,30),
+        version:7, nextAfter:after ? null : 30, restarted:false, nameCount:32}});
+    });
+    await openHome(page, env.url);
+    await page.evaluate(() => __kamereoru.debugPresentation({effectId:78}));
+    await page.waitForFunction(() => document.querySelectorAll('.result-ranking .rank-row').length === 32);
+    for (const fontSize of ['100%', '150%']) {
+      await page.evaluate(size => document.documentElement.style.fontSize = size, fontSize);
+      const layout = await page.locator('.result-ranking .rank-list').evaluate(list => {
+        list.scrollTop = 0;
+        const row = list.firstElementChild;
+        const visibleHeight = list.getBoundingClientRect().height;
+        const firstScroll = scrollY;
+        list.scrollTop = list.scrollHeight;
+        const reachedLast = list.lastElementChild.getBoundingClientRect().bottom <= list.getBoundingClientRect().bottom + 1;
+        const independent = scrollY === firstScroll;
+        window.scrollBy(0,250);
+        return {visibleRows:visibleHeight / row.getBoundingClientRect().height, reachedLast, independent, pageScrolled:scrollY !== firstScroll};
+      });
+      assert.ok(Math.abs(layout.visibleRows - 10) < 0.001, String(layout.visibleRows));
+      assert.equal(layout.reachedLast, true);
+      assert.equal(layout.independent, true);
+      assert.equal(layout.pageScrolled, true);
+    }
+    assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
 });
