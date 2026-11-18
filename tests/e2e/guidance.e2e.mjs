@@ -115,11 +115,13 @@ test('G3: hiding during the initial opening preserves the first guide after expl
     await page.click(selector('home-start'));
     await page.waitForSelector(selector('skip-opening'));
     await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => document.visibilityState === 'hidden' });
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
       document.dispatchEvent(new Event('visibilitychange'));
     });
     await page.waitForSelector(selector('pause-resume'));
-    await page.clock.runFor(1000);
+    await page.clock.fastForward(5000);
+    assert.equal(await page.evaluate(() => __kamereoru.flags.openingSeen), true);
     assert.equal(await page.evaluate(() => __kamereoru.session.state.t), 0);
     await page.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
@@ -361,5 +363,24 @@ test('first theft runs from the display to the stationary guide without moving t
     assert.deepEqual(last.camera, next.camera);
     assert.deepEqual([t, step], [0, 1]);
     assert.deepEqual(env.errors, []);
+  } finally { await env.close(); }
+});
+
+
+test('how-to replay spends 2800 visible ms in the shop and issues no launch', async () => {
+  const env = await launch();
+  const {page} = env;
+  try {
+    await openHome(page, env.url);
+    await page.clock.install({time: new Date('2030-01-01T00:00:00Z')});
+    await page.clock.pauseAt(new Date('2030-01-01T00:00:01Z'));
+    await page.getByTestId('home-howto').dispatchEvent('click');
+    await page.getByRole('button', {name: '最初の場面をもう一度見る'}).dispatchEvent('click');
+    await page.getByTestId('skip-opening').waitFor();
+    await page.clock.fastForward(2780);
+    assert.equal(await page.getByTestId('skip-opening').isVisible(), true);
+    await page.clock.runFor(40);
+    await page.locator('.howto-list').waitFor();
+    assert.equal(await page.evaluate(async () => (await __kamereoru.store.getAll('launches')).length), 0);
   } finally { await env.close(); }
 });
