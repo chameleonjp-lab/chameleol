@@ -24,12 +24,16 @@ for (const [width,height] of [[402,874],[402,700],[874,402]]) {
     try {
       await openHome(page,env.url); await photo(page,`${prefix}-home`);
       await fits(page,[id('home-start'),id('home-practice')],width,height,true);
-      // Fixture: unlock brightness practice without replaying the first 20 buildings in every viewport.
-      await page.evaluate(()=>{__kamereoru.flags.brightnessPractice=true;});
-      for (const kind of ['basic','brightness']) {
+      // Start with the palette and brightness bar on a fresh profile.
+      for (const kind of ['brightness','basic']) {
         await page.click(id('home-practice')); await page.click(id(`practice-${kind}`));
         await page.waitForFunction(()=>!!__kamereoru.practice && !!__kamereoru.stage);
         await fits(page,['.palette','.bar',id('practice-exit'),id('practice-skip')],width,height);
+        assert.equal(await page.locator('.bar-lock').isVisible(), kind === 'basic');
+        if (kind === 'brightness') {
+          await page.locator('.bar').tap();
+          assert.ok(await page.evaluate(() => __kamereoru.practice.color.v < 10000));
+        }
         await photo(page,`${prefix}-practice-${kind}`);
         for(let n=0;n<3;n++) {
           await page.click(id('practice-skip')); await page.waitForSelector('.practice-review:not([hidden])');
@@ -101,8 +105,8 @@ test('audio integration: tap, same color, drag, two fingers, cancel, lock and ze
     const send=(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points});
     await send('touchStart',[{...p,id:1}]);await send('touchMove',[{...q,id:1}]);await take();
     await send('touchCancel',[]);assert.ok(!(await take()).includes('colorRelease'));
-    // Brightness practice is a fixture-unlocked real screen; both pointers travel through DOM routing.
-    await page.evaluate(async()=>{__kamereoru.flags.brightnessPractice=true;await __kamereoru.startPractice('brightness');});
+    // Both pointers travel through the brightness practice screen's DOM routing.
+    await page.evaluate(async()=>{await __kamereoru.startPractice('brightness');});
     await take();const geo=await page.evaluate(()=>__kamereoru.controls.router.geometry);
     const tp={x:Math.round(geo.palette.cx+geo.palette.r*.5),y:Math.round(geo.palette.cy),id:1};
     const tb={x:Math.round(geo.bar.x+geo.bar.w/2),y:Math.round(geo.bar.y+geo.bar.h*.5),id:2};

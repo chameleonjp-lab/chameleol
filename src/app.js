@@ -1806,7 +1806,6 @@ export class App {
     this.disposeStage();
     const token = (this.practiceToken = {});
     const gen = this.screenGeneration;
-    const unlocked = !!this.flags.brightnessPractice;
     const history = await this.store.listPractice().catch(() => []);
     if (this.practiceToken !== token || this.screenGeneration !== gen) return;
     const historyList = h(
@@ -1825,9 +1824,9 @@ export class App {
     const el = h('main', { class: 'screen practice-menu' }, [
       h('h1', {}, t('practice.title')),
       h('p', { class: 'note' }, t('practice.intro')),
+      button('practice.kind.brightness', () => this.startPractice('brightness'), { primary: true, testid: 'practice-brightness' }),
+      button('practice.kind.basic', () => this.startPractice('basic'), { testid: 'practice-basic' }),
       button('guidance.practice',()=>this.showGuidePracticeMenu(),{testid:'practice-guides'}),
-      button('practice.kind.basic', () => this.startPractice('basic'), { primary: true, testid: 'practice-basic' }),
-      button(unlocked ? 'practice.kind.brightness' : 'practice.brightnessLocked', () => this.startPractice('brightness'), { disabled: !unlocked, testid: 'practice-brightness' }),
       section('practice.history', [history.length ? historyList : h('p', { class: 'note' }, t('practice.noHistory'))]),
       backButton(() => this.showHome()),
     ]);

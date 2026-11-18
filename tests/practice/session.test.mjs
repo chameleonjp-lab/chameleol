@@ -59,6 +59,20 @@ test('候補をすべて却下しても、同じ難しさの条件で成功域�
   }
 });
 
+test('バーを中間の明るさで止めて2問目をスキップしても、3問目を出せる', () => {
+  for (const value of [6001, 6250, 6499]) {
+    const p = createPractice({ kind: 'brightness', seed: 7, rejectAllRandom: true });
+    p.skip();
+    p.next();
+    p.setColor({ h: 10000, s: 8000, v: value });
+    p.skip();
+    p.next();
+    assert.equal(p.question.number, 3);
+    assert.equal(p.color.v, value);
+    assert.ok(Math.abs(p.question.target.v - value) >= PRACTICE_CONFIG.brightness.hard.dv[0]);
+  }
+});
+
 test('PRACT-02: 次の問題は直前の色を引き継ぎ、スキップしても正解色へ自動で変えない', () => {
   const p = createPractice({ kind: 'brightness', seed: 7 });
   assert.deepEqual(p.color, RULES_V1.initialColor); // 1問目は緑・明るさ100%
