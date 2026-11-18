@@ -38,14 +38,12 @@ for (const [width, height] of layouts) {
       await openHome(page, env.url);
       await page.clock.install({ time: new Date('2030-01-01T00:00:00Z') });
       await page.clock.pauseAt(new Date('2030-01-01T00:00:01Z'));
-      // The normal game owns this badge. E044's real observer proves eligibility; only its display
-      // age is placed at the stable 700ms frame so translated widths can be measured without play.
+      // Use the same frozen, visible preview a reviewer sees in the verification menu.
       for (const lang of LANGUAGE_IDS) {
         await page.evaluate(async lang => {
           (await import('/src/i18n/i18n.js')).setLanguage(lang);
           const proof = await __kamereoru.debugPresentation({ effectId: 44 });
           if (!proof.badge) throw Error('The real E044 observer did not produce a badge');
-          __kamereoru.bonusPresentation.tick({ activeMs: 2700, phase: 'eval', running: true, precisionBadge: { elapsedMs: 700 } });
         }, lang);
         assert.equal(await page.locator('.bonus-card-badge').textContent(), `◎ ${MESSAGES[lang]['presentation.nearPerfect']}`, lang);
         await fits(page, `${lang} badge`, '.bonus-card-badge');
@@ -112,6 +110,11 @@ for (const [width, height] of layouts) {
         assert.equal(await page.locator('.result-card-viewer-close').textContent(), M['common.close']);
         assert.ok((await page.locator('.result-card-viewer-image').getAttribute('alt')).includes(M['card.bonusMissing']));
         await fits(page, `${lang} save`, '.result-card-viewer-title, .result-card-viewer-hint, .result-card-viewer .btn');
+        const gapAboveImage = await page.locator('.result-card-viewer').evaluate(viewer => {
+          const bounds = selector => viewer.querySelector(selector).getBoundingClientRect();
+          return bounds('img').top - Math.max(bounds('h2').bottom, bounds('button').bottom);
+        });
+        assert.ok(gapAboveImage >= 0, `${lang}: save image overlaps its header by ${-gapAboveImage}px`);
         if (OUT && ['de', 'ru', 'th'].includes(lang)) {
           await mkdir(OUT, { recursive: true });
           await page.screenshot({ path: `${OUT}/localization-${width}x${height}-${lang}-save.png` });
@@ -126,10 +129,11 @@ for (const [width, height] of layouts) {
         assert.equal(await page.locator('.result-card-retry').textContent(), M['card.retry']);
         await fits(page, `${lang} retry`, '.result-card-status, .result-card-secondary button');
         await page.locator('.result-card-retry').click();
-        await toReady(page);
+        // The cached portrait only needs native PNG encoding on retry. Wait in real time.
+        await page.waitForFunction(() => __kamereoru.resultCardController.snapshot().state === 'ready', null, { polling: 50, timeout: 15000 });
         assert.equal(await page.evaluate(() => __shares.length), sharesBefore);
         assert.deepEqual(await page.evaluate(async () => (await import('/src/presentation/result-card-text.js')).usedFallbackReport()), []);
-        facts.push({ lang, width, height, modelLabel, sharedTitle: payload.text.split('\n')[0], normalFallbacks: 0 });
+        facts.push({ lang, width, height, gapAboveImage, modelLabel, sharedTitle: payload.text.split('\n')[0], normalFallbacks: 0 });
       });
       assert.equal(facts.length, 15);
       assert.deepEqual(env.errors, []);

@@ -18,7 +18,7 @@ test('normal verification: all 16 adopted IDs paint real artwork, badge or histo
    const proof=await env.page.evaluate(async id=>{
     const p=await __kamereoru.debugPresentation({effectId:id});
     // Let showGame's deferred layout really run; capture must not repair its camera with update().
-    if(id===69)await new Promise(resolve=>requestAnimationFrame(resolve));
+    if(id===44||id===69)await new Promise(resolve=>requestAnimationFrame(resolve));
     const canvas=__kamereoru.stage.renderer.domElement,gl=__kamereoru.stage.renderer.getContext();
     let birdPixels=null;
     if(id===69&&p.storySprites===3){
@@ -37,12 +37,17 @@ test('normal verification: all 16 adopted IDs paint real artwork, badge or histo
     }
     const pixels=new Uint8Array(canvas.width*canvas.height*4);gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
     const colors=new Set();for(let i=0;i<pixels.length;i+=16)colors.add(`${pixels[i]},${pixels[i+1]},${pixels[i+2]}`);
-    return {...p,birdPixels,renderedColors:colors.size,policeVisible:__kamereoru.stage.presentationGeometry().police[0]!==null,badgeText:document.querySelector('.bonus-card-badge')?.textContent??''};
+    const badge=document.querySelector('.bonus-card-badge');
+    const badgeRect=badge?.getBoundingClientRect();
+    const badgeVisible=id===44&&badge?.checkVisibility({opacityProperty:true,visibilityProperty:true})&&
+     badgeRect.width>0&&badgeRect.height>0&&badgeRect.top>=0&&badgeRect.bottom<=innerHeight&&badgeRect.left>=0&&badgeRect.right<=innerWidth;
+    return {...p,birdPixels,renderedColors:colors.size,policeVisible:__kamereoru.stage.presentationGeometry().police[0]!==null,badgeVisible,badgeText:badge?.textContent??''};
    },effectId);
    facts.push({effectId,proof});
-   if(effectId===44){assert.equal(proof.badge,true);assert.equal(proof.badgeText,`◎ ${MESSAGES.ja['presentation.nearPerfect']}`);}
+   assert.ok(proof.renderedColors>30,'actual street pixels were rendered');
+   if(effectId===44){assert.equal(proof.badge,true);assert.equal(proof.badgeVisible,true);assert.equal(proof.badgeText,`◎ ${MESSAGES.ja['presentation.nearPerfect']}`);}
    else{
-    assert.equal(proof.mode,'extended96');assert.ok(proof.renderedColors>30,'actual frame pixels were rendered');
+    assert.equal(proof.mode,'extended96');
     if([34,39].includes(effectId)){
      assert.equal(proof.policeExtra?.id,effectId);assert.equal(proof.policeVisible,true);assert.ok(Math.abs(proof.policeExtra.dx)>0);
      if(effectId===39)assert.ok(proof.footprints>=1&&proof.footprints<=3);

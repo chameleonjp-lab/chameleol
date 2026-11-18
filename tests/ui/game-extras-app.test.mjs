@@ -135,6 +135,7 @@ test('normal verification precision preview uses actual evaluation data without 
  const proof=await app.debugPresentation({effectId:44});
  assert.equal(proof.badge,true);assert.equal(proof.visible,true);
  assert.equal(document.querySelector('.bonus-card-badge').textContent,`◎ ${t('presentation.nearPerfect')}`);
+ assert.equal(document.querySelector('.bonus-card').style.getPropertyValue('--bonus-enter'),'1');
  assert.equal(view.stepCalls,calls,'an isolated preview adds no normal-stage controller step');
  assert.equal(inspect(app.session),before);assert.equal(JSON.stringify(app.extrasMemory),extras);
  assert.equal(view.controller.snapshot().precisionBadge,null,'the run claim is untouched');

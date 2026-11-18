@@ -194,14 +194,15 @@
 /* ---- 画像の保存画面（img を長押しで保存。canvas の長押しは使わない）---- */
 .result-card-viewer{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:calc(var(--safe-top,0px) + 14px) 16px calc(var(--safe-bottom,0px) + 14px);background:#14183a;color:#fff6d6;overflow:auto;box-sizing:border-box}
 .result-card-viewer *{box-sizing:border-box}
-.result-card-viewer-title{margin:0;padding-right:96px;font-size:1.05rem;font-weight:800;color:#fff0a0}
-.result-card-viewer-close{position:absolute;top:calc(var(--safe-top,0px) + 10px);right:16px;min-height:44px}
+.result-card-viewer-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.result-card-viewer-title{min-width:0;margin:0;overflow-wrap:anywhere;font-size:1.05rem;font-weight:800;color:#fff0a0}
+.result-card-viewer-close{flex:none;max-width:50%;min-height:44px;margin:0;overflow-wrap:anywhere}
 .result-card-viewer-image{display:block;width:100%;max-width:640px;height:auto;margin:0 auto;border:1px solid #ffffff33;border-radius:16px;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
 .result-card-viewer-hint{margin:0;text-align:center;font-size:14px;line-height:1.4}
 .result-card-viewer-download{width:100%;max-width:640px;margin:0 auto;text-align:center;text-decoration:none}
 @media(orientation:landscape) and (max-height:500px){
  .result-card-viewer{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:center}
- .result-card-viewer-title{flex:1 0 100%}
+ .result-card-viewer-header{flex:1 0 100%}
  .result-card-viewer-image{width:auto;max-width:60%;max-height:calc(100vh - 100px)}
  .result-card-viewer-hint{flex:1 1 30%}
  .result-card-viewer-download{flex:1 1 30%}

@@ -691,7 +691,12 @@ export class App {
       const badge=createPrecisionBadge({claim:async()=>true});
       for(const segment of collector.drain())await badge.consume(segment);
       collector.dispose();
-      this.bonusPresentation.tick({activeMs:view.t,phase:view.phase,running:true,precisionBadge:badge.snapshot(view.t)});
+      // Paint the frozen street without stepping the live extras controller.
+      // Sample the real badge after its fade-in, without advancing the paused session.
+      const previewTime=view.t+700;
+      this.stage.update({t:previewTime,color:view.color,matchState:view.matchState,walking:false,running:false});
+      this.bonusPresentation.tick({activeMs:previewTime,phase:view.phase,running:true,precisionBadge:badge.snapshot(previewTime)});
+      badge.dispose();
       return {...this.bonusPresentation.stats(),effectId};
     }
     const legacyCameo=CAMEOS.find(row=>row.id===effectId);

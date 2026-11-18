@@ -218,10 +218,11 @@ export function mountResultCardView({ host, controller, scope, onTextShare, init
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-modal', 'true');
     root.setAttribute('data-testid', 'result-card-viewer');
-    const heading = el('h2', 'result-card-viewer-title', rtext('card.viewerTitle', undefined, locale()) ?? tx('card.save'), root);
+    const header = el('div', 'result-card-viewer-header', null, root);
+    const heading = el('h2', 'result-card-viewer-title', rtext('card.viewerTitle', undefined, locale()) ?? tx('card.save'), header);
     heading.id = `result-card-viewer-title-${Math.random().toString(36).slice(2, 8)}`;
     root.setAttribute('aria-labelledby', heading.id);
-    const closeBtn = el('button', 'btn btn-small result-card-viewer-close', tx('common.close'), root);
+    const closeBtn = el('button', 'btn btn-small result-card-viewer-close', tx('common.close'), header);
     closeBtn.type = 'button';
     closeBtn.setAttribute('data-testid', 'result-card-viewer-close');
     const img = el('img', 'result-card-viewer-image', null, root);
