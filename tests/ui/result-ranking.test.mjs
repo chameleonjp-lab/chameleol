@@ -64,3 +64,12 @@ test('continuation replacing a retired version drops all previous rows', async (
   assert.equal(view.el.querySelectorAll('.rank-row').length, 1);
   assert.equal(view.el.querySelector('.rank-name').textContent, '更新');
 });
+
+test('standalone results show the unavailable message without querying rankings', async () => {
+  let requests = 0;
+  const api = { configured: false, get: () => { requests++; }, post: () => { requests++; } };
+  const view = createRankingView({ api, result: true });
+  await view.load();
+  assert.equal(requests, 0);
+  assert.equal(view.el.querySelector('.rank-status').textContent, t('ranking.notConfigured'));
+});

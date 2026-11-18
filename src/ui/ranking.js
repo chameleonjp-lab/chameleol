@@ -97,6 +97,10 @@ export function createRankingView({ api, name = null, pageSize = 30, result = fa
 
   function load() {
     state = null;
+    if (api.configured === false) {
+      status.textContent = t('ranking.notConfigured');
+      return Promise.resolve();
+    }
     loadMine();
     return fetchPage({});
   }
