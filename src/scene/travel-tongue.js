@@ -14,6 +14,17 @@ export const DIAMOND_ALONG = 0.85;
 /** 保持中に舌全体を口の付け根を軸に上へ持ち上げる最大角（6度）。 */
 export const TRAVEL_LIFT_RADIANS = 6 * Math.PI / 180;
 const SPIN_RADIANS = Math.PI / 4;
+/** 予備（150ms）のうち、口を開け切るまでの割合。舌はその後に口から出る。 */
+export const MOUTH_OPEN_SHARE = 0.6;
+/** 収納（200ms）のうち、舌を口へしまい切るまでの割合と、口を閉じ始める割合。 */
+export const STORE_TONGUE_SHARE = 0.55;
+export const STORE_CLOSE_FROM = 0.5;
+/** 開いた口の中（頭の座標）。舌の付け根を囲み、鼻先の少し前まで出る暗い楕円。縦は開き具合で伸ばす。 */
+const MOUTH_CAVITY = Object.freeze({ x: 0.6, y: -0.135, rx: 0.12, ry: 0.075, rz: 0.2 });
+/** 口の中の色（暗い赤）。色の空間変換は通さない。 */
+const MOUTH_INSIDE = 0x6b1f33;
+/** 下あごを下げる量（口の開き1のとき）。 */
+const JAW_DROP = 0.07;
 /** 舌の上面へ沈める量（浮いて見える隙間をなくす）。 */
 const DIAMOND_SINK = 0.008;
 /** ダイヤの寸法：既存宝石（半径0.2）を縦 1.15・横と奥行 0.85 に伸ばし、全体を 1.2 倍。 */
@@ -75,12 +86,14 @@ export function travelTonguePose(frame, out = {}) {
   let glow = 0;
   let spin = 0;
   if (frame.phase === 'prepare') {
+    // 先に口を開け（前半の60%）、開いてから舌の先を口の中から出す（後半の40%）。
     const e = easeOutCubic(u);
-    mouthOpen = e;
+    const peek = smoothstep(MOUTH_OPEN_SHARE, 1, u);
+    mouthOpen = easeOutCubic(clamp01(u / MOUTH_OPEN_SHARE));
     gazeWeight = e;
     headTilt = 0.04 * e;
-    extension = 0.05 * e;
-    storage = 0.6 + 0.4 * e;
+    extension = 0.05 * peek;
+    storage = mix(0.001, 1, peek);
   } else if (frame.phase === 'extend') {
     extension = 0.05 + 0.95 * easeOutQuart(u);
     unroll = smoothstep(0.3, 1, u);
@@ -102,12 +115,13 @@ export function travelTonguePose(frame, out = {}) {
     diamond = smoothstep(0.6, 0.95, unroll); // 先端が巻き始めたら、ダイヤは巻きの手前でしまう
     spin = SPIN_RADIANS;
   } else {
+    // 舌を口の中へしまい切ってから（前半の55%）、口を閉じる（後半の50%）。
     const e = easeInOutCubic(u);
     extension = 0.05;
-    mouthOpen = 1 - e;
+    mouthOpen = 1 - easeInOutCubic(clamp01((u - STORE_CLOSE_FROM) / (1 - STORE_CLOSE_FROM)));
     gazeWeight = 0.5 * (1 - e);
     headTilt = 0.02 * (1 - e);
-    storage = 1 - 0.999 * easeInCubic(u);
+    storage = 1 - 0.999 * easeInCubic(clamp01(u / STORE_TONGUE_SHARE));
   }
   // controller が宝石を出さない枠（jewelVisible:false）では、ダイヤも出さない。
   if (frame.jewelVisible === false) diamond = 0;
@@ -180,6 +194,14 @@ export function createTravelTongue(hero) {
   const ledger = createPoseLedger();
   const rig = createTongueRig(hero, { name: 'travel-tongue' });
   const mesh = rig.mesh;
+  // 開いた口の中（暗い赤の楕円）。舌の付け根を囲む。
+  const cavityGeometry = new THREE.SphereGeometry(1, 16, 10);
+  const cavityMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHex(MOUTH_INSIDE, THREE.NoColorSpace) });
+  const cavity = new THREE.Mesh(cavityGeometry, cavityMaterial);
+  cavity.name = 'travel-tongue-mouth';
+  cavity.position.set(MOUTH_CAVITY.x, MOUTH_CAVITY.y, 0);
+  cavity.visible = false;
+  head.add(cavity);
   let diamondParts = null;
   let diamond = null;
   let material = null;
@@ -196,6 +218,9 @@ export function createTravelTongue(hero) {
     diamond?.removeFromParent();
     material?.dispose();
     diamondParts?.geometry.dispose();
+    cavity.removeFromParent();
+    cavityGeometry.dispose();
+    cavityMaterial.dispose();
     rig.dispose();
     throw error;
   }
@@ -209,8 +234,15 @@ export function createTravelTongue(hero) {
   let poseWrites = 0;
   let diamondShown = false;
 
+  function setCavity(open) {
+    const k = clamp01(open);
+    cavity.visible = k > 0.02;
+    if (cavity.visible) cavity.scale.set(MOUTH_CAVITY.rx, MOUTH_CAVITY.ry * k, MOUTH_CAVITY.rz);
+  }
+
   function hide() {
     rig.reset();
+    setCavity(0);
     diamond.visible = false;
     diamondShown = false;
     last.extension = last.unroll = last.storage = last.lift = last.diamond = last.spin = last.glow = NaN;
@@ -240,8 +272,9 @@ export function createTravelTongue(hero) {
         if (mesh.visible || diamond.visible) hide();
         return;
       }
-      ledger.add(jaw.position, 'y', -0.05 * pose.mouthOpen);
+      ledger.add(jaw.position, 'y', -JAW_DROP * pose.mouthOpen);
       ledger.add(mouth.position, 'y', -0.025 * pose.mouthOpen);
+      setCavity(pose.mouthOpen);
       // Keep the mouth in front of the torso even at the one-officer maximal glance.
       // The ledger restores the existing head pose on every cancel/next base frame.
       ledger.set(head.rotation, 'y', 0);
@@ -300,8 +333,9 @@ export function createTravelTongue(hero) {
         shapeWrites: rig.stats().shapeWrites,
         poseWrites,
         // 表示中に増える描画呼出（舌・舌の輪郭・ダイヤ）と形（舌の管・ダイヤ）
-        drawCalls: mesh.visible ? (diamondShown ? 3 : 2) : 0,
-        geometries: 2,
+        drawCalls: (mesh.visible ? (diamondShown ? 3 : 2) : 0) + (cavity.visible ? 1 : 0),
+        geometries: 3,
+        mouthVisible: cavity.visible,
       };
     },
     dispose() {
@@ -311,6 +345,9 @@ export function createTravelTongue(hero) {
       disposed = true;
       diamond.removeFromParent();
       diamondParts.geometry.dispose();
+      cavity.removeFromParent();
+      cavityGeometry.dispose();
+      cavityMaterial.dispose();
       material.dispose();
       rig.dispose();
     },

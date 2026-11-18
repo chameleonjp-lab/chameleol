@@ -61,7 +61,11 @@ test('pose comes from the controller frame alone: a pure function of phase and p
 test('five phases follow the design table at their boundaries and middles', () => {
   const pose = (phase, u, extra) => travel.travelTonguePose(frame(phase, u, extra));
   let p = pose('prepare', 0);
-  close(p.mouthOpen, 0); close(p.extension, 0); close(p.storage, 0.6); close(p.diamond, 0);
+  close(p.mouthOpen, 0); close(p.extension, 0); close(p.storage, 0.001, 1e-9); close(p.diamond, 0);
+  // The mouth opens first; the tongue stays inside until the mouth is fully open.
+  p = pose('prepare', travel.MOUTH_OPEN_SHARE);
+  close(p.mouthOpen, 1); close(p.extension, 0); close(p.storage, 0.001, 1e-9);
+  assert.ok(pose('prepare', 0.3).mouthOpen > 0.5 && pose('prepare', 0.3).storage < 0.01, 'opening mouth, tongue still inside');
   p = pose('prepare', 1);
   close(p.mouthOpen, 1); close(p.headTilt, 0.04); close(p.extension, 0.05); close(p.storage, 1);
   p = pose('extend', 0);
@@ -82,6 +86,11 @@ test('five phases follow the design table at their boundaries and middles', () =
   close(p.extension, 0.05); close(p.unroll, 0); close(p.lift, 0); close(p.gazeWeight, 0.5); close(p.headTilt, 0.02); close(p.diamond, 0);
   p = pose('store', 0);
   close(p.mouthOpen, 1); close(p.extension, 0.05); close(p.storage, 1); close(p.diamond, 0);
+  // The tongue is fully stored before the mouth has closed noticeably.
+  p = pose('store', travel.STORE_CLOSE_FROM);
+  close(p.mouthOpen, 1); assert.ok(p.storage > 0.001, 'tongue still going in while the mouth is open');
+  p = pose('store', travel.STORE_TONGUE_SHARE);
+  close(p.storage, 0.001, 1e-9); assert.ok(p.mouthOpen > 0.95, 'mouth still open when the tongue is in');
   p = pose('store', 1);
   close(p.mouthOpen, 0); close(p.gazeWeight, 0); close(p.headTilt, 0); close(p.storage, 0.001, 1e-9);
 });
@@ -101,10 +110,13 @@ test('phases join without jumps and jewelVisible:false removes the diamond', () 
   assert.equal(travel.travelTonguePose(frame('hold', 0.5)).diamond, 1);
 });
 
-test('the travel tongue adds one head child with the outline and the diamond below it, borrowing both materials', (t) => {
+test('the travel tongue adds the tongue and the open-mouth inside as head children, with the outline and the diamond below the tongue', (t) => {
   const { hero, mesh, diamond, added } = fixture(t);
-  assert.equal(added.length, 1);
+  assert.equal(added.length, 2);
   assert.equal(added[0], mesh);
+  assert.equal(added[1].name, 'travel-tongue-mouth');
+  assert.equal(added[1].visible, false, 'the mouth inside is hidden until the mouth opens');
+  assert.equal(added[1].children.length, 0);
   assert.equal(mesh.name, 'travel-tongue');
   assert.equal(mesh.children[0].geometry, mesh.geometry);
   assert.equal(mesh.children[1], diamond);
@@ -240,15 +252,19 @@ test('a stopped controller (same frame repeated) rewrites neither the shape nor 
   assert.ok(tongue.stats().shapeWrites > stats.shapeWrites);
 });
 
-test('drawn parts: one tube with its outline and one diamond = 3 draw calls, 2 shapes, and nothing when hidden', (t) => {
+test('drawn parts: tube, outline, diamond and the open-mouth inside = 4 draw calls, 3 shapes, and nothing when hidden', (t) => {
   const { tongue } = fixture(t);
-  assert.deepEqual({ ...tongue.stats(), shapeWrites: 0, poseWrites: 0 }, { visible: false, diamondVisible: false, shapeWrites: 0, poseWrites: 0, drawCalls: 0, geometries: 2 });
+  assert.deepEqual({ ...tongue.stats(), shapeWrites: 0, poseWrites: 0 }, { visible: false, diamondVisible: false, shapeWrites: 0, poseWrites: 0, drawCalls: 0, geometries: 3, mouthVisible: false });
   tongue.apply(frame('hold', 0.5));
-  assert.equal(tongue.stats().drawCalls, 3);
+  assert.equal(tongue.stats().drawCalls, 4);
+  assert.equal(tongue.stats().mouthVisible, true);
   tongue.apply(frame('prepare', 0.5));
-  assert.equal(tongue.stats().drawCalls, 2);
+  assert.equal(tongue.stats().drawCalls, 3);
+  tongue.apply(frame('store', 1));
+  assert.equal(tongue.stats().mouthVisible, false, 'the closed mouth draws no inside');
   tongue.apply(null);
   assert.equal(tongue.stats().drawCalls, 0);
+  assert.equal(tongue.stats().mouthVisible, false);
 });
 
 test('the envelope contains the tube, its outline and the diamond across the real controller timeline', (t) => {
