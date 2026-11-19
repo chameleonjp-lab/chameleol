@@ -183,8 +183,6 @@
 .result-card-secondary.is-share-failed{outline:2px solid #ffcc4d;outline-offset:3px}
 .result-card-secondary .btn{flex:1 1 140px;width:auto;min-height:40px;margin:0;font-size:.9rem}
 .result-card-secondary .btn[hidden]{display:none}
-.result-card-text-share{flex:1 1 140px;min-width:0}
-.result-card-text-share .btn{width:100%}
 .result-card-status{flex-basis:100%;margin:0;font-size:14px;line-height:1.4;color:#fff0a0}
 .result-card-status:empty{display:none}
 .result-actions [aria-disabled=true]{opacity:.6}

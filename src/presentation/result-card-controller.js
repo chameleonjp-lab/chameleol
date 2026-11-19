@@ -4,7 +4,7 @@ import { resolveResultEvidence } from './result-evidence.js';
 import { buildResultCardModel, projectRunResult } from './result-card-data.js';
 import { buildResultMiniatureModel } from './result-miniature-data.js';
 import { createResultRendererOwner } from './result-renderer-owner.js';
-import { startPreparedResultShare } from '../ui/share-card.js';
+import { sharePreparedResult } from '../ui/share-card.js';
 import { buildResultShareText } from '../ui/share.js';
 
 const portraitKey=hero=>JSON.stringify([hero.status,hero.building,hero.hsv,hero.outlineBuilding]);
@@ -121,34 +121,6 @@ export function createResultCardController({result,locale='en',layoutKey='defaul
     if(disposed || visibilityTarget?.hidden)return;
     if(state==='sharing'){state=prepared?'ready':'unavailable';notify();}
   };
-  function startShare() {
-    refresh();
-    if (disposed || !prepared || prepared.revision !== revision || result.cardShareRequest) return null;
-    const request = Symbol('native-share');
-    const rev = revision;
-    result.cardShareRequest = request;
-    let share;
-    try {
-      const text = buildResultShareText({run});
-      share = startPreparedResultShare({prepared, currentRevision: rev, text, url: ports.getPublicUrl?.(), navigator, shareImpl: ports.shareImpl});
-    } catch {
-      share = Promise.resolve('failed');
-    }
-    if (!share) {
-      result.cardShareRequest = null;
-      return null;
-    }
-    state = 'sharing';
-    notify();
-    return share.then(outcome => {
-      if (result.cardShareRequest === request) result.cardShareRequest = null;
-      if (current(rev)) {
-        state = outcome === 'failed' ? 'failed' : 'ready';
-        notify();
-      }
-      return outcome;
-    });
-  }
   const api={snapshot,refresh,retry:()=>refresh({},true),revokeImageUrl,
     getImageUrl(){
       refresh();
@@ -156,17 +128,21 @@ export function createResultCardController({result,locale='en',layoutKey='defaul
       if(!imageUrl){try{imageUrl=urlApi?.createObjectURL?.(prepared.blob)??null;}catch{return null;}}
       return imageUrl;
     },
-    shareFromX() {
-      return Boolean(result.cardShareRequest || startShare());
-    },
     async share(){
-      const attempted = startShare();
-      if (attempted) return attempted;
-      if (!disposed && prepared && !result.cardShareRequest) {
-        state = 'unavailable';
-        notify();
+      refresh();
+      if(disposed || !prepared || prepared.revision!==revision || result.cardShareRequest)return 'unavailable';
+      const request=Symbol('native-share');result.cardShareRequest=request;
+      const rev=revision;state='sharing';notify();
+      let outcome='failed';
+      try{
+        const text=buildResultShareText({run});
+        outcome=await sharePreparedResult({prepared,currentRevision:revision,text,url:ports.getPublicUrl?.(),navigator,shareImpl:ports.shareImpl});
+      }catch{/* optional share failure never blocks replay or future attempts */}
+      finally{
+        if(result.cardShareRequest===request)result.cardShareRequest=null;
+        if(current(rev)){state=outcome==='failed'?'failed':outcome==='unavailable'?'unavailable':'ready';notify();}
       }
-      return 'unavailable';
+      return outcome;
     },
     dispose(){
       if(disposed)return;disposed=true;controller?.abort();clearCanvas();revokeImageUrl();prepared=null;state='unavailable';

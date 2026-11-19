@@ -263,7 +263,6 @@ export default {
   "howto.replayOpening": "Anfangsszene noch einmal ansehen",
 
   "share.button": "Auf X teilen",
-  "share.textOnly": "Nur Text auf X teilen",
   "share.copied": "Text und URL wurden kopiert",
   "share.manual": "Bitte markiere den Text unten und kopiere ihn",
   "share.hashtag": "#Kamereoru",

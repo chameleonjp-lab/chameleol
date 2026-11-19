@@ -286,7 +286,6 @@ export default {
   'howto.replayOpening': '最初の場面をもう一度見る',
 
   'share.button': 'Xでシェア',
-  'share.textOnly': '本文だけをXで共有',
   'share.copied': '本文とURLをコピーしました',
   'share.manual': '下の本文を選んでコピーしてください',
   'share.hashtag': '#カメレオる',
@@ -421,7 +420,7 @@ export default {
   "card.failed": "画像を準備できませんでした",
   "card.confirming": "確認中",
   "card.shareUnavailable": "画像共有に対応していません",
-  "card.save": "画像を保存",
+  "card.save": "スコア画像を保存",
   "card.imageShare": "画像を共有",
   "card.retry": "画像を作り直す",
   "card.saveHint": "画像を長押しして保存できます",

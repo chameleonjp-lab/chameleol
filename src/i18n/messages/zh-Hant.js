@@ -263,7 +263,6 @@ export default {
   "howto.replayOpening": "再看一次開場",
 
   "share.button": "分享到 X",
-  "share.textOnly": "只在 X 分享文字",
   "share.copied": "已複製文字和網址",
   "share.manual": "請選取並複製下面的文字",
   "share.hashtag": "#Kamereoru",

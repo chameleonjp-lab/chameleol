@@ -81,13 +81,14 @@ for (const [w, h] of [[402, 700], [402, 874], [874, 402]]) {
         function id(n) { return `[data-testid="${n}"]`; }
       });
       t.diagnostic(JSON.stringify(m));
-      for (const key of ['card', 'again', 'share']) {
+      for (const key of ['card', 'again', 'share', 'save']) {
         assert.ok(m[key], `${key} exists`);
         assert.ok(m[key].top >= 0 && m[key].bottom <= m.vh, `${key} inside the first screen (${m[key].top}..${m[key].bottom} of ${m.vh})`);
         assert.ok(m[key].left >= 0 && m[key].right <= m.vw, `${key} inside horizontally`);
       }
       assert.ok(m.board.top >= m.home.bottom - 1, 'table follows the Home button');
-      for (const key of ['save', 'imageShare']) assert.ok(m[key].top >= m.board.bottom - 1, key + ' follows the table');
+      assert.ok(m.save.top >= m.share.top && m.save.bottom <= m.home.top + 1, 'the save button is with the main result actions');
+      assert.ok(m.imageShare.top >= m.board.bottom - 1, 'image share follows the table');
       assert.ok(m.scrollW <= m.vw, `no horizontal overflow (${m.scrollW} > ${m.vw})`);
       assert.ok(m.portrait.top >= m.vh - 1 || m.portrait.bottom > m.vh, 'the second hero (photo) is not fully in the first screen');
       // 補足（No.71/80/93/99/100）は主操作の下に常時表示され、畳まれない
@@ -101,7 +102,7 @@ for (const [w, h] of [[402, 700], [402, 874], [874, 402]]) {
   });
 }
 
-test('share: X opens before the PNG is ready and sends the PNG from the main button when ready', async () => {
+test('share: X opens before the PNG is ready; an explicit image share passes one PNG and cancellation stays on the result', async () => {
   const env = await launch();
   try {
     const { page } = env;
@@ -117,32 +118,28 @@ test('share: X opens before the PNG is ready and sends the PNG from the main but
     await toReady(page);
     const tap = await page.evaluate(() => {
       const before = __shares.length;
-      document.querySelector('[data-testid="result-share"]').click();
+      document.querySelector('[data-testid="result-card-image-share"]').click();
       return { sync: __shares.length - before, payload: __shares.at(-1) };
     });
     assert.equal(tap.sync, 1, 'navigator.share is called inside the tap');
     assert.equal(tap.payload.files.length, 1);
     assert.equal(tap.payload.files[0].type, 'image/png');
     assert.ok(tap.payload.files[0].size > 0);
-    // HTML form submission normalizes line breaks to CRLF.
-    assert.equal(tap.payload.text, early.searchParams.get('text').replace(/\r\n/g, '\n'));
     assert.equal(tap.payload.url, 'https://chameleonjp-lab.github.io/chameleol/');
     await advanceUntil(page, async () => (await cardState(page)) === 'ready', { limit: 20 });
     // 取消：本文の窓は自動で開かない
     const popupAfterCancel = [];
     page.context().on('page', opened => popupAfterCancel.push(opened));
-    await page.evaluate(() => { __shareMode = 'cancel'; document.querySelector('[data-testid="result-share"]').click(); });
+    await page.evaluate(() => { __shareMode = 'cancel'; document.querySelector('[data-testid="result-card-image-share"]').click(); });
     assert.equal(await advanceUntil(page, async () => (await cardState(page)) === 'ready', { limit: 20 }), true);
     const afterCancel = await page.evaluate(() => ({ opened: __opened.length, shares: __shares.length, status: document.querySelector('.result-card-status').textContent }));
     assert.equal(afterCancel.opened, 0, 'a cancelled share does not open the text window');
     assert.equal(popupAfterCancel.length, 0);
     assert.equal(afterCancel.shares, 2);
     assert.ok(afterCancel.status.length > 0, 'the closed note is shown');
-    const ready = await openXShare(page, 'result-text-share');
+    const ready = await openXShare(page, 'result-share');
     assert.equal(ready.href, early.href);
-    assert.equal(await page.evaluate(() => __shares.length), 2, 'explicit text-only sharing never makes a native request');
-    await page.evaluate(() => { __canShareFiles = false; });
-    assert.equal((await openXShare(page, 'result-share')).href, early.href);
+    assert.equal(await page.evaluate(() => __shares.length), 2, 'a ready PNG does not change the X button');
     // 再試行は自動共有しない
     const sharesBefore = await page.evaluate(() => __shares.length);
     await page.evaluate(() => __kamereoru.resultCardController.retry());
@@ -160,6 +157,7 @@ test('save screen: an img from the prepared PNG, the screen card frees its pixel
     await playToResult(page);
     await toReady(page);
     const closedBytes = await heldBytes(page);
+    assert.equal(await page.locator('.result-actions .result-card-save').textContent(), 'スコア画像を保存');
     await page.locator('.result-card-save').click();
     await page.waitForSelector(id('result-card-viewer-image'));
     await page.waitForFunction(() => document.querySelector('.result-card-viewer-image').complete);
@@ -172,6 +170,9 @@ test('save screen: an img from the prepared PNG, the screen card frees its pixel
     assert.deepEqual(open.canvas, [0, 0]);
     assert.equal(open.dialog, 'true');
     assert.equal(open.active, 'result-card-viewer-close');
+    const download = page.getByTestId('result-card-viewer-download');
+    assert.equal(await download.getAttribute('href'), open.src);
+    assert.equal(await download.getAttribute('download'), 'chameleol-result.png');
     const viewerBytes = await heldBytes(page);
     assert.ok(viewerBytes.total <= BUDGET, `viewer open ${viewerBytes.total}`);
     assert.ok(viewerBytes.total < closedBytes.total + 1_000_000);

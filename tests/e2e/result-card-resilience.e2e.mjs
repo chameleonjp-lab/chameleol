@@ -77,7 +77,7 @@ for(const mode of ['files','payload','missing','failure']) {
       await page.locator(id('result-card-image-share')).click();await toReady(page);
       assert.equal(await page.evaluate(()=>__shares.length),mode==='failure'?2:1,'retry shares only on another explicit tap');
       assert.equal(await page.evaluate(()=>__opened.length),0);
-      const intent=await openXShare(page, 'result-text-share');
+      const intent=await openXShare(page, 'result-share');
       assert.equal(intent.searchParams.get('url'),'https://chameleonjp-lab.github.io/chameleol/');
       assert.deepEqual(env.errors,[]);
     } finally {await env.close();}

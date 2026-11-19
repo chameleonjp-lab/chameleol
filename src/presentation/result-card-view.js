@@ -66,7 +66,7 @@ export function cardViewState(snapshot) {
   };
 }
 
-export function mountResultCardView({ host, controller, scope, onCopyText, textShareForm, initial = null }) {
+export function mountResultCardView({ host, controller, scope, onCopyText, initial = null }) {
   const doc = host.ownerDocument;
   const win = doc.defaultView;
   let disposed = false;
@@ -105,20 +105,16 @@ export function mountResultCardView({ host, controller, scope, onCopyText, textS
   secondary.setAttribute('data-testid', 'result-card-secondary');
   const ranking = host.querySelector('.result-ranking');
   if (ranking) ranking.after(secondary); else host.append(secondary);
-  const mk = (cls, testid, onClick) => {
-    const b = el('button', `btn btn-small ${cls}`, null, secondary);
+  const mk = (cls, testid, onClick, parent = secondary) => {
+    const b = el('button', `btn btn-small ${cls}`, null, parent);
     b.type = 'button';
     b.setAttribute('data-testid', testid);
     listen(b, 'click', onClick);
     return b;
   };
-  const saveBtn = mk('result-card-save', 'result-card-save', () => openViewer());
+  const saveBtn = mk('result-card-save', 'result-card-save', () => openViewer(), host.querySelector('.result-actions') ?? secondary);
   const imageShareBtn = mk('result-card-image-share', 'result-card-image-share', () => controller?.share?.());
   const copyBtn = mk('result-card-copy', 'result-card-copy', () => onCopyText?.());
-  if (textShareForm) {
-    textShareForm.classList.add('result-card-text-share');
-    secondary.append(textShareForm);
-  }
   const retryBtn = mk('result-card-retry', 'result-card-retry', () => { controller?.retry?.(); });
   retryBtn.hidden = true;
   const status = el('p', 'result-card-status', null, secondary);
@@ -263,6 +259,7 @@ export function mountResultCardView({ host, controller, scope, onCopyText, textS
     canvas.width = 0;
     canvas.height = 0;
     card.remove();
+    saveBtn.remove();
     secondary.remove();
     host.classList.remove('has-result-card');
   }

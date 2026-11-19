@@ -34,7 +34,7 @@ export function buildHomeShareText({ lang }) {
   return [t('share.home.title', null, lang), t('share.home.body', null, lang), t('share.hashtag', null, lang)].join('\n');
 }
 
-export function xShareForm(text, testid, {buttonKey = 'share.button', preferImage} = {}) {
+export function xShareForm(text, testid) {
   // Xへのリンクを非表示にする設定でも操作できるよう、ボタンから投稿画面を開く。
   const textInput = h('input', { type: 'hidden', name: 'text', value: text });
   const el = h('form', {
@@ -45,10 +45,7 @@ export function xShareForm(text, testid, {buttonKey = 'share.button', preferImag
   }, [
     textInput,
     h('input', { type: 'hidden', name: 'url', value: GAME_URL }),
-    h('button', { type: 'submit', class: 'btn btn-x', 'data-testid': testid }, t(buttonKey)),
+    h('button', { type: 'submit', class: 'btn btn-x', 'data-testid': testid }, t('share.button')),
   ]);
-  if (preferImage) el.addEventListener('submit', event => {
-    if (preferImage()) event.preventDefault();
-  });
   return { el, setText(value) { textInput.value = value; } };
 }

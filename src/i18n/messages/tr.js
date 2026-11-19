@@ -263,7 +263,6 @@ export default {
   "howto.replayOpening": "Açılış sahnesini tekrar izle",
 
   "share.button": "X'te paylaş",
-  "share.textOnly": "X'te yalnızca metni paylaş",
   "share.copied": "Metin ve URL kopyalandı",
   "share.manual": "Lütfen aşağıdaki metni seçip kopyala",
   "share.hashtag": "#Kamereoru",

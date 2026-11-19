@@ -263,7 +263,6 @@ export default {
   "howto.replayOpening": "처음 장면 다시 보기",
 
   "share.button": "X에 공유하기",
-  "share.textOnly": "X에 텍스트만 공유",
   "share.copied": "본문과 URL을 복사했습니다",
   "share.manual": "아래 본문을 선택해 복사해 주세요",
   "share.hashtag": "#Kamereoru",

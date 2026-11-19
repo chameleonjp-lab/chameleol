@@ -263,7 +263,6 @@ export default {
   "howto.replayOpening": "Ver de nuevo la escena inicial",
 
   "share.button": "Compartir en X",
-  "share.textOnly": "Compartir solo texto en X",
   "share.copied": "Se han copiado el texto y la URL",
   "share.manual": "Selecciona y copia el texto de abajo",
   "share.hashtag": "#Kamereoru",
