@@ -64,6 +64,7 @@ test('公開入口の共有カードが配布物の同じ横長画像を指す',
     const { document } = parseHTML(readFileSync(join(root, 'dist', entry), 'utf8'));
     const meta = (attribute, value) => document.head.querySelector(`meta[${attribute}="${value}"]`)?.content;
     assert.equal(meta('name', 'twitter:card'), 'summary_large_image');
+    assert.equal(meta('name', 'twitter:site'), '@Chameleonjp26');
     assert.equal(meta('name', 'twitter:title'), 'カメレオる');
     assert.equal(meta('name', 'twitter:image'), imageUrl);
     assert.equal(meta('property', 'og:image'), imageUrl);

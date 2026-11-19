@@ -137,6 +137,7 @@ function entryHtml(prefix) {
     <meta property="og:image:height" content="600" />
     <meta property="og:image:alt" content="${socialImageAlt}" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@Chameleonjp26" />
     <meta name="twitter:title" content="${title}" />
     <meta name="twitter:description" content="${description}" />
     <meta name="twitter:image" content="${image}" />
