@@ -110,7 +110,7 @@ test('SHARE-TEST-01: 共有文は選んだ言語で作り、未確定の順位�
     assert.equal(/[0-9a-f]{8}-[0-9a-f]{4}/.test(official), false);
   }
   const url = buildIntentUrl({ text: 'a&b #x\n改行', url: 'https://example.invalid/game/' });
-  assert.ok(url.startsWith('https://x.com/intent/post?'));
+  assert.ok(url.startsWith('https://x.com/intent/tweet?'));
   const q = new URL(url).searchParams;
   assert.equal(q.get('text'), 'a&b #x\n改行');
   assert.equal(q.get('url'), 'https://example.invalid/game/');

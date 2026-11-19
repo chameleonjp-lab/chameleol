@@ -1,8 +1,9 @@
 // Xで共有。自動投稿せず投稿画面を開く。開けない時はコピー、コピーもできない時は選択できる本文を出す。
 // 非公開の照会情報・内部ID・名前・未確定の順位を含めない。正式URLは公開工程で決める。
 import { t, formatNumber } from '../i18n/i18n.js';
+import { h } from './dom.js';
 
-export const X_INTENT = 'https://x.com/intent/post';
+export const X_INTENT = 'https://x.com/intent/tweet';
 
 export const GAME_URL = 'https://chameleonjp-lab.github.io/chameleol/';
 
@@ -40,30 +41,12 @@ export function buildIntentUrl({ text, url }) {
   return `${X_INTENT}?${params.toString()}`;
 }
 
-/**
- * 投稿画面を開く。戻り値：'opened' | 'copied' | 'manual'
- * ポップアップが止められた（null）・例外の時は、本文とURLのコピーへ進む。
- */
-export async function shareToX({ text, url, openImpl = (u) => globalThis.open?.(u, '_blank'), clipboard = globalThis.navigator?.clipboard }) {
-  const intent = buildIntentUrl({ text, url });
-  let win = null;
-  try {
-    win = openImpl(intent);
-  } catch {
-    win = null;
-  }
-  if (win) {
-    try {
-      win.opener = null;
-    } catch {
-      /* 別オリジン */
-    }
-    return 'opened';
-  }
-  try {
-    await clipboard.writeText(url ? `${text}\n${url}` : text);
-    return 'copied';
-  } catch {
-    return 'manual';
-  }
+export function xShareLink(text, testid) {
+  return h('a', {
+    class: 'btn btn-x',
+    href: buildIntentUrl({ text, url: GAME_URL }),
+    target: '_blank',
+    rel: 'noopener noreferrer',
+    'data-testid': testid,
+  }, t('share.button'));
 }

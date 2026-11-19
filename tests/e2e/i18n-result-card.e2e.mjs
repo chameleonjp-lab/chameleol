@@ -71,12 +71,12 @@ for (const [width, height] of layouts) {
         await toReady(page);
         assert.equal(await page.getAttribute('html', 'lang'), lang);
         assert.equal(await page.locator('.result-card-save').textContent(), M['card.save']);
-        assert.equal(await page.locator('.result-card-text').textContent(), M['card.textShare']);
+        assert.equal(await page.locator('.result-card-image-share').textContent(), M['card.imageShare']);
         assert.equal(await page.locator('[data-panel=model]').textContent(), M['evidence.model.title']);
         assert.equal(await page.locator('[data-panel=turn]').textContent(), M['evidence.turn.title']);
         assert.ok((await page.locator('.result-card-canvas').getAttribute('aria-label')).includes(M['card.bonusMissing']));
         assert.ok((await page.locator('.result-card-summary').textContent()).includes(M['card.bonusMissing']));
-        await fits(page, `${lang} result`, '.result-card-summary, .result-actions button, .evidence-chip');
+        await fits(page, `${lang} result`, '.result-card-summary, .result-actions .btn, .evidence-chip');
 
         await page.locator('[data-panel=model]').click();
         const modelLabel = await page.locator('.result-miniature-svg').getAttribute('aria-label');
@@ -94,7 +94,7 @@ for (const [width, height] of layouts) {
         await page.locator('[data-panel=turn]').click();
 
         await page.evaluate(() => { __shareMode = 'fail'; });
-        await page.locator('[data-testid=result-share]').click();
+        await page.locator('[data-testid=result-card-image-share]').click();
         await page.waitForFunction(() => __kamereoru.resultCardController.snapshot().state === 'failed');
         assert.equal(await page.locator('.result-card-status').textContent(), M['card.shareFailed']);
         const payload = await page.evaluate(() => __shares.at(-1));

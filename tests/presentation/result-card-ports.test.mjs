@@ -26,7 +26,7 @@ function setup({ markup = true } = {}) {
   installFakeCanvas(window);
   const host = document.querySelector('main');
   if (markup) {
-    host.innerHTML = '<div class="result-burst"></div><h1 class="result-title">Cleared</h1><div class="result-main"></div><div class="result-actions"><button data-testid="result-again">Again</button><a data-testid="result-ranking">Ranking</a><button data-testid="result-share" class="btn-x">Share</button></div><button data-testid="result-home">Home</button><div class="result-ranking"></div>';
+    host.innerHTML = '<div class="result-burst"></div><h1 class="result-title">Cleared</h1><div class="result-main"></div><div class="result-actions"><button data-testid="result-again">Again</button><a data-testid="result-ranking">Ranking</a><a data-testid="result-share" class="btn-x" href="https://x.com/intent/tweet">Share</a></div><button data-testid="result-home">Home</button><div class="result-ranking"></div>';
   }
   return { document, window, host };
 }
@@ -73,7 +73,7 @@ test('the first onChange arrives before mount: mount draws controller.snapshot()
   ports.onChange(snap({ state: 'pending', prepared: null, model: baseModel({ rankKey: 'beginning', passed: 0 }) }));
   assert.equal(host.querySelector('.result-card'), null, 'nothing is mounted yet');
   const controller = fakeController(snap({ model: baseModel({ rankKey: 'legend', passed: 50 }) }));
-  const view = ports.mount({ host, controller, scope: scopeStub(), onTextShare() {} });
+  const view = ports.mount({ host, controller, scope: scopeStub() });
   const canvas = host.querySelector('.result-card-canvas');
   assert.ok(canvas.getAttribute('aria-label').includes(t('card.rank.legend', undefined, 'ja')));
   assert.ok(!canvas.getAttribute('aria-label').includes(t('card.rank.beginning', undefined, 'ja')));
@@ -82,7 +82,7 @@ test('the first onChange arrives before mount: mount draws controller.snapshot()
   void document;
 });
 
-test('mount moves the existing action nodes without cloning, replacing or double-registering them', () => {
+test('mount preserves primary actions and handles image sharing once in the secondary controls', () => {
   const { host, window } = setup();
   const actions = host.querySelector('.result-actions');
   const again = host.querySelector('[data-testid="result-again"]');
@@ -90,10 +90,10 @@ test('mount moves the existing action nodes without cloning, replacing or double
   const home = host.querySelector('[data-testid="result-home"]');
   const controller = fakeController(snap());
   let appClicks = 0;
-  share.addEventListener('click', () => { appClicks += 1; controller.share(); });
+  share.addEventListener('click', () => { appClicks += 1; });
   const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
   ports.onChange(controller.snapshot());
-  const view = ports.mount({ host, controller, scope: scopeStub(), onTextShare() {} });
+  const view = ports.mount({ host, controller, scope: scopeStub() });
   assert.ok(host.classList.contains('has-result-card'));
   assert.equal(host.querySelector('.result-actions'), actions, 'same node');
   assert.equal(host.querySelector('[data-testid="result-share"]'), share, 'same node');
@@ -107,7 +107,9 @@ test('mount moves the existing action nodes without cloning, replacing or double
   assert.equal(home.nextElementSibling.nextElementSibling, host.querySelector('.result-card-secondary'));
   click(window, share);
   assert.equal(appClicks, 1);
-  assert.equal(controller.calls.share, 1, 'one tap is one share() call, made by the App handler, never by the view');
+  assert.equal(controller.calls.share, 0, 'the primary link does not call image sharing');
+  click(window, host.querySelector('.result-card-image-share'));
+  assert.equal(controller.calls.share, 1);
   view.dispose();
   assert.equal(host.querySelector('.result-card'), null);
   assert.equal(host.querySelector('.result-card-secondary'), null);
@@ -122,25 +124,30 @@ test('state-by-state wording, share button state and retry visibility', () => {
   const controller = fakeController(snap({ state: 'pending', prepared: null, portraitImage: null }));
   const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
   ports.onChange(controller.snapshot());
-  ports.mount({ host, controller, scope: scopeStub(), onTextShare() {} });
+  ports.mount({ host, controller, scope: scopeStub() });
   const status = host.querySelector('.result-card-status');
   const share = host.querySelector('[data-testid="result-share"]');
+  const image = host.querySelector('[data-testid="result-card-image-share"]');
   const retry = host.querySelector('.result-card-retry');
   const canvas = host.querySelector('.result-card-canvas');
   assert.equal(status.textContent, t('card.preparing'));
-  assert.equal(share.getAttribute('aria-disabled'), 'true');
+  assert.equal(share.getAttribute('aria-disabled'), null);
+  assert.equal(image.disabled, true);
   assert.equal(retry.hidden, true);
   assert.equal(canvas.width, 600, 'the preparing card is the 600x315 canvas');
   const apply = (s) => { controller.set(s); ports.onChange(s); };
   apply(snap({ state: 'failed', prepared: null, portraitImage: null }));
   assert.equal(status.textContent, t('card.failed'));
   assert.equal(retry.hidden, false);
-  assert.equal(share.getAttribute('aria-disabled'), null, 'a failed preparation still answers the tap (guidance only)');
+  assert.equal(share.getAttribute('aria-disabled'), null);
+  assert.equal(image.disabled, true);
   apply(snap({ state: 'ready' }));
   assert.equal(status.textContent, '');
+  assert.equal(image.disabled, false);
   assert.equal(retry.hidden, true);
   apply(snap({ state: 'sharing' }));
-  assert.equal(share.getAttribute('aria-disabled'), 'true');
+  assert.equal(image.disabled, true);
+  assert.equal(share.getAttribute('aria-disabled'), null);
   apply(snap({ state: 'ready' }));
   assert.equal(status.textContent, t('card.shareClosed'), 'sharing -> ready shows the closed note');
   apply(snap({ state: 'unavailable' }));
@@ -151,20 +158,20 @@ test('state-by-state wording, share button state and retry visibility', () => {
   assert.deepEqual(usedFallbackReport(), []);
 });
 
-test('retry and text share happen only on an explicit tap and a retry never shares by itself', () => {
+test('retry and image share happen only on an explicit tap and a retry never shares by itself', () => {
   const { host, window } = setup();
   const controller = fakeController(snap({ state: 'failed', prepared: null, portraitImage: null }));
-  let text = 0;
   const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
   ports.onChange(controller.snapshot());
-  ports.mount({ host, controller, scope: scopeStub(), onTextShare: () => { text += 1; } });
-  assert.equal(controller.calls.retry + controller.calls.share + text, 0, 'nothing happens on its own');
+  ports.mount({ host, controller, scope: scopeStub() });
+  assert.equal(controller.calls.retry + controller.calls.share, 0, 'nothing happens on its own');
   click(window, host.querySelector('.result-card-retry'));
   assert.equal(controller.calls.retry, 1);
   assert.equal(controller.calls.share, 0);
-  click(window, host.querySelector('.result-card-text'));
-  assert.equal(text, 1);
-  assert.equal(controller.calls.share, 0, 'a cancelled share never opens the text window by itself');
+  controller.set(snap());
+  ports.onChange(controller.snapshot());
+  click(window, host.querySelector('.result-card-image-share'));
+  assert.equal(controller.calls.share, 1);
 });
 
 test('the save screen asks for the URL only on tap, shows an img, frees the canvas, and revokes on close', () => {
@@ -172,7 +179,7 @@ test('the save screen asks for the URL only on tap, shows an img, frees the canv
   const controller = fakeController(snap());
   const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
   ports.onChange(controller.snapshot());
-  ports.mount({ host, controller, scope: scopeStub(), onTextShare() {} });
+  ports.mount({ host, controller, scope: scopeStub() });
   assert.equal(controller.calls.getImageUrl, 0);
   const canvas = host.querySelector('.result-card-canvas');
   click(window, host.querySelector('.result-card-save'));
@@ -202,7 +209,7 @@ for (const exit of ['close', 'revision', 'dispose']) {
     const { host, window, document } = setup();
     const controller = fakeController(snap());
     const ports = createResultCardPorts({ result:{}, host, scope:scopeStub() });
-    const view = ports.mount({host,controller,scope:scopeStub(),onTextShare(){}});
+    const view = ports.mount({host,controller,scope:scopeStub()});
     const other=document.createElement('aside');other.setAttribute('inert','already');other.setAttribute('aria-hidden','false');document.body.append(other);
     document.documentElement.style.overflow='auto';
     Object.assign(document.body.style,{overflow:'scroll',position:'relative',top:'13px',left:'7px',width:'95%'});
@@ -267,7 +274,7 @@ test('save dialog restores single-axis overflow and mixed priorities without los
   Object.defineProperty(document.body,'style',{value:bodyStyle});
   const before=[htmlStyle.declarations(),bodyStyle.declarations()];
   const controller=fakeController(snap()),ports=createResultCardPorts({result:{},host,scope:scopeStub()});
-  const view=ports.mount({host,controller,scope:scopeStub(),onTextShare(){}});
+  const view=ports.mount({host,controller,scope:scopeStub()});
   click(window,host.querySelector('.result-card-save'));
   for(const style of [htmlStyle,bodyStyle])for(const axis of ['overflow-x','overflow-y']){
     assert.equal(style.getPropertyValue(axis),'hidden');assert.equal(style.getPropertyPriority(axis),'important');
@@ -281,7 +288,7 @@ test('a revised image restores the save action focus, while screen disposal neve
   const { host, window, document } = setup();
   const controller = fakeController(snap());
   const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
-  const view = ports.mount({ host, controller, scope: scopeStub(), onTextShare() {} });
+  const view = ports.mount({ host, controller, scope: scopeStub() });
   const save = host.querySelector('.result-card-save');
   let restored = 0;save.focus = () => { restored += 1; };
   click(window, save);
@@ -296,7 +303,7 @@ test('a new revision closes the viewer, Escape closes it, and disposing the scre
   const controller = fakeController(snap());
   const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
   ports.onChange(controller.snapshot());
-  const view = ports.mount({ host, controller, scope: scopeStub(), onTextShare() {} });
+  const view = ports.mount({ host, controller, scope: scopeStub() });
   click(window, host.querySelector('.result-card-save'));
   ports.onChange(snap({ state: 'sharing' }));
   assert.ok(document.querySelector('[data-testid="result-card-viewer"]'), 'a state-only change keeps the viewer');
@@ -313,14 +320,16 @@ test('a new revision closes the viewer, Escape closes it, and disposing the scre
   assert.equal(controller.calls.revoke, revokes + 1);
 });
 
-test('tapping the share button while pending shows the preparing note without delaying anything', () => {
+test('the primary X link is still available while the result image is pending', () => {
   const { host, window } = setup();
   const controller = fakeController(snap({ state: 'pending', prepared: null }));
   const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
   ports.onChange(controller.snapshot());
-  ports.mount({ host, controller, scope: scopeStub(), onTextShare() {} });
-  host.querySelector('.result-card-status').textContent = '';
-  click(window, host.querySelector('[data-testid="result-share"]'));
+  ports.mount({ host, controller, scope: scopeStub() });
+  const share = host.querySelector('[data-testid="result-share"]');
+  assert.equal(share.getAttribute('aria-disabled'), null);
+  assert.equal(share.href, 'https://x.com/intent/tweet');
+  click(window, share);
   assert.equal(host.querySelector('.result-card-status').textContent, t('card.preparing'));
   assert.equal(controller.calls.share, 0);
 });
@@ -527,7 +536,7 @@ test('all 15 dictionaries reach card/error/save/model/turn DOM and aria text wit
     const current = snap({model:baseModel({locale, countState:'missing', bonusCount:null}), miniature:cells(17, 18)});
     const controller = fakeController(current), scope = scopeStub();
     const ports = createResultCardPorts({result:{}, host, scope});
-    const view = ports.mount({host, controller, scope, onTextShare(){}});
+    const view = ports.mount({host, controller, scope});
     assert.ok(host.querySelector('.result-card-canvas').getAttribute('aria-label').includes(M['card.bonusMissing']), locale);
     assert.ok(host.querySelector('.result-card-summary').textContent.includes(M['card.bonusMissing']), locale);
     controller.set({...current, state:'failed'});ports.onChange(controller.snapshot());

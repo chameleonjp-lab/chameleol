@@ -19,17 +19,19 @@ async function fits(page, selectors, width, height, scroll = false) {
   }
 }
 for (const [width,height] of [[402,874],[402,700],[874,402]]) {
-  test(`audio integration: playable screens and three practice choices ${width}x${height}`, { timeout: 150000 }, async () => {
+  test(`audio integration: one sequence of three exercises ${width}x${height}`, { timeout: 150000 }, async () => {
     const env = await launch({width,height}); const {page}=env; const prefix=`${width}x${height}`;
     try {
       await openHome(page,env.url); await photo(page,`${prefix}-home`);
       await fits(page,[id('home-start'),id('home-practice')],width,height,true);
       await page.click(id('home-practice'));
-      assert.equal(await page.locator('.practice-menu button').count(), 4); // 3 exercises and Back
+      assert.equal(await page.locator('.practice-menu button').count(), 2);
+      assert.equal(await page.locator('.practice-overview li').count(), 3);
+      await page.click(id('guide-practice-start'));
       for(const step of [1,2,3]) {
-        await page.click(id(`guide-practice-${step}`));
         await page.waitForFunction(step=>__kamereoru.guidePractice?.view().step===step,step);
-        await fits(page,['.palette','.bar',id('guide-practice-pause')],width,height);
+        assert.equal(await page.textContent(id('guide-practice-progress')), `${step} / 3`);
+        await fits(page,['.palette','.bar',id('guide-practice-pause'),id('guide-practice-progress')],width,height);
         assert.equal(await page.locator(`${id('guide-go')},${id('guide-skip')}`).count(),0);
         assert.equal(await page.locator('.guidance-panel').isVisible(), step !== 2);
         assert.equal(await page.locator('.palette-guide-target').isVisible(), step !== 2);
@@ -47,9 +49,10 @@ for (const [width,height] of [[402,874],[402,700],[874,402]]) {
           if(step===3) {const r=await page.locator('.bar-guide-target').boundingBox();await page.mouse.click(r.x+r.width/2,r.y+r.height/2);}
           const r=await page.locator('.palette-guide-target').boundingBox();await page.mouse.click(r.x+r.width/2,r.y+r.height/2);
         }
-        await page.waitForSelector(id('guide-practice-choose'),{state:'visible',timeout:10000});
-        await fits(page,[id('guide-practice-choose'),id('guide-practice-again')],width,height);
-        await page.click(id('guide-practice-choose'));
+        const advance = step === 3 ? 'guide-practice-again' : 'guide-practice-next';
+        await page.waitForSelector(id(advance),{state:'visible',timeout:10000});
+        await fits(page,[id('guide-practice-choose'),id(advance)],width,height);
+        await page.click(id(step === 3 ? 'guide-practice-choose' : advance));
       }
       await page.locator('.btn-back').click();
       await startAnonymous(page); await photo(page,`${prefix}-game`);
@@ -74,7 +77,7 @@ for (const [width,height] of [[402,874],[402,700],[874,402]]) {
 test('audio integration: tap, same color, drag, two fingers, cancel, lock and zero-volume recovery', {timeout:45000}, async()=>{
   const env=await launch();const {page}=env;
   try {
-    await openHome(page,env.url);await page.click(id('home-practice'));await page.click(id('guide-practice-1'));
+    await openHome(page,env.url);await page.click(id('home-practice'));await page.click(id('guide-practice-start'));
     await page.waitForFunction(()=>!!__kamereoru.guidePractice&&!!__kamereoru.stage);
     await page.evaluate(()=>{const a=__kamereoru;globalThis.__audioCalls=[];const play=a.audio.play.bind(a.audio);a.audio.play=(name,...rest)=>{__audioCalls.push(name);return play(name,...rest);};});
     const g=await page.evaluate(()=>__kamereoru.controls.router.geometry);
@@ -140,7 +143,9 @@ test('audio integration: guide back works before completion and pause cancels he
   try {
     await openHome(page,env.url);await page.click(id('home-practice'));
     for(const step of [1,2,3]) {
-      await page.click(id(`guide-practice-${step}`));await page.waitForFunction(step=>__kamereoru.guidePractice?.view().step===step,step);
+      if (step === 1) await page.click(id('guide-practice-start'));
+      else await page.evaluate(step => __kamereoru.debugGuide({ step }), step);
+      await page.waitForFunction(step=>__kamereoru.guidePractice?.view().step===step,step);
       if(step===1) {
         await page.evaluate(()=>{const a=__kamereoru;globalThis.__releaseCalls=[];const original=a.audio.play.bind(a.audio);a.audio.play=(name,...rest)=>{__releaseCalls.push(name);return original(name,...rest);};});
         const g=await page.evaluate(()=>__kamereoru.controls.router.geometry.palette);
@@ -152,7 +157,7 @@ test('audio integration: guide back works before completion and pause cancels he
         assert.equal(await page.evaluate(()=>__releaseCalls.includes('colorRelease')),false);
         await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
       }
-      await page.click(id('guide-practice-exit'));await page.waitForSelector(id('guide-practice-1'));
+      await page.click(id('guide-practice-exit'));await page.waitForSelector(id('guide-practice-start'));
       assert.equal(await page.locator('.stage-canvas').count(),0);
     }
     assert.deepEqual(env.errors,[]);

@@ -316,7 +316,7 @@ test('HOME: twenty replacements across every tongue phase release old renders an
       await click(page, destination);
       if (destination === 'home-settings') {
         await page.locator('#lang-select').selectOption(round % 2 ? 'ja' : 'en');
-      } else if (destination === 'home-practice') await page.locator(id('guide-practice-1')).waitFor();
+      } else if (destination === 'home-practice') await page.locator(id('guide-practice-start')).waitFor();
       else if (destination === 'home-start') {
         await page.locator(id('stage')).waitFor();
         await waitUntil(page, () => !!__kamereoru.stage);
@@ -383,7 +383,7 @@ test('HOME: unavailable WebGL leaves start, practice and settings usable', async
     assert.equal(await page.locator('canvas.showcase-canvas').count(), 0);
     await click(page, 'home-settings'); await page.locator('#lang-select').waitFor();
     await page.locator('.btn-back').dispatchEvent('click');
-    await click(page, 'home-practice'); await page.locator(id('guide-practice-1')).waitFor();
+    await click(page, 'home-practice'); await page.locator(id('guide-practice-start')).waitFor();
     await page.locator('.btn-back').dispatchEvent('click');
     assert.equal(await page.locator(id('home-start')).isEnabled(), true);
     await click(page, 'home-start');

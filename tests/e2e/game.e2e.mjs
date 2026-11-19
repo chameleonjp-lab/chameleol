@@ -10,7 +10,7 @@ test('ホーム：名前の公開説明があり、中断がなければ「つ�
   try {
     await openHome(env.page, env.url);
     const help = await env.page.textContent('.name-help');
-    assert.match(help, /名前を入力すると、名前と記録がランキングに公開されます。空欄でも遊べます。/);
+    assert.match(help, /名前と記録はこの端末に保存します。空欄でも遊べます。/);
     assert.equal(await env.page.isVisible('[data-testid=home-continue]'), false);
     assert.deepEqual(env.errors, []);
   } finally {
@@ -87,7 +87,7 @@ test('PLAY-06: 19→20棟の猶予でバーを解放（位置不変・明るさ1
     await page.click('[data-testid=quit-confirm]');
     await page.waitForSelector('[data-testid=home-start]');
     await page.click('[data-testid=home-practice]');
-    assert.equal(await page.isDisabled('[data-testid=guide-practice-3]'), false);
+    assert.equal(await page.isDisabled('[data-testid=guide-practice-start]'), false);
     await page.click('.btn-back');
     await page.click('[data-testid=home-start]');
     await page.waitForFunction(() => globalThis.__kamereoru.session?.running === true, null, { timeout: 8000 });

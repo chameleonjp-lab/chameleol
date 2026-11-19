@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
-import {launch,openHome} from './helpers.mjs';
+import {launch,openHome,openXShare} from './helpers.mjs';
 import {INSTRUMENT,id,toReady,heldBytes,BUDGET} from './fixtures/result-card-helpers.mjs';
 
 async function runTo(page,target){
@@ -97,7 +97,7 @@ test('normal loop: tongue, claimed street, police and real precision badge lead 
   assert.equal(await page.locator('canvas.stage-canvas').count(),0);
   assert.deepEqual(await page.evaluate(()=>__kamereoru.lastResult.summary),original.summary);
   assert.equal(await page.evaluate(()=>__kamereoru.lastResult.evidence.status),'ready');
-  await page.evaluate(()=>{__shareMode='cancel';});await page.locator(id('result-share')).click();
+  await page.evaluate(()=>{__shareMode='cancel';});await page.locator(id('result-card-image-share')).click();
   await page.waitForFunction(()=>__shares.length===1&&__kamereoru.resultCardController.snapshot().state==='ready');
   const cancel=await page.evaluate(()=>({shares:__shares,opened:__opened.length,viewer:!!document.querySelector('.result-card-viewer'),manual:!!document.querySelector('.share-manual')}));
   assert.equal(cancel.shares[0].files.length,1);assert.equal(cancel.shares[0].files[0].type,'image/png');assert.equal(cancel.shares[0].url,'https://chameleonjp-lab.github.io/chameleol/');
@@ -105,8 +105,8 @@ test('normal loop: tongue, claimed street, police and real precision badge lead 
   await page.locator(id('result-card-save')).click();await page.waitForFunction(()=>document.querySelector('.result-card-viewer-image')?.naturalWidth===1200);
   assert.ok((await heldBytes(page)).total<=BUDGET);
   await page.locator(id('result-card-viewer-close')).click();
-  await page.locator(id('result-card-text')).click();assert.equal(await page.evaluate(()=>__opened.length),1);
-  const textUrl=await page.evaluate(()=>__opened[0]);assert.ok(textUrl.startsWith('https://x.com/intent/post?'));
+  const intent=await openXShare(page, 'result-share');
+  assert.equal(intent.origin + intent.pathname, 'https://x.com/intent/tweet');
   await page.evaluate(()=>{globalThis.__retiredNormalResult=__kamereoru.lastResult;});
   await page.locator(id('result-again')).dispatchEvent('click');
   await page.waitForFunction(pid=>__kamereoru.session?.meta.playId&&__kamereoru.session.meta.playId!==pid&&__kamereoru.stage&&__kamereoru.stage!==__retiredNormalStage,original.playId);

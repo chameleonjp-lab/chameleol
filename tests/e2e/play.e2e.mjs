@@ -177,21 +177,37 @@ test('GAME-17: クリアの演出を飛ばしても、結果とクリアボー�
   }
 });
 
-test('PRACT-05: 途中で戻る、同じ練習をやり直す、一覧からホームに戻る', async () => {
+test('PRACT-05: 途中で戻ると次回は1番目から。完了後のもう一度も1番目から', async () => {
   const env = await launch();
   const { page } = env;
   try {
     await openHome(page, env.url);
     await page.click('[data-testid=home-practice]');
-    await page.click('[data-testid=guide-practice-3]');
-    await page.click('[data-testid=guide-practice-exit]');
-    await page.click('[data-testid=guide-practice-1]');
+    await page.click('[data-testid=guide-practice-start]');
     const target = page.locator('.palette-guide-target');
-    await target.waitFor({ state: 'visible' });
-    const ring = await target.boundingBox();
-    await page.mouse.click(ring.x + ring.width / 2, ring.y + ring.height / 2);
+    const match = async (selector) => {
+      const marker = page.locator(selector);
+      await marker.waitFor();
+      const ring = await marker.boundingBox();
+      await page.mouse.click(ring.x + ring.width / 2, ring.y + ring.height / 2);
+    };
+    await match('.palette-guide-target');
+    await page.click('[data-testid=guide-practice-next]');
+    await page.getByText('2 / 3', { exact: true }).waitFor();
+    await page.click('[data-testid=guide-practice-exit]');
+    await page.click('[data-testid=guide-practice-start]');
+    await target.waitFor();
+    assert.equal(await page.textContent('[data-testid=guide-practice-progress]'), '1 / 3');
+    await match('.palette-guide-target');
+    await page.click('[data-testid=guide-practice-next]');
+    await page.getByText('2 / 3', { exact: true }).waitFor();
+    await page.click('[data-testid=guide-practice-next]', { timeout: 10000 });
+    await match('.bar-guide-target');
+    await match('.palette-guide-target');
+    await page.getByRole('heading', { name: '練習 3 / 3 完了' }).waitFor();
     await page.click('[data-testid=guide-practice-again]');
-    await target.waitFor({ state: 'visible' });
+    await target.waitFor();
+    assert.equal(await page.textContent('[data-testid=guide-practice-progress]'), '1 / 3');
     await page.click('[data-testid=guide-practice-exit]');
     await page.click('.practice-menu .btn-back');
     await page.waitForSelector('[data-testid=home-start]');

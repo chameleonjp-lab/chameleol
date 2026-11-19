@@ -494,7 +494,7 @@ test('【問題B修正検証】3つの練習で、操作音と完了音が鳴る
 
   app.showPracticeMenu();
   assert.deepEqual([...root.querySelectorAll('.practice-menu [data-testid]')].map(el => el.dataset.testid),
-    ['guide-practice-1', 'guide-practice-2', 'guide-practice-3', 'common.back']);
+    ['guide-practice-start', 'common.back']);
   await app.startGuidePractice(3);
   audio.events.length = 0;
   app.controls.router.down(2, 346, 180);

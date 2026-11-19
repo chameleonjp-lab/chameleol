@@ -24,7 +24,7 @@ test('every passed count selects exactly one adopted title and each language sup
   for(const n of [-1,51,1.5,NaN,Infinity,'2',null,undefined])assert.equal(rankForPassed(n),null);
 });
 test('image preparation, failure and explicit fallback actions have complete localized copy',()=>{
-  const keys=['bonusCount','passed','score','noRecord','preparing','failed','confirming','shareUnavailable','save','textShare','retry','saveHint','shareClosed'];
+  const keys=['bonusCount','passed','score','noRecord','preparing','failed','confirming','shareUnavailable','save','imageShare','retry','saveHint','shareClosed'];
   for(const [lang,dict] of Object.entries(MESSAGES))for(const key of keys)assert.ok(dict[`card.${key}`]?.trim(),`${lang}: ${key}`);
 });
 test('card uses this run and rejects unknown versions and contradictory clear counts',()=>{
