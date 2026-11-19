@@ -88,7 +88,7 @@ test('the first onChange arrives before mount: mount draws controller.snapshot()
   void document;
 });
 
-test('mount preserves primary actions and handles image sharing once in the secondary controls', () => {
+test('mount adds the save button next to the preserved X action and keeps image sharing separate', () => {
   const { host, window } = setup();
   const actions = host.querySelector('.result-actions');
   const again = host.querySelector('[data-testid="result-again"]');
@@ -108,7 +108,9 @@ test('mount preserves primary actions and handles image sharing once in the seco
   const order = [...host.children].map((c) => c.className.split(' ')[0]);
   assert.ok(order.indexOf('result-title') < order.indexOf('result-card') && order.indexOf('result-card') < order.indexOf('result-actions'));
   const kids = [...actions.children];
-  assert.deepEqual(kids, [again, host.querySelector('[data-testid="result-ranking"]'), share.closest('form')]);
+  const save = host.querySelector('[data-testid="result-card-save"]');
+  assert.ok(save);
+  assert.deepEqual(kids, [again, host.querySelector('[data-testid="result-ranking"]'), share.closest('form'), save]);
   assert.equal(home.nextElementSibling, host.querySelector('.result-ranking'));
   assert.equal(home.nextElementSibling.nextElementSibling, host.querySelector('.result-card-secondary'));
   click(window, share);
@@ -119,6 +121,7 @@ test('mount preserves primary actions and handles image sharing once in the seco
   view.dispose();
   assert.equal(host.querySelector('.result-card'), null);
   assert.equal(host.querySelector('.result-card-secondary'), null);
+  assert.equal(host.querySelector('[data-testid="result-card-save"]'), null);
   assert.equal(host.classList.contains('has-result-card'), false);
   assert.equal(host.querySelector('[data-testid="result-share"]'), share, 'the App node stays');
   view.dispose();

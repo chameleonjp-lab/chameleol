@@ -81,13 +81,14 @@ for (const [w, h] of [[402, 700], [402, 874], [874, 402]]) {
         function id(n) { return `[data-testid="${n}"]`; }
       });
       t.diagnostic(JSON.stringify(m));
-      for (const key of ['card', 'again', 'share']) {
+      for (const key of ['card', 'again', 'share', 'save']) {
         assert.ok(m[key], `${key} exists`);
         assert.ok(m[key].top >= 0 && m[key].bottom <= m.vh, `${key} inside the first screen (${m[key].top}..${m[key].bottom} of ${m.vh})`);
         assert.ok(m[key].left >= 0 && m[key].right <= m.vw, `${key} inside horizontally`);
       }
       assert.ok(m.board.top >= m.home.bottom - 1, 'table follows the Home button');
-      for (const key of ['save', 'imageShare']) assert.ok(m[key].top >= m.board.bottom - 1, key + ' follows the table');
+      assert.ok(m.save.top >= m.share.top && m.save.bottom <= m.home.top + 1, 'the save button is with the main result actions');
+      assert.ok(m.imageShare.top >= m.board.bottom - 1, 'image share follows the table');
       assert.ok(m.scrollW <= m.vw, `no horizontal overflow (${m.scrollW} > ${m.vw})`);
       assert.ok(m.portrait.top >= m.vh - 1 || m.portrait.bottom > m.vh, 'the second hero (photo) is not fully in the first screen');
       // 補足（No.71/80/93/99/100）は主操作の下に常時表示され、畳まれない
@@ -156,6 +157,7 @@ test('save screen: an img from the prepared PNG, the screen card frees its pixel
     await playToResult(page);
     await toReady(page);
     const closedBytes = await heldBytes(page);
+    assert.equal(await page.locator('.result-actions .result-card-save').textContent(), 'スコア画像を保存');
     await page.locator('.result-card-save').click();
     await page.waitForSelector(id('result-card-viewer-image'));
     await page.waitForFunction(() => document.querySelector('.result-card-viewer-image').complete);
@@ -168,6 +170,9 @@ test('save screen: an img from the prepared PNG, the screen card frees its pixel
     assert.deepEqual(open.canvas, [0, 0]);
     assert.equal(open.dialog, 'true');
     assert.equal(open.active, 'result-card-viewer-close');
+    const download = page.getByTestId('result-card-viewer-download');
+    assert.equal(await download.getAttribute('href'), open.src);
+    assert.equal(await download.getAttribute('download'), 'chameleol-result.png');
     const viewerBytes = await heldBytes(page);
     assert.ok(viewerBytes.total <= BUDGET, `viewer open ${viewerBytes.total}`);
     assert.ok(viewerBytes.total < closedBytes.total + 1_000_000);

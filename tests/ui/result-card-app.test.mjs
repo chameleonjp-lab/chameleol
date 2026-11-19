@@ -20,8 +20,14 @@ function setup(portOverrides={},factory=false){
  return {document,events,nativeShares,counts:()=>({portraits,disposed})};
 }
 afterEach(()=>{app?.showHome();app?.disposeStage();app=null;frames.clear();});
-test('the X button is available before the image is prepared and submits only text and the game URL',async()=>{
- const {document,nativeShares}=setup();app.showResult();
+test('the X button opens directly with a normal result before and after the image is ready',async()=>{
+ const {document,nativeShares}=setup();setLanguage('ja');
+ Object.assign(app.lastResult,{
+  summary:{...summary,buildings:12,endReason:'detected',score:{...summary.score,total:1840}},
+  targets:Array.from({length:50},()=>({h:12000,s:8000,v:10000})),
+  arrivedBuilding:13,netState:'official',metrics:{runRank:3,totalPlays:128},
+ });
+ app.showResult();
  const button=document.querySelector('[data-testid="result-share"]');
  const form=button.closest('form');
  assert.equal(button.tagName,'BUTTON');
@@ -32,9 +38,13 @@ test('the X button is available before the image is prepared and submits only te
  assert.deepEqual([...form.querySelectorAll('input')].map(input=>input.name),['text','url']);
  assert.equal(form.querySelector('[name="url"]').value,'https://chameleonjp-lab.github.io/chameleol/');
  const text=form.querySelector('[name="text"]').value;
- assert.ok(text.length>0);
+ assert.match(text,/12棟クリア\n1,840点\n今回のプレイ順位　3位／128人中（延べ128プレイ）\n#カメレオる$/);
+ const submit=()=>form.dispatchEvent(new document.defaultView.Event('submit',{cancelable:true}));
+ assert.equal(submit(),true);
  await settle();
+ assert.equal(app.resultCardController.snapshot().state,'ready');
  assert.equal(form.querySelector('[name="text"]').value,text);
+ assert.equal(submit(),true);
  assert.equal(nativeShares.length,0);
 });
 test('result state-only updates invalidate its file before score early-return and language redraw reuses the portrait',async()=>{
@@ -102,6 +112,9 @@ test('copying a result uses the confirmed text and canonical URL exactly once', 
   Object.defineProperty(nav,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}});
   setLanguage('ja');app.lastResult.netState='official';app.lastResult.metrics={runRank:3,totalPlays:4,clearOrdinal:1};
   app.showResult();await settle();
+  const form=document.querySelector('[data-testid="result-share"]').closest('form');
+  assert.match(form.querySelector('[name="text"]').value,/50棟を逃げきった！\n7,280点\n初クリア時の順番：1人目\n今回のプレイ順位　3位／4人中（延べ4プレイ）\n#カメレオる$/);
+  assert.equal(form.querySelector('[name="url"]').value,'https://chameleonjp-lab.github.io/chameleol/');
   await app.copyResultText();
   assert.match(copied,/3位／4人中/);assert.match(copied,/1人目/);
   assert.equal(copied.split('https://chameleonjp-lab.github.io/chameleol/').length,2);
