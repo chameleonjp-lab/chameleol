@@ -33,6 +33,11 @@ test('normal loop: tongue, claimed street, police and real precision badge lead 
  const env=await launch({width:402,height:700});const {page}=env;let proof;
  try{
   await env.context.addInitScript(INSTRUMENT);await openHome(page,env.url);
+  // Fanboy's Social Blocking List hides links to the X composer.
+  await page.addStyleTag({content:'a[href^="https://x.com/intent/tweet?"] { display: none !important; }'});
+  assert.equal(await page.getByTestId('home-share').isVisible(),true,'home sharing is visible with the link filter');
+  const homeIntent=await openXShare(page,'home-share');
+  assert.equal(homeIntent.origin+homeIntent.pathname,'https://x.com/intent/tweet');
   await page.clock.install({time:new Date('2030-01-01T00:00:00Z')});await page.clock.pauseAt(new Date('2030-01-01T00:00:01Z'));
   await page.evaluate(async()=>{
    const a=__kamereoru;a.flags.alertGuideSeen=true;
@@ -105,6 +110,7 @@ test('normal loop: tongue, claimed street, police and real precision badge lead 
   await page.locator(id('result-card-save')).click();await page.waitForFunction(()=>document.querySelector('.result-card-viewer-image')?.naturalWidth===1200);
   assert.ok((await heldBytes(page)).total<=BUDGET);
   await page.locator(id('result-card-viewer-close')).click();
+  assert.equal(await page.getByTestId('result-share').isVisible(),true,'result sharing is visible with the link filter');
   const intent=await openXShare(page, 'result-share');
   assert.equal(intent.origin + intent.pathname, 'https://x.com/intent/tweet');
   await page.evaluate(()=>{globalThis.__retiredNormalResult=__kamereoru.lastResult;});

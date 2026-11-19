@@ -19,7 +19,7 @@ import { audioSettings, backButton, button, dialog, languageSelect, nameField, s
 import { createRankingView, rankingLink } from './ui/ranking.js';
 import { createRecordsView } from './ui/record-status.js';
 import { projectRunResult } from './presentation/result-card-data.js';
-import { GAME_URL, formatRunMetrics, buildHomeShareText, buildResultShareText, buildIntentUrl, xShareLink } from './ui/share.js';
+import { GAME_URL, formatRunMetrics, buildHomeShareText, buildResultShareText, xShareForm } from './ui/share.js';
 import { t, setLanguage, getLanguage, formatNumber, formatPercent2, onLanguageChange } from './i18n/i18n.js';
 import { isSupportedLanguage, resolveLanguage } from './i18n/languages.js';
 import { openStore, TAB_ID, StaleWriterError } from './storage/store.js';
@@ -380,7 +380,7 @@ export class App {
           button('home.howto', () => this.showHowTo(), { testid: 'home-howto' }),
           button('home.settings', () => this.showSettings(), { testid: 'home-settings' }),
           recordsBtn,
-          xShareLink(buildHomeShareText({ lang: getLanguage() }), 'home-share'),
+          xShareForm(buildHomeShareText({ lang: getLanguage() }), 'home-share').el,
         ]),
       ]),
       this.runtime.isVerification ? this.verificationMenu() : null,
@@ -1697,13 +1697,13 @@ export class App {
     const reasonKey = variant => variant === 'corrected' ? 'releaseCorrectedResult' : 'result.' + variant;
     let variant = displayData.variant;
     const statusBox = h('div', { class: 'result-status', 'aria-live': 'polite' });
-    const shareLink = xShareLink(this.resultShareText(), 'result-share');
+    const share = xShareForm(this.resultShareText(), 'result-share');
     let rankingView, displayedOfficial;
     const rankingHost = h('div', { class: 'result-ranking' });
     const renderResultStatus = () => {
       if(!resultCurrent())return;
       cardController?.refresh({locale:getLanguage()});
-      shareLink.setAttribute('href', buildIntentUrl({ text: this.resultShareText(), url: GAME_URL }));
+      share.setText(this.resultShareText());
       clear(statusBox);
       if (resultPresentation) statusBox.append(resultPresentation.rankElement);
       if (!r.ranked) {
@@ -1757,7 +1757,7 @@ export class App {
       h('div', { class: 'result-actions' }, [
         button('result.again', () => this.startFlow(this.nameRaw), { primary: true, testid: 'result-again' }),
         rankingLink('result-ranking'),
-        shareLink,
+        share.el,
       ]),
       button('common.home', () => this.showHome(), { testid: 'result-home' }),
       rankingHost,

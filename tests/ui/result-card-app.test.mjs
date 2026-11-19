@@ -20,16 +20,21 @@ function setup(portOverrides={},factory=false){
  return {document,events,nativeShares,counts:()=>({portraits,disposed})};
 }
 afterEach(()=>{app?.showHome();app?.disposeStage();app=null;frames.clear();});
-test('the X link is present before the image is prepared and its address never contains the result file',async()=>{
+test('the X button is available before the image is prepared and submits only text and the game URL',async()=>{
  const {document,nativeShares}=setup();app.showResult();
- const link=document.querySelector('[data-testid="result-share"]');
- assert.equal(link.tagName,'A');
- const intent=new URL(link.getAttribute('href'));
- assert.equal(intent.origin+intent.pathname,'https://x.com/intent/tweet');
- assert.equal(intent.searchParams.get('url'),'https://chameleonjp-lab.github.io/chameleol/');
- assert.equal(intent.searchParams.has('files'),false);
+ const button=document.querySelector('[data-testid="result-share"]');
+ const form=button.closest('form');
+ assert.equal(button.tagName,'BUTTON');
+ assert.equal(button.getAttribute('type'),'submit');
+ assert.equal(form.getAttribute('action'),'https://x.com/intent/tweet');
+ assert.equal(form.getAttribute('method'),'get');
+ assert.equal(form.getAttribute('target'),'_blank');
+ assert.deepEqual([...form.querySelectorAll('input')].map(input=>input.name),['text','url']);
+ assert.equal(form.querySelector('[name="url"]').value,'https://chameleonjp-lab.github.io/chameleol/');
+ const text=form.querySelector('[name="text"]').value;
+ assert.ok(text.length>0);
  await settle();
- assert.equal(link.getAttribute('href'),intent.href);
+ assert.equal(form.querySelector('[name="text"]').value,text);
  assert.equal(nativeShares.length,0);
 });
 test('result state-only updates invalidate its file before score early-return and language redraw reuses the portrait',async()=>{
