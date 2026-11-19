@@ -1,5 +1,5 @@
 # PR とメインブランチで、判定・保存・通信・データベース・画面の試験を流す。
-# ブラウザ試験は4つの独立した環境へ分け、各環境内は従来どおり1ファイルずつ実行する。
+# 描画演出の通し試験は独立した環境で実行し、残りを4組に分ける。
 # 本番の Supabase には接続しない（使い捨ての PostgreSQL サービスを使う）。配備は行わない。
 name: CI
 
@@ -48,7 +48,7 @@ jobs:
         run: npm run check:engines
 
   browser:
-    name: browser (${{ matrix.shard }}/4)
+    name: browser (${{ matrix.shard }})
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     outputs:
@@ -56,10 +56,11 @@ jobs:
       shard_2: ${{ steps.completed.outputs.shard_2 }}
       shard_3: ${{ steps.completed.outputs.shard_3 }}
       shard_4: ${{ steps.completed.outputs.shard_4 }}
+      shard_5: ${{ steps.completed.outputs.shard_5 }}
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5]
     services:
       postgres:
         image: postgres:16
@@ -85,11 +86,23 @@ jobs:
         run: |
           npm install --no-save playwright@1.63.0
           npx playwright install --with-deps chromium
-      - name: 自動ブラウザの通し試験（${{ matrix.shard }}/4）
-        # Node が対象全ファイルを重複・欠落なく分割する。新しい試験ファイルも自動で対象になる。
-        run: node --test --test-concurrency=1 --test-shard=${{ matrix.shard }}/4 tests/e2e/*.e2e.mjs
+      - name: 自動ブラウザの通し試験（${{ matrix.shard }}）
         env:
+          SHARD: ${{ matrix.shard }}
           CL03_SCREENSHOTS: ${{ runner.temp }}/pr26-evidence
+        run: |
+          presentation_test=tests/e2e/presentation.e2e.mjs
+          if [[ "$SHARD" == 5 ]]; then
+            node --test --test-concurrency=1 "$presentation_test"
+          else
+            files=()
+            for file in tests/e2e/*.e2e.mjs; do
+              if [[ "$file" != "$presentation_test" ]]; then
+                files+=("$file")
+              fi
+            done
+            node --test --test-concurrency=1 --test-shard="$SHARD/4" "${files[@]}"
+          fi
       - name: PR26の画像と測定を保存（試験の合否は変更しない）
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -118,10 +131,11 @@ jobs:
           SHARD_2: ${{ needs.browser.outputs.shard_2 }}
           SHARD_3: ${{ needs.browser.outputs.shard_3 }}
           SHARD_4: ${{ needs.browser.outputs.shard_4 }}
+          SHARD_5: ${{ needs.browser.outputs.shard_5 }}
         run: |
           test "$CHECKS_RESULT" = success
           test "$BROWSER_RESULT" = success
-          for result in "$SHARD_1" "$SHARD_2" "$SHARD_3" "$SHARD_4"; do
+          for result in "$SHARD_1" "$SHARD_2" "$SHARD_3" "$SHARD_4" "$SHARD_5"; do
             test "$result" = success
           done
       - uses: actions/checkout@v4
