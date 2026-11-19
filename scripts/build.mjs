@@ -22,6 +22,8 @@ const DIST = join(ROOT, 'dist');
 const args = process.argv.slice(2);
 const keepIdx = args.indexOf('--keep');
 const keepFrom = keepIdx >= 0 ? args[keepIdx + 1] : null;
+const socialImage = 'social-card.jpg';
+const socialImageSource = `assets/${socialImage}`;
 
 const env = process.env.KAMEREORU_ENV ?? 'verification';
 const api = process.env.KAMEREORU_API ?? '';
@@ -66,7 +68,7 @@ for (const dir of sources) {
     contentHash.update(readFileSync(f));
   }
 }
-for (const file of ['index.html', 'assets/credits.md', 'scripts/build.mjs', 'ranking-manifest.json']) {
+for (const file of ['index.html', 'assets/credits.md', socialImageSource, 'scripts/build.mjs', 'ranking-manifest.json']) {
   contentHash.update(file);
   contentHash.update(readFileSync(join(ROOT, file)));
 }
@@ -94,6 +96,14 @@ for (const name of kept) cpSync(join(preserved, name), join(DIST, 'v', name), { 
 const vroot = join(DIST, 'v', assetVersion);
 for (const dir of sources) cpSync(join(ROOT, dir), join(vroot, dir), { recursive: true });
 cpSync(join(ROOT, 'assets', 'credits.md'), join(vroot, 'credits.md'));
+cpSync(join(ROOT, socialImageSource), join(vroot, socialImage));
+
+const manifest = JSON.parse(readFileSync(join(ROOT, 'ranking-manifest.json'), 'utf8'));
+const socialImageAlt = '宝石を持ったカメレオンと、夜の街並み、色を選ぶ円形パレット。';
+
+function escapeAttribute(value) {
+  return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+}
 
 function entryHtml(prefix) {
   let html = readFileSync(join(ROOT, 'index.html'), 'utf8');
@@ -108,7 +118,30 @@ function entryHtml(prefix) {
   html = html.replace('href="./src/ui/game.css"', `href="${prefix}src/ui/game.css"`);
   html = html.replace('"three": "./vendor/three.module.min.js"', `"three": "${prefix}vendor/three.module.min.js"`);
   html = html.replace('src="./src/app.js"', `src="${prefix}src/app.js"`);
-  if (publicUrl) html = html.replace('</title>', `</title>\n    <link rel="canonical" href="${publicUrl}" />`);
+  if (publicUrl) {
+    const imageUrl = new URL(`${publicUrl.replace(/\/$/, '')}/v/${assetVersion}/${socialImage}`).href;
+    const url = escapeAttribute(publicUrl);
+    const image = escapeAttribute(imageUrl);
+    const title = escapeAttribute(manifest.title);
+    const description = escapeAttribute(manifest.description);
+    html = html.replace('</title>', () => `</title>
+    <link rel="canonical" href="${url}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ja_JP" />
+    <meta property="og:url" content="${url}" />
+    <meta property="og:title" content="${title}" />
+    <meta property="og:description" content="${description}" />
+    <meta property="og:image" content="${image}" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="600" />
+    <meta property="og:image:alt" content="${socialImageAlt}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${title}" />
+    <meta name="twitter:description" content="${description}" />
+    <meta name="twitter:image" content="${image}" />
+    <meta name="twitter:image:alt" content="${socialImageAlt}" />`);
+  }
   return html;
 }
 
