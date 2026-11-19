@@ -281,6 +281,7 @@ export class App {
     if (record.playId !== r?.playId) return;
     r.netState = record.status;
     r.official = record.official;
+    r.corrections = record.corrections;
     r.metrics = record.metrics;
     if (record.verifiedScore) r.verifiedScore = record.verifiedScore;
     this.renderResultScore?.();

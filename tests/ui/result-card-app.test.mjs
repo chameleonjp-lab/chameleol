@@ -56,6 +56,25 @@ test('result state-only updates invalidate its file before score early-return an
  for(const lang of ['en','ja','de','th']){setLanguage(lang);app.showResult();await settle();}
  assert.equal(counts().portraits,1);app.showHome();assert.equal(counts().disposed,1);
 });
+test('a status with no ranking preserves the finished score and buildings in text and image shares', async () => {
+  const {document, nativeShares} = setup();
+  setLanguage('ja');
+  app.lastResult.summary = {...summary, buildings:12, endReason:'detected', score:{...summary.score, total:1840}};
+  app.lastResult.targets = Array.from({length:50}, () => ({h:12000,s:8000,v:10000}));
+  app.lastResult.arrivedBuilding = 13;
+  app.showResult();
+  app.applyResultRecord({playId:'p', status:'no_rank', official:null, corrections:[]});
+  await settle();
+  assert.equal(document.querySelector('[data-testid="result-buildings"]').textContent, '12 / 50');
+  const form = document.querySelector('[data-testid="result-share"]').closest('form');
+  const text = 'カメレオるで遊んだよ\n12棟クリア\n1,840点\n#カメレオる';
+  assert.equal(form.querySelector('[name="text"]').value, text);
+  const controller = app.resultCardController;
+  assert.equal(await controller.share(), 'shared');
+  assert.equal(nativeShares[0].text, text);
+  const image = JSON.parse(await nativeShares[0].files[0].text());
+  assert.deepEqual([image.passed, image.totalScore], [12, 1840]);
+});
 test('outbox status-only updates reach the image controller even when online UI is hidden',async()=>{
  setup();app.showResult();await settle();const before=app.resultCardController.snapshot().revision;
  app.onOutboxUpdate({playId:'p',state:'pending_review'});
@@ -113,7 +132,7 @@ test('copying a result uses the confirmed text and canonical URL exactly once', 
   setLanguage('ja');app.lastResult.netState='official';app.lastResult.metrics={runRank:3,totalPlays:4,clearOrdinal:1};
   app.showResult();await settle();
   const form=document.querySelector('[data-testid="result-share"]').closest('form');
-  assert.match(form.querySelector('[name="text"]').value,/50棟を逃げきった！\n7,280点\n初クリア時の順番：1人目\n今回のプレイ順位　3位／4人中（延べ4プレイ）\n#カメレオる$/);
+  assert.match(form.querySelector('[name="text"]').value,/50棟クリア\n7,280点\n初クリア時の順番：1人目\n今回のプレイ順位　3位／4人中（延べ4プレイ）\n#カメレオる$/);
   assert.equal(form.querySelector('[name="url"]').value,'https://chameleonjp-lab.github.io/chameleol/');
   await app.copyResultText();
   assert.match(copied,/3位／4人中/);assert.match(copied,/1人目/);

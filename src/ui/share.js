@@ -17,11 +17,10 @@ export function formatRunMetrics(run) {
 }
 
 export function buildResultShareText({ run }) {
-  const { locale, endReason, score, buildings } = run;
+  const { locale, score, buildings } = run;
   const lines = [t('share.result.title', null, locale)];
-  if (buildings === 50 && endReason === 'cleared') lines.push(t('share.result.cleared', null, locale));
-  else lines.push(t('releasePassed', { count:formatNumber(buildings, {}, locale) }, locale));
-  if (score !== null) lines.push(t('card.score', { score:formatNumber(score, {}, locale) }, locale));
+  if (Number.isSafeInteger(buildings)) lines.push(t('releasePassed', { count:formatNumber(buildings, {}, locale) }, locale));
+  if (Number.isSafeInteger(score)) lines.push(t('card.score', { score:formatNumber(score, {}, locale) }, locale));
   const {rank,ordinal} = formatRunMetrics(run);
   if (ordinal) lines.push(ordinal);
   if (rank) lines.push(rank);

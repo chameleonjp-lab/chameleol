@@ -113,7 +113,14 @@ test('share: X opens before the PNG is ready; an explicit image share passes one
     const early = await openXShare(page, 'result-share');
     assert.equal(early.origin + early.pathname, 'https://x.com/intent/tweet');
     assert.equal(early.searchParams.get('url'), 'https://chameleonjp-lab.github.io/chameleol/');
-    assert.ok(early.searchParams.get('text').length > 0);
+    const values = await page.evaluate(() => {
+      const { buildings, score } = __kamereoru.lastResult.summary;
+      return { buildings, score: score.total };
+    });
+    assert.ok(values.buildings > 0 && values.score > 0);
+    const shareText = early.searchParams.get('text').replaceAll('\r\n', '\n');
+    assert.ok(shareText.split('\n').includes(values.buildings + '棟クリア'));
+    assert.ok(shareText.split('\n').includes(values.score.toLocaleString('ja-JP') + '点'));
     assert.equal(await page.evaluate(() => __shares.length), 0);
     await toReady(page);
     const tap = await page.evaluate(() => {
@@ -126,6 +133,7 @@ test('share: X opens before the PNG is ready; an explicit image share passes one
     assert.equal(tap.payload.files[0].type, 'image/png');
     assert.ok(tap.payload.files[0].size > 0);
     assert.equal(tap.payload.url, 'https://chameleonjp-lab.github.io/chameleol/');
+    assert.equal(tap.payload.text, shareText);
     await advanceUntil(page, async () => (await cardState(page)) === 'ready', { limit: 20 });
     // 取消：本文の窓は自動で開かない
     const popupAfterCancel = [];

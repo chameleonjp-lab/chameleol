@@ -73,7 +73,12 @@ test('official metrics require integers and a consistent denominator, and rank a
   assert.deepEqual([run.rankState,run.runRank,run.clearOrdinal],['pending',null,null]);
   context.netState='official';context.official.buildings=7;run=projectRunResult(context,'ja');
   assert.deepEqual([run.buildings,run.rankAverage,run.clearOrdinal],[7,9200,null]);
-  context.netState='no_rank';run=projectRunResult(context,'ja');
+  context.netState='no_rank';
+  context.official=null;
+  run=projectRunResult(context,'ja');
+  assert.deepEqual([run.buildings,run.score,run.runRank,run.clearOrdinal],[50,7280,null,null]);
+  context.corrections=[{action:'correct',after:{buildings:0}}];
+  run=projectRunResult(context,'ja');
   assert.deepEqual([run.buildings,run.rankAverage,run.clearOrdinal],[0,null,null]);
   context.ranked=false;run=projectRunResult(context,'ja');
   assert.equal(run.appearance.kind,'rainbow');assert.equal(run.rankState,'unranked');assert.equal(run.clearOrdinal,null);
