@@ -50,17 +50,18 @@ test('単独公開を指定するとランキングの接続先なしで本番�
   assert.throws(() => build({ standalone: '1', api: 'https://unexpected.example.invalid/' }), /KAMEREORU_STANDALONE/);
 });
 
-test('公開入口の共有カードが配布物の同じ横長画像を指す', () => {
+test('公開版を切り替えても共有カードの画像URLは変わらない', () => {
   const publicUrl = 'https://example.invalid/chameleol';
-  const release = build({ publicUrl, standalone: '1' });
-  const versionPath = `v/${release.assetVersion}`;
-  const imagePath = `${versionPath}/social-card.jpg`;
+  const first = build({ publicUrl, standalone: '1' });
+  const release = build({ publicUrl, api: 'https://example.invalid/kamereoru', args: ['--keep', 'dist'] });
+  assert.notEqual(first.assetVersion, release.assetVersion);
+  const imagePath = 'social-card.jpg';
   const imageUrl = `${publicUrl}/${imagePath}`;
   const image = readFileSync(join(root, 'dist', imagePath));
   assert.equal(release.files[imagePath], createHash('sha256').update(image).digest('hex'));
   assert.deepEqual(image.subarray(0, 3), Buffer.from([0xff, 0xd8, 0xff]));
 
-  for (const entry of ['index.html', `${versionPath}/index.html`]) {
+  for (const entry of ['index.html', `v/${first.assetVersion}/index.html`, `v/${release.assetVersion}/index.html`]) {
     const { document } = parseHTML(readFileSync(join(root, 'dist', entry), 'utf8'));
     const meta = (attribute, value) => document.head.querySelector(`meta[${attribute}="${value}"]`)?.content;
     assert.equal(meta('name', 'twitter:card'), 'summary_large_image');

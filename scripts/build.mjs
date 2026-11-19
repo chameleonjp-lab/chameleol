@@ -96,7 +96,8 @@ for (const name of kept) cpSync(join(preserved, name), join(DIST, 'v', name), { 
 const vroot = join(DIST, 'v', assetVersion);
 for (const dir of sources) cpSync(join(ROOT, dir), join(vroot, dir), { recursive: true });
 cpSync(join(ROOT, 'assets', 'credits.md'), join(vroot, 'credits.md'));
-cpSync(join(ROOT, socialImageSource), join(vroot, socialImage));
+// 共有サービスが参照する画像のURLはゲームの公開版に依存させない。
+cpSync(join(ROOT, socialImageSource), join(DIST, socialImage));
 
 const manifest = JSON.parse(readFileSync(join(ROOT, 'ranking-manifest.json'), 'utf8'));
 const socialImageAlt = '宝石を持ったカメレオンと、夜の街並み、色を選ぶ円形パレット。';
@@ -119,7 +120,7 @@ function entryHtml(prefix) {
   html = html.replace('"three": "./vendor/three.module.min.js"', `"three": "${prefix}vendor/three.module.min.js"`);
   html = html.replace('src="./src/app.js"', `src="${prefix}src/app.js"`);
   if (publicUrl) {
-    const imageUrl = new URL(`${publicUrl.replace(/\/$/, '')}/v/${assetVersion}/${socialImage}`).href;
+    const imageUrl = new URL(`${publicUrl.replace(/\/$/, '')}/${socialImage}`).href;
     const url = escapeAttribute(publicUrl);
     const image = escapeAttribute(imageUrl);
     const title = escapeAttribute(manifest.title);
@@ -154,6 +155,7 @@ writeFileSync(join(DIST, '.nojekyll'), '');
 
 const files = {};
 for (const f of [...walk(vroot)].sort()) files[relative(DIST, f)] = sha(readFileSync(f));
+files[socialImage] = sha(readFileSync(join(DIST, socialImage)));
 files['ranking-manifest.json'] = sha(readFileSync(join(DIST, 'ranking-manifest.json')));
 files['index.html'] = sha(readFileSync(join(DIST, 'index.html')));
 const release = {
