@@ -143,7 +143,8 @@ export function createHandler(options: HandlerOptions) {
         if (Number(job.attempts) < 3) continue; // 期限後に再試行
         v = { status: 'pending_review', values: {}, verdict: { reason: 'verifier_error', notes: [String((err as Error)?.message ?? err).slice(0, 200)] } };
       }
-      await call('select private.kamereoru_finalize($1, $2, $3::jsonb, $4::jsonb) as s', [job.play_id, v.status, JSON.stringify(v.values), JSON.stringify(v.verdict)]);
+      // Bind the serialized values as text so Postgres.js does not encode them a second time.
+      await call('select private.kamereoru_finalize($1, $2, $3::text::jsonb, $4::text::jsonb) as s', [job.play_id, v.status, JSON.stringify(v.values), JSON.stringify(v.verdict)]);
       processed += 1;
       log({ event: 'verified', status: v.status, reason: v.verdict.reason });
     }
