@@ -99,7 +99,11 @@ for (const [width, height] of layouts) {
         assert.equal(await page.locator('.result-card-status').textContent(), M['card.shareFailed']);
         const payload = await page.evaluate(() => __shares.at(-1));
         assert.ok(payload.text.includes(M['share.result.title']), lang);
-        assert.ok(payload.text.includes(M['share.result.cleared']), lang);
+        const expectedBuildings = await page.evaluate(async () => {
+          const {formatNumber, t} = await import('/src/i18n/i18n.js');
+          return t('releasePassed', {count: formatNumber(50)});
+        });
+        assert.ok(payload.text.includes(expectedBuildings), lang);
         assert.doesNotMatch(payload.text, /\{\w+\}|(?:card|evidence|presentation)\.[a-zA-Z]/);
         await fits(page, `${lang} share error`, '.result-card-status, .result-card-secondary button');
 

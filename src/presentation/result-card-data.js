@@ -91,7 +91,12 @@ export function projectRunResult(context, locale, displaySummary = applyVerified
   const official = context.ranked && context.netState === 'official';
   const corrected = official && inRange(context.official?.buildings, 1, 50) &&
     inRange(context.official.rankAverage, 0, 10000);
-  const zero = context.ranked && context.netState === 'no_rank';
+  // A rank status alone cannot amend the run's score or cleared buildings.
+  const zero = context.ranked && context.netState === 'no_rank' && (
+    context.official?.buildings === 0 ||
+    (Array.isArray(context.corrections) &&
+      context.corrections.some(change => change?.action === 'correct' && change.after?.buildings === 0))
+  );
   const buildings = zero ? 0 : corrected ? context.official.buildings : displaySummary.buildings;
   const rankAverage = zero ? null : corrected ? context.official.rankAverage : displaySummary.rankAverage;
   const { endReason } = displaySummary;
