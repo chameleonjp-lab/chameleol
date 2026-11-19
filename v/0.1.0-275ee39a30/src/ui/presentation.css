@@ -1,0 +1,259 @@
+/* Passive overlays stay within the scene; controls retain every pointer. */
+.presentation-hud,.presentation-hud *{pointer-events:none!important}
+.presentation-hud{position:absolute;inset:0;z-index:4;overflow:hidden;font-size:.72rem;color:#fff;text-shadow:0 1px 3px #111}
+.presentation-success-frame{position:absolute;inset:5px;border:2px solid transparent;border-radius:14px}
+.is-success .presentation-success-frame{border-color:#b5ff91;box-shadow:inset 0 0 12px #a8ff7977}
+.presentation-success-band{position:absolute;top:2px;left:5%;width:90%;height:3px;background:#ffffff22}
+.presentation-success-band i{display:block;height:100%;background:#b5ff91;transform-origin:left}
+.presentation-shutter{position:absolute;top:9px;left:49%;opacity:.3;transform:scaleX(.45)}
+.is-shutter .presentation-shutter{opacity:1;transform:scaleX(1)}
+.presentation-combo{position:absolute;left:12px;top:94px;max-width:70%;color:#fff0a0}
+.presentation-gems{letter-spacing:2px}.is-breaking .presentation-gems{display:inline-block}
+.presentation-route{position:absolute;left:18px;right:18px;bottom:8px;height:3px;background:#ffffff55}
+.presentation-hero,.presentation-best-flag{position:absolute;bottom:0;font-style:normal;transform:translateX(-50%)}
+.presentation-best-flag{bottom:9px;color:#ffe694}
+.presentation-notice,.presentation-record,.presentation-last-five{position:absolute;left:50%;max-width:82%;transform:translateX(-50%);padding:3px 8px;background:#111b;border-radius:8px;text-align:center}
+.presentation-notice{top:126px}.presentation-notice:empty,.presentation-record:empty,.presentation-last-five:empty{display:none}
+.presentation-record{bottom:24px}.presentation-last-five{top:65px;color:#ffe694;font-weight:bold}
+.guidance-panel {
+  --guidance-font-size: .82rem;
+  position: relative;
+  z-index: 5;
+  flex: none;
+  padding: 7px 12px;
+  background: #20274d;
+  border: 1px solid #b9d6ff;
+  border-radius: 10px;
+  max-width: 100%;
+  font-size: var(--guidance-font-size);
+}
+.game:not(.guide-practice) .guidance-panel {
+  font-size: calc(var(--guidance-font-size) * 2);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.guidance-title{font-weight:800;margin:0 0 3px}.guidance-match{font-variant-numeric:tabular-nums;font-weight:800}.guidance-status{margin:3px 0}.guidance-actions{display:flex;gap:8px;flex-wrap:wrap}.guidance-actions button{min-height:36px;padding:5px 10px}
+.guide-target{position:absolute;pointer-events:none!important;z-index:6;border:3px dashed #fff;outline:2px solid #111;box-shadow:0 0 0 2px #fff9;border-radius:50%;transform:translate(-50%,-50%);width:25px;height:25px}.bar-guide-target{left:50%;width:calc(100% + 8px);height:12px;border-radius:3px}
+.result-presentation{position:relative;isolation:isolate;max-width:640px;margin:0 auto;padding:12px;border-radius:18px;background:#171e43;overflow:hidden}
+.result-scene{position:absolute;inset:0 0 auto;height:220px;opacity:.45;z-index:-1;background-repeat:no-repeat}
+.result-portrait{display:block;width:96px;height:144px;margin:0 auto;border:0;background-color:transparent;background-repeat:no-repeat;cursor:pointer}
+.result-report{padding:12px;background:#141a37e8;border:1px solid #ffffff33;border-radius:12px;animation:presentation-report .6s ease-out both}
+.result-score{font-size:2rem;font-weight:900;text-align:center;color:#fff0a0;font-variant-numeric:tabular-nums}
+.result-components{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;font-size:.8rem}.result-map{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;margin:12px 0}.result-map-cell{font-size:.65rem;text-align:center;border-radius:3px;background:#ffffff18;padding:3px 0}.result-map-cell.is-passed{background:#67be69;color:#081d13}
+.result-new-best,.result-first-clear{color:#ffe694;font-weight:800}.result-new-best{animation:presentation-stamp .5s ease-out both}.result-badges,.result-districts{display:flex;gap:6px;flex-wrap:wrap}.result-badge{padding:4px 7px;border:1px solid #ffe694;border-radius:20px}.result-district{display:grid;gap:4px;flex:1;min-width:45px;padding:6px;background:#ffffff12;border-radius:6px;font-size:.7rem}.result-speech{font-style:italic}.result-colors{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;margin-top:10px}.result-color{height:16px;opacity:.3;border-radius:3px}.result-color.is-reached{opacity:1;border:1px solid white}.result-comparison{display:inline-block;margin-right:10px;font-size:.8rem}.result-rank.is-open{animation:presentation-report .3s ease-out both}.is-reacting .result-portrait{animation:presentation-react .4s}.is-replaying .result-portrait{animation:presentation-react .15s}.result-presentation.is-paused *{animation-play-state:paused!important}
+@keyframes presentation-report{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}@keyframes presentation-stamp{from{opacity:0;transform:scale(1.3)}to{opacity:1;transform:none}}@keyframes presentation-react{50%{transform:rotate(-5deg) translateY(-5px)}}
+@media(max-height:740px){.guidance-panel{padding:4px 8px;--guidance-font-size:.72rem}.guidance-title,.guidance-status{display:inline;margin-right:6px}.guidance-actions{display:inline-flex;gap:4px}.guidance-actions button{min-height:30px}.presentation-notice{top:116px}}
+@media(orientation:landscape) and (max-height:500px){.guidance-panel{padding:3px 8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.guidance-title,.guidance-status{margin:0}.guidance-actions button{min-height:28px}.presentation-combo{top:75px}.presentation-notice{top:100px}.presentation-last-five{top:40px}}
+@media(prefers-reduced-motion:reduce){.presentation-hud *,.result-presentation *,.guidance-panel *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.presentation-unlock-lock{display:none;position:absolute;top:95px;right:18px;font-size:1.3rem;overflow:hidden}
+.is-unlock .presentation-unlock-lock{display:block;animation:presentation-unlock .6s ease-out both}
+.is-shutter .presentation-shutter{animation:presentation-shutter .2s ease-in-out both}
+@keyframes presentation-unlock{from{clip-path:inset(0);transform:translateY(0) rotate(-12deg)}to{clip-path:inset(0 0 100%);transform:translateY(-14px) rotate(12deg)}}
+@keyframes presentation-shutter{0%,100%{transform:scaleX(.1)}50%{transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){.presentation-hud *{animation:none!important;transition:none!important}.is-unlock .presentation-unlock-lock{clip-path:none;transform:none}}
+/* Result photograph is moved before the primary stats by the app. */
+.result-scene.result-photo{position:relative;inset:auto;z-index:auto;opacity:1;width:100%;max-width:640px;height:170px;flex:none;margin:0 auto 10px;border:4px solid #eee8d4;border-bottom-width:12px;border-radius:5px;background-color:#34446d;background-repeat:no-repeat;box-shadow:0 4px 12px #0005;overflow:hidden}
+.result-scene .result-portrait{position:absolute;bottom:-3px;left:50%;margin:0 0 0 -48px;transform-origin:center bottom}
+.result-scene.is-paused *{animation-play-state:paused!important}
+.ending-comic{pointer-events:none;position:absolute;z-index:12;top:calc(var(--safe-top,0px) + 80px);right:max(18px,var(--safe-right,0px));width:112px;height:168px;overflow:hidden;border:4px solid #fff4c9;border-radius:11px;box-shadow:4px 4px 0 #10142d,0 0 0 2px #10142d;background-color:#ffe694;background-repeat:no-repeat;color:transparent;font-size:0;transform:rotate(5deg)}
+.ending-comic::after{content:'';position:absolute;inset:0;border:2px solid #161b34;border-radius:5px;pointer-events:none}
+@media(max-height:740px){.result-scene.result-photo{height:125px}.result-scene .result-portrait{width:80px;height:120px;margin-left:-40px}.ending-comic{top:calc(var(--safe-top,0px) + 72px);width:88px;height:132px}}
+@media(orientation:landscape) and (max-height:500px){.result-scene.result-photo{height:105px;max-width:420px;margin-bottom:6px}.result-scene .result-portrait{width:68px;height:102px;margin-left:-34px}.ending-comic{top:24px;right:20px;width:76px;height:114px}}
+@media(prefers-reduced-motion:reduce){.result-scene *{animation:none!important;transition:none!important}}
+/* The caller's active clock, rather than an animation callback, moves this light. */
+.is-success .presentation-success-frame{border-color:transparent;box-shadow:none}
+.presentation-success-frame{overflow:hidden}
+.is-success .presentation-success-frame::before{content:'';position:absolute;top:0;left:0;width:24%;height:3px;background:linear-gradient(90deg,transparent,#c9ffae,white,transparent);box-shadow:0 0 7px #b5ff91;transform:translateX(calc(var(--success-sweep,0) * 517% - 100%))}
+.presentation-hud.is-paused *,.presentation-hud.is-paused *::before,.presentation-hud.is-paused *::after{animation-play-state:paused!important}
+@media(prefers-reduced-motion:reduce){.is-success .presentation-success-frame::before{width:100%;transform:none;background:#c9ffae;box-shadow:none}}
+
+/* The ending uses a small authored portrait, keeping live decoded image bytes bounded. */
+.ending-comic{background-image:url('../presentation/assets/detected.webp');background-size:contain;background-position:center}
+
+/* Primary results never wait for staggered decoration animations. */
+.screen.result .stat{animation:none}
+.screen.result.presentation-complete{animation:none!important}
+.screen.result.presentation-complete .stat,.screen.result.presentation-complete .result-title,.screen.result.presentation-complete .result-report,.screen.result.presentation-complete .result-new-best,.screen.result.presentation-complete .result-best-new{animation:none!important;transition:none!important;opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.is-breaking .presentation-gems{transform:none!important;opacity:.35!important}}
+
+.result-components{grid-template-columns:1fr;gap:2px}.result-component{padding:6px 9px;border:1px solid #ffffff33;border-radius:3px;background:linear-gradient(90deg,#91cfa54d var(--component-fill,0%),#ffffff0a var(--component-fill,0%))}
+.result-district{position:relative;min-height:74px;border:2px solid #e8dec7;border-bottom-width:6px;border-radius:2px;background-repeat:no-repeat;color:white;text-shadow:0 1px 3px #000}
+.result-district::before{content:'';position:absolute;inset:0;background:linear-gradient(transparent,#0009)}.result-district>*{position:relative;z-index:1}
+.screen.result.is-paused *,.screen.result.is-paused *::before,.screen.result.is-paused *::after{animation-play-state:paused!important}
+
+.guidance-host{position:absolute;top:calc(var(--safe-top,0px) + 76px);left:8px;right:8px;z-index:5}.guidance-instruction{display:block;font-size:.85em;line-height:1.25;color:#d7e5ff;margin:2px 0}
+@media(orientation:landscape) and (max-height:500px){.guidance-host{top:62px;left:6px;right:6px}.guidance-instruction{display:inline}}
+
+@media(prefers-reduced-motion:reduce){.is-reacting .result-portrait{outline:2px solid #fff0a0;outline-offset:2px}}
+/* Keep the shared instruction below the full HUD and keep both actions on one row. */
+.guidance-host{top:calc(var(--safe-top,0px) + 88px)}
+.guidance-actions{display:flex;flex-wrap:nowrap}.guidance-actions .btn{width:auto;flex:1;min-width:0}
+@media(orientation:landscape) and (max-height:500px){.guidance-host{top:84px}.guidance-actions{flex:0 0 auto}.guidance-actions .btn{flex:0 1 auto}}
+/* The replay image lands with its feet on the actual replay control. */
+.result-scene.result-photo.is-replaying{overflow:visible;z-index:5}
+.is-replaying .result-portrait{animation:result-replay-jump .15s linear both;pointer-events:none}
+.is-reacting:not(.is-replaying) .result-portrait{animation:none}
+@keyframes result-replay-jump{0%{transform:translate(0,0)}50%{transform:translate(calc(var(--result-jump-x,0px)*.5),calc(var(--result-jump-y,0px)*.5 - 28px))}100%{transform:translate(var(--result-jump-x,0px),var(--result-jump-y,0px))}}
+
+/* A first-clear keepsake: punched edges and a perforated 50-building stub. */
+.result-first-clear.result-ticket{display:grid;grid-template-columns:56px minmax(0,1fr);align-items:stretch;max-width:390px;margin:14px auto;padding:12px 16px;border:1px solid #ebcd82;border-radius:10px;background:linear-gradient(135deg,#fff2c5,#f0cf84);color:#342811;text-align:left;box-shadow:0 3px 0 #0003;-webkit-mask:radial-gradient(circle at 0 50%,transparent 7px,#000 8px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 7px,#000 8px) right/51% 100% no-repeat;mask:radial-gradient(circle at 0 50%,transparent 7px,#000 8px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 7px,#000 8px) right/51% 100% no-repeat}
+.result-ticket-stamp{display:flex;align-items:center;justify-content:center;padding-right:12px;border-right:2px dashed #b68c3e;font-size:1.8rem;line-height:1;font-weight:900;font-variant-numeric:tabular-nums}
+.result-ticket-body{display:grid;align-content:center;gap:5px;min-width:0;padding-left:13px}
+.result-ticket-title{font-size:.9rem;line-height:1.5;overflow-wrap:anywhere}
+.result-ticket-date{font-size:.78rem;font-weight:500;line-height:1.5;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+@media(max-height:740px){.result-first-clear.result-ticket{margin:10px auto;padding:10px 14px}}
+/* Awarded points are read-only. One card shares the game clock and never blocks input. */
+.bonus-card,.bonus-card *,.ending-bonus,.ending-bonus *{pointer-events:none!important;box-sizing:border-box}
+.bonus-card{position:absolute;z-index:8;left:10px;right:10px;top:calc(var(--safe-top,0px) + 84px);max-width:520px;margin:0 auto;padding:8px 10px;border:1px solid #f3df8b;border-radius:12px;background:#10182def;color:#fff7d6;font-size:14px;line-height:1.25;font-variant-numeric:tabular-nums;box-shadow:0 3px 10px #0005;animation:bonus-arrive 150ms ease-out both;animation-delay:calc(-1 * var(--bonus-age,0ms))}
+.bonus-card[hidden],.ending-bonus[hidden]{display:none!important}
+.bonus-card-title{display:inline-block;margin-right:10px;font-size:14px}.bonus-card-points{font-size:20px}.bonus-awards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;margin-top:5px}
+.bonus-award{display:flex;align-items:center;gap:4px;min-width:0;font-size:14px;overflow-wrap:anywhere}.bonus-name{flex:1;min-width:0}.bonus-points{white-space:nowrap}.bonus-symbol{display:inline-block;width:18px;flex:none;text-align:center;font-style:normal;font-size:18px}
+.bonus-precision .bonus-symbol{border-radius:50%;outline:1px solid currentColor;outline-offset:-3px;animation:bonus-rings 150ms ease-out both;animation-delay:calc(-1 * var(--bonus-age,0ms))}
+.bonus-steady .bonus-symbol{position:relative}.bonus-steady .bonus-symbol::after{content:'';display:block;position:absolute;bottom:0;left:2px;right:2px;border-bottom:2px solid currentColor;animation:bonus-steady 150ms ease-out both;animation-delay:calc(-1 * var(--bonus-age,0ms))}
+.bonus-quick .bonus-symbol{animation:bonus-arrow 150ms ease-out both;animation-delay:calc(-1 * var(--bonus-age,0ms))}
+.bonus-card-detail{font-size:14px;line-height:1.3;margin:6px 0 0;overflow-wrap:anywhere}
+.bonus-card.is-leaving{opacity:calc(1 - var(--bonus-progress,0));transform:translateY(calc(-8px * var(--bonus-progress,0)))}
+.bonus-card.is-paused *,.bonus-card.is-paused{animation-play-state:paused!important}
+.bonus-card.is-quiet,.bonus-card.is-reduced{animation:none!important;transform:none!important;opacity:1;box-shadow:none}.bonus-card.is-quiet *,.bonus-card.is-reduced *{animation:none!important;transform:none!important}.bonus-card.is-quiet .bonus-symbol{display:none}
+.ending-bonus{position:absolute;z-index:12;left:12px;right:12px;top:calc(var(--safe-top,0px) + 84px);max-width:520px;margin:auto;padding:12px;border:1px solid #f2da89;border-radius:12px;background:#10182ded;color:#fff8d5;font-size:14px;line-height:1.35;overflow-wrap:anywhere}.ending-base,.ending-medal-detail{margin:8px 0}.ending-medal{display:block;color:#ffe294}.ending-total{display:block;font-size:18px}
+.result-total-label{display:block;font-size:14px;font-weight:600}.result-score-visual{display:block}.result-main>.result-score{min-width:0}.result-bonus{margin-top:12px;font-size:14px}.result-bonus-total{font-size:17px}.result-bonus-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;margin:8px 0;padding:10px;border:1px solid #ffffff25;border-radius:10px}.result-bonus-name,.result-bonus-count{overflow-wrap:anywhere}.result-bonus-count{text-align:right}.result-bonus-tiers,.result-bonus-help{grid-column:1/-1;font-size:14px;line-height:1.4;margin:0;overflow-wrap:anywhere}.result-bonus-medal{font-size:26px;color:#ffe294}.result-bonus-legacy{font-size:14px;line-height:1.4}.result-components{font-size:14px}
+@keyframes bonus-arrive{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}@keyframes bonus-rings{from{transform:scale(.6);outline-offset:3px}to{transform:none;outline-offset:-3px}}@keyframes bonus-steady{from{transform:rotate(-20deg)}to{transform:none}}@keyframes bonus-arrow{from{transform:translateX(-7px)}to{transform:none}}
+@media(orientation:landscape) and (max-height:500px){.bonus-card{top:calc(var(--safe-top,0px) + 82px);padding:5px 8px}.bonus-awards{gap:3px 8px}.bonus-card-detail{margin-top:4px}.ending-bonus{top:calc(var(--safe-top,0px) + 68px);padding:8px}}
+@media(prefers-reduced-motion:reduce){.bonus-card,.bonus-card *,.bonus-card *::after,.ending-bonus,.hud-gain,.hud-score.bump{animation:none!important;transition:none!important;transform:none!important}.bonus-card.is-leaving{opacity:1}}
+/* The caller's integer game clock controls every part of the card movement. */
+.bonus-card{animation:none;opacity:var(--bonus-enter,0);transform:translateY(calc(5px * (1 - var(--bonus-enter,0))))}
+.bonus-precision .bonus-symbol{animation:none;transform:scale(calc(.6 + .4 * var(--bonus-enter,0)));outline-offset:calc(3px - 6px * var(--bonus-enter,0))}.bonus-tier-high .bonus-symbol{box-shadow:0 0 0 1px #fff5,0 0 6px #ffdf84}
+.bonus-steady .bonus-symbol::after{animation:none;transform:rotate(calc(-20deg * (1 - var(--bonus-enter,0))))}.bonus-quick .bonus-symbol{animation:none;transform:translateX(calc(-7px * (1 - var(--bonus-enter,0))))}
+.bonus-card.is-leaving{opacity:calc(1 - var(--bonus-progress,0));transform:translateY(calc(-8px * var(--bonus-progress,0)))}
+.bonus-card.is-quiet,.bonus-card.is-reduced{opacity:1;transform:none}.bonus-card.is-quiet .bonus-symbol::after,.bonus-card.is-reduced .bonus-symbol::after{transform:none}
+.game:has(.bonus-card.is-paused) .hud-score.bump{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.bonus-card{opacity:1;transform:none}.bonus-symbol,.bonus-symbol::after{transform:none!important}}
+@media(prefers-reduced-motion:reduce){.bonus-card.is-leaving{opacity:1}}
+/* A pass has one message surface, including the existing combo/milestone text. */
+.bonus-card-notices{margin:5px 0 0;color:#bcff93;font-size:14px;line-height:1.25;font-weight:700;overflow-wrap:anywhere}.bonus-card-notices[hidden]{display:none}
+.bonus-card.is-quiet .bonus-card-detail{display:none}.bonus-card.is-quiet{padding:5px 8px}.bonus-card.is-quiet .bonus-awards{gap:3px 8px}
+.bonus-awards:has(.bonus-award:only-child){grid-template-columns:1fr}
+.bonus-card.is-quiet .bonus-card-notices{display:none}
+
+/* 結果のふり返りパネル（静止表示。再生・つまみ・動きはない）。一度に開くのは1つだけ。 */
+.result-evidence{box-sizing:border-box;max-width:640px;margin:14px auto;color:#fff6d6;text-align:left}
+.result-evidence *,.result-evidence *::before,.result-evidence *::after{box-sizing:border-box}
+.evidence-heading{margin:0 0 8px;font-size:1rem;font-weight:800;color:#fff0a0}
+.evidence-chips{display:flex;flex-wrap:wrap;gap:8px}
+.evidence-chip{min-height:40px;padding:0 14px;border:2px solid transparent;border-radius:999px;background:#ffffff12;color:inherit;font:inherit;font-size:14px;line-height:1.2;cursor:pointer}
+.evidence-chip.is-open,.evidence-chip[aria-expanded=true]{border-color:#fff0a0}
+.evidence-body{margin-top:10px;padding:12px;border:1px solid #ffffff33;border-radius:12px;background:#141a37e8;min-width:0}
+.evidence-body[hidden]{display:none}
+.evidence-empty{margin:0;padding:18px 12px;border:2px dashed #ffffff33;border-radius:10px;text-align:center;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.evidence-caption{margin:10px 0 0;font-size:14px;line-height:1.4;text-align:center;overflow-wrap:anywhere}
+.evidence-frames{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.evidence-recovery{display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:6px;align-items:center}
+.evidence-frame{margin:0;min-width:0}
+.evidence-alert-bar{height:14px;border-radius:7px;background:#ffffff1a;overflow:hidden}
+.evidence-alert-bar i{display:block;height:100%;border-radius:7px}
+.evidence-wall{position:relative;height:100px;margin:6px 0;border:2px solid #ffffff33;border-radius:8px;overflow:hidden}
+.evidence-silhouette{position:absolute;left:50%;top:50%;width:58px;height:46px;margin:-23px 0 0 -29px}
+.evidence-police{position:absolute;left:4px;bottom:4px;display:flex;align-items:center;justify-content:center;width:22px;height:30px;border-radius:999px;background:#1f2f5c;color:#fff;font-size:14px;font-weight:800;line-height:1}
+.evidence-frame-caption{display:grid;gap:1px;font-size:14px;line-height:1.3;text-align:center;overflow-wrap:anywhere}
+.evidence-frame-caption strong{font-weight:800}
+.evidence-arrow{display:block;width:24px;height:24px}
+.evidence-colors{display:flex;justify-content:center;gap:8%}
+.evidence-swatch{flex:0 0 46%;margin:0;min-width:0;text-align:center}
+.evidence-swatch-box{display:flex;align-items:center;justify-content:center;height:96px;border:2px solid #ffffff33;border-radius:10px;font-size:14px}
+.evidence-swatch-box.is-missing{border:2px dashed #ffffff55;background:transparent}
+.evidence-swatch figcaption{margin-top:6px;font-size:14px;font-weight:700}
+.evidence-graph{display:block;width:100%;height:auto}
+.evidence-marks{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:4px;font-size:14px;line-height:1.35}
+.evidence-film{overflow-x:auto;scroll-snap-type:x mandatory;border-radius:6px;background:#10142d;-webkit-overflow-scrolling:touch}
+.evidence-film:focus-visible{outline:2px solid #fff0a0;outline-offset:2px}
+.evidence-film-track{display:flex;gap:6px;width:max-content;padding:16px 8px;background:repeating-linear-gradient(90deg,#ffffff33 0 8px,transparent 8px 16px) top 4px left 0/100% 6px no-repeat,repeating-linear-gradient(90deg,#ffffff33 0 8px,transparent 8px 16px) bottom 4px left 0/100% 6px no-repeat}
+.evidence-film-frame{flex:none;width:38px;margin:0;scroll-snap-align:start}
+.evidence-film-wall{display:block;height:34px;border-radius:3px 3px 0 0}
+.evidence-film-body{display:block;height:22px;border-top:2px solid #0a0c1e;border-radius:0 0 3px 3px}
+.evidence-film-body.is-missing{border:1px dashed #ffffff55;border-top:2px solid #0a0c1e;background:transparent}
+.evidence-film-frame figcaption{margin-top:2px;font-size:12px;line-height:1.2;text-align:center;color:#b9bee6}
+@media(orientation:landscape) and (max-height:500px){.result-evidence{max-width:600px}}
+
+/* 精密札だけを出す時のカード（ボーナスの束が無い評価中）。中央寄せは translate で行い、出入りの transform と重ねない。 */
+.bonus-card.is-badge-only .bonus-card-title,.bonus-card.is-badge-only .bonus-card-points,
+.bonus-card.is-badge-only .bonus-awards,.bonus-card.is-badge-only .bonus-card-detail{display:none}
+.bonus-card.is-badge-only{right:auto;left:50%;translate:-50% 0;margin:0;padding:5px 12px;max-width:calc(100% - 20px)}
+.bonus-card.is-badge-only .bonus-card-notices{margin:0}
+.bonus-card-badge{color:#ffe694;white-space:nowrap}
+
+/* ---- 結果の主カード（1200×630）と主操作。写真と成績は order で主操作の下へ入れ替える（DOM の順は変えない）。---- */
+.screen.result.has-result-card{display:flex;flex-direction:column}
+.screen.result.has-result-card>*{order:10}
+.screen.result.has-result-card>.result-title{order:1}
+.screen.result.has-result-card>.result-card{order:2;margin:0 0 4px}
+.screen.result.has-result-card>.result-actions{order:3}
+.screen.result.has-result-card>[data-testid="result-home"]{order:4}
+.screen.result.has-result-card>.result-ranking{order:5;min-width:0}
+.screen.result.has-result-card>.result-card-secondary{order:6}
+.screen.result.has-result-card>.result-evidence-host{order:7}
+.screen.result.has-result-card>.result-main{order:8}
+.screen.result.has-result-card>.result-scene{order:9;margin-top:10px}
+.result-card-canvas{display:block;width:100%;height:auto;aspect-ratio:1200/630;border-radius:10px;box-shadow:0 4px 12px #0006}
+.result-card-summary{margin:6px 0 0;font-size:16px;font-weight:700;line-height:1.3;color:#fff6d6;text-align:center;overflow-wrap:anywhere}
+.result-card-secondary{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px;border-radius:12px}
+.result-card-secondary.is-share-failed{outline:2px solid #ffcc4d;outline-offset:3px}
+.result-card-secondary .btn{flex:1 1 140px;width:auto;min-height:40px;margin:0;font-size:.9rem}
+.result-card-secondary .btn[hidden]{display:none}
+.result-card-status{flex-basis:100%;margin:0;font-size:14px;line-height:1.4;color:#fff0a0}
+.result-card-status:empty{display:none}
+.result-actions [aria-disabled=true]{opacity:.6}
+@media(orientation:landscape) and (max-height:500px){
+ .screen.result.has-result-card{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);column-gap:14px;align-items:start}
+ .screen.result.has-result-card>*{grid-column:1/-1}
+ .screen.result.has-result-card>.result-card{grid-column:1;grid-row:1/span 2}
+ .screen.result.has-result-card>.result-title{grid-column:2;grid-row:1;font-size:1.6rem;margin:0 0 4px}
+ .screen.result.has-result-card>.result-actions{grid-column:2;grid-row:2}
+}
+
+/* ---- 画像の保存画面（img を長押しで保存。canvas の長押しは使わない）---- */
+.result-card-viewer{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:calc(var(--safe-top,0px) + 14px) 16px calc(var(--safe-bottom,0px) + 14px);background:#14183a;color:#fff6d6;overflow:auto;box-sizing:border-box}
+.result-card-viewer *{box-sizing:border-box}
+.result-card-viewer-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.result-card-viewer-title{min-width:0;margin:0;overflow-wrap:anywhere;font-size:1.05rem;font-weight:800;color:#fff0a0}
+.result-card-viewer-close{flex:none;max-width:50%;min-height:44px;margin:0;overflow-wrap:anywhere}
+.result-card-viewer-image{display:block;width:100%;max-width:640px;height:auto;margin:0 auto;border:1px solid #ffffff33;border-radius:16px;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+.result-card-viewer-hint{margin:0;text-align:center;font-size:14px;line-height:1.4}
+.result-card-viewer-download{width:100%;max-width:640px;margin:0 auto;text-align:center;text-decoration:none}
+@media(orientation:landscape) and (max-height:500px){
+ .result-card-viewer{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:center}
+ .result-card-viewer-header{flex:1 0 100%}
+ .result-card-viewer-image{width:auto;max-width:60%;max-height:calc(100vh - 100px)}
+ .result-card-viewer-hint{flex:1 1 30%}
+ .result-card-viewer-download{flex:1 1 30%}
+}
+
+/* ---- E075 街の模型 ---- */
+.result-miniature{display:grid;gap:8px}
+.result-miniature-svg{display:block;width:100%;height:auto;border-radius:10px;background:#10142d}
+.result-miniature-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin:0;padding:0;list-style:none;font-size:14px;line-height:1.3}
+.result-miniature-legend li{display:flex;align-items:center;gap:6px}
+.result-miniature-chip{display:inline-block;width:16px;height:12px;border:1.5px solid #24394b;border-radius:2px;background:#d8cfb4}
+.result-miniature-chip.is-arrived{border:2px dashed #ff8a8a;background:#d8cfb4;position:relative}
+.result-miniature-chip.is-arrived::after{content:'';position:absolute;right:-3px;top:-8px;border-left:6px solid #ff5a5f;border-top:4px solid transparent;border-bottom:4px solid transparent}
+.result-miniature-chip.is-unreached{border:1.5px dashed #ffffff66;background:#ffffff14}
+.result-miniature-chip.is-missing{border:1.5px dotted #ffffffaa;background:transparent}
+
+/* ---- E090 回して見る ---- */
+.result-turn{display:grid;gap:8px;justify-items:center}
+.result-turn-stage{position:relative;width:100%;max-width:300px;aspect-ratio:1;border-radius:14px;overflow:hidden;touch-action:pan-y;background:radial-gradient(circle at 50% 54%,#ffffff38 0,#ffffff00 62%),#14183a;border:1px solid #ffffff33}
+.result-turn-stage::after{content:'';position:absolute;left:50%;bottom:17%;width:46%;height:7%;transform:translateX(-50%);border-radius:50%;background:#cbb9a4;border:2px solid #24394b;z-index:0}
+.result-turn-canvas{position:absolute;inset:0;width:100%!important;height:100%!important;z-index:1;touch-action:pan-y}
+.result-turn-step{position:absolute;top:50%;z-index:2;width:44px;height:44px;margin-top:-22px;padding:0;border:1px solid #ffffff55;border-radius:50%;background:#14183acc;color:#fff;font-size:18px;line-height:1;cursor:pointer}
+.result-turn-left{left:6px}.result-turn-right{right:6px}
+.result-turn-note{margin:0;font-size:14px;line-height:1.4;text-align:center;min-height:0}
+.result-turn-note:empty{display:none}
+.result-turn-hint{margin:0;font-size:14px;line-height:1.4;text-align:center;color:#d7e5ff}
+@media(orientation:landscape) and (max-height:500px){.result-turn-stage{max-width:220px}}
+
+/* The full-clear scene and its eye-glance use the same posed No.28 as the share image. */
+.result-screen-cleared .result-photo .result-portrait {
+  background-image: url('../presentation/assets/portraits/clear-scene.png') !important;
+  background-size: 200% 100% !important;
+  background-position: left center !important;
+}
+.result-screen-cleared .result-photo.is-reacting .result-portrait { background-position: right center !important; }
