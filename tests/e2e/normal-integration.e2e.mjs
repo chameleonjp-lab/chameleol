@@ -111,7 +111,7 @@ test('normal loop: tongue, claimed street, police and real precision badge lead 
   assert.ok((await heldBytes(page)).total<=BUDGET);
   await page.locator(id('result-card-viewer-close')).click();
   assert.equal(await page.getByTestId('result-share').isVisible(),true,'result sharing is visible with the link filter');
-  const intent=await openXShare(page, 'result-share');
+  const intent=await openXShare(page, 'result-text-share');
   assert.equal(intent.origin + intent.pathname, 'https://x.com/intent/tweet');
   await page.evaluate(()=>{globalThis.__retiredNormalResult=__kamereoru.lastResult;});
   await page.locator(id('result-again')).dispatchEvent('click');

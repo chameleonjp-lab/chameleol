@@ -286,6 +286,7 @@ export default {
   'howto.replayOpening': '最初の場面をもう一度見る',
 
   'share.button': 'Xでシェア',
+  'share.textOnly': '本文だけをXで共有',
   'share.copied': '本文とURLをコピーしました',
   'share.manual': '下の本文を選んでコピーしてください',
   'share.hashtag': '#カメレオる',

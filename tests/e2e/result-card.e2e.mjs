@@ -101,7 +101,7 @@ for (const [w, h] of [[402, 700], [402, 874], [874, 402]]) {
   });
 }
 
-test('share: X opens before the PNG is ready; an explicit image share passes one PNG and cancellation stays on the result', async () => {
+test('share: X opens before the PNG is ready and sends the PNG from the main button when ready', async () => {
   const env = await launch();
   try {
     const { page } = env;
@@ -117,28 +117,31 @@ test('share: X opens before the PNG is ready; an explicit image share passes one
     await toReady(page);
     const tap = await page.evaluate(() => {
       const before = __shares.length;
-      document.querySelector('[data-testid="result-card-image-share"]').click();
+      document.querySelector('[data-testid="result-share"]').click();
       return { sync: __shares.length - before, payload: __shares.at(-1) };
     });
     assert.equal(tap.sync, 1, 'navigator.share is called inside the tap');
     assert.equal(tap.payload.files.length, 1);
     assert.equal(tap.payload.files[0].type, 'image/png');
     assert.ok(tap.payload.files[0].size > 0);
+    assert.equal(tap.payload.text, early.searchParams.get('text'));
     assert.equal(tap.payload.url, 'https://chameleonjp-lab.github.io/chameleol/');
     await advanceUntil(page, async () => (await cardState(page)) === 'ready', { limit: 20 });
     // 取消：本文の窓は自動で開かない
     const popupAfterCancel = [];
     page.context().on('page', opened => popupAfterCancel.push(opened));
-    await page.evaluate(() => { __shareMode = 'cancel'; document.querySelector('[data-testid="result-card-image-share"]').click(); });
+    await page.evaluate(() => { __shareMode = 'cancel'; document.querySelector('[data-testid="result-share"]').click(); });
     assert.equal(await advanceUntil(page, async () => (await cardState(page)) === 'ready', { limit: 20 }), true);
     const afterCancel = await page.evaluate(() => ({ opened: __opened.length, shares: __shares.length, status: document.querySelector('.result-card-status').textContent }));
     assert.equal(afterCancel.opened, 0, 'a cancelled share does not open the text window');
     assert.equal(popupAfterCancel.length, 0);
     assert.equal(afterCancel.shares, 2);
     assert.ok(afterCancel.status.length > 0, 'the closed note is shown');
-    const ready = await openXShare(page, 'result-share');
+    const ready = await openXShare(page, 'result-text-share');
     assert.equal(ready.href, early.href);
-    assert.equal(await page.evaluate(() => __shares.length), 2, 'a ready PNG does not change the X button');
+    assert.equal(await page.evaluate(() => __shares.length), 2, 'explicit text-only sharing never makes a native request');
+    await page.evaluate(() => { __canShareFiles = false; });
+    assert.equal((await openXShare(page, 'result-share')).href, early.href);
     // 再試行は自動共有しない
     const sharesBefore = await page.evaluate(() => __shares.length);
     await page.evaluate(() => __kamereoru.resultCardController.retry());

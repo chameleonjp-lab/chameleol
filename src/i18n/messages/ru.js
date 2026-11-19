@@ -263,6 +263,7 @@ export default {
   "howto.replayOpening": "Посмотреть вступление ещё раз",
 
   "share.button": "Поделиться в X",
+  "share.textOnly": "Поделиться только текстом в X",
   "share.copied": "Текст и ссылка скопированы",
   "share.manual": "Выделите и скопируйте текст ниже",
   "share.hashtag": "#Kamereoru",

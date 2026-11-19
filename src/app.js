@@ -1697,13 +1697,17 @@ export class App {
     const reasonKey = variant => variant === 'corrected' ? 'releaseCorrectedResult' : 'result.' + variant;
     let variant = displayData.variant;
     const statusBox = h('div', { class: 'result-status', 'aria-live': 'polite' });
-    const share = xShareForm(this.resultShareText(), 'result-share');
+    const text = this.resultShareText();
+    const share = xShareForm(text, 'result-share', {preferImage: () => cardController?.shareFromX()});
+    const textShare = xShareForm(text, 'result-text-share', {buttonKey: 'share.textOnly'});
     let rankingView, displayedOfficial;
     const rankingHost = h('div', { class: 'result-ranking' });
     const renderResultStatus = () => {
       if(!resultCurrent())return;
       cardController?.refresh({locale:getLanguage()});
-      share.setText(this.resultShareText());
+      const text = this.resultShareText();
+      share.setText(text);
+      textShare.setText(text);
       clear(statusBox);
       if (resultPresentation) statusBox.append(resultPresentation.rankElement);
       if (!r.ranked) {
@@ -1783,7 +1787,7 @@ export class App {
     this.resultCardController=cardController;
     const refreshCardLayout=()=>cardController.refresh({locale:getLanguage(),layoutKey:resultLayoutKey()});
     globalThis.addEventListener?.('resize',refreshCardLayout);
-    const cardView=cardPorts.mount?.({host:el,controller:cardController,scope,onCopyText:()=>this.copyResultText()});
+    const cardView=cardPorts.mount?.({host:el,controller:cardController,scope,onCopyText:()=>this.copyResultText(),textShareForm:textShare.el});
     scope.own(()=>{globalThis.removeEventListener?.('resize',refreshCardLayout);cardView?.dispose?.();cardController.dispose();if(this.resultCardController===cardController){this.resultCardController=null;this.resultCardSnapshot=null;}});
     const evidenceHost=h('div',{class:'result-evidence-host'});resultHost.before(evidenceHost);
     const panels=mountResultPanels({host:evidenceHost,t,state:resolveResultEvidence(r),panels:cardPorts.panels??[]});

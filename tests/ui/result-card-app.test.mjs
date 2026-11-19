@@ -20,7 +20,7 @@ function setup(portOverrides={},factory=false){
  return {document,events,nativeShares,counts:()=>({portraits,disposed})};
 }
 afterEach(()=>{app?.showHome();app?.disposeStage();app=null;frames.clear();});
-test('the X button is available before the image is prepared and submits only text and the game URL',async()=>{
+test('the result X button falls back immediately while preparing and submits the ready image in the same tap',async()=>{
  const {document,nativeShares}=setup();app.showResult();
  const button=document.querySelector('[data-testid="result-share"]');
  const form=button.closest('form');
@@ -33,9 +33,17 @@ test('the X button is available before the image is prepared and submits only te
  assert.equal(form.querySelector('[name="url"]').value,'https://chameleonjp-lab.github.io/chameleol/');
  const text=form.querySelector('[name="text"]').value;
  assert.ok(text.length>0);
+  const submit=()=>form.dispatchEvent(new document.defaultView.Event('submit',{cancelable:true}));
+  assert.equal(submit(),true);
+  assert.equal(nativeShares.length,0);
  await settle();
  assert.equal(form.querySelector('[name="text"]').value,text);
- assert.equal(nativeShares.length,0);
+  assert.equal(submit(),false);
+  assert.equal(submit(),false,'a second tap during sharing does not open the text window');
+  assert.equal(nativeShares.length,1);
+  assert.equal(nativeShares[0].text,text);
+  assert.equal(nativeShares[0].url,form.querySelector('[name="url"]').value);
+  assert.equal(nativeShares[0].files[0].type,'image/png');
 });
 test('result state-only updates invalidate its file before score early-return and language redraw reuses the portrait',async()=>{
  const {counts}=setup();app.showResult();await settle();

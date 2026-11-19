@@ -263,6 +263,7 @@ export default {
   "howto.replayOpening": "Tonton adegan pembuka lagi",
 
   "share.button": "Bagikan ke X",
+  "share.textOnly": "Bagikan teks saja ke X",
   "share.copied": "Teks dan URL sudah disalin",
   "share.manual": "Pilih dan salin teks di bawah",
   "share.hashtag": "#Kamereoru",

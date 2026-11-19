@@ -66,7 +66,7 @@ export function cardViewState(snapshot) {
   };
 }
 
-export function mountResultCardView({ host, controller, scope, onCopyText, initial = null }) {
+export function mountResultCardView({ host, controller, scope, onCopyText, textShareForm, initial = null }) {
   const doc = host.ownerDocument;
   const win = doc.defaultView;
   let disposed = false;
@@ -115,6 +115,10 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
   const saveBtn = mk('result-card-save', 'result-card-save', () => openViewer());
   const imageShareBtn = mk('result-card-image-share', 'result-card-image-share', () => controller?.share?.());
   const copyBtn = mk('result-card-copy', 'result-card-copy', () => onCopyText?.());
+  if (textShareForm) {
+    textShareForm.classList.add('result-card-text-share');
+    secondary.append(textShareForm);
+  }
   const retryBtn = mk('result-card-retry', 'result-card-retry', () => { controller?.retry?.(); });
   retryBtn.hidden = true;
   const status = el('p', 'result-card-status', null, secondary);
