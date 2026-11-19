@@ -42,7 +42,7 @@ export function mountPresentationHud({host,scope,bestDistance=null,bestCombo=0,v
     q('.presentation-hero').style.left=`${s.progress*100}%`;
     const flag=q('.presentation-best-flag');flag.hidden=bestDistance===null;flag.style.left=`${Math.min(1,(bestDistance??0)/50)*100}%`;
     q('.presentation-notice').textContent=guide?'':s.unlock?t('presentation.unlock'):s.recovery?t('presentation.recovery'):s.area?t(`presentation.area${s.area}`):'';
-    q('.presentation-record').textContent=s.comboRecord?t('presentation.comboRecord'):s.distanceRecord?t('presentation.distanceRecord'):'';
+    q('.presentation-record').textContent=forced&&s.comboRecord?t('presentation.comboRecord'):forced&&s.distanceRecord?t('presentation.distanceRecord'):'';
     q('.presentation-last-five').textContent=s.lastFive?t('presentation.lastFive',{n:s.remaining}):'';
     return s;
   }

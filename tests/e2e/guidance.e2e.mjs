@@ -4,6 +4,11 @@ import { mkdir } from 'node:fs/promises';
 import { launch, openHome, startAnonymous } from './helpers.mjs';
 
 const selector = (id) => `[data-testid="${id}"]`;
+const phoneLayouts = [
+  { width: 402, height: 874, guideRem: 1.64 },
+  { width: 402, height: 700, guideRem: 1.44 },
+  { width: 874, height: 402, guideRem: 1.44 },
+];
 
 test('G4: guide ownership persists across three real plays through both moving guides and first unlock', { timeout: 90000 }, async () => {
   const env = await launch();
@@ -203,7 +208,7 @@ test('G3: delayed brightness ownership permits countdown before the checkpoint a
   } finally { await env.close(); }
 });
 
-for (const [width, height] of [[402, 700], [402, 874], [874, 402]]) {
+for (const { width, height } of phoneLayouts) {
   test(`G4: practice guides for stationary exercises align with controls at ${width}x${height}`, async () => {
     const env = await launch({ width, height });
     const { page } = env;
@@ -253,9 +258,27 @@ test('G3: first stationary guide keeps draft out of game state and history until
     await page.click(selector('skip-opening'));
     await page.waitForSelector(selector('guidance'));
     await page.waitForFunction(() => __kamereoru.guidance?.view().step === 1);
-    const hudBox = await page.locator('.hud').boundingBox();
-    const guideBox = await page.locator(selector('guidance')).boundingBox();
-    assert.ok(guideBox.y >= hudBox.y + hudBox.height - 1, `main guide leaves HUD readable: ${JSON.stringify({ hudBox, guideBox })}`);
+    const guide = page.locator(selector('guidance'));
+    for (const { width, height, guideRem } of phoneLayouts) {
+      await page.setViewportSize({ width, height });
+      const layout = await guide.evaluate(panel => {
+        const stage = panel.closest('.stage-wrap');
+        const box = panel.getBoundingClientRect();
+        const stageBox = stage.getBoundingClientRect();
+        const hud = stage.querySelector('.hud').getBoundingClientRect();
+        return {
+          fontSize: parseFloat(getComputedStyle(panel).fontSize),
+          rootFontSize: parseFloat(getComputedStyle(document.documentElement).fontSize),
+          belowHud: box.top >= hud.bottom - 1,
+          fits: box.left >= stageBox.left && box.right <= stageBox.right &&
+            box.bottom <= stageBox.bottom && panel.scrollWidth <= panel.clientWidth + 1,
+        };
+      });
+      assert.ok(Math.abs(layout.fontSize - layout.rootFontSize * guideRem) < 0.01, `main guide text doubles at ${width}x${height}`);
+      assert.ok(layout.belowHud && layout.fits, `main guide fits below the HUD at ${width}x${height}: ${JSON.stringify(layout)}`);
+    }
+    const { width, height } = phoneLayouts[0];
+    await page.setViewportSize({ width, height });
     if (process.env.EFFECTS80_SCREENSHOTS) {
       await mkdir(process.env.EFFECTS80_SCREENSHOTS, { recursive: true });
       await page.screenshot({ path: `${process.env.EFFECTS80_SCREENSHOTS}/402x874-main-guide1.png` });

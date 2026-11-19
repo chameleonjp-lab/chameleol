@@ -9,13 +9,13 @@ const id=name=>`[data-testid="${name}"]`;
 async function clock(page){await page.clock.install({time:new Date('2030-01-01T00:00:00Z')});await page.clock.pauseAt(new Date('2030-01-01T00:00:01Z'));}
 async function capture(page,name){if(!process.env.BONUS_SCREENSHOTS)return;await mkdir(process.env.BONUS_SCREENSHOTS,{recursive:true});await page.screenshot({path:`${process.env.BONUS_SCREENSHOTS}/${name}.png`,fullPage:true,animations:'disabled'});}
 
-for(const [width,height] of [[402,700],[402,874],[874,402]])test(`bonus: all awards and results in 15 locales at ${width}x${height}`,async(t)=>{
+for(const [width,height] of [[402,700],[402,874],[874,402]])test(`bonus: award previews and results in 15 locales at ${width}x${height}`,async(t)=>{
  const env=await launch({width,height});const {page}=env;
  try{
   await openHome(page,env.url);await clock(page);await page.evaluate(()=>__kamereoru.debugStart({atMs:50000,seed:17}));
   const failures=await page.evaluate(async languages=>{
    const {mountBonusPresentation}=await import('/src/presentation/bonus-view.js');const {buildBonusBatch}=await import('/src/presentation/bonus-data.js');const {createPresentationScope}=await import('/src/presentation/scope.js');const {t}=await import('/src/i18n/i18n.js');
-   __kamereoru.bonusPresentation.dispose();document.querySelector('.pause-overlay')?.remove();__kamereoru.coverEl.hidden=true;
+   document.querySelector('.pause-overlay')?.remove();__kamereoru.coverEl.hidden=true;
    const errors=[],host=document.querySelector('.stage-wrap');
    const award=(kind,points,tier=null)=>({id:`kamereoru-rules-v4:10:${kind}`,building:10,kind,tier,points,earnedAtT:50000});
    const variants=[[award('precision',5,5)],[award('precision',10,10)],[award('steady',5)],[award('quick',5)],[award('milestone',20)],[award('precision',10,10),award('steady',5),award('quick',5),award('milestone',20)]];
@@ -55,21 +55,30 @@ for(const [width,height] of [[402,700],[402,874],[874,402]])test(`bonus: all awa
  }finally{await env.close();}
 });
 
-test('bonus: active-time deadline, hidden pause, guide/warning and reduced motion preserve text',async()=>{
+test('a spotted run shows its result without the ending card',async()=>{
  const env=await launch();const {page}=env;try{
-  await openHome(page,env.url);await clock(page);await page.emulateMedia({reducedMotion:'reduce'});
-  await page.evaluate(()=>__kamereoru.debugStart({atMs:49999,seed:17}));
-  await page.evaluate(()=>{document.querySelector('.pause-overlay')?.remove();__kamereoru.coverEl.hidden=true;__kamereoru.session.apply({type:'tick',t:50000});});await page.clock.runFor(16);
-  const result=await page.evaluate(()=>{
-   const view=__kamereoru.bonusPresentation,card=view.element;const initial=card.textContent;
-   view.tick({activeMs:50500,phase:'grace',guideActive:true,running:false});const guide=card.classList.contains('is-quiet');
-   Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'hidden'});document.dispatchEvent(new Event('visibilitychange'));
-   const hiddenText=card.textContent;view.tick({activeMs:50500,phase:'grace',warningActive:true,running:false});const warning=card.classList.contains('is-quiet');
-   Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'visible'});document.dispatchEvent(new Event('visibilitychange'));
-   view.tick({activeMs:51399,phase:'grace',running:true});const before=!card.hidden;view.tick({activeMs:51400,phase:'grace',running:true});const after=card.hidden;
-   return {guide,warning,before,after,sameText:initial===hiddenText,reduced:card.classList.contains('is-reduced'),animation:getComputedStyle(card).animationName,transform:getComputedStyle(card).transform,points:initial.includes('+40')};
+  await openHome(page,env.url);await clock(page);
+  await page.evaluate(()=>__kamereoru.debugStart({atMs:0,seed:17}));
+  await page.evaluate(()=>{
+   const app=__kamereoru,session=app.session,target=session.game.course.targets[0];
+   const playEnding=app.stage.playEnding.bind(app.stage);
+   app.stage.playEnding=(...args)=>{
+    window.__endingCardMounted=Boolean(document.querySelector('.ending-comic'));
+    return playEnding(...args);
+   };
+   session.apply({type:'color',t:1400,h:(target.h+18000)%36000,s:10000,v:10000});
+   session.apply({type:'tick',t:1500});
+   session.state.alert=session.rules.alert.maxUnits-1;
+   session.apply({type:'tick',t:1600});
   });
-  assert.deepEqual(result,{guide:true,warning:true,before:true,after:true,sameText:true,reduced:true,animation:'none',transform:'none',points:true});assert.deepEqual(env.errors,[]);
+  const skip=page.getByTestId('skip-ending');
+  const home=page.getByTestId('result-home');
+  await skip.or(home).first().waitFor();
+  assert.equal(await page.evaluate(()=>window.__endingCardMounted),false);
+  if(await skip.count())await skip.dispatchEvent('click');
+  await home.waitFor();
+  assert.equal(await page.locator('.result-title').textContent(),'見つかった！');
+  assert.deepEqual(env.errors,[]);
  }finally{await env.close();}
 });
 
@@ -101,7 +110,7 @@ for(const fail of [false,true])test(`bonus: final save ${fail?'failure':'delay'}
  }finally{await env.close();}
 });
 
-test('bonus: warning determined after pass suppresses reward; mute and zero volume keep card',async()=>{
+test('bonus: earned points have no popup and warning still takes sound priority',async()=>{
  const env=await launch();const {page}=env;try{
   await openHome(page,env.url);await clock(page);
   for(const mode of ['warning','muted','zero']){
@@ -112,33 +121,33 @@ test('bonus: warning determined after pass suppresses reward; mute and zero volu
     a.audio.setSettings({muted:mode==='muted',sfx:mode==='zero'?0:0.7});
     a.session.apply({type:'tick',t:10000});if(mode==='warning')a.session.state.alert=a.session.rules.alert.maxUnits*.75;
    },mode);await page.clock.runFor(16);
-   assert.equal(await page.locator('.bonus-card:visible').count(),1,mode);assert.match(await page.locator('.bonus-card').textContent(),/20/);
+   assert.equal(await page.locator('.bonus-card').count(),0,mode);
+   const points=await page.evaluate(()=>__kamereoru.session.summary().bonus.awards.filter(award=>award.building===2).reduce((total,award)=>total+award.points,0));
+   assert.equal(points,20,mode);
    if(mode==='warning'){
-    const sounds=await page.evaluate(()=>__bonusSounds);assert.ok(sounds.includes('whistle'));assert.equal(sounds.some(s=>s==='bonusMulti'||s==='passBuilding'||s==='combo'),false);assert.equal(await page.locator('.bonus-card.is-quiet').count(),1);
-    const collisions=await page.evaluate(()=>{const r=document.querySelector('.bonus-card').getBoundingClientRect();return [...document.querySelectorAll('.banner-host .toast,.guidance-panel')].filter(el=>{const b=el.getBoundingClientRect();return !el.hidden&&b.width&&b.height&&r.left<b.right&&r.right>b.left&&r.top<b.bottom&&r.bottom>b.top;}).map(el=>el.textContent);});
-    assert.deepEqual(collisions,[],'warning or guide message must remain clear of the quiet card');
+    const sounds=await page.evaluate(()=>__bonusSounds);assert.ok(sounds.includes('whistle'));assert.equal(sounds.some(s=>s==='bonusMulti'||s==='passBuilding'||s==='combo'),false);
    }
   }
   assert.deepEqual(env.errors,[]);
  }finally{await env.close();}
 });
 
-test('bonus: twenty round replacements dispose cards, listeners and callbacks without scene growth',async(t)=>{
+test('bonus: twenty round replacements retire listeners and callbacks without scene growth',async(t)=>{
  const env=await launch();const {page}=env;try{
   await openHome(page,env.url);await clock(page);const counts=[];
   for(let round=0;round<20;round++){
    const result=await page.evaluate(async()=>{
-    const a=__kamereoru,old=a.session?{session:a.session,scope:a.presentationScope,view:a.bonusPresentation,frameProbe:globalThis.__bonusRoundFrames}:null;let stale=0;old?.scope.schedule('bonus-stale',1000000,()=>stale++);
+    const a=__kamereoru,old=a.session?{session:a.session,scope:a.presentationScope,frameProbe:globalThis.__bonusRoundFrames}:null;let stale=0;old?.scope.schedule('bonus-stale',1000000,()=>stale++);
     await a.debugStart({atMs:9999,seed:17});old?.scope.tick(1000001);
     const oldFrames=old?.frameProbe?.calls??0;globalThis.__bonusRoundFrames={calls:0,old:old?.frameProbe,oldFrames};
     const probe=globalThis.__bonusRoundFrames,update=a.stage.update.bind(a.stage);a.stage.update=(...args)=>{probe.calls++;return update(...args);};
     a.session.apply({type:'tick',t:10000});
-    return {oldListeners:old?.session.listeners.size??0,stale,oldCards:old?.view?.stats().cards??0,cards:document.querySelectorAll('.bonus-card').length,objects:a.stage.stats().objects};
+    return {oldListeners:old?.session.listeners.size??0,stale,cards:document.querySelectorAll('.bonus-card').length,objects:a.stage.stats().objects};
    });
-   assert.equal(result.oldListeners,0);assert.equal(result.stale,0);assert.equal(result.oldCards,0);assert.equal(result.cards,1);counts.push(result.objects);
+   assert.equal(result.oldListeners,0);assert.equal(result.stale,0);assert.equal(result.cards,0);counts.push(result.objects);
    await page.clock.runFor(16);
-   const frames=await page.evaluate(()=>({current:__bonusRoundFrames.calls,stale:(__bonusRoundFrames.old?.calls??0)-__bonusRoundFrames.oldFrames,visible:__kamereoru.bonusPresentation.stats().visible}));
-   assert.ok(frames.current>=1&&frames.current<=2,`one active frame loop: ${JSON.stringify(frames)}`);assert.equal(frames.stale,0);assert.equal(frames.visible,true);
+   const frames=await page.evaluate(()=>({current:__bonusRoundFrames.calls,stale:(__bonusRoundFrames.old?.calls??0)-__bonusRoundFrames.oldFrames}));
+   assert.ok(frames.current>=1&&frames.current<=2,`one active frame loop: ${JSON.stringify(frames)}`);assert.equal(frames.stale,0);
   }
   assert.equal(new Set(counts.slice(1)).size,1,JSON.stringify(counts));await page.evaluate(()=>__kamereoru.leaveGame());assert.equal(await page.locator('.bonus-card').count(),0);assert.equal(await page.locator('canvas.stage-canvas').count(),0);
   t.diagnostic(`scene objects across20 rounds: ${counts.join(',')}`);assert.deepEqual(env.errors,[]);
@@ -187,20 +196,16 @@ for(const [width,height] of [[402,700],[402,874],[874,402]])test(`bonus: all15 e
  }finally{await env.close();}
 });
 
-test('bonus: real milestone card clears combo and grace notifications at all3 viewports',async()=>{
+test('bonus: milestone awards still count with no bonus or combo popup in all three phone layouts',async()=>{
  const env=await launch();const {page}=env;try{
-  await openHome(page,env.url);await clock(page);const conflicts=[];
+  await openHome(page,env.url);await clock(page);
   for(const [width,height] of [[402,700],[402,874],[874,402]]){
    await page.setViewportSize({width,height});await page.evaluate(()=>__kamereoru.debugStart({atMs:49999,seed:17}));
    await page.evaluate(()=>{document.querySelector('.pause-overlay')?.remove();__kamereoru.coverEl.hidden=true;__kamereoru.session.apply({type:'tick',t:50200});});await page.clock.runFor(32);
-   const state=await page.evaluate(async()=>{
-    const {t}=await import('/src/i18n/i18n.js'),card=document.querySelector('.bonus-card'),r=card.getBoundingClientRect();
-    const collisions=[...document.querySelectorAll('.switch-ok,.banner-host .toast')].filter(el=>{const b=el.getBoundingClientRect();return !el.hidden&&b.width&&b.height&&r.left<b.right&&r.right>b.left&&r.top<b.bottom&&r.bottom>b.top;}).map(el=>({class:el.className,text:el.textContent}));
-    return {collisions,comboTextRetained:document.body.innerText.includes(t('game.comboMilestone',{n:10})),opacity:getComputedStyle(card).opacity};
-   });
-   assert.equal(state.comboTextRetained,true,`${width}x${height}: milestone combo text retained`);assert.equal(Number(state.opacity),1);
-   conflicts.push(...state.collisions.map(c=>({viewport:`${width}x${height}`,...c})));
+   assert.equal(await page.locator('.bonus-card, .toast-combo, .presentation-record:visible').count(),0,`${width}x${height}`);
+   const aw=await page.evaluate(()=>__kamereoru.session.summary().bonus.awards.filter(a=>a.building===10).map(a=>a.points));
+   assert.equal(aw.reduce((total,points)=>total+points,0),40);
   }
-  assert.deepEqual(conflicts,[]);assert.deepEqual(env.errors,[]);
+  assert.deepEqual(env.errors,[]);
  }finally{await env.close();}
 });
