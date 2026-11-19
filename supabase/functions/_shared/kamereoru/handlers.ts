@@ -285,6 +285,44 @@ export function createHandler(options: HandlerOptions) {
       return json(200, { ok: true, ...r, version: Number(r.version) });
     },
 
+    async 'hall-of-fame'(req, url) {
+      const version = url.searchParams.get('version');
+      const after = url.searchParams.get('after');
+      const limit = Number(url.searchParams.get('limit') ?? 50);
+      need(version == null || /^[0-9a-f]{32}$/.test(version), 'bad_version');
+      need(after == null || (version !== null && /^\d{1,15}$/.test(after)), 'bad_after');
+      need(Number.isInteger(limit) && limit >= 1 && limit <= 50, 'bad_limit');
+      await rate(req, 'read', limits.readPer10m);
+      // The existing ordinal is shared with the player's own result. Select the
+      // name from that registration's first confirmed, still eligible clear.
+      const [page] = await call(`
+        with first_clears as (
+          select distinct on (c.name_key) c.name_key, a.confirmed_order, r.display_name as name
+          from private.kamereoru_clears c
+          join private.kamereoru_clear_admissions a using (play_id)
+          join private.kamereoru_results r using (play_id)
+          order by c.name_key, a.confirmed_order
+        ), snapshot as (
+          select md5(coalesce(string_agg(confirmed_order::text, ',' order by confirmed_order), '')) as version
+          from first_clears
+        ), page as (
+          select o.ordinal, f.name
+          from first_clears f join private.kamereoru_clear_ordinals o using (name_key)
+          cross join snapshot s
+          where o.ordinal > case when s.version = $1::text then coalesce($2::bigint, 0) else 0 end
+          order by o.ordinal
+          limit $3
+        )
+        select version, (
+          select coalesce(jsonb_agg(to_jsonb(p) order by p.ordinal), '[]'::jsonb) from page p
+        ) as rows from snapshot
+      `, [version, after, limit + 1]);
+      const rows = page.rows.slice(0, limit);
+      const nextAfter = page.rows.length > limit ? rows.at(-1).ordinal : null;
+      return json(200, { ok: true, version: page.version, rows, nextAfter,
+        restarted: version !== null && version !== page.version });
+    },
+
     async process(req) {
       await rate(req, 'read', limits.readPer10m);
       const r = await processJobs(5);
@@ -297,7 +335,8 @@ export function createHandler(options: HandlerOptions) {
     const url = new URL(req.url);
     const route = url.pathname.split('/').filter(Boolean).pop() ?? '';
     const fn = routes[route];
-    const allowed = (route === 'ranking' || route === 'stats') ? req.method === 'GET' : req.method === 'POST';
+    const allowed = (route === 'ranking' || route === 'stats' || route === 'hall-of-fame')
+      ? req.method === 'GET' : req.method === 'POST';
     if (!fn || !allowed) return json(404, { ok: false, error: 'not_found' });
     try {
       return await fn(req, url);

@@ -90,6 +90,11 @@ test('four real starts: anonymous clear, A50, B30, A7; launch and result retries
     assert.deepEqual((await status(srv, { playId: a.owner.playId, secret: randomSecret() }))[0], { playId: a.owner.playId, error: 'forbidden' });
     const zero = await namedRun(srv, 'zero', 0);
     assert.deepEqual((await status(srv, zero.owner))[0].metrics, { runRank: null, totalPlays: 6, clearOrdinal: null });
+    const hall = await srv.call('hall-of-fame', null, { method: 'GET' });
+    assert.equal(hall.status, 200);
+    assert.deepEqual(hall.body.rows, [{ordinal:1, name:'A'}]);
+    assert.equal(hall.body.nextAfter, null);
+    assert.equal((await srv.call('hall-of-fame')).status, 404);
   } finally { await srv.close(); }
 });
 
@@ -103,6 +108,16 @@ test('clear admissions survive review, correction, backfill and concurrent appro
     const owners = runs.map(r => r.owner);
     const [a, b, , c, c2] = owners.map(o => o.playId);
     const ordinals = async () => (await status(srv, ...owners)).map(i => i.metrics.clearOrdinal);
+    const hall = async (query = '') => {
+      const res = await srv.call('hall-of-fame' + query, null, { method: 'GET' });
+      assert.equal(res.status, 200);
+      return res.body;
+    };
+    const firstPage = await hall('?limit=1');
+    assert.deepEqual(firstPage.rows, [{ordinal:1, name:'A'}]);
+    assert.equal(firstPage.nextAfter, 1);
+    const continuePage = '?after=1&version=' + firstPage.version;
+    assert.deepEqual((await hall(continuePage)).rows, [{ordinal:2,name:'B'},{ordinal:3,name:'C'}]);
     // Simulate migration of existing clears, breaking an official_at tie by play ID.
     await srv.sql('truncate private.kamereoru_clear_admissions');
     await srv.sql("update private.kamereoru_results set official_at='-infinity' where play_id=any($1::uuid[])", [[a, b]]);
@@ -114,6 +129,9 @@ test('clear admissions survive review, correction, backfill and concurrent appro
     const initial = await ordinals();
     await decide(a, 'rejected');
     assert.deepEqual(await ordinals(), [null, 1, 2, 3, 3]);
+    const updatedHall = await hall(continuePage);
+    assert.equal(updatedHall.restarted, true);
+    assert.deepEqual(updatedHall.rows, [{ordinal:1,name:'B'},{ordinal:2,name:'A'},{ordinal:3,name:'C'}]);
     await srv.call('review', owners[0]);
     assert.deepEqual(await ordinals(), [null, 1, 2, 3, 3]);
     await decide(a, 'official');
