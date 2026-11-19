@@ -53,7 +53,7 @@ test('VERSION-01: 別の版の中断プレイは消さずに残し、その版�
   }
 });
 
-test('単独公開版はランキング登録を表示せず、保存済みの名前があってもそのまま遊べる', async () => {
+test('単独公開版も任意の名前を表示し、名前付きのプレイと成績を端末内に保存する', async () => {
   execFileSync(process.execPath, [join(ROOT, 'scripts', 'build.mjs')], {
     cwd: ROOT,
     stdio: 'ignore',
@@ -73,7 +73,9 @@ test('単独公開版はランキング登録を表示せず、保存済みの�
     await page.evaluate(async () => globalThis.__kamereoru.store.set('nameRaw', '前の名前'));
     await page.reload();
     await page.waitForSelector('[data-testid=home-start]');
-    assert.equal(await page.locator('.name-help').count(), 0);
+    assert.equal(await page.inputValue('#name-input'), '前の名前');
+    assert.match(await page.textContent('.name-help'), /この端末に保存/);
+    assert.equal(await page.locator('.name-same').count(), 0);
     assert.equal(await page.getAttribute('[data-testid=home-ranking]', 'href'), 'https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=chameleol');
     assert.equal(await page.locator('.notice-dev').count(), 0);
     await page.evaluate(async () => globalThis.__kamereoru.store.put('localResults', {
@@ -84,12 +86,29 @@ test('単独公開版はランキング登録を表示せず、保存済みの�
     assert.match(await page.textContent('.records-list li'), /91[.,]23/);
     assert.equal(await page.locator('.records-screen button', { hasText: '状況を更新する' }).count(), 0);
     await page.click('.btn-back');
+    await page.fill('#name-input', ' うちゃ 🦎 ');
+    await page.waitForFunction(async () => (await __kamereoru.store.get('nameRaw')) === ' うちゃ 🦎 ');
+    await page.reload();
+    await page.waitForSelector('[data-testid=home-start]');
+    assert.equal(await page.inputValue('#name-input'), ' うちゃ 🦎 ');
     await page.click('[data-testid=home-start]');
     const skip = await page.waitForSelector('[data-testid=skip-opening]', { timeout: 5000 }).catch(() => null);
     if (skip) await skip.click().catch(() => {});
     await completeStationaryGuide(page);
     await page.waitForFunction(() => globalThis.__kamereoru.session?.running === true);
-    assert.equal(await page.evaluate(() => globalThis.__kamereoru.session.meta.ranked), false);
+    const { playId, name, ranked } = await page.evaluate(() => globalThis.__kamereoru.session.meta);
+    assert.equal(name, 'うちゃ 🦎');
+    assert.equal(ranked, false);
+    await page.evaluate(() => __kamereoru.session.quit());
+    await page.getByTestId('skip-ending').click();
+    await page.getByTestId('result-home').waitFor();
+    assert.match(await page.textContent('.result-name'), /うちゃ 🦎/u);
+    const saved = await page.evaluate(async playId => {
+      const { store } = __kamereoru;
+      const result = await store.getOne('localResults', playId);
+      return { name: result.name, ranked: result.ranked, starts: (await store.getAll('starts')).length, outbox: (await store.getAll('outbox')).length };
+    }, playId);
+    assert.deepEqual(saved, { name: 'うちゃ 🦎', ranked: false, starts: 0, outbox: 0 });
     assert.deepEqual(env.errors, []);
   } finally {
     await env.close();

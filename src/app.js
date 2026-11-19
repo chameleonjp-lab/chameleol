@@ -19,7 +19,7 @@ import { audioSettings, backButton, button, dialog, languageSelect, nameField, s
 import { createRankingView, rankingLink } from './ui/ranking.js';
 import { createRecordsView } from './ui/record-status.js';
 import { projectRunResult } from './presentation/result-card-data.js';
-import { GAME_URL, formatRunMetrics, buildHomeShareText, buildResultShareText, shareToX } from './ui/share.js';
+import { GAME_URL, formatRunMetrics, buildHomeShareText, buildResultShareText, buildIntentUrl, xShareLink } from './ui/share.js';
 import { t, setLanguage, getLanguage, formatNumber, formatPercent2, onLanguageChange } from './i18n/i18n.js';
 import { isSupportedLanguage, resolveLanguage } from './i18n/languages.js';
 import { openStore, TAB_ID, StaleWriterError } from './storage/store.js';
@@ -329,13 +329,15 @@ export class App {
     releaseResultEvidence(this.lastResult); // 結果を離れる：解析を止めて、表示専用の入力を手放す
     this.disposeStage();
     const showOnline = this.runtime.isVerification || this.api.configured;
-    const field = showOnline ? nameField({
+    const field = nameField({
       value: this.nameRaw,
+      rankingEnabled: this.api.configured,
       onChange: (raw) => {
+        if (raw === this.nameRaw) return;
         this.nameRaw = raw;
         this.safeSet('nameRaw', raw);
       },
-    }) : null;
+    });
     const continueBtn = button('home.continue', () => this.resumeSaved(), { testid: 'home-continue' });
     continueBtn.hidden = !this.savedRun;
     this.homeContinue = continueBtn;
@@ -368,9 +370,9 @@ export class App {
         h('p', { class: 'subtitle' }, t('app.tagline')),
       ]),
       notices,
-      field?.el,
+      field.el,
       h('div', { class: 'home-actions' }, [
-        button('home.start', () => this.startFlow(field?.value ?? ''), { primary: true, className: 'btn-start', testid: 'home-start' }),
+        button('home.start', () => this.startFlow(field.value), { primary: true, className: 'btn-start', testid: 'home-start' }),
         continueBtn,
         h('div', { class: 'home-grid' }, [
           practiceBtn,
@@ -378,7 +380,7 @@ export class App {
           button('home.howto', () => this.showHowTo(), { testid: 'home-howto' }),
           button('home.settings', () => this.showSettings(), { testid: 'home-settings' }),
           recordsBtn,
-          button('share.button', () => this.shareHome(), { className: 'btn-x', testid: 'home-share' }),
+          xShareLink(buildHomeShareText({ lang: getLanguage() }), 'home-share'),
         ]),
       ]),
       this.runtime.isVerification ? this.verificationMenu() : null,
@@ -394,12 +396,6 @@ export class App {
         pendingBadge.textContent = String(items.length);
       })
       .catch(() => {});
-  }
-
-  async shareHome() {
-    this.audio.play('select');
-    const r = await shareToX({ text: buildHomeShareText({ lang: getLanguage() }), url: GAME_URL });
-    if (r !== 'opened') this.showShareFallback(buildHomeShareText({ lang: getLanguage() }), r);
   }
 
   showShareFallback(text, mode) {
@@ -522,7 +518,7 @@ export class App {
     }
     if (!this.isStartCurrent(attempt)) return;
     this.audio.play('confirm');
-    const name = normalizeName(this.runtime.isVerification || this.api.configured ? rawName : '');
+    const name = normalizeName(rawName);
     if (!name.ok) {
       toast(this.layer, t('name.fixBeforeStart'), { kind: 'warn' });
       this.finishStartAttempt(attempt, 'failed');
@@ -530,11 +526,13 @@ export class App {
     }
     await this.checkSavedRun();
     if (!await this.chooseSavedRun(attempt)) return;
-    if (name.empty) return this.beginPlay({ ranked: false, launchId: attempt.launchId }, attempt);
-    if (!this.api.configured || this.store.memory) {
+    if (name.empty || !this.api.configured) {
+      return this.beginPlay({ ranked: false, name: name.name, launchId: attempt.launchId }, attempt);
+    }
+    if (this.store.memory) {
       const choice = await this.startChoice(attempt, {
         titleKey: 'start.unranked.title',
-        bodyKey: this.store.memory ? 'start.unranked.noStorage' : 'start.unranked.notConfigured',
+        bodyKey: 'start.unranked.noStorage',
         actions: [{ key: 'start.playUnranked', primary: true }, { key: 'common.home' }],
       }).completion;
       if (!this.isStartCurrent(attempt)) return;
@@ -776,7 +774,7 @@ export class App {
       playId,
       launchId,
       ranked,
-      name: ranked ? name : '',
+      name,
       destination: this.api.destination,
       requiresLaunch: startRecord?.requiresLaunch === true,
       requestId: startRecord?.requestId ?? null,
@@ -1699,11 +1697,13 @@ export class App {
     const reasonKey = variant => variant === 'corrected' ? 'releaseCorrectedResult' : 'result.' + variant;
     let variant = displayData.variant;
     const statusBox = h('div', { class: 'result-status', 'aria-live': 'polite' });
+    const shareLink = xShareLink(this.resultShareText(), 'result-share');
     let rankingView, displayedOfficial;
     const rankingHost = h('div', { class: 'result-ranking' });
     const renderResultStatus = () => {
       if(!resultCurrent())return;
       cardController?.refresh({locale:getLanguage()});
+      shareLink.setAttribute('href', buildIntentUrl({ text: this.resultShareText(), url: GAME_URL }));
       clear(statusBox);
       if (resultPresentation) statusBox.append(resultPresentation.rankElement);
       if (!r.ranked) {
@@ -1757,7 +1757,7 @@ export class App {
       h('div', { class: 'result-actions' }, [
         button('result.again', () => this.startFlow(this.nameRaw), { primary: true, testid: 'result-again' }),
         rankingLink('result-ranking'),
-        button('share.button', () => this.shareResult(), { className: 'btn-x', testid: 'result-share' }),
+        shareLink,
       ]),
       button('common.home', () => this.showHome(), { testid: 'result-home' }),
       rankingHost,
@@ -1783,7 +1783,7 @@ export class App {
     this.resultCardController=cardController;
     const refreshCardLayout=()=>cardController.refresh({locale:getLanguage(),layoutKey:resultLayoutKey()});
     globalThis.addEventListener?.('resize',refreshCardLayout);
-    const cardView=cardPorts.mount?.({host:el,controller:cardController,scope,onTextShare:()=>this.shareResultText(),onCopyText:()=>this.copyResultText()});
+    const cardView=cardPorts.mount?.({host:el,controller:cardController,scope,onCopyText:()=>this.copyResultText()});
     scope.own(()=>{globalThis.removeEventListener?.('resize',refreshCardLayout);cardView?.dispose?.();cardController.dispose();if(this.resultCardController===cardController){this.resultCardController=null;this.resultCardSnapshot=null;}});
     const evidenceHost=h('div',{class:'result-evidence-host'});resultHost.before(evidenceHost);
     const panels=mountResultPanels({host:evidenceHost,t,state:resolveResultEvidence(r),panels:cardPorts.panels??[]});
@@ -1849,19 +1849,8 @@ export class App {
     if (this.api.configured) this.pollResult();
   }
 
-  shareResult() {
-    if(this.resultCardPorts&&this.resultCardController)return this.resultCardController.share();
-    return this.shareResultText();
-  }
-
   resultShareText() {
     return buildResultShareText({run:projectRunResult(this.lastResult, getLanguage())});
-  }
-
-  async shareResultText() {
-    const text = this.resultShareText();
-    const mode = await shareToX({text, url: GAME_URL});
-    if (mode !== 'opened') this.showShareFallback(text, mode);
   }
 
   async copyResultText() {
@@ -1876,16 +1865,14 @@ export class App {
   showPracticeMenu() {
     const el = h('main', { class: 'screen practice-menu' }, [
       h('h1', {}, t('practice.title')),
-      ...PRACTICE_STEPS.map(step => button(
-        `practice.step${step}`, () => this.startGuidePractice(step),
-        { primary: step === 1, testid: `guide-practice-${step}` },
-      )),
+      h('ul', { class: 'practice-overview' }, PRACTICE_STEPS.map(step => h('li', {}, t(`practice.step${step}`)))),
+      button('home.start', () => this.startGuidePractice(), { primary: true, testid: 'guide-practice-start' }),
       backButton(() => this.showHome()),
     ]);
     this.mount(el, () => this.showPracticeMenu());
   }
 
-  async startGuidePractice(step) {
+  async startGuidePractice(step = PRACTICE_STEPS[0]) {
     const token = (this.practiceToken = {});
     const generation = this.screenGeneration;
     try {
@@ -1899,6 +1886,8 @@ export class App {
     const rules = RULES_V1;
     const practice = createGuidePractice({ step, seed, rules });
     const initial = practice.view();
+    const total = PRACTICE_STEPS.length;
+    const nextStep = PRACTICE_STEPS[PRACTICE_STEPS.indexOf(step) + 1];
     const stageBox = h('div', { class: 'stage', 'data-testid': 'stage' });
     const guideHost = initial.stationary ? h('div', { class: 'guidance-host' }) : null;
     let paused = false;
@@ -1915,9 +1904,13 @@ export class App {
     }, { testid: 'guide-practice-pause' });
     const tools = h('div', { class: 'guide-practice-tools' }, [
       pause, button('guidance.back', () => this.showPracticeMenu(), { testid: 'guide-practice-exit' }),
+      h('span', { class: 'guide-practice-progress', role: 'status', 'data-testid': 'guide-practice-progress' }, t('practice.counter', { n: step, total })),
     ]);
     const actions = h('div', { class: 'guide-practice-actions', hidden: true }, [
-      button('guidance.again', () => this.startGuidePractice(step), { testid: 'guide-practice-again' }),
+      h('h2', { class: 'guide-practice-progress' }, t('practice.stepDone', { n: step, total })),
+      button(nextStep ? 'practice.nextStep' : 'practice.again', () => {
+        if (current()) this.startGuidePractice(nextStep);
+      }, { primary: true, testid: nextStep ? 'guide-practice-next' : 'guide-practice-again' }),
       button('guidance.back', () => this.showPracticeMenu(), { testid: 'guide-practice-choose' }),
     ]);
     const render = view => {

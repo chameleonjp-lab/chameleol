@@ -1,7 +1,7 @@
 // ChatGPT follow-ups: real App/ports with only native capability, encoding and share boundaries controlled.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { launch } from './helpers.mjs';
+import { launch, openXShare } from './helpers.mjs';
 import { id, BUDGET, openApp, playToResult, toReady, cardState, advanceUntil, heldBytes, liveWebgl } from './fixtures/result-card-helpers.mjs';
 
 test('save dialog blocks background focus and scrolling, preserves native image interaction, and restores page state', async () => {
@@ -61,7 +61,7 @@ for(const mode of ['files','payload','missing','failure']) {
         if(mode==='failure')globalThis.__shareMode='fail';
         if(mode==='missing'){globalThis.__savedShare=navigator.share;Object.defineProperty(navigator,'share',{value:undefined,configurable:true});}
       },mode);
-      await page.locator(id('result-share')).click();
+      await page.locator(id('result-card-image-share')).click();
       const expected=mode==='failure'?'failed':'unavailable';
       assert.equal(await advanceUntil(page,async()=>await cardState(page)===expected),true);
       const failed=await page.evaluate(()=>({sameFile:__kamereoru.resultCardController.snapshot().prepared.file===__fileBeforeFailure,windows:__opened.length,shares:__shares.length}));
@@ -74,12 +74,11 @@ for(const mode of ['files','payload','missing','failure']) {
         globalThis.__canShareFiles=true;globalThis.__canSharePayload=true;globalThis.__shareMode='ok';
         if(globalThis.__savedShare)Object.defineProperty(navigator,'share',{value:__savedShare,configurable:true});
       });
-      await page.locator(id('result-share')).click();await toReady(page);
+      await page.locator(id('result-card-image-share')).click();await toReady(page);
       assert.equal(await page.evaluate(()=>__shares.length),mode==='failure'?2:1,'retry shares only on another explicit tap');
       assert.equal(await page.evaluate(()=>__opened.length),0);
-      await page.locator('.result-card-text').click();
-      const intent=await page.evaluate(()=>({count:__opened.length,url:__opened.at(-1)}));
-      assert.equal(intent.count,1);assert.equal(new URL(intent.url).searchParams.get('url'),'https://chameleonjp-lab.github.io/chameleol/');
+      const intent=await openXShare(page, 'result-share');
+      assert.equal(intent.searchParams.get('url'),'https://chameleonjp-lab.github.io/chameleol/');
       assert.deepEqual(env.errors,[]);
     } finally {await env.close();}
   });
@@ -150,7 +149,7 @@ test('eight repeated save/model/regenerate/remount cycles release old URLs, cont
       assert.ok((await heldBytes(page)).total<=BUDGET);
       assert.equal(await page.locator('.result-card').count(),1);
     }
-    await page.locator(id('result-share')).click();await toReady(page);
+    await page.locator(id('result-card-image-share')).click();await toReady(page);
     assert.equal(await page.evaluate(()=>__shares.length),1,'remounts do not accumulate share handlers');
     await page.evaluate(()=>{
       globalThis.__finalImage=__kamereoru.resultCardController.snapshot().portraitImage;

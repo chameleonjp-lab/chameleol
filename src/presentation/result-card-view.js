@@ -1,6 +1,4 @@
-// 結果画面の主カード・主操作の下の小ボタン・画像の保存画面（IF03/IF07）。
-// App が作った .result-actions とその中のボタンは「同じノードのまま移動する」だけ。複製・置換・二重の click 登録はしない。
-// 「Xでシェア」のタップは App の既存の処理が controller.share() を直接呼ぶ。ここは案内を出すだけで、共有を遅らせない。
+// 結果カードと、画像を共有・保存する操作。投稿用のリンクは App が表示する。
 import { t } from '../i18n/i18n.js';
 import { drawResultCard, describeResultCard, CARD_W, CARD_H } from './result-card-draw.js';
 import { rtext } from './result-card-text.js';
@@ -61,14 +59,14 @@ export function cardViewState(snapshot) {
     state,
     prepared,
     size: full ? FULL : HALF,
-    shareDisabled: state === 'pending' || state === 'sharing',
+    shareDisabled: !prepared || state === 'sharing',
     showRetry: failedWithout,
     shareFailed: state === 'failed' && prepared,
     failedWithout,
   };
 }
 
-export function mountResultCardView({ host, controller, scope, onTextShare, onCopyText, initial = null }) {
+export function mountResultCardView({ host, controller, scope, onCopyText, initial = null }) {
   const doc = host.ownerDocument;
   const win = doc.defaultView;
   let disposed = false;
@@ -103,9 +101,6 @@ export function mountResultCardView({ host, controller, scope, onTextShare, onCo
   summary.setAttribute('aria-hidden', 'true');
   const title = host.querySelector('.result-title');
   if (title) title.after(card); else host.prepend(card);
-  const actions = host.querySelector('.result-actions');
-  const share = host.querySelector('[data-testid="result-share"]');
-  share?.classList.add('result-card-share');
   const secondary = el('div', 'result-card-secondary');
   secondary.setAttribute('data-testid', 'result-card-secondary');
   const ranking = host.querySelector('.result-ranking');
@@ -118,7 +113,7 @@ export function mountResultCardView({ host, controller, scope, onTextShare, onCo
     return b;
   };
   const saveBtn = mk('result-card-save', 'result-card-save', () => openViewer());
-  const textBtn = mk('result-card-text', 'result-card-text', () => { try { onTextShare?.(); } catch { /* 本文共有の失敗で画面を止めない */ } });
+  const imageShareBtn = mk('result-card-image-share', 'result-card-image-share', () => controller?.share?.());
   const copyBtn = mk('result-card-copy', 'result-card-copy', () => onCopyText?.());
   const retryBtn = mk('result-card-retry', 'result-card-retry', () => { controller?.retry?.(); });
   retryBtn.hidden = true;
@@ -148,14 +143,12 @@ export function mountResultCardView({ host, controller, scope, onTextShare, onCo
   function syncControls() {
     const view = cardViewState(snapshot);
     saveBtn.textContent = tx('card.save');
-    textBtn.textContent = tx('card.textShare');
+    imageShareBtn.textContent = tx('card.imageShare');
+    imageShareBtn.disabled = view.shareDisabled;
     copyBtn.textContent = tx('releaseCopy');
     saveBtn.disabled = view.state === 'unavailable' && !view.prepared;
     retryBtn.textContent = tx('card.retry');
     retryBtn.hidden = !view.showRetry;
-    if (share) {
-      if (view.shareDisabled) share.setAttribute('aria-disabled', 'true'); else share.removeAttribute('aria-disabled');
-    }
     secondary.classList.toggle('is-share-failed', view.shareFailed && rtext('card.shareFailed', undefined, locale()) === null);
     // 状態の小文字
     let key = null;
@@ -187,21 +180,6 @@ export function mountResultCardView({ host, controller, scope, onTextShare, onCo
         queueMicrotask(() => { if (token === paintToken && !disposed && !viewer) paint(); });
       } else paint();
     }
-  }
-
-  // ---- 「Xでシェア」のタップ：タップ時の state を覚え、案内だけ出す（共有は App の既存の処理が直接呼ぶ） ----
-  let tapState = null;
-  if (actions) {
-    listen(actions, 'click', (event) => {
-      if (event.target?.closest?.('[data-testid="result-share"]')) tapState = cardViewState(snapshot);
-    }, true);
-    listen(actions, 'click', (event) => {
-      if (!event.target?.closest?.('[data-testid="result-share"]') || !tapState) return;
-      const was = tapState;
-      tapState = null;
-      if (was.state === 'pending') setStatus('card.preparing');
-      else if (was.failedWithout) setStatus('card.failed');
-    });
   }
 
   // ---- 画像の保存画面 ----
@@ -283,8 +261,6 @@ export function mountResultCardView({ host, controller, scope, onTextShare, onCo
     card.remove();
     secondary.remove();
     host.classList.remove('has-result-card');
-    share?.classList.remove('result-card-share');
-    share?.removeAttribute('aria-disabled');
   }
 
   syncControls();
@@ -296,7 +272,7 @@ export function mountResultCardView({ host, controller, scope, onTextShare, onCo
     dispose,
     openViewer,
     closeViewer,
-    elements: { card, canvas, summary, secondary, saveBtn, textBtn, retryBtn, status },
+    elements: { card, canvas, summary, secondary, saveBtn, imageShareBtn, retryBtn, status },
     stats() {
       return {
         canvas: [canvas.width, canvas.height],

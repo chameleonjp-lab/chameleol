@@ -47,6 +47,25 @@ export async function openHome(page, url) {
   await page.waitForSelector('[data-testid=home-start]');
 }
 
+export async function openXShare(page, testid) {
+  const context = page.context();
+  const intent = 'https://x.com/intent/**';
+  const stub = route => route.fulfill({ contentType: 'text/html', body: '<title>X composer fixture</title>' });
+  await context.route(intent, stub);
+  let popup;
+  try {
+    [popup] = await Promise.all([
+      context.waitForEvent('page', { timeout: 8000 }),
+      page.getByTestId(testid).tap(),
+    ]);
+    await popup.waitForURL(intent, { timeout: 8000 });
+    return new URL(popup.url());
+  } finally {
+    await popup?.close();
+    await context.unroute(intent, stub);
+  }
+}
+
 /** 色合わせの目印を実際に操作し、静止案内を自動で終える。 */
 export async function completeStationaryGuide(page) {
   await page.waitForFunction(() => globalThis.__kamereoru?.guidance != null);

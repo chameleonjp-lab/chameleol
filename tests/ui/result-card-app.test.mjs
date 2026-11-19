@@ -20,9 +20,17 @@ function setup(portOverrides={},factory=false){
  return {document,events,nativeShares,counts:()=>({portraits,disposed})};
 }
 afterEach(()=>{app?.showHome();app?.disposeStage();app=null;frames.clear();});
-test('the existing result share action uses the prepared file synchronously when visual ports are installed',async()=>{
- const {nativeShares}=setup();app.showResult();await settle();
- const sharing=app.shareResult();assert.equal(nativeShares.length,1);assert.equal(nativeShares[0].files.length,1);assert.equal(nativeShares[0].files[0].type,'image/png');assert.equal(await sharing,'shared');
+test('the X link is present before the image is prepared and its address never contains the result file',async()=>{
+ const {document,nativeShares}=setup();app.showResult();
+ const link=document.querySelector('[data-testid="result-share"]');
+ assert.equal(link.tagName,'A');
+ const intent=new URL(link.getAttribute('href'));
+ assert.equal(intent.origin+intent.pathname,'https://x.com/intent/tweet');
+ assert.equal(intent.searchParams.get('url'),'https://chameleonjp-lab.github.io/chameleol/');
+ assert.equal(intent.searchParams.has('files'),false);
+ await settle();
+ assert.equal(link.getAttribute('href'),intent.href);
+ assert.equal(nativeShares.length,0);
 });
 test('result state-only updates invalidate its file before score early-return and language redraw reuses the portrait',async()=>{
  const {counts}=setup();app.showResult();await settle();
@@ -46,7 +54,7 @@ test('viewport rotation invalidates a prepared share even with a constant drawin
  app.showResult();await settle();const c=app.resultCardController,first=c.snapshot().prepared.file;
  Object.assign(globalThis,{innerWidth:874,innerHeight:402});events.dispatchEvent(new Event('resize'));
  assert.equal(c.snapshot().prepared,null,'the old File is unavailable in the resize event itself');
- assert.equal(await app.shareResult(),'unavailable');assert.equal(nativeShares.length,0);
+ assert.equal(await c.share(),'unavailable');assert.equal(nativeShares.length,0);
  await settle();assert.notEqual(c.snapshot().prepared.file,first);assert.equal(counts().portraits,1);
  const revision=c.snapshot().revision;events.dispatchEvent(new Event('resize'));
  assert.equal(c.snapshot().revision,revision,'unchanged size and drawing layout do not regenerate a file');

@@ -74,7 +74,7 @@ const NAME_ERRORS = {
 };
 
 /** 名前の入力欄。整理後の保存予定名と文字数を見せ、変換を隠さない。 */
-export function nameField({ value = '', onChange = () => {} } = {}) {
+export function nameField({ value = '', rankingEnabled = true, onChange = () => {} } = {}) {
   const input = h('input', {
     type: 'text',
     class: 'name-input',
@@ -89,8 +89,8 @@ export function nameField({ value = '', onChange = () => {} } = {}) {
   const counter = h('span', { class: 'name-counter', 'aria-live': 'polite' });
   const preview = h('p', { class: 'name-preview' });
   const error = h('p', { class: 'name-error', role: 'alert' });
-  const help = h('p', { class: 'name-help', id: 'name-help' }, t('name.help'));
-  const sameName = h('p', { class: 'name-same' }, t('name.sameName'));
+  const help = h('p', { class: 'name-help', id: 'name-help' }, t(rankingEnabled ? 'name.help' : 'name.localHelp'));
+  const sameName = rankingEnabled ? h('p', { class: 'name-same' }, t('name.sameName')) : null;
   const wrap = h('div', { class: 'name-field' }, [
     h('label', { for: 'name-input', class: 'name-label' }, [t('name.label'), ' ', counter]),
     input,
