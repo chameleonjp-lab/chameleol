@@ -29,7 +29,7 @@ async function colorFor(page,building,{slight=false}={}){
  },{building,slight});
 }
 
-test('normal loop: tongue, claimed street, police and real precision badge lead to a prepared card, cancelled share, explicit save/text and replay', {timeout:120000},async(t)=>{
+test('normal loop: tongue, claimed street and police lead to a prepared result image, cancelled share, explicit save/text and replay', {timeout:120000},async(t)=>{
  const env=await launch({width:402,height:700});const {page}=env;let proof;
  try{
   await env.context.addInitScript(INSTRUMENT);await openHome(page,env.url);
@@ -43,13 +43,12 @@ test('normal loop: tongue, claimed street, police and real precision badge lead 
    const a=__kamereoru;a.flags.alertGuideSeen=true;
    a.runtime={...a.runtime,publicUrl:'https://example.invalid/normal'};
    await a.debugStart({atMs:0,seed:17});
-   const log={updates:0,steps:0,badge:false,tongue:false,street:false,police:false,policeExtra:false,drawables:[],frames:[]};
+   const log={updates:0,steps:0,tongue:false,street:false,police:false,policeExtra:false,drawables:[],frames:[]};
    const step=a.gameExtrasController.step.bind(a.gameExtrasController);
    a.gameExtrasController.step=input=>{log.steps++;log.drawables.push(input.drawable);if(log.drawables.length>4)log.drawables.shift();return step(input);};
    const update=a.stage.update.bind(a.stage);
    a.stage.update=args=>{
     log.updates++;const out=update(args),s=a.stage.presentationStats();
-    log.badge ||= a.gameExtrasController.snapshot().precisionBadge?.kind==='nearPerfect';
     log.tongue ||= s.tongue?.visible===true&&s.tongue?.diamondVisible===true;
     log.street ||= s.backgroundGroups===1&&s.backgroundBirds>0;
     log.police ||= args.policeStage===1;
@@ -62,7 +61,7 @@ test('normal loop: tongue, claimed street, police and real precision badge lead 
   await page.locator(id('pause-resume')).dispatchEvent('click');await page.clock.runFor(3100);
   await colorFor(page,1);
   await runTo(page,2100);
-  assert.equal(await page.evaluate(()=>__kamereoru.bonusPresentation.stats().badge),true,'500ms actual evaluation produced the visible precision notice');
+  assert.equal(await page.locator('.bonus-card').count(),0,'high precision leaves the running screen clear of score popups');
   await runTo(page,5050);await colorFor(page,2,{slight:true});
   await runTo(page,10050);await colorFor(page,3);
   await runTo(page,15050);await colorFor(page,4);
@@ -70,7 +69,7 @@ test('normal loop: tongue, claimed street, police and real precision badge lead 
   await runTo(page,20600);
   const trace=await page.evaluate(()=>structuredClone(__normalLoop));
   assert.equal(trace.steps,trace.updates,'the actual stage is the sole step caller');
-  for(const key of ['badge','tongue','street','police','policeExtra'])assert.equal(trace[key],true,`${key} appeared in the actual normal loop: ${JSON.stringify(trace.frames)}`);
+  for(const key of ['tongue','street','police','policeExtra'])assert.equal(trace[key],true,`${key} appeared in the actual normal loop: ${JSON.stringify(trace.frames)}`);
 
   // Keep game time and the current pose while paused/hidden, then resume the same run.
   await page.locator(id('pause')).dispatchEvent('click');
@@ -126,7 +125,7 @@ test('normal loop: tongue, claimed street, police and real precision badge lead 
 });
 
 
-for(const variant of ['effects-off','simple-dom'])test(`normal loop ${variant}: real evaluation and one-time claim continue, presentation follows the selected capability`,async()=>{
+for(const variant of ['effects-off','simple-dom'])test(`normal loop ${variant}: evaluation runs without decorative scoring popups`,async()=>{
  const env=await launch();const {page}=env;
  try{
   await openHome(page,env.url);
@@ -138,16 +137,16 @@ for(const variant of ['effects-off','simple-dom'])test(`normal loop ${variant}: 
     a.stageFactory=(host,options)=>createStage(host,{...options,forceDom:true});
    }
    await a.debugStart({atMs:0,seed:17,effects:variant!=='effects-off'});
-   const probe={updates:0,steps:0,drawable:[],segments:0};
+   const probe={updates:0,steps:0,drawable:[]};
    const step=a.gameExtrasController.step.bind(a.gameExtrasController),update=a.stage.update.bind(a.stage);
-   a.gameExtrasController.step=input=>{probe.steps++;probe.drawable.push(input.drawable);probe.segments+=input.evaluationSegments.length;return step(input);};
+   a.gameExtrasController.step=input=>{probe.steps++;probe.drawable.push(input.drawable);return step(input);};
    a.stage.update=args=>{probe.updates++;return update(args);};globalThis.__normalFallback=probe;
   },variant);
   await page.locator(id('pause-resume')).dispatchEvent('click');await page.clock.runFor(3100);await colorFor(page,1);await runTo(page,2100);
-  const facts=await page.evaluate(()=>({probe:__normalFallback,kind:__kamereoru.stage.kind,mode:__kamereoru.stage.presentationStats().mode,claimed:__kamereoru.gameExtrasController.snapshot().precisionBadge?.kind,visible:__kamereoru.bonusPresentation.stats().badge,playId:__kamereoru.session.meta.playId}));
-  assert.equal(facts.mode,'extended96');assert.equal(facts.probe.steps,facts.probe.updates);assert.ok(facts.probe.segments>0);
-  assert.equal(facts.claimed,'nearPerfect');assert.ok(facts.probe.drawable.every(v=>v===false));
-  assert.equal(facts.visible,variant==='simple-dom');if(variant==='simple-dom')assert.equal(facts.kind,'dom');
+  const facts=await page.evaluate(()=>({probe:__normalFallback,kind:__kamereoru.stage.kind,mode:__kamereoru.stage.presentationStats().mode,claimed:__kamereoru.gameExtrasController.snapshot().precisionBadge,match:__kamereoru.session.state.matchUnits}));
+  assert.equal(facts.mode,'extended96');assert.equal(facts.probe.steps,facts.probe.updates);assert.ok(facts.match>=98000000);
+  assert.equal(facts.claimed,null);assert.ok(facts.probe.drawable.every(v=>v===false));
+  assert.equal(await page.locator('.bonus-card').count(),0);if(variant==='simple-dom')assert.equal(facts.kind,'dom');
   await page.evaluate(()=>__kamereoru.leaveGame());assert.equal(await page.locator('.bonus-card').count(),0);assert.equal(await page.locator('.stage-canvas').count(),0);
   assert.deepEqual(env.errors,[]);
  }finally{await env.close();}

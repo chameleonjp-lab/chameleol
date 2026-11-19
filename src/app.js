@@ -711,6 +711,8 @@ export class App {
     const fixtureTime=fixtureTimes[effectId];
     if(!this.session||!this.session.meta.debug||this.session.running||this.session.meta.effects===false||this.session.ended||!this.stage?.forcePresentationEffect||(fixtureTime!==undefined&&this.session.state.t!==fixtureTime))await this.debugStart({atMs:fixtureTime??(effectId>=57&&effectId!==65?200000:30000),seed:1});
     if(effectId===65&&this.session.state.t>=195000)await this.debugStart({atMs:30000,seed:1});
+    this.bonusPresentation?.dispose();
+    this.bonusPresentation = null;
     clear(this.layer);if(this.coverEl)this.coverEl.hidden=true;
     this.verificationPreviewScope=this.presentationScope;
     this.stage.resetEnding?.();
@@ -726,9 +728,12 @@ export class App {
       // Sample the real badge after its fade-in, without advancing the paused session.
       const previewTime=view.t+700;
       this.stage.update({t:previewTime,color:view.color,matchState:view.matchState,walking:false,running:false});
-      this.bonusPresentation.tick({activeMs:previewTime,phase:view.phase,running:true,precisionBadge:badge.snapshot(previewTime)});
+      const preview = mountBonusPresentation({host:this.root.querySelector('.stage-wrap'),scope:this.presentationScope,t});
+      this.bonusPresentation = preview;
+      this.presentationScope.own(() => { if (this.bonusPresentation === preview) this.bonusPresentation = null; });
+      preview.tick({activeMs:previewTime,phase:view.phase,running:true,precisionBadge:badge.snapshot(previewTime)});
       badge.dispose();
-      return {...this.bonusPresentation.stats(),effectId};
+      return {...preview.stats(),effectId};
     }
     const legacyCameo=CAMEOS.find(row=>row.id===effectId);
     if(legacyCameo||[20,34,39,56,67,68,69].includes(effectId)){
@@ -1052,20 +1057,16 @@ export class App {
       if (!current()) return;
     }
     const gameExtrasController=createGameExtrasController({playId:session.meta.playId,rules,extrasPort,seed:decorations?.[0]?.sign??1});
-    const evaluationCollector=createEvaluationSegmentCollector({session,restore:!extrasPort.fresh});
     this.gameExtrasController=gameExtrasController;
-    scope.own(()=>{evaluationCollector.dispose();gameExtrasController.dispose();if(this.gameExtrasController===gameExtrasController)this.gameExtrasController=null;});
+    scope.own(()=>{gameExtrasController.dispose();if(this.gameExtrasController===gameExtrasController)this.gameExtrasController=null;});
     const local = (await this.safeGet('localBest'))?.[session.meta.name || ''] ?? null;
     const statistics = sanitizeStats(await this.safeGet('presentation.stats.v1'));
     if (!current()) return;
     const presentationHud = mountPresentationHud({verification:this.runtime.isVerification,host:el.querySelector('.stage-wrap'),scope,bestDistance:local?.buildings??null,bestCombo:statistics.bestCombo});
     this.presentationHud = presentationHud;
-    const bonusPresentation=mountBonusPresentation({host:el.querySelector('.stage-wrap'),scope,t});
-    this.bonusPresentation=bonusPresentation;
     let cueCandidates=[],pendingBonus=null;
     const cue=(name,opts)=>cueCandidates.push({name,opts});
-    const showPassNotice=(text,options)=>{if(pendingBonus)(pendingBonus.notices??=[]).push(text);else showNotice(text,options);};
-    scope.own(()=>{cueCandidates=[];pendingBonus=null;if(this.bonusPresentation===bonusPresentation)this.bonusPresentation=null;});
+    scope.own(()=>{cueCandidates=[];pendingBonus=null;});
     const guideHost = h('div', {class:'guidance-host'});
     el.querySelector('.stage-wrap').append(guideHost);
     const renderGuide = () => {
@@ -1171,12 +1172,11 @@ export class App {
             break;
           case 'enterBuilding': {
             const b = Math.min(rules.buildingCount, ev.building);
-            if (ev.building === rules.brightnessUnlockBuilding - 1) showPassNotice(t('game.unlockSoon'), { duration: 2200 });
+            if (ev.building === rules.brightnessUnlockBuilding - 1) showNotice(t('game.unlockSoon'), { duration: 2200 });
             this.audio.setBuilding(b);
             this.audio.setArea(areaOf(b).time);
             this.audio.setFinale(b >= 41);
             if (b === 40) {
-              showPassNotice(t('game.milestone.final'), { duration: 1600 });
               cue('milestone');
               this.stage?.fx('milestone');
             }
@@ -1194,18 +1194,15 @@ export class App {
             pendingBonus=buildBonusBatch({playId:session.meta.playId,passEvent:ev,summary:{rulesVersion:session.meta.rulesVersion}});
             if (ev.building === 25) {
               // 25棟目の通過＝中間地点（仕様 FX-03）
-              showPassNotice(t('game.milestone.half'), { duration: 1600 });
               cue('milestone');
               this.stage?.fx('milestone');
             }
             if (ev.success && [3, 5, 10].includes(ev.combo)) {
               cue('combo', { level: [3, 5, 10].indexOf(ev.combo) });
               this.stage?.fx('combo');
-              showPassNotice(t('game.comboMilestone', { n: ev.combo }), { duration: 1400, kind: 'combo' });
             } else if (ev.success && ev.combo > 1) {
               cue('passBuilding', { combo: ev.combo });
               this.stage?.fx('pass');
-              showPassNotice(t('game.combo', { n: ev.combo }), { duration: 900 });
             } else if (ev.success) {
               cue('passBuilding', { combo: 1 });
               this.stage?.fx('pass');
@@ -1297,20 +1294,8 @@ export class App {
       renderGuide();
       const activeNotice=[...banner.querySelectorAll('.toast-warn')].some(node=>!node.hidden);
       const quiet=Boolean(guideView.step)||stage>0||activeNotice;
-      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step),guideActive:Boolean(guideView.step),moving:session.running&&!guideView.stationary,warningActive:activeNotice,hidden:!!document.hidden,evaluationSegments:evaluationCollector.drain()}});
-      bonusPresentation.tick({activeMs:s.t,phase:playView.phase,guideActive:Boolean(guideView.step),warningActive:stage>0||activeNotice,running:session.running,precisionBadge:quiet||session.meta.effects===false?null:gameExtrasController.snapshot().precisionBadge});
+      stageView.update({t:guideView.sceneT,color:guideView.stationary?guideView.color:s.color,policeStage:stage,searching,nervous:stage/2,walking:session.running,matchState,presentation:{...playView,guidanceActive:Boolean(guideView.step),guideActive:Boolean(guideView.step),moving:session.running&&!guideView.stationary,warningActive:activeNotice,hidden:!!document.hidden}});
       const batch=pendingBonus;
-      if(batch)bonusPresentation.show(batch,s.t,{quiet});
-      const bonusVisible=bonusPresentation.stats().visible;
-      if(bonusVisible)switchOk.hidden=true;
-      // Important guidance remains above the compact award text, never obscured by it.
-      let obstacleBottom=0;
-      if(bonusVisible&&quiet){
-        for(const node of [...banner.querySelectorAll('.toast'),...guideHost.querySelectorAll('.guidance-panel')]){
-          if(!node.hidden&&node.getClientRects?.().length)obstacleBottom=Math.max(obstacleBottom,node.getBoundingClientRect().bottom);
-        }
-      }
-      bonusPresentation.element.style.top=obstacleBottom?`${obstacleBottom-el.querySelector('.stage-wrap').getBoundingClientRect().top+6}px`:'';
       const timely=!batch||s.t<batch.expiresAtT;
       const suppressed=quiet||!timely;
       const candidates=suppressed?cueCandidates.filter(c=>['guideClear','unlock','whistle','warning','detected','clear'].includes(c.name)):cueCandidates;
@@ -1633,10 +1618,8 @@ export class App {
       ctrl.abort();
     }, { className: 'btn-skip', testid: 'skip-ending' });
     this.layer.append(skip);
-    const comic=reason==='detected'?h('div',{class:'ending-comic','aria-hidden':'true'},'!'):null;
-    if(comic)this.layer.append(comic);
     const endingBonusView=mountEndingBonus({host:this.layer,data:endingBonus,scope,t});
-    await this.stage?.playEnding(reason, {signal:ctrl.signal,onFrame:(elapsed)=>{scope.tick(elapsed);endingBonusView?.tick(elapsed);if(comic)comic.hidden=elapsed>=600;}});
+    await this.stage?.playEnding(reason, {signal:ctrl.signal,onFrame:(elapsed)=>{scope.tick(elapsed);endingBonusView?.tick(elapsed);}});
     skip.remove();
     if (!current()) return;
     this.session = null;
