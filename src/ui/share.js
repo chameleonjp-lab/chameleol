@@ -1,9 +1,9 @@
-// Xで共有。自動投稿せず投稿画面を開く。開けない時はコピー、コピーもできない時は選択できる本文を出す。
-// 非公開の照会情報・内部ID・名前・未確定の順位を含めない。正式URLは公開工程で決める。
+// Xの投稿画面に渡す本文と共有ボタンを作る。
+// 非公開の照会情報・内部ID・名前・未確定の順位を含めない。
 import { t, formatNumber } from '../i18n/i18n.js';
 import { h } from './dom.js';
 
-export const X_INTENT = 'https://x.com/intent/tweet';
+const X_INTENT = 'https://x.com/intent/tweet';
 
 export const GAME_URL = 'https://chameleonjp-lab.github.io/chameleol/';
 
@@ -34,19 +34,18 @@ export function buildHomeShareText({ lang }) {
   return [t('share.home.title', null, lang), t('share.home.body', null, lang), t('share.hashtag', null, lang)].join('\n');
 }
 
-export function buildIntentUrl({ text, url }) {
-  const params = new URLSearchParams();
-  params.set('text', text);
-  if (url) params.set('url', url);
-  return `${X_INTENT}?${params.toString()}`;
-}
-
-export function xShareLink(text, testid) {
-  return h('a', {
-    class: 'btn btn-x',
-    href: buildIntentUrl({ text, url: GAME_URL }),
+export function xShareForm(text, testid) {
+  // Xへのリンクを非表示にする設定でも操作できるよう、ボタンから投稿画面を開く。
+  const textInput = h('input', { type: 'hidden', name: 'text', value: text });
+  const el = h('form', {
+    action: X_INTENT,
+    method: 'get',
     target: '_blank',
     rel: 'noopener noreferrer',
-    'data-testid': testid,
-  }, t('share.button'));
+  }, [
+    textInput,
+    h('input', { type: 'hidden', name: 'url', value: GAME_URL }),
+    h('button', { type: 'submit', class: 'btn btn-x', 'data-testid': testid }, t('share.button')),
+  ]);
+  return { el, setText(value) { textInput.value = value; } };
 }

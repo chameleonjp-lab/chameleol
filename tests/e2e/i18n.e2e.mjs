@@ -114,7 +114,10 @@ test('SHARE-TEST-01: ホームから言語に合わせた本文と正式URLでX�
       const intent = await openXShare(env.page, 'home-share');
       assert.equal(intent.origin + intent.pathname, 'https://x.com/intent/tweet');
       assert.equal(intent.searchParams.get('url'), 'https://chameleonjp-lab.github.io/chameleol/');
-      assert.match(intent.searchParams.get('text'), title);
+      const text = intent.searchParams.get('text').replaceAll('\r\n', '\n');
+      assert.match(text, title);
+      const messages = MESSAGES[language === 'ja-JP' ? 'ja' : 'en'];
+      assert.equal(text, [messages['share.home.title'], messages['share.home.body'], messages['share.hashtag']].join('\n'));
       assert.doesNotMatch(intent.href, /private|[0-9a-f]{8}-[0-9a-f]{4}/);
       assert.equal(await env.page.getByTestId('home-start').isVisible(), true);
     } finally { await env.close(); }
@@ -147,7 +150,7 @@ test('本人の今回順位と正式な棟数を結果とXに反映し、審査�
       app.showResult();
       await app.pollResult();
     });
-    const shareText = async () => new URL(await page.getByTestId('result-share').getAttribute('href')).searchParams.get('text');
+    const shareText = async () => (await openXShare(page, 'result-share')).searchParams.get('text');
     assert.match(await page.textContent('.result-rank'), /3位／4人中/);
     const text = await shareText();
     assert.match(text, /7棟/);

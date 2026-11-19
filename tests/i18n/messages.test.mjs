@@ -8,7 +8,7 @@ import { MESSAGES } from '../../src/i18n/messages/index.js';
 import { LANGUAGE_IDS, SUPPORTED_LANGUAGES, resolveLanguage, languageFromLocale } from '../../src/i18n/languages.js';
 import { t } from '../../src/i18n/i18n.js';
 import { FALLBACK_TEXT, USED_FALLBACKS, rtext, usedFallbackReport } from '../../src/presentation/result-card-text.js';
-import { buildResultShareText, buildIntentUrl } from '../../src/ui/share.js';
+import { buildResultShareText } from '../../src/ui/share.js';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -109,11 +109,6 @@ test('SHARE-TEST-01: 共有文は選んだ言語で作り、未確定の順位�
     assert.ok(!pending.includes(rankText), lang);
     assert.equal(/[0-9a-f]{8}-[0-9a-f]{4}/.test(official), false);
   }
-  const url = buildIntentUrl({ text: 'a&b #x\n改行', url: 'https://example.invalid/game/' });
-  assert.ok(url.startsWith('https://x.com/intent/tweet?'));
-  const q = new URL(url).searchParams;
-  assert.equal(q.get('text'), 'a&b #x\n改行');
-  assert.equal(q.get('url'), 'https://example.invalid/game/');
 });
 
 test('new result text uses all 15 dictionaries, with exact placeholders and no routine fallback', () => {

@@ -26,7 +26,13 @@ function setup({ markup = true } = {}) {
   installFakeCanvas(window);
   const host = document.querySelector('main');
   if (markup) {
-    host.innerHTML = '<div class="result-burst"></div><h1 class="result-title">Cleared</h1><div class="result-main"></div><div class="result-actions"><button data-testid="result-again">Again</button><a data-testid="result-ranking">Ranking</a><a data-testid="result-share" class="btn-x" href="https://x.com/intent/tweet">Share</a></div><button data-testid="result-home">Home</button><div class="result-ranking"></div>';
+    host.innerHTML = `
+      <div class="result-burst"></div><h1 class="result-title">Cleared</h1><div class="result-main"></div>
+      <div class="result-actions">
+        <button data-testid="result-again">Again</button><a data-testid="result-ranking">Ranking</a>
+        <form action="https://x.com/intent/tweet"><button type="submit" data-testid="result-share" class="btn-x">Share</button></form>
+      </div>
+      <button data-testid="result-home">Home</button><div class="result-ranking"></div>`;
   }
   return { document, window, host };
 }
@@ -102,12 +108,12 @@ test('mount preserves primary actions and handles image sharing once in the seco
   const order = [...host.children].map((c) => c.className.split(' ')[0]);
   assert.ok(order.indexOf('result-title') < order.indexOf('result-card') && order.indexOf('result-card') < order.indexOf('result-actions'));
   const kids = [...actions.children];
-  assert.deepEqual(kids, [again, host.querySelector('[data-testid="result-ranking"]'), share]);
+  assert.deepEqual(kids, [again, host.querySelector('[data-testid="result-ranking"]'), share.closest('form')]);
   assert.equal(home.nextElementSibling, host.querySelector('.result-ranking'));
   assert.equal(home.nextElementSibling.nextElementSibling, host.querySelector('.result-card-secondary'));
   click(window, share);
   assert.equal(appClicks, 1);
-  assert.equal(controller.calls.share, 0, 'the primary link does not call image sharing');
+  assert.equal(controller.calls.share, 0, 'the primary button does not call image sharing');
   click(window, host.querySelector('.result-card-image-share'));
   assert.equal(controller.calls.share, 1);
   view.dispose();
@@ -320,7 +326,7 @@ test('a new revision closes the viewer, Escape closes it, and disposing the scre
   assert.equal(controller.calls.revoke, revokes + 1);
 });
 
-test('the primary X link is still available while the result image is pending', () => {
+test('the primary X button is still available while the result image is pending', () => {
   const { host, window } = setup();
   const controller = fakeController(snap({ state: 'pending', prepared: null }));
   const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
@@ -328,7 +334,7 @@ test('the primary X link is still available while the result image is pending', 
   ports.mount({ host, controller, scope: scopeStub() });
   const share = host.querySelector('[data-testid="result-share"]');
   assert.equal(share.getAttribute('aria-disabled'), null);
-  assert.equal(share.href, 'https://x.com/intent/tweet');
+  assert.equal(share.closest('form').getAttribute('action'), 'https://x.com/intent/tweet');
   click(window, share);
   assert.equal(host.querySelector('.result-card-status').textContent, t('card.preparing'));
   assert.equal(controller.calls.share, 0);
