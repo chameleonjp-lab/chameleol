@@ -124,7 +124,8 @@ test('share: X opens before the PNG is ready and sends the PNG from the main but
     assert.equal(tap.payload.files.length, 1);
     assert.equal(tap.payload.files[0].type, 'image/png');
     assert.ok(tap.payload.files[0].size > 0);
-    assert.equal(tap.payload.text, early.searchParams.get('text'));
+    // HTML form submission normalizes line breaks to CRLF.
+    assert.equal(tap.payload.text, early.searchParams.get('text').replace(/\r\n/g, '\n'));
     assert.equal(tap.payload.url, 'https://chameleonjp-lab.github.io/chameleol/');
     await advanceUntil(page, async () => (await cardState(page)) === 'ready', { limit: 20 });
     // 取消：本文の窓は自動で開かない
