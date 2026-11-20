@@ -1,0 +1,55 @@
+{
+  "schema_version": "chameleonjp-ranking-manifest-v1",
+  "game_id": "chameleol",
+  "title": "カメレオる",
+  "description": "宝石を盗んだカメレオンが、壁と同じ色に変身して警察から逃げるゲームです。",
+  "share_text": "宝石を盗んだカメレオン、壁と同じ色に変身して警察から逃げ切ろう！ #カメレオる https://chameleonjp-lab.github.io/chameleol/",
+  "canonical_url": "https://chameleonjp-lab.github.io/chameleol/",
+  "release_date": "2026-11-10",
+  "client_version": "0.1.0",
+  "submission_mode": "verified",
+  "lab": {
+    "representative_slug": "chameleol"
+  },
+  "player_name": {
+    "required_before_start": false,
+    "required_for_ranking": true,
+    "min_length": 1,
+    "max_length": 20,
+    "storage_key": "kamereoru/kv/nameRaw"
+  },
+  "play_count": {
+    "count_at": "start",
+    "rpc": "kamereoru/launch",
+    "idempotency": true
+  },
+  "submission": {
+    "rpc": "kamereoru/complete",
+    "automatic": true,
+    "idempotency": true,
+    "timeout_ms": 8000
+  },
+  "ranking_entries": [
+    {
+      "mode_id": "main",
+      "display_order": 60,
+      "game_slug": "chameleol",
+      "title": "カメレオる",
+      "top_ranking_type": "best",
+      "score_order": "desc",
+      "score_unit": "棟",
+      "score_scale": 1,
+      "score_decimals": 0,
+      "score_label": "クリア棟数",
+      "first_score_label": "初回クリア棟数",
+      "best_score_label": "自己ベスト",
+      "score_min": 0,
+      "score_max": 50,
+      "ranked_results": [
+        "detected",
+        "cleared",
+        "quit"
+      ]
+    }
+  ]
+}
