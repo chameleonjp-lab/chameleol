@@ -83,7 +83,21 @@ jobs:
           cache: npm
       - run: npm ci
       - name: 自動ブラウザの準備
+        timeout-minutes: 6
         run: |
+          # ランナーの地域別ミラーで止まらないよう、Ubuntu公式HTTPS配信先を指定する。
+          cat > "$RUNNER_TEMP/chameleol-ubuntu.list" <<'SOURCES'
+          deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu/ noble main universe
+          deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://archive.ubuntu.com/ubuntu/ noble-updates main universe
+          deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://security.ubuntu.com/ubuntu/ noble-security main universe
+          SOURCES
+          sudo tee /etc/apt/apt.conf.d/99-chameleol-ci >/dev/null <<APT
+          Dir::Etc::sourcelist "$RUNNER_TEMP/chameleol-ubuntu.list";
+          Dir::Etc::sourceparts "-";
+          Acquire::Retries "2";
+          Acquire::http::Timeout "20";
+          Acquire::https::Timeout "20";
+          APT
           npm install --no-save playwright@1.63.0
           npx playwright install --with-deps chromium
       - name: 自動ブラウザの通し試験（${{ matrix.shard }}）
