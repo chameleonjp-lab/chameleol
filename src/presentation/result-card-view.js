@@ -96,8 +96,19 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
   const canvas = el('canvas', 'result-card-canvas', null, card);
   canvas.width = HALF[0];
   canvas.height = HALF[1];
-  canvas.setAttribute('role', 'img');
+  canvas.setAttribute('role', 'button');
+  canvas.setAttribute('tabindex', '0');
+  canvas.setAttribute('title', tx('card.viewerTitle'));
   canvas.setAttribute('data-testid', 'result-card-canvas');
+  // The card itself is an optional full-screen preview for iOS "Save to Photos".
+  // The dedicated Save button downloads immediately, without opening this preview.
+  listen(canvas, 'click', () => openViewer());
+  listen(canvas, 'keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openViewer();
+    }
+  });
   const summary = el('p', 'result-card-summary', null, card);
   summary.setAttribute('aria-hidden', 'true');
   const title = host.querySelector('.result-title');
@@ -137,7 +148,7 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
     const info = drawResultCard(canvas, { model: snapshot.model, portrait: snapshot.portraitImage ?? null, locale: locale(), failed: view.failedWithout });
     void info;
     const text = describeResultCard(snapshot.model, locale(), { failed: view.failedWithout, portrait: snapshot.portraitImage });
-    canvas.setAttribute('aria-label', text.label);
+    canvas.setAttribute('aria-label', `${text.label} — ${tx('card.viewerTitle')}`);
     summary.textContent = text.summary;
   }
 
@@ -254,7 +265,7 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
     canvas.height = view.size[1];
     paint();
     restoreScroll();
-    if (refocus) saveBtn.focus?.({ preventScroll: true });
+    if (refocus) canvas.focus?.({ preventScroll: true });
   }
 
   function dispose() {
