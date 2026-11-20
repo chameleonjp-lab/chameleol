@@ -195,7 +195,7 @@ test('save button downloads immediately and does not open the preview', () => {
     const node = originalCreate(tag, ...rest);
     if (tag === 'a') node.click = () => {
       downloads += 1;
-      assert.equal(node.getAttribute('download'), 'chameleol-result.png');
+      assert.equal(node.download, 'chameleol-result.png');
     };
     return node;
   };
