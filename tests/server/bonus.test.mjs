@@ -156,8 +156,9 @@ test('v3 replay ignores forged auxiliary bonuses and preserves v1 ranking condit
     assert.equal(row.body.claimed.score.total, -1, 'original claim retained');
     assert.deepEqual((await status(srv, s, randomSecret())), { playId: s.playId, error: 'forbidden' });
     const ranking = (await srv.call('ranking', {}, { method: 'GET' })).body.rows;
-    assert.equal(ranking.length, 1);
-    assert.deepEqual(Object.keys(ranking[0]).sort(), ['average', 'buildings', 'name', 'position', 'rank']);
+    assert.deepEqual(ranking, [], 'verified 50-building clear belongs to Hall of Fame, not best ranking');
+    const hall = (await srv.call('hall-of-fame', null, {method:'GET'})).body.rows;
+    assert.deepEqual(hall, [{ordinal:1,name:s.name,average:verified.official.rankAverage}]);
     const old = replayHistory(createGame({ seed: s.seed, rules: rulesForVersion(V1) }), body.history).state;
     const newState = replayHistory(createGame({ seed: s.seed, rules: rulesForVersion(V3) }), body.history).state;
     const legacySummary = summarize(old, rulesForVersion(V1));
@@ -319,6 +320,9 @@ test('v4 retries stay on the old course, and v4 and v5 results share one ranking
       assert.equal(result.verifiedScore.rulesVersion, start.rulesVersion);
     }
     const ranking = (await srv.call('ranking', {}, { method: 'GET' })).body.rows;
-    assert.deepEqual(ranking.map(({ name, rank }) => [name, rank]), [['newcourse', 1], ['oldcourse', 1]]);
+    assert.deepEqual(ranking, [], 'both course versions have completed a verified 50-building clear');
+    const hall = (await srv.call('hall-of-fame', null, {method:'GET'})).body.rows;
+    assert.deepEqual(hall.map(({name, ordinal}) => [name, ordinal]), [['oldcourse',1], ['newcourse',2]]);
+    assert.ok(hall.every(({average}) => Number.isInteger(average) && average >= 0 && average <= 10000));
   } finally { await srv.close(); }
 });
