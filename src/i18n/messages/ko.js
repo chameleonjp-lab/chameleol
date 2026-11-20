@@ -427,7 +427,7 @@ export default {
   "card.save": "이미지 저장",
   "card.imageShare": "이미지 공유",
   "card.retry": "이미지 다시 만들기",
-  "card.saveHint": "이미지를 길게 눌러 저장하세요",
+  "card.saveHint": "이미지를 길게 누른 뒤 메뉴에서 사진 앱에 저장하는 항목을 선택하세요.",
   "card.shareClosed": "공유가 종료되었습니다",
   "card.bonusMissing": "보너스 기록 없음",
   "card.shareFailed": "이미지를 공유하지 못했어요. 저장하거나 글로 공유해 보세요.",

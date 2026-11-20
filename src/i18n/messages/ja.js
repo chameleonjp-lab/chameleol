@@ -423,7 +423,7 @@ export default {
   "card.save": "スコア画像を保存",
   "card.imageShare": "画像を共有",
   "card.retry": "画像を作り直す",
-  "card.saveHint": "画像を長押しして保存できます",
+  "card.saveHint": "画像を長押しし、メニューから「写真に保存」を選んでください。",
   "card.shareClosed": "共有を終了しました",
   "card.bonusMissing": "ボーナスの記録なし",
   "card.shareFailed": "画像を共有できませんでした。保存か本文共有をお試しください。",

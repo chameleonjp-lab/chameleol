@@ -427,7 +427,7 @@ export default {
   "card.save": "Enregistrer l’image",
   "card.imageShare": "Partager l’image",
   "card.retry": "Recréer l’image",
-  "card.saveHint": "Appuyez longuement sur l’image pour l’enregistrer",
+  "card.saveHint": "Appuyez longuement sur l’image, puis choisissez l’option pour l’enregistrer dans Photos.",
   "card.shareClosed": "Partage fermé",
   "card.bonusMissing": "Aucun bonus enregistré",
   "card.shareFailed": "Impossible de partager l’image. Essayez de l’enregistrer ou de partager le texte.",

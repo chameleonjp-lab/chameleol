@@ -427,7 +427,7 @@ export default {
   "card.save": "Bild speichern",
   "card.imageShare": "Bild teilen",
   "card.retry": "Bild erneut erstellen",
-  "card.saveHint": "Zum Speichern das Bild gedrückt halten",
+  "card.saveHint": "Bild gedrückt halten und im Menü die Option zum Speichern in Fotos wählen.",
   "card.shareClosed": "Teilen beendet",
   "card.bonusMissing": "Keine Bonusaufzeichnung",
   "card.shareFailed": "Das Bild konnte nicht geteilt werden. Versuche es zu speichern oder den Text zu teilen.",

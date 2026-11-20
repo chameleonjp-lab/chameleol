@@ -427,7 +427,7 @@ export default {
   "card.save": "บันทึกภาพ",
   "card.imageShare": "แชร์รูปภาพ",
   "card.retry": "สร้างภาพอีกครั้ง",
-  "card.saveHint": "แตะภาพค้างไว้เพื่อบันทึก",
+  "card.saveHint": "แตะรูปภาพค้างไว้ แล้วเลือกตัวเลือกบันทึกลงแอปรูปภาพจากเมนู",
   "card.shareClosed": "ปิดการแชร์แล้ว",
   "card.bonusMissing": "ไม่มีบันทึกโบนัส",
   "card.shareFailed": "แชร์รูปไม่ได้ ลองบันทึกรูปหรือแชร์ข้อความ",

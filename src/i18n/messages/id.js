@@ -427,7 +427,7 @@ export default {
   "card.save": "Simpan gambar",
   "card.imageShare": "Bagikan gambar",
   "card.retry": "Buat gambar lagi",
-  "card.saveHint": "Sentuh dan tahan gambar untuk menyimpan",
+  "card.saveHint": "Tekan dan tahan gambar, lalu pilih opsi untuk menyimpannya ke Foto.",
   "card.shareClosed": "Berbagi ditutup",
   "card.bonusMissing": "Tidak ada catatan bonus",
   "card.shareFailed": "Gambar tidak dapat dibagikan. Coba simpan gambar atau bagikan teksnya.",
