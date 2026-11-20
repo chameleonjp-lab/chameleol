@@ -83,7 +83,7 @@ test('four real starts: anonymous clear, A50, B30, A7; launch and result retries
     const items = await status(srv, a.owner, b.owner, again.owner);
     assert.deepEqual(items.map(i => i.metrics), [1, 2, 3].map((runRank, i) => ({ runRank, totalPlays: 4, clearOrdinal: i === 0 ? 1 : null })));
     const rows = (await srv.call('ranking', null, { method: 'GET' })).body.rows;
-    assert.deepEqual(rows.map(r => [r.name, r.rank, r.buildings]), [['A', 1, 50], ['B', 2, 30]]);
+    assert.deepEqual(rows.map(r => [r.name, r.rank, r.buildings]), [['B', 1, 30]], 'Hall members are excluded from best rankings');
     const repeat = await namedRun(srv, 'A', 50);
     assert.deepEqual(await stats(srv), { ok: true, totalPlays: 5, clearerCount: 1 });
     assert.deepEqual((await status(srv, repeat.owner))[0].metrics, { runRank: 1, totalPlays: 5, clearOrdinal: 1 });
@@ -92,7 +92,8 @@ test('four real starts: anonymous clear, A50, B30, A7; launch and result retries
     assert.deepEqual((await status(srv, zero.owner))[0].metrics, { runRank: null, totalPlays: 6, clearOrdinal: null });
     const hall = await srv.call('hall-of-fame', null, { method: 'GET' });
     assert.equal(hall.status, 200);
-    assert.deepEqual(hall.body.rows, [{ordinal:1, name:'A'}]);
+    assert.deepEqual(hall.body.rows.map(r => [r.ordinal, r.name]), [[1,'A']]);
+    assert.equal(hall.body.rows[0].average, items[0].official.rankAverage);
     assert.equal(hall.body.nextAfter, null);
     assert.equal((await srv.call('hall-of-fame')).status, 404);
   } finally { await srv.close(); }
@@ -114,10 +115,11 @@ test('clear admissions survive review, correction, backfill and concurrent appro
       return res.body;
     };
     const firstPage = await hall('?limit=1');
-    assert.deepEqual(firstPage.rows, [{ordinal:1, name:'A'}]);
+    assert.deepEqual(firstPage.rows.map(({ordinal,name}) => ({ordinal,name})), [{ordinal:1, name:'A'}]);
+    assert.ok(Number.isInteger(firstPage.rows[0].average));
     assert.equal(firstPage.nextAfter, 1);
     const continuePage = '?after=1&version=' + firstPage.version;
-    assert.deepEqual((await hall(continuePage)).rows, [{ordinal:2,name:'B'},{ordinal:3,name:'C'}]);
+    assert.deepEqual((await hall(continuePage)).rows.map(({ordinal,name}) => ({ordinal,name})), [{ordinal:2,name:'B'},{ordinal:3,name:'C'}]);
     // Simulate migration of existing clears, breaking an official_at tie by play ID.
     await srv.sql('truncate private.kamereoru_clear_admissions');
     await srv.sql("update private.kamereoru_results set official_at='-infinity' where play_id=any($1::uuid[])", [[a, b]]);
@@ -131,7 +133,7 @@ test('clear admissions survive review, correction, backfill and concurrent appro
     assert.deepEqual(await ordinals(), [null, 1, 2, 3, 3]);
     const updatedHall = await hall(continuePage);
     assert.equal(updatedHall.restarted, true);
-    assert.deepEqual(updatedHall.rows, [{ordinal:1,name:'B'},{ordinal:2,name:'A'},{ordinal:3,name:'C'}]);
+    assert.deepEqual(updatedHall.rows.map(({ordinal,name}) => ({ordinal,name})), [{ordinal:1,name:'B'},{ordinal:2,name:'A'},{ordinal:3,name:'C'}]);
     await srv.call('review', owners[0]);
     assert.deepEqual(await ordinals(), [null, 1, 2, 3, 3]);
     await decide(a, 'official');
