@@ -9,8 +9,6 @@ export default {
   'app.title': 'Kamereoru',
   'app.tagline': 'Match your body to the buildings and escape the police',
   'app.version': 'Version {v} / Rules {rules}',
-  'notice.releaseChanged': 'The public release has changed.',
-  'notice.openPublicRelease': 'Open the latest release',
 
   'common.back': 'Back',
   'common.cancel': 'Cancel',

@@ -9,8 +9,6 @@ export default {
   "app.title": "Kamereoru",
   "app.tagline": "Prendi il colore dei palazzi e scappa dalla polizia",
   "app.version": "Versione {v} / Regole {rules}",
-  "notice.releaseChanged": "La versione pubblicata è stata aggiornata.",
-  "notice.openPublicRelease": "Apri la versione più recente",
 
   "common.back": "Indietro",
   "common.cancel": "Annulla",

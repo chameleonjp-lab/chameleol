@@ -32,8 +32,6 @@ export default {
   'app.title': 'カメレオる',
   'app.tagline': '体の色を建物に合わせて、警察から逃げきろう',
   'app.version': '版 {v}／判定 {rules}',
-  'notice.releaseChanged': '公開版が更新されました。',
-  'notice.openPublicRelease': '最新の公開版を開く',
 
   'common.back': 'もどる',
   'common.cancel': 'やめる',

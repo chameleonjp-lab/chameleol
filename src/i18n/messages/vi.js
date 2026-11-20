@@ -9,8 +9,6 @@ export default {
   "app.title": "Kamereoru",
   "app.tagline": "Đổi màu cơ thể theo tòa nhà và trốn khỏi cảnh sát",
   "app.version": "Phiên bản {v} / Luật {rules}",
-  "notice.releaseChanged": "Bản phát hành công khai đã được cập nhật.",
-  "notice.openPublicRelease": "Mở bản mới nhất",
 
   "common.back": "Quay lại",
   "common.cancel": "Hủy",

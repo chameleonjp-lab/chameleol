@@ -9,8 +9,6 @@ export default {
   "app.title": "Kamereoru",
   "app.tagline": "เปลี่ยนสีตัวให้เข้ากับตึก แล้วหนีตำรวจให้พ้น",
   "app.version": "เวอร์ชัน {v} / กติกา {rules}",
-  "notice.releaseChanged": "เวอร์ชันที่เผยแพร่ได้รับการอัปเดตแล้ว",
-  "notice.openPublicRelease": "เปิดเวอร์ชันล่าสุด",
 
   "common.back": "ย้อนกลับ",
   "common.cancel": "ยกเลิก",

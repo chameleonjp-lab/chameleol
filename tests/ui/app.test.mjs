@@ -69,12 +69,12 @@ function pause() {
   app.showPause('user');
 }
 
-test('home shows the deployed asset version and the default rules for new games', () => {
+test('the home does not show release identifiers', () => {
   const runtime = app.runtime;
   try {
     app.runtime = { ...runtime, assetVersion: '0.1.0-123456789a' };
     app.showHome();
-    assert.match(root.querySelector('footer').textContent, /0\.1\.0-123456789a.*kamereoru-rules-v5/);
+    assert.doesNotMatch(root.textContent, /0\.1\.0-123456789a|kamereoru-rules-v[45]/);
   } finally {
     app.runtime = runtime;
   }

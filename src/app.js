@@ -9,14 +9,13 @@ import {
   formatRankAverage,
   classifyMatch,
   isEvalTime,
-  rulesForVersion,
 } from './rules/v1/index.js';
 import { areaOf } from './rules/v1/course.js';
 import { GameSession } from './game/session.js';
 import { alertWordKey, createAlertStageTracker, createInstantSuccessTracker, matchWordKey } from './game/feedback.js';
 import { createControls } from './ui/controls.js';
 import { h, clear, isolatedText } from './ui/dom.js';
-import { mountReleaseNotice } from './ui/release-notice.js';
+import { watchPublicRelease } from './net/public-release.js';
 import { audioSettings, backButton, button, dialog, languageSelect, nameField, section, toast } from './ui/screens.js';
 import { createRankingView, rankingLink } from './ui/ranking.js';
 import { createRecordsView } from './ui/record-status.js';
@@ -313,8 +312,8 @@ export class App {
 
   // ---------- 画面の切り替え ----------
   mount(el, rerender = null) {
-    this.stopReleaseNotice?.();
-    this.stopReleaseNotice = null;
+    this.stopReleaseCheck?.();
+    this.stopReleaseCheck = null;
     if (!el.classList.contains('game')) this.cancelStartAttempt();
     this.disposeStage();
     this.screenGeneration += 1;
@@ -340,7 +339,11 @@ export class App {
       onChange: (raw) => {
         if (raw === this.nameRaw) return;
         this.nameRaw = raw;
-        this.safeSet('nameRaw', raw);
+        const write = this.safeSet('nameRaw', raw);
+        this.nameWrite = write;
+        write.then(saved => {
+          if (saved && this.nameWrite === write) this.nameWrite = null;
+        });
       },
     });
     const continueBtn = button('home.continue', () => this.resumeSaved(), { testid: 'home-continue' });
@@ -358,11 +361,9 @@ export class App {
     if (this.foreignRun) {
       const link = this.foreignRunLink();
       notices.append(
-        h('p', { class: 'notice notice-update', 'data-testid': 'foreign-run' }, [
-          t('notice.savedRunOtherVersion'),
-          link ? ' ' : '',
-          link ? h('a', { href: link, class: 'btn btn-small', 'data-testid': 'foreign-run-open' }, t('notice.openSavedVersion')) : '',
-        ]),
+        h('p', { class: 'notice notice-update', 'data-testid': 'foreign-run' },
+          link ? h('a', { href: link, class: 'btn btn-small', 'data-testid': 'foreign-run-open' }, t('start.savedRun.continue'))
+            : t('notice.savedRunBroken')),
       );
     }
     if (this.runtime.isVerification) notices.append(h('p', { class: 'notice notice-dev' }, t(this.api.configured ? 'notice.verification' : 'notice.notConnected')));
@@ -389,13 +390,11 @@ export class App {
         ]),
       ]),
       this.runtime.isVerification ? this.verificationMenu() : null,
-      h('footer', { class: 'footer' }, [t('app.version', {
-        v: this.runtime.assetVersion === 'dev' ? this.runtime.gameVersion : this.runtime.assetVersion,
-        rules: rulesForVersion().rulesVersion,
-      })]),
     ]);
     this.mount(el, () => this.showHome());
-    this.stopReleaseNotice = mountReleaseNotice(notices, this.runtime);
+    this.stopReleaseCheck = watchPublicRelease(this.runtime, () =>
+      !this.store.memory && !this.session && !this.savedRun && !this.foreignRun && !this.startAttempt
+      && !this.nameWrite && document.activeElement !== field.input && !this.layer.hasChildNodes());
     this.mountShowcase(homeArt);
     if (!showOnline) return;
     this.store
@@ -465,8 +464,8 @@ export class App {
     if (!foreign && !saved) return true;
     const link = foreign ? this.foreignRunLink() : null;
     const choice = await this.startChoice(attempt, foreign ? {
-      titleKey: 'start.foreignRun.title', bodyKey: 'start.foreignRun.body', actions: [
-        ...(link ? [{ key: 'notice.openSavedVersion', primary: true }] : []),
+      titleKey: 'start.savedRun.title', bodyKey: link ? null : 'notice.savedRunBroken', actions: [
+        ...(link ? [{ key: 'start.savedRun.continue', primary: true }] : []),
         { key: 'start.foreignRun.shelve', danger: true, testid: 'foreign-shelve' },
         { key: 'common.cancel' },
       ],
@@ -484,12 +483,16 @@ export class App {
     } else if (choice === 'start.savedRun.newGame') {
       await this.settleSavedRun(saved.playId);
     } else if (choice === 'start.savedRun.continue') {
+      if (foreign) {
+        this.finishStartAttempt(attempt, 'cancelled');
+        globalThis.location.assign(link);
+        return false;
+      }
       attempt.state = 'starting';
       await this.restoreRun(saved.playId, attempt);
       return false;
     } else {
       this.finishStartAttempt(attempt, 'cancelled');
-      if (choice === 'notice.openSavedVersion') globalThis.location.assign(link);
       return false;
     }
     return this.isStartCurrent(attempt);

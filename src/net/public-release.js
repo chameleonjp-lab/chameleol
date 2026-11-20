@@ -1,49 +1,39 @@
-import { t } from '../i18n/i18n.js';
-import { h } from './dom.js';
-
 const ASSET_VERSION = /^\d+\.\d+\.\d+-[a-f0-9]{10}$/;
 const CHECK_INTERVAL_MS = 60_000;
 const CHECK_TIMEOUT_MS = 5_000;
 
-function publicEntry(publicUrl, href, version) {
-  if (!publicUrl || !href || !ASSET_VERSION.test(version)) return null;
+function publicEntry(publicUrl, current) {
+  if (!publicUrl) return null;
   try {
     const base = new URL(publicUrl);
-    const current = new URL(href);
     if (base.protocol !== 'https:' || base.origin !== current.origin || base.username || base.password) return null;
     base.search = '';
     base.hash = '';
     if (!base.pathname.endsWith('/')) base.pathname += '/';
-    const pinnedPath = new URL(`v/${version}/`, base).pathname;
-    if ([base.pathname, base.pathname + 'index.html'].includes(current.pathname)) return { base, pinned: false };
-    if ([pinnedPath, pinnedPath + 'index.html'].includes(current.pathname)) return { base, pinned: true };
+    if ([base.pathname, base.pathname + 'index.html'].includes(current.pathname)) return base;
   } catch {
     /* 検証用や無効なURLからは公開版の確認を行わない。 */
   }
   return null;
 }
 
-// ホームを表示している間だけ確認する。プレイや保存中にページを切り替えない。
-export function mountReleaseNotice(host, runtime, {
+// 正式URLのホームが安全に切り替えられる間だけ実行する。保存再開用の版別URLは対象外。
+export function watchPublicRelease(runtime, canSwitch, {
   page = globalThis,
   read = (...args) => fetch(...args),
   now = Date.now,
 } = {}) {
-  if (runtime.env !== 'production') return;
-  const entry = publicEntry(runtime.publicUrl, page.location?.href, runtime.assetVersion);
-  if (!entry) return;
-
-  const { base, pinned } = entry;
-  const message = h('span', { role: 'status', hidden: true }, t('notice.releaseChanged'));
-  const link = h('a', { class: 'btn btn-small', href: new URL('latest.html', base).href }, t('notice.openPublicRelease'));
-  const notice = h('p', { class: 'notice notice-update', hidden: !pinned, 'data-testid': 'release-notice' }, [message, ' ', link]);
-  host.append(notice);
+  if (runtime.env !== 'production' || !page.location?.href || !ASSET_VERSION.test(runtime.assetVersion)) return;
+  const current = new URL(page.location.href);
+  const base = publicEntry(runtime.publicUrl, current);
+  if (!base) return;
   let pending;
   let disposed = false;
   let nextCheck = -Infinity;
 
+  const safe = () => !disposed && page.document.visibilityState !== 'hidden' && canSwitch();
   async function check() {
-    if (disposed || pending || page.document.visibilityState === 'hidden' || now() < nextCheck) return;
+    if (!safe() || pending || now() < nextCheck) return;
     const checkedAt = now();
     nextCheck = checkedAt + CHECK_INTERVAL_MS;
     const url = new URL('release.json', base);
@@ -55,9 +45,15 @@ export function mountReleaseNotice(host, runtime, {
       const response = await read(url.href, { cache: 'no-store', redirect: 'error', signal: controller.signal });
       if (!response.ok) return;
       const release = await response.json();
-      if (disposed || controller.signal.aborted || release?.env !== 'production' || !ASSET_VERSION.test(release.assetVersion)) return;
-      message.hidden = release.assetVersion === runtime.assetVersion;
-      notice.hidden = message.hidden && !pinned;
+      if (!safe() || controller.signal.aborted || release?.env !== 'production' || !ASSET_VERSION.test(release.assetVersion)) return;
+      const target = release.assetVersion;
+      if (target === runtime.assetVersion || target === current.searchParams.get('release-target')) return;
+      // CDNの切り替え途中に古いHTMLが返っても、同じ版への再読込を繰り返さない。
+      const fresh = new URL(current.href);
+      fresh.pathname = base.pathname;
+      fresh.searchParams.set('release-refresh', String(checkedAt));
+      fresh.searchParams.set('release-target', target);
+      page.location.replace(fresh.href);
     } catch {
       /* バージョン確認ができない時も、そのまま遊べる。 */
     } finally {

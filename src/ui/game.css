@@ -220,13 +220,6 @@ h3 {
   border-style: dashed !important;
   color: var(--warn);
 }
-.footer {
-  margin-top: 24px;
-  color: var(--muted);
-  font-size: 0.75rem;
-  text-align: center;
-}
-
 /* ---------- 名前 ---------- */
 .name-field {
   margin: 12px 0;

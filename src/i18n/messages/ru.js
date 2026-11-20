@@ -9,8 +9,6 @@ export default {
   "app.title": "Kamereoru",
   "app.tagline": "Подбери цвет тела под дома и сбеги от полиции",
   "app.version": "Версия {v} / Правила {rules}",
-  "notice.releaseChanged": "Опубликованная версия обновлена.",
-  "notice.openPublicRelease": "Открыть последнюю версию",
 
   "common.back": "Назад",
   "common.cancel": "Отмена",

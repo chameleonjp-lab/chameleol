@@ -9,8 +9,6 @@ export default {
   "app.title": "Kamereoru",
   "app.tagline": "Samakan warna tubuhmu dengan gedung dan kabur dari polisi",
   "app.version": "Versi {v} / Aturan {rules}",
-  "notice.releaseChanged": "Versi publik telah diperbarui.",
-  "notice.openPublicRelease": "Buka versi terbaru",
 
   "common.back": "Kembali",
   "common.cancel": "Batal",
