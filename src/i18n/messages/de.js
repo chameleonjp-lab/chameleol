@@ -1,6 +1,6 @@
 // Deutsch
 export default {
-  releaseRunRank: "Rang dieses Laufs: {rank} von {total} (insgesamt {total} Läufe)",
+  releaseRunRank: "Rang dieses Laufs: {rank} von {total}",
   releaseClearOrdinal: "Reihenfolge beim ersten Erfolg: Platz {ordinal}",
   releaseCorrectedResult: "Ergebnis dieses Laufs",
   releasePending: "Rang wird berechnet",
