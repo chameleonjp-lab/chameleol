@@ -130,9 +130,11 @@ jobs:
           SHARD: ${{ matrix.shard }}
         run: echo "shard_${SHARD}=success" >> "$GITHUB_OUTPUT"
 
-  # 既存の必須チェック名 test を維持する。失敗・取消・スキップ時も必ず不合格にする。
+  # 既存の必須チェック名 test を維持する。
+  # ワークフロー全体が新しいpushなどで中止された場合はtestも止め、誤った赤い失敗を出さない。
+  # 一方、ワークフローが継続している間の単体/ブラウザ試験の失敗・中止・未実行は下記で不合格にする。
   test:
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     needs: [checks, browser]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
