@@ -8,10 +8,11 @@ import { createStartRequest, sendStartRequest, validateStartResponse } from '../
 const V1 = 'kamereoru-rules-v1';
 const V3 = 'kamereoru-rules-v3';
 const V4 = 'kamereoru-rules-v4';
+const V5 = 'kamereoru-rules-v5';
 const fresh = () => openStore({ indexedDB: new IDBFactory(), name: uuid() });
 const response = (body, rulesVersion) => ({
   ok: true, requestId: body.requestId, playId: uuid(), seed: 123,
-  rulesVersion, generatorVersion: 'kamereoru-course-v1',
+  rulesVersion, generatorVersion: rulesVersion === V5 ? 'kamereoru-course-v2' : 'kamereoru-course-v1',
   gameVersion: body.gameVersion, name: body.name,
 });
 
@@ -19,12 +20,12 @@ test('new start persists supported versions before transmission', async () => {
   const store = await fresh();
   try {
     const record = await createStartRequest(store, { name: 'ねこ', launchId: uuid(), gameVersion: 't', destination: 'verification:test' });
-    assert.deepEqual(record.supportedRulesVersions, [V4, V3, V1]);
-    assert.deepEqual((await store.getOne('starts', record.requestId)).supportedRulesVersions, [V4, V3, V1]);
+    assert.deepEqual(record.supportedRulesVersions, [V5, V4, V3, V1]);
+    assert.deepEqual((await store.getOne('starts', record.requestId)).supportedRulesVersions, [V5, V4, V3, V1]);
   } finally { store.close(); }
 });
 
-for (const [client, server, wanted] of [['old', 'old', V1], ['old', 'new', V1], ['new', 'old', V1], ['new', 'new', V4]]) {
+for (const [client, server, wanted] of [['old', 'old', V1], ['old', 'new', V1], ['new', 'old', V1], ['new', 'new', V5]]) {
   test(`${client} client accepts ${server} server selection ${wanted}`, async () => {
     const store = await fresh();
     try {
@@ -36,7 +37,7 @@ for (const [client, server, wanted] of [['old', 'old', V1], ['old', 'new', V1], 
       const api = { destination: 'verification:test', async post(path, body) {
         assert.equal(path, 'start');
         const supported = body.supportedRulesVersions ?? [V1];
-        return response(body, server === 'new' && supported.includes(V4) ? V4 : V1);
+        return response(body, server === 'new' && supported.includes(V5) ? V5 : V1);
       } };
       const accepted = await sendStartRequest(api, store, await store.getOne('starts', record.requestId), { delays: [] });
       assert.equal(accepted.ok, true);
@@ -73,7 +74,11 @@ test('response validation rejects standalone, unknown, and unadvertised rules', 
   for (const version of [V4, 'unknown', 'kamereoru-rules-v2']) {
     assert.ok(validateStartResponse(response(expected, version), expected).includes('rulesVersion'));
   }
-  assert.deepEqual(validateStartResponse(response(expected, V4), { ...expected, supportedRulesVersions: [V4, V3, V1] }), []);
+  assert.deepEqual(validateStartResponse(response(expected, V4), { ...expected, supportedRulesVersions: [V5, V4, V3, V1] }), []);
+  const current = { ...expected, supportedRulesVersions: [V5, V4, V3, V1] };
+  const selected = response(expected, V5);
+  assert.deepEqual(validateStartResponse(selected, current), []);
+  assert.deepEqual(validateStartResponse({ ...selected, generatorVersion: 'kamereoru-course-v1' }, current), ['generatorVersion']);
   assert.ok(validateStartResponse(response(expected, V3), { ...expected, supportedRulesVersions: [V1] }).includes('rulesVersion'));
   assert.ok(validateStartResponse(response(expected, V3), { ...expected, supportedRulesVersions: undefined }).includes('rulesVersion'));
   for (const supportedRulesVersions of [null, [], [V3, V3], [V3, V1, V4, V1], [V3, 'unknown'], 'kamereoru-rules-v3']) {

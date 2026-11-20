@@ -3,8 +3,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   RULES_V1,
+  RULES_V4,
+  RULES_V5,
   COURSE_V1,
   makeCourse,
+  createGame,
+  classifyMatch,
   makeDecorations,
   validateCourse,
   pointFromHs,
@@ -90,5 +94,33 @@ test('40〜50棟は明→暗→明→暗の交互、直前の棟から色が必�
     for (let i = 1; i < 50; i += 1) {
       assert.ok(deltaEHsv(course.targets[i - 1], course.targets[i]) >= bandOf(i + 1, COURSE_V1).deltaE[0]);
     }
+  }
+});
+
+test('course v2 reduces the first bar move while keeping v4 courses reproducible', () => {
+  for (const seed of SEEDS) {
+    const legacy = createGame({ seed, rules: RULES_V4 }).course;
+    const adjusted = createGame({ seed, rules: RULES_V5 }).course;
+    assert.deepEqual(legacy.targets, makeCourse(seed).targets, `legacy seed ${seed}`);
+    assert.deepEqual(adjusted.targets.slice(0, 19), legacy.targets.slice(0, 19), `early seed ${seed}`);
+    assert.equal(adjusted.generatorVersion, RULES_V5.generatorVersion);
+    assert.deepEqual(validateCourse(adjusted), [], `adjusted seed ${seed}`);
+    const target = adjusted.targets[19];
+    const match = matchUnits({ ...target, v: RULES_V5.valMax }, target, RULES_V5);
+    assert.notEqual(classifyMatch(match, RULES_V5), 'danger', `seed ${seed} building 20`);
+    assert.ok(adjusted.meta.slice(39).every(({ level }, i, all) => i === 0 || level !== all[i - 1].level));
+  }
+  assert.deepEqual(RULES_V5.match, RULES_V4.match);
+  assert.deepEqual(RULES_V5.alert, RULES_V4.alert);
+  assert.deepEqual(RULES_V5.score, RULES_V4.score);
+  assert.deepEqual(RULES_V5.bonus, RULES_V4.bonus);
+});
+
+test('course v2 can generate all 50 walls using only fallback candidates', () => {
+  for (const seed of SEEDS.slice(0, 50)) {
+    const course = makeCourse(seed, RULES_V5.generatorVersion, { rejectAllRandom: true });
+    assert.equal(course.targets.length, RULES_V5.buildingCount);
+    assert.ok(course.meta.every(({ fallback }) => fallback));
+    assert.deepEqual(validateCourse(course), [], `seed ${seed}`);
   }
 });

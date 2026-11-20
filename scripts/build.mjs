@@ -12,7 +12,7 @@ import { join, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { GAME_VERSION } from '../src/config/runtime.js';
-import { RULES_V1, RULES_V2, RULES_V3, RULES_V4 } from '../src/rules/v1/index.js';
+import { RULES_V1, RULES_V2, RULES_V3, RULES_V4, RULES_V5 } from '../src/rules/v1/index.js';
 import { SNAPSHOT_FORMAT } from '../src/game/session.js';
 import { RESULT_FORMAT } from '../src/net/outbox.js';
 import { computeManifest, check as checkShared } from './sync-shared.mjs';
@@ -164,11 +164,11 @@ const release = {
   commit,
   env,
   rankingApi: env === 'production' && !standalone ? api : null,
-  rulesVersion: RULES_V4.rulesVersion,
-  supportedRulesVersions: [RULES_V1, RULES_V2, RULES_V3, RULES_V4].map((rules) => rules.rulesVersion),
-  preferredRankedRulesVersion: RULES_V4.rulesVersion,
-  defaultStandaloneRulesVersion: RULES_V4.rulesVersion,
-  generatorVersion: RULES_V1.generatorVersion,
+  rulesVersion: RULES_V5.rulesVersion,
+  supportedRulesVersions: [RULES_V1, RULES_V2, RULES_V3, RULES_V4, RULES_V5].map((rules) => rules.rulesVersion),
+  preferredRankedRulesVersion: RULES_V5.rulesVersion,
+  defaultStandaloneRulesVersion: RULES_V5.rulesVersion,
+  generatorVersion: RULES_V5.generatorVersion,
   historyFormat: RULES_V1.historyFormat,
   snapshotFormat: SNAPSHOT_FORMAT,
   resultFormat: RESULT_FORMAT,

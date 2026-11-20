@@ -1,9 +1,9 @@
 // 終了結果の再計算と判定。開始記録に固定した出題番号と当時の判定規則で、初期状態から終了まで計算し直す。
 // 端末が送った名義・棟数・版・状態は採用せず、開始記録と再計算した値を使う。
 // 再計算できても、人が操作したことの証明にはならない（自動操作を完全には排除できない）。
-import { RULES_V1, RULES_V3, RULES_V4, createGame, replayHistory, summarize } from './rules/v1/index.js';
+import { RULES_V1, RULES_V3, RULES_V4, RULES_V5, createGame, replayHistory, summarize } from './rules/v1/index.js';
 
-export const SUPPORTED_RULES: Record<string, typeof RULES_V1> = { [RULES_V1.rulesVersion]: RULES_V1, [RULES_V3.rulesVersion]: RULES_V3, [RULES_V4.rulesVersion]: RULES_V4 };
+export const SUPPORTED_RULES: Record<string, typeof RULES_V1> = { [RULES_V1.rulesVersion]: RULES_V1, [RULES_V3.rulesVersion]: RULES_V3, [RULES_V4.rulesVersion]: RULES_V4, [RULES_V5.rulesVersion]: RULES_V5 };
 
 // 既知の違い（版ごとに、原因が分かっていて再計算で解消できるもの）。v1 には登録なし。
 export const KNOWN_DISCREPANCIES: Record<string, Array<{ id: string; matches: (claimed: any, computed: any) => boolean }>> = {

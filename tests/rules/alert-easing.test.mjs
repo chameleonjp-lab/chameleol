@@ -9,7 +9,7 @@ function sample(building,units,duration=1000,alert=10000,rules=RULES_V2){
   let s=initialState(game);s.t=evalStart(building);s.evalBuilding=building;s.matchUnits=units;s.acc={matchSum:0,evalMs:0};s.alert=alert*rules.alert.unitsPerPoint/1000;s.brightnessUnlocked=building>=20;
   return advance(s,{type:'tick',t:s.t+duration},game).state;
 }
-test('new sessions use a separate rules version for the easier brightness stages',()=>assert.equal(activeRules().rulesVersion,'kamereoru-rules-v4'));
+test('new sessions use a separate rules version for the easier brightness stages',()=>assert.equal(activeRules().rulesVersion,'kamereoru-rules-v5'));
 for(const [building,ratio] of [[19,1],[20,.5],[25,.5],[26,.8],[30,.8],[31,1]]){
   for(const [units,rate] of [[70*U,12],[0,45]])test(`building ${building} increases ${ratio} at match ${units}`,()=>assert.ok(Math.abs(sample(building,units).alert/activeRules().alert.unitsPerPoint*1000-(10000+1000*rate*ratio))<1e-7));
   test(`building ${building} recovery is unchanged`,()=>assert.equal(sample(building,100*U,1000,80000).alert/activeRules().alert.unitsPerPoint,45));

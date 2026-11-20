@@ -121,8 +121,14 @@ const BONUS_V1 = deepFreeze({
 export const RULES_V3 = deepFreeze({ ...RULES_V1, rulesVersion: 'kamereoru-rules-v3', bonus: BONUS_V1 });
 export const RULES_V4 = deepFreeze({ ...RULES_V2, rulesVersion: 'kamereoru-rules-v4', bonus: BONUS_V1 });
 
-export function rulesForVersion(version = RULES_V4.rulesVersion) {
-  return [RULES_V1, RULES_V2, RULES_V3, RULES_V4].find((rules) => rules.rulesVersion === version) ?? null;
+export const RULES_V5 = deepFreeze({
+  ...RULES_V4,
+  rulesVersion: 'kamereoru-rules-v5',
+  generatorVersion: 'kamereoru-course-v2',
+});
+
+export function rulesForVersion(version = RULES_V5.rulesVersion) {
+  return [RULES_V1, RULES_V2, RULES_V3, RULES_V4, RULES_V5].find((rules) => rules.rulesVersion === version) ?? null;
 }
 
 // 出題の難易度帯（試作値）。帯ごとに、生成前に許容する色・操作移動量・明暗の条件を置く。
@@ -191,5 +197,30 @@ export const COURSE_V1 = deepFreeze({
       barMove: [3500, 7500],
       alternate: true,
     },
+  ],
+});
+
+const [basic, brightnessIntro, brightness, dusk, alternating] = COURSE_V1.bands;
+
+// バーの解放に合わせて壁の明るさの変化を段階的に広げる。
+export const COURSE_V2 = deepFreeze({
+  ...COURSE_V1,
+  bands: [
+    basic,
+    { ...brightnessIntro, val: [7200, 9000], barMove: [800, 2200] },
+    {
+      id: 'B2b',
+      from: 23,
+      to: 25,
+      sat: [3500, 10000],
+      val: [5800, 9400],
+      deltaE: [12, 75],
+      paletteMove: [0.15, 1.10],
+      barMove: [1000, 3200],
+      alternate: false,
+    },
+    { ...brightness, from: 26, val: [4500, 9800], paletteMove: [0.2, 1.3], barMove: [1000, 4200] },
+    { ...dusk, val: [3500, 10000], paletteMove: [0.2, 1.4], barMove: [1500, 5000] },
+    { ...alternating, val: [3000, 10000], bright: [8000, 10000], dark: [3000, 5000], paletteMove: [0, 1.2], barMove: [3000, 6500] },
   ],
 });

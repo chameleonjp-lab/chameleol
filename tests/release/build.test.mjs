@@ -82,10 +82,11 @@ test('正式URLなしで作った検証版に共有カードを入れない', ()
 test('release metadata distinguishes preferred ranked and standalone rules while retaining all readable versions', () => {
   for (const options of [{ api: 'https://example.invalid/kamereoru' }, { standalone: '1' }]) {
     const release = build(options);
-    assert.equal(release.rulesVersion, 'kamereoru-rules-v4');
-    assert.deepEqual(release.supportedRulesVersions, ['kamereoru-rules-v1', 'kamereoru-rules-v2', 'kamereoru-rules-v3', 'kamereoru-rules-v4']);
-    assert.equal(release.preferredRankedRulesVersion, 'kamereoru-rules-v4');
-    assert.equal(release.defaultStandaloneRulesVersion, 'kamereoru-rules-v4');
+    assert.equal(release.rulesVersion, 'kamereoru-rules-v5');
+    assert.deepEqual(release.supportedRulesVersions, ['kamereoru-rules-v1', 'kamereoru-rules-v2', 'kamereoru-rules-v3', 'kamereoru-rules-v4', 'kamereoru-rules-v5']);
+    assert.equal(release.preferredRankedRulesVersion, 'kamereoru-rules-v5');
+    assert.equal(release.defaultStandaloneRulesVersion, 'kamereoru-rules-v5');
+    assert.equal(release.generatorVersion, 'kamereoru-course-v2');
     const versioned = JSON.parse(readFileSync(join(root, 'dist/v', release.assetVersion, 'release.json'), 'utf8'));
     assert.deepEqual(versioned, release);
   }

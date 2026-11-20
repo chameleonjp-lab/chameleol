@@ -7,13 +7,13 @@
 // 開始通知（プレイ回数）：
 //   - スタート操作1回につき launchId を1つ。実際に本編を始めた時だけ、端末へ保存してから送る。
 //   - 名前ありの開始予約だけでは回数に入れない。再開・終了・再送では数えない。
-import { RULES_V1, RULES_V3, RULES_V4 } from '../rules/v1/index.js';
+import { RULES_V1, RULES_V3, RULES_V4, RULES_V5 } from '../rules/v1/index.js';
 import { randomSecret } from '../storage/store.js';
 import { canSendRecord } from './destination.js';
 import { ApiError, UUID_RE, sleep, uuid, wasUnconfirmedSuccess } from './api.js';
 
 export const START_RETRY_DELAYS = Object.freeze([700, 1600]); // 試作値
-const RANKED_RULES = [RULES_V4, RULES_V3, RULES_V1];
+const RANKED_RULES = [RULES_V5, RULES_V4, RULES_V3, RULES_V1];
 
 /** 開始受付の応答を検査する。HTTPの成功だけで受付成功としない。 */
 export function validateStartResponse(data, { requestId, name, gameVersion, rules = RULES_V1, supportedRulesVersions = [rules.rulesVersion] }) {

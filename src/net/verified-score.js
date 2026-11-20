@@ -1,6 +1,6 @@
 // Private status responses may correct auxiliary scores, never the stored result
 // or the ranking fields. Keep every corrected field together as one value.
-const RANKED_BONUS_VERSIONS = new Set(['kamereoru-rules-v3', 'kamereoru-rules-v4']);
+const RANKED_BONUS_VERSIONS = new Set(['kamereoru-rules-v3', 'kamereoru-rules-v4', 'kamereoru-rules-v5']);
 const BONUS_FORMAT = 'kamereoru-bonus-v1';
 const TOTAL_KEYS = ['precision5', 'precision10', 'steady', 'milestone', 'quick', 'allSuccess'];
 const SCORE_LIMITS = { pass: 1000, accuracy: 4000, combo: 880, clear: 200, bonus: 1200, total: 7280 };
