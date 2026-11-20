@@ -427,7 +427,7 @@ export default {
   "card.save": "Salva immagine",
   "card.imageShare": "Condividi immagine",
   "card.retry": "Ricrea l’immagine",
-  "card.saveHint": "Tieni premuta l’immagine per salvarla",
+  "card.saveHint": "Tieni premuta l’immagine, poi scegli l’opzione per salvarla in Foto.",
   "card.shareClosed": "Condivisione chiusa",
   "card.bonusMissing": "Nessun bonus registrato",
   "card.shareFailed": "Impossibile condividere l’immagine. Prova a salvarla o a condividere il testo.",

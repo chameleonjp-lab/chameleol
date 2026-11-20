@@ -202,25 +202,22 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
     const closeBtn = el('button', 'btn btn-small result-card-viewer-close', tx('common.close'), header);
     closeBtn.type = 'button';
     closeBtn.setAttribute('data-testid', 'result-card-viewer-close');
+    const hint = el('p', 'result-card-viewer-hint', tx('card.saveHint'), root);
+    hint.id = 'result-card-viewer-hint';
+    root.setAttribute('aria-describedby', hint.id);
+    // Use a real image so Safari's native long-press Save to Photos action remains available.
     const img = el('img', 'result-card-viewer-image', null, root);
     img.src = url;
     img.alt = describeResultCard(snapshot.model, locale()).label;
     img.width = CARD_W;
     img.height = CARD_H;
     img.setAttribute('data-testid', 'result-card-viewer-image');
-    el('p', 'result-card-viewer-hint', tx('card.saveHint'), root);
-    const link = el('a', 'btn btn-primary result-card-viewer-download', tx('card.save'), root);
-    link.href = url;
-    link.setAttribute('download', 'chameleol-result.png');
-    link.setAttribute('data-testid', 'result-card-viewer-download');
     const onKey = (event) => {
       if (event.key === 'Escape') { event.preventDefault(); closeViewer(); return; }
       if (event.key !== 'Tab') return;
-      const order = [closeBtn, link];
-      const at = order.indexOf(doc.activeElement);
-      const next = event.shiftKey ? (at <= 0 ? order.length - 1 : at - 1) : (at < 0 || at === order.length - 1 ? 0 : at + 1);
+      // Close is the only keyboard control; keep focus within the open image.
       event.preventDefault();
-      order[next].focus();
+      closeBtn.focus();
     };
     closeBtn.addEventListener('click', () => closeViewer());
     doc.addEventListener('keydown', onKey);

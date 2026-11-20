@@ -427,7 +427,7 @@ export default {
   "card.save": "Lưu ảnh",
   "card.imageShare": "Chia sẻ ảnh",
   "card.retry": "Tạo lại ảnh",
-  "card.saveHint": "Nhấn giữ ảnh để lưu",
+  "card.saveHint": "Nhấn giữ ảnh, sau đó chọn mục lưu vào Ảnh trong menu.",
   "card.shareClosed": "Đã đóng chia sẻ",
   "card.bonusMissing": "Không có bản ghi thưởng",
   "card.shareFailed": "Không thể chia sẻ ảnh. Hãy thử lưu ảnh hoặc chia sẻ văn bản.",

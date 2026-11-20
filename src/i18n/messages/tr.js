@@ -427,7 +427,7 @@ export default {
   "card.save": "Görseli kaydet",
   "card.imageShare": "Görseli paylaş",
   "card.retry": "Görseli yeniden oluştur",
-  "card.saveHint": "Kaydetmek için görsele basılı tutun",
+  "card.saveHint": "Görsele basılı tutun, ardından menüden Fotoğraflar'a kaydetme seçeneğini seçin.",
   "card.shareClosed": "Paylaşım kapatıldı",
   "card.bonusMissing": "Bonus kaydı yok",
   "card.shareFailed": "Görsel paylaşılamadı. Kaydetmeyi veya metni paylaşmayı deneyin.",

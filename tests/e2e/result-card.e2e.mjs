@@ -178,9 +178,9 @@ test('save screen: an img from the prepared PNG, the screen card frees its pixel
     assert.deepEqual(open.canvas, [0, 0]);
     assert.equal(open.dialog, 'true');
     assert.equal(open.active, 'result-card-viewer-close');
-    const download = page.getByTestId('result-card-viewer-download');
-    assert.equal(await download.getAttribute('href'), open.src);
-    assert.equal(await download.getAttribute('download'), 'chameleol-result.png');
+    const hint = await page.locator('.result-card-viewer-hint').textContent();
+    assert.ok(hint.includes('長押し') && hint.includes('写真に保存'), hint);
+    assert.equal(await page.getByTestId('result-card-viewer-download').count(), 0, 'no file-download button');
     const viewerBytes = await heldBytes(page);
     assert.ok(viewerBytes.total <= BUDGET, `viewer open ${viewerBytes.total}`);
     assert.ok(viewerBytes.total < closedBytes.total + 1_000_000);

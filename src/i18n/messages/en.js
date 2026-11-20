@@ -427,7 +427,7 @@ export default {
   "card.save": "Save image",
   "card.imageShare": "Share image",
   "card.retry": "Try creating the image again",
-  "card.saveHint": "Touch and hold the image to save it",
+  "card.saveHint": "Touch and hold the image, then choose the option to save it to Photos.",
   "card.shareClosed": "Sharing closed",
   "card.bonusMissing": "No bonus record",
   "card.shareFailed": "Could not share the image. Try saving it or sharing text.",

@@ -427,7 +427,7 @@ export default {
   "card.save": "Salvar imagem",
   "card.imageShare": "Compartilhar imagem",
   "card.retry": "Criar a imagem novamente",
-  "card.saveHint": "Toque e segure a imagem para salvar",
+  "card.saveHint": "Toque e segure a imagem e escolha a opção para salvá-la em Fotos.",
   "card.shareClosed": "Compartilhamento encerrado",
   "card.bonusMissing": "Sem registro de bônus",
   "card.shareFailed": "Não foi possível compartilhar a imagem. Tente salvá-la ou compartilhar o texto.",

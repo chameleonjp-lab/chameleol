@@ -198,7 +198,9 @@ test('the save screen asks for the URL only on tap, shows an img, frees the canv
   assert.equal(viewer.getAttribute('role'), 'dialog');
   assert.equal(viewer.getAttribute('aria-modal'), 'true');
   assert.equal(viewer.querySelector('img').getAttribute('src'), 'blob:fake-url');
-  assert.equal(viewer.querySelector('a').getAttribute('download'), 'chameleol-result.png');
+  assert.equal(viewer.querySelector('.result-card-viewer-hint').textContent, t('card.saveHint'));
+  assert.equal(viewer.getAttribute('aria-describedby'), 'result-card-viewer-hint');
+  assert.equal(viewer.querySelector('[download]'), null, 'no download link in long-press image viewer');
   assert.equal(canvas.width * canvas.height, 0, 'the screen card releases its pixels while the viewer covers it');
   assert.equal(ports.describeResources().viewerImageBytes, 1200 * 630 * 4);
   click(window, viewer.querySelector('[data-testid="result-card-viewer-close"]'));

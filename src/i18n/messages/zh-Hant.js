@@ -427,7 +427,7 @@ export default {
   "card.save": "儲存圖片",
   "card.imageShare": "分享圖片",
   "card.retry": "重新製作圖片",
-  "card.saveHint": "長按圖片即可儲存",
+  "card.saveHint": "長按圖片，然後在選單中選擇儲存至「照片」。",
   "card.shareClosed": "已結束分享",
   "card.bonusMissing": "無獎勵紀錄",
   "card.shareFailed": "無法分享圖片。請嘗試儲存圖片或分享文字。",
