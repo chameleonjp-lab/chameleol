@@ -1,6 +1,6 @@
 // Türkçe
 export default {
-  releaseRunRank: "Bu oyundaki sıra: {rank}/{total} (toplam {total} oyun)",
+  releaseRunRank: "Bu oyundaki sıra: {rank}/{total}",
   releaseClearOrdinal: "İlk bitiriş sırası: {ordinal}",
   releaseCorrectedResult: "Bu oyunun sonucu",
   releasePending: "Sıralama hesaplanıyor",
