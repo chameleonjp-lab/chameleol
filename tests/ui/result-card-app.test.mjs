@@ -38,7 +38,7 @@ test('the X button opens directly with a normal result before and after the imag
  assert.deepEqual([...form.querySelectorAll('input')].map(input=>input.name),['text','url']);
  assert.equal(form.querySelector('[name="url"]').value,'https://chameleonjp-lab.github.io/chameleol/');
  const text=form.querySelector('[name="text"]').value;
- assert.match(text,/12棟クリア\n1,840点\n今回のプレイ順位　3位／128人中（延べ128プレイ）\n#カメレオる$/);
+ assert.match(text,/12棟クリア\n1,840点\n今回のプレイ順位　3位／128人中\n#カメレオる$/);
  const submit=()=>form.dispatchEvent(new document.defaultView.Event('submit',{cancelable:true}));
  assert.equal(submit(),true);
  await settle();
@@ -132,7 +132,7 @@ test('copying a result uses the confirmed text and canonical URL exactly once', 
   setLanguage('ja');app.lastResult.netState='official';app.lastResult.metrics={runRank:3,totalPlays:4,clearOrdinal:1};
   app.showResult();await settle();
   const form=document.querySelector('[data-testid="result-share"]').closest('form');
-  assert.match(form.querySelector('[name="text"]').value,/50棟クリア\n7,280点\n初クリア時の順番：1人目\n今回のプレイ順位　3位／4人中（延べ4プレイ）\n#カメレオる$/);
+  assert.match(form.querySelector('[name="text"]').value,/50棟クリア\n7,280点\n初クリア時の順番：1人目\n今回のプレイ順位　3位／4人中\n#カメレオる$/);
   assert.equal(form.querySelector('[name="url"]').value,'https://chameleonjp-lab.github.io/chameleol/');
   await app.copyResultText();
   assert.match(copied,/3位／4人中/);assert.match(copied,/1人目/);
