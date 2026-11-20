@@ -1508,6 +1508,103 @@ body {
   }
 }
 
+
+/* ---------- PC：広い画面は舞台と操作部を左右に配置 ---------- */
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .screen.game {
+    grid-template-columns: minmax(0, 1fr) clamp(320px, 34vw, 460px);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .screen.game .stage-wrap {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .screen.game .controls {
+    grid-column: 2;
+    grid-row: 1;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    width: 100%;
+    border-top: 0;
+    border-left: 1px solid var(--line);
+    padding: 18px;
+  }
+  .screen.game .palette {
+    width: min(100%, 310px);
+    min-width: 0;
+  }
+  .controls.desktop-controls .palette {
+    cursor: crosshair;
+  }
+}
+
+/* PC設定の実演バー：ゲームと同じ方向（上=明るい） */
+.settings-pc .pc-speed-row {
+  flex-wrap: wrap;
+}
+.settings-pc .pc-speed-row input {
+  min-width: 120px;
+}
+.settings-pc .pc-speed-output {
+  min-width: 3.5em;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.pc-preview-area {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.pc-preview-track {
+  position: relative;
+  width: 60px;
+  height: 210px;
+  flex: 0 0 60px;
+  border: 2px solid #f5f6ff;
+  border-radius: 12px;
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+}
+.pc-preview-track:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+.pc-preview-gradient {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: linear-gradient(to bottom, #8f6eff 0%, #47377f 50%, #000 100%);
+  pointer-events: none;
+}
+.pc-preview-marker {
+  position: absolute;
+  left: -7px;
+  width: calc(100% + 14px);
+  height: 14px;
+  border-radius: 8px;
+  border: 3px solid white;
+  background: #6a62a0;
+  box-shadow: 0 0 0 2px black;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.pc-preview-description {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.pc-preview-value {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .toast,
   .dom-police {
