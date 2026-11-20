@@ -98,6 +98,22 @@ function rateFor(units, building, rules) {
   return rate * (band?.percent ?? 100) / 100;
 }
 
+function updateMatch(s, game) {
+  const { rules } = game;
+  const wall = game.course.targets[s.evalBuilding - 1];
+  s.matchUnits = game.matchFn(s.color, wall);
+
+  const allowance = rules.alert.brightnessAllowance;
+  if (!allowance || s.evalBuilding < allowance.from || s.evalBuilding > allowance.to) return;
+
+  // 警戒用の色合わせだけを追加で計算し、状態表示と採点は実際の体色で求める。
+  const baseRate = rateFor(s.matchUnits, s.evalBuilding, rules);
+  const brightnessDifference = Math.abs(s.color.v - wall.v);
+  const eased = baseRate > 0 && brightnessDifference > 0 && brightnessDifference <= allowance.maxDifference
+    && game.matchFn({ ...s.color, v: wall.v }, wall) >= rules.match.successMinUnits;
+  s.acc.alertRate = eased ? baseRate * allowance.increasePercent / 100 : baseRate;
+}
+
 function comboBonusFor(combo, rules) {
   for (const [min, points] of rules.score.comboTiers) {
     if (combo >= min) return points;
@@ -193,7 +209,7 @@ function processPoint(s, game, out) {
     s.evalBuilding = index;
     s.acc = { matchSum: 0, evalMs: 0 };
     if (rules.bonus) s.acc.bonus = createBonusAccumulator();
-    s.matchUnits = game.matchFn(s.color, game.course.targets[index - 1]);
+    updateMatch(s, game);
     out.push({ type: 'evalStart', t: s.t, building: index });
   }
 }
@@ -205,7 +221,7 @@ function advanceTo(s, T, game, out) {
   while (s.status === 'playing' && s.t < T) {
     let next = Math.min(T, nextBoundaryAfter(s.t, rules));
     if (s.evalBuilding > 0) {
-      const rate = rateFor(s.matchUnits, s.evalBuilding, rules);
+      const rate = s.acc.alertRate ?? rateFor(s.matchUnits, s.evalBuilding, rules);
       if (rate > 0) next = Math.min(next, s.t + Math.ceil((maxUnits - s.alert) / rate));
       const dt = next - s.t;
       if (rules.bonus) accumulateBonus(s.acc.bonus, { matchUnits: s.matchUnits, fromEvalMs: s.acc.evalMs, dtMs: dt }, rules);
@@ -249,7 +265,7 @@ export function advance(state, event, game) {
       }
       s.color = c;
       s.inputs += 1;
-      if (s.evalBuilding > 0) s.matchUnits = game.matchFn(s.color, game.course.targets[s.evalBuilding - 1]);
+      if (s.evalBuilding > 0) updateMatch(s, game);
       break;
     }
     case 'quit':

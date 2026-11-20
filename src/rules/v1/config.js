@@ -121,10 +121,25 @@ const BONUS_V1 = deepFreeze({
 export const RULES_V3 = deepFreeze({ ...RULES_V1, rulesVersion: 'kamereoru-rules-v3', bonus: BONUS_V1 });
 export const RULES_V4 = deepFreeze({ ...RULES_V2, rulesVersion: 'kamereoru-rules-v4', bonus: BONUS_V1 });
 
+const previousAlert = RULES_V4.alert;
+
 export const RULES_V5 = deepFreeze({
   ...RULES_V4,
   rulesVersion: 'kamereoru-rules-v5',
   generatorVersion: 'kamereoru-course-v2',
+  alert: {
+    ...previousAlert,
+    // 20〜25棟の増加率にさらに0.5倍をかけても、1msごとの積算を整数で保つ。
+    unitsPerPoint: previousAlert.unitsPerPoint * 2,
+    maxUnits: previousAlert.maxUnits * 2,
+    ratePerMs: {
+      success: previousAlert.ratePerMs.success * 2,
+      slight: previousAlert.ratePerMs.slight * 2,
+      danger: previousAlert.ratePerMs.danger * 2,
+    },
+    stages: previousAlert.stages.map(({ enterAt, exitBelow }) => ({ enterAt: enterAt * 2, exitBelow: exitBelow * 2 })),
+    brightnessAllowance: { from: 20, to: 25, maxDifference: 2000, increasePercent: 50 },
+  },
 });
 
 export function rulesForVersion(version = RULES_V5.rulesVersion) {

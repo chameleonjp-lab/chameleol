@@ -279,6 +279,20 @@ test('v5 ranked replay verifies the adjusted course and rejects a mismatched gen
   assert.deepEqual(verified.verdict.verifiedScore.score, summary.score);
   const wrongCourse = { ...body, generatorVersion: 'kamereoru-course-v1' };
   assert.equal(verifyResult({ ...input, body: wrongCourse }).verdict.reason, 'start_mismatch');
+
+  const rules = rulesForVersion(V5);
+  const game = createGame({ seed: start.seed, rules });
+  const rec = createRecorder(rules);
+  for (const [i, target] of game.course.targets.slice(0, 20).entries()) {
+    rec.push({ type: 'color', t: i * rules.buildingMs, ...target, v: i === 19 ? rules.valMax : target.v });
+  }
+  rec.push({ type: 'quit', t: 20 * rules.buildingMs });
+  const easedRun = replayHistory(game, rec.entries);
+  assert.equal(easedRun.state.alert / rules.alert.unitsPerPoint, 9);
+  const replayed = verifyResult({ ...input, body: { ...body, history: rec.entries, claimed: easedRun.summary } });
+  assert.equal(replayed.status, 'official');
+  assert.equal(replayed.values.rankAverage, easedRun.summary.rankAverage);
+  assert.deepEqual(replayed.verdict.verifiedScore.score, easedRun.summary.score);
 });
 
 test('v4 retries stay on the old course, and v4 and v5 results share one ranking', { skip: SKIP }, async () => {

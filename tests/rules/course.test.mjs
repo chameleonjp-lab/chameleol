@@ -111,7 +111,6 @@ test('course v2 reduces the first bar move while keeping v4 courses reproducible
     assert.ok(adjusted.meta.slice(39).every(({ level }, i, all) => i === 0 || level !== all[i - 1].level));
   }
   assert.deepEqual(RULES_V5.match, RULES_V4.match);
-  assert.deepEqual(RULES_V5.alert, RULES_V4.alert);
   assert.deepEqual(RULES_V5.score, RULES_V4.score);
   assert.deepEqual(RULES_V5.bonus, RULES_V4.bonus);
 });
