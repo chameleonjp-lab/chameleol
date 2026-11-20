@@ -5,11 +5,12 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { parseHTML } from 'linkedom';
 
 const root = mkdtempSync(join(tmpdir(), 'kamereoru-build-'));
 const source = new URL('../../', import.meta.url);
-const files = ['scripts', 'src', 'vendor', 'assets', 'index.html', 'ranking-manifest.json', 'package.json', 'supabase'];
+const files = ['scripts', 'src', 'vendor', 'assets', 'index.html', 'latest.html', 'ranking-manifest.json', 'package.json', 'supabase'];
 for (const file of files) cpSync(new URL(file, source), join(root, file), { recursive: true });
 execFileSync('git', ['init', '-q'], { cwd: root });
 execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '--allow-empty', '-qm', 'test'], { cwd: root });
@@ -77,6 +78,25 @@ test('正式URLなしで作った検証版に共有カードを入れない', ()
   build({ env: 'verification', publicUrl: '' });
   const html = readFileSync(join(root, 'dist/index.html'), 'utf8');
   assert.doesNotMatch(html, /twitter:card|og:image|rel="canonical"/);
+});
+
+test('公開版を開く入口はアクセスごとに新しい正式URLへ進む', () => {
+  const release = build({ standalone: '1' });
+  const html = readFileSync(join(root, 'dist/latest.html'), 'utf8');
+  assert.equal(release.files['latest.html'], createHash('sha256').update(html).digest('hex'));
+  const { document } = parseHTML(html);
+  assert.equal(document.querySelector('link[rel="canonical"]').getAttribute('href'), './');
+  const redirects = [];
+  for (const now of [10000, 10001]) {
+    runInNewContext(document.querySelector('script').textContent, {
+      URL, Date: { now: () => now },
+      location: { href: 'https://example.invalid/chameleol/latest.html?old=1', replace: href => redirects.push(href) },
+    });
+  }
+  assert.deepEqual(redirects, [
+    'https://example.invalid/chameleol/?release-refresh=10000',
+    'https://example.invalid/chameleol/?release-refresh=10001',
+  ]);
 });
 
 test('release metadata distinguishes preferred ranked and standalone rules while retaining all readable versions', () => {

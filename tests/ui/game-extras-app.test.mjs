@@ -193,3 +193,20 @@ test('the brightness range follows the current wall on buildings 23–30 only', 
     }
   }
 });
+
+test('the brightness range is available when an older saved game resumes at building 23', async () => {
+  setup();
+  const session = new GameSession({ playId: 'old-brightness-range', seed: 1, rulesVersion: 'kamereoru-rules-v4' });
+  for (const [i, wall] of session.game.course.targets.slice(0, 23).entries()) {
+    session.apply({ type: 'color', t: i * session.rules.buildingMs, ...wall });
+  }
+  const restored = GameSession.fromSnapshot(session.snapshot()).session;
+  assert.equal(restored.meta.rulesVersion, 'kamereoru-rules-v4');
+  await app.showGame(restored, { fresh: false });
+  const range = document.querySelector('.bar-guide-range');
+  assert.equal(range.hidden, true);
+  app.coverEl.hidden = true;
+  restored.startClock(performance.now());
+  app.renderGuidance();
+  assert.equal(range.hidden, false);
+});

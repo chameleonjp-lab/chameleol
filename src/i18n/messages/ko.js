@@ -9,6 +9,8 @@ export default {
   "app.title": "Kamereoru",
   "app.tagline": "몸 색을 건물에 맞추고 경찰에게서 도망치자",
   "app.version": "버전 {v} / 규칙 {rules}",
+  "notice.releaseChanged": "공개 버전이 업데이트되었습니다.",
+  "notice.openPublicRelease": "최신 버전 열기",
 
   "common.back": "뒤로",
   "common.cancel": "취소",

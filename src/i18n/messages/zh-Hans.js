@@ -9,6 +9,8 @@ export default {
   "app.title": "Kamereoru",
   "app.tagline": "把身体变成建筑的颜色，躲开警察",
   "app.version": "版本 {v} / 规则 {rules}",
+  "notice.releaseChanged": "公开版本已更新。",
+  "notice.openPublicRelease": "打开最新版本",
 
   "common.back": "返回",
   "common.cancel": "取消",

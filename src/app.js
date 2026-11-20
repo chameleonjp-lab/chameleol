@@ -9,12 +9,14 @@ import {
   formatRankAverage,
   classifyMatch,
   isEvalTime,
+  rulesForVersion,
 } from './rules/v1/index.js';
 import { areaOf } from './rules/v1/course.js';
 import { GameSession } from './game/session.js';
 import { alertWordKey, createAlertStageTracker, createInstantSuccessTracker, matchWordKey } from './game/feedback.js';
 import { createControls } from './ui/controls.js';
 import { h, clear, isolatedText } from './ui/dom.js';
+import { mountReleaseNotice } from './ui/release-notice.js';
 import { audioSettings, backButton, button, dialog, languageSelect, nameField, section, toast } from './ui/screens.js';
 import { createRankingView, rankingLink } from './ui/ranking.js';
 import { createRecordsView } from './ui/record-status.js';
@@ -311,6 +313,8 @@ export class App {
 
   // ---------- 画面の切り替え ----------
   mount(el, rerender = null) {
+    this.stopReleaseNotice?.();
+    this.stopReleaseNotice = null;
     if (!el.classList.contains('game')) this.cancelStartAttempt();
     this.disposeStage();
     this.screenGeneration += 1;
@@ -385,9 +389,13 @@ export class App {
         ]),
       ]),
       this.runtime.isVerification ? this.verificationMenu() : null,
-      h('footer', { class: 'footer' }, [t('app.version', { v: this.runtime.gameVersion, rules: RULES_V1.rulesVersion })]),
+      h('footer', { class: 'footer' }, [t('app.version', {
+        v: this.runtime.assetVersion === 'dev' ? this.runtime.gameVersion : this.runtime.assetVersion,
+        rules: rulesForVersion().rulesVersion,
+      })]),
     ]);
     this.mount(el, () => this.showHome());
+    this.stopReleaseNotice = mountReleaseNotice(notices, this.runtime);
     this.mountShowcase(homeArt);
     if (!showOnline) return;
     this.store

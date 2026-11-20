@@ -9,6 +9,8 @@ export default {
   "app.title": "Kamereoru",
   "app.tagline": "Rengini binalara uydur ve polisten kaç",
   "app.version": "Sürüm {v} / Kurallar {rules}",
+  "notice.releaseChanged": "Yayındaki sürüm güncellendi.",
+  "notice.openPublicRelease": "En son sürümü aç",
 
   "common.back": "Geri",
   "common.cancel": "İptal",
