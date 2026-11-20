@@ -1,6 +1,6 @@
 // Tiếng Việt
 export default {
-  releaseRunRank: "Hạng lượt này: {rank} trên {total} (tổng cộng {total} lượt chơi)",
+  releaseRunRank: "Hạng lượt này: {rank} trên {total}",
   releaseClearOrdinal: "Thứ tự lần đầu về đích: {ordinal}",
   releaseCorrectedResult: "Kết quả lượt này",
   releasePending: "Đang tính thứ hạng",
