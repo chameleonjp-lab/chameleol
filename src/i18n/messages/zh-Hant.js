@@ -1,6 +1,6 @@
 // 繁體中文
 export default {
-  releaseRunRank: "本局排名：第{rank}名，共{total}局（累計{total}局）",
+  releaseRunRank: "本局排名：第{rank}名，共{total}局",
   releaseClearOrdinal: "首次通關順序：第{ordinal}位",
   releaseCorrectedResult: "本局結果",
   releasePending: "正在統計",

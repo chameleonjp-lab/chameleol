@@ -1,6 +1,6 @@
 // English
 export default {
-  releaseRunRank: "This run ranked {rank} of {total} ({total} plays in all)",
+  releaseRunRank: "This run ranked {rank} of {total}",
   releaseClearOrdinal: "First clear order: {ordinal}",
   releaseCorrectedResult: "This run’s result",
   releasePending: "Calculating rank",

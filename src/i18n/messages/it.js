@@ -1,6 +1,6 @@
 // Italiano
 export default {
-  releaseRunRank: "Posizione in questa partita: {rank} su {total} ({total} partite in tutto)",
+  releaseRunRank: "Posizione in questa partita: {rank} su {total}",
   releaseClearOrdinal: "Ordine della prima vittoria: {ordinal}",
   releaseCorrectedResult: "Risultato di questa partita",
   releasePending: "Calcolo della classifica",
