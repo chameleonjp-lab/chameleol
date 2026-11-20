@@ -29,7 +29,7 @@ test('evidence: result screens at 3 sizes, save screen, the 5 languages, panels'
       await page.screenshot({ path: out(`result-${w}x${h}-ja-first.png`) });
       if (w === 402 && h === 700) await page.screenshot({ path: out(`result-${w}x${h}-ja-full.png`), fullPage: true });
       if (w === 402 && h === 874) {
-        await page.locator('.result-card-save').click();
+        await page.locator('.result-card-canvas').click();
         await page.waitForSelector(id('result-card-viewer-image'));
         await page.waitForFunction(() => document.querySelector('.result-card-viewer-image').complete);
         await page.screenshot({ path: out('save-402x874-ja.png') });
