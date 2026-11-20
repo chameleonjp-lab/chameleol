@@ -14,6 +14,8 @@ import { areaOf } from './rules/v1/course.js';
 import { GameSession } from './game/session.js';
 import { alertWordKey, createAlertStageTracker, createInstantSuccessTracker, matchWordKey } from './game/feedback.js';
 import { createControls } from './ui/controls.js';
+import { desktopSettings } from './ui/desktop-settings.js';
+import { hasDesktopControls, normalizeScrollSpeed } from './ui/desktop-input.js';
 import { h, clear, isolatedText } from './ui/dom.js';
 import { watchPublicRelease } from './net/public-release.js';
 import { audioSettings, backButton, button, dialog, languageSelect, nameField, section, toast } from './ui/screens.js';
@@ -78,6 +80,7 @@ export class App {
     this.volatileNetwork = new MemoryStore();
     this.flags = {};
     this.nameRaw = '';
+    this.pcScrollSpeed = 100;
     this.session = null;
     this.playSecrets = new WeakMap();
     this.generation = 0;
@@ -113,6 +116,7 @@ export class App {
     this.languageUndetermined = preferred === null;
     setLanguage(preferred ?? 'ja');
     this.audio.setSettings((await this.safeGet('audio')) ?? {});
+    this.pcScrollSpeed = normalizeScrollSpeed(await this.safeGet('pcScrollSpeed'));
     this.flags = (await this.safeGet('flags')) ?? {};
     this.nameRaw = (await this.safeGet('nameRaw')) ?? '';
     await this.checkSavedRun();
@@ -1032,6 +1036,7 @@ export class App {
     let guidance=null,guideUI=null,ready=false,guideAudioRunning=false,firstAudioStart=fresh;
     const ctrlAudio = this.controlAudioCallbacks();
     const controls = createControls({
+      scrollSpeed: this.pcScrollSpeed,
       onChange: (c) => {
         if (guidance?.view().stationary) guidance.setDraft(c);
         else { observeEvaluation(); session.input(c, performance.now()); }
@@ -1892,6 +1897,7 @@ export class App {
     let paused = false;
     let guide;
     const controls = createControls({
+      scrollSpeed: this.pcScrollSpeed,
       onChange: color => { practice.setColor(color); render(practice.view()); },
       onLockedTap: () => this.audio.play('locked'),
       ...this.controlAudioCallbacks(),
@@ -2033,6 +2039,13 @@ export class App {
       h('h1', {}, t('settings.title')),
       section('settings.languageTitle', [languageSelect({ undetermined: this.languageUndetermined, onChange: (id) => this.changeLanguage(id, () => this.showSettings()) })]),
       section('settings.soundTitle', [audioSettings({ mixer: this.audio, onChange: (c) => this.safeSet('audio', this.audio.setSettings(c)) })]),
+      ...(hasDesktopControls() ? [section('settings.pcTitle', [desktopSettings({
+        scrollSpeed: this.pcScrollSpeed,
+        onChange: (speed) => {
+          this.pcScrollSpeed = speed;
+          this.safeSet('pcScrollSpeed', speed);
+        },
+      })])] : []),
       section('settings.dataTitle', [
         h('p', { class: 'note' }, t('settings.dataNote')),
         button('settings.clearPractice', () =>

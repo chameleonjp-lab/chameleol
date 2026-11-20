@@ -15,21 +15,22 @@ import id from './id.js';
 import tr from './tr.js';
 import vi from './vi.js';
 import th from './th.js';
+import { PC_MESSAGES } from './desktop-extra.js';
 
 export const MESSAGES = Object.freeze({
-  ja,
-  en,
-  es,
-  'pt-BR': ptBR,
-  'zh-Hans': zhHans,
-  fr,
-  de,
-  ko,
-  ru,
-  it,
-  'zh-Hant': zhHant,
-  id,
-  tr,
-  vi,
-  th,
+  ja: { ...ja, ...PC_MESSAGES["ja"] },
+  en: { ...en, ...PC_MESSAGES["en"] },
+  es: { ...es, ...PC_MESSAGES["es"] },
+  'pt-BR': { ...ptBR, ...PC_MESSAGES["pt-BR"] },
+  'zh-Hans': { ...zhHans, ...PC_MESSAGES["zh-Hans"] },
+  fr: { ...fr, ...PC_MESSAGES["fr"] },
+  de: { ...de, ...PC_MESSAGES["de"] },
+  ko: { ...ko, ...PC_MESSAGES["ko"] },
+  ru: { ...ru, ...PC_MESSAGES["ru"] },
+  it: { ...it, ...PC_MESSAGES["it"] },
+  'zh-Hant': { ...zhHant, ...PC_MESSAGES["zh-Hant"] },
+  id: { ...id, ...PC_MESSAGES["id"] },
+  tr: { ...tr, ...PC_MESSAGES["tr"] },
+  vi: { ...vi, ...PC_MESSAGES["vi"] },
+  th: { ...th, ...PC_MESSAGES["th"] },
 });

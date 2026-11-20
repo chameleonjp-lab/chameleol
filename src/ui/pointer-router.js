@@ -88,6 +88,24 @@ export function createPointerRouter({
     get values() {
       return { ...values };
     },
+    get enabled() {
+      return enabled;
+    },
+    /** PCのカーソル移動は押下不要。円内だけ追従し、タッチの操作権は奪わない。 */
+    hoverPalette(x, y) {
+      if (!enabled || byPart.has('palette')) return false;
+      const p = geometry.palette;
+      if (Math.hypot(x - p.cx, y - p.cy) > p.r) return false;
+      track('palette', x, y, null, 'move');
+      return true;
+    },
+    /** PCキーボード・ホイール。バー解放前・停止中・ドラッグ中は変更しない。 */
+    adjustBrightness(delta) {
+      if (!enabled || barLocked || byPart.has('bar') || !Number.isFinite(delta)) return false;
+      const v = Math.max(0, Math.min(rules.valMax, Math.round(values.v + delta)));
+      emit({ h: values.h, s: values.s, v }, null, 'bar', 'move');
+      return true;
+    },
     setBarLocked(locked) {
       barLocked = locked;
       if (locked && byPart.has('bar')) {

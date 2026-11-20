@@ -2,6 +2,7 @@
 // 位置とサイズは途中解放で変えない。プレビューとマーカーはタッチを奪わない（pointer-events: none）。
 import { RULES_V1, hsvToHex, pointFromHs, barFromV } from '../rules/v1/index.js';
 import { createPointerRouter } from './pointer-router.js';
+import { createBrightnessInput, hasDesktopControls, DEFAULT_SCROLL_SPEED } from './desktop-input.js';
 import { h } from './dom.js';
 import { t } from '../i18n/i18n.js';
 
@@ -64,6 +65,8 @@ export function createControls({
   onPartDown = () => {},
   onPartUp = () => {},
   onColorStep = () => {},
+  desktop = hasDesktopControls(),
+  scrollSpeed = DEFAULT_SCROLL_SPEED,
 } = {}) {
   const canvas = h('canvas', { class: 'palette-canvas', 'aria-hidden': 'true' });
   const paletteMarker = h('div', { class: 'marker palette-marker', 'aria-hidden': 'true' });
@@ -171,7 +174,32 @@ export function createControls({
       e.preventDefault();
     }
   };
-  const onMove = (e) => router.move(e.pointerId, e.clientX, e.clientY);
+  const onMove = (e) => {
+    if (desktop && e.pointerType === 'mouse' && e.buttons === 0) {
+      router.hoverPalette(e.clientX, e.clientY);
+    }
+    router.move(e.pointerId, e.clientX, e.clientY);
+  };
+  const desktopBar = createBrightnessInput({
+    read: () => router.values.v,
+    write: (v) => router.adjustBrightness(v - router.values.v),
+    canOperate: () => router.enabled && !router.barLocked && !router.activeParts().includes('bar'),
+    speed: () => scrollSpeed,
+    valMax: rules.valMax,
+    pageHeight: () => router.geometry.bar.h,
+  });
+  const onWheel = (e) => {
+    if (el.isConnected && !document.hidden && desktopBar.wheel(e)) e.preventDefault();
+  };
+  const onKeyDown = (e) => {
+    if (el.isConnected && !document.hidden && desktopBar.keydown(e)) e.preventDefault();
+  };
+  if (desktop) {
+    // 操作パネルの外でも操作できる。停止中は enabled が false なので無効。
+    globalThis.addEventListener?.('wheel', onWheel, { passive: false });
+    globalThis.addEventListener?.('keydown', onKeyDown);
+    el.classList.add('desktop-controls');
+  }
   const onUp = (e) => router.up(e.pointerId);
   const onCancel = (e) => router.cancel(e.pointerId);
   el.addEventListener('pointerdown', onDown);
@@ -220,19 +248,32 @@ export function createControls({
       return router.values;
     },
     setLocked(locked) {
+      if (locked) desktopBar.reset();
       router.setBarLocked(locked);
       el.classList.toggle('bar-locked', locked);
       lockLabel.hidden = !locked;
     },
     setEnabled(on) {
+      if (!on) desktopBar.reset();
       router.setEnabled(on);
       el.classList.toggle('disabled', !on);
     },
     releaseAll() {
+      desktopBar.reset();
       router.releaseAll();
     },
     destroy() {
       globalThis.removeEventListener?.('resize', resize);
+      if (desktop) {
+        globalThis.removeEventListener?.('wheel', onWheel);
+        globalThis.removeEventListener?.('keydown', onKeyDown);
+      }
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onCancel);
+      el.removeEventListener('lostpointercapture', onCancel);
+      router.releaseAll();
     },
   };
 }
