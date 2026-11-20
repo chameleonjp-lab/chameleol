@@ -1,6 +1,6 @@
 // Bahasa Indonesia
 export default {
-  releaseRunRank: "Peringkat permainan ini: {rank} dari {total} (total {total} permainan)",
+  releaseRunRank: "Peringkat permainan ini: {rank} dari {total}",
   releaseClearOrdinal: "Urutan pertama kali menamatkan permainan: {ordinal}",
   releaseCorrectedResult: "Hasil permainan ini",
   releasePending: "Menghitung peringkat",
