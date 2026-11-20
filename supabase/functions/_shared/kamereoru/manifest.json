@@ -1,16 +1,16 @@
 {
   "generatedFrom": "src/rules/v1 + src/shared/name.js",
-  "fingerprint": "5e075d0f1a85e671c9a134b230af1b457110ab4038b351ef4d96461d8b701abd",
+  "fingerprint": "5baa1cf1c74b8455143c64709fcc692a14b4688fed6fa051020060ff01cfae5d",
   "files": {
-    "rules/v1/config.js": "3735b347db95e165c4bf1855b7ecc988be3df22640d67f3a094a39ac5b779256",
+    "rules/v1/config.js": "3793564445e3cf6e548cada6ce5da86b97a7d45cfe699031c986152745a47fe7",
     "rules/v1/detmath.js": "5971c5ca276db89a077653d074436830278f00e3cc4f259050ca79371b225d7d",
     "rules/v1/color.js": "15a005e6e35c185de7ebb77ce6845655c489d7455efbecc2f06c451c4e0d02b6",
-    "rules/v1/course.js": "39cb2396066489a9cc9abdf018109f1b1389b4b8362e31f10112ad9debd18659",
-    "rules/v1/engine.js": "e40a2cfffd0be22fa8163f599bd3dc0b481549fe8b509fb45ffcf709ac7263bf",
+    "rules/v1/course.js": "09179c93c80c544f10a86e0d17aa96661c48d526f8568b6e8761baebca51fa7a",
+    "rules/v1/engine.js": "e246471619906d52f1d3c124f6c3c97942436f6f4c60958a913508eb2099d0aa",
     "rules/v1/bonus.js": "e4e710a275e24578c9fc8e84437c942f487cd24679789e87a9f2378e0a9bb21b",
     "rules/v1/history.js": "14b780845c2218568b16003c0f64ad30f7fd6f454284efa8c47bcb6976d3f819",
     "rules/v1/manifest.js": "7b4b9c84578c31fa8e496d713097cb3d08020bdc6cbd045e745fbc948e23e623",
-    "rules/v1/index.js": "d854289ca2c5f6e477b11f3ec9f73c5786f7fc47e8c4a40b57c6a848e8a27210",
+    "rules/v1/index.js": "aeb1fffe3affe465171abea129e20386ae0ead2c5a18c938617141de7fd46da2",
     "shared/name.js": "2cfdfe3b3194a7c7148a17cf06af15ac5cd4f58b96c9c6891b5c71ebf8979654"
   }
 }

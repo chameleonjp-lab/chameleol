@@ -1,10 +1,14 @@
 // 出題の生成。同じ出題番号（seed）と生成規則の版から、必ず同じ50色を作る。
 // 色の乱数と装飾（建物の見た目）の乱数は別の流れに分け、装飾を変えても色順は変わらない。
-import { COURSE_V1, RULES_V1 } from './config.js';
+import { COURSE_V1, COURSE_V2, RULES_V1, RULES_V5 } from './config.js';
 import { deltaEHsv, paletteDistance } from './color.js';
 
 const COLOR_STREAM = 0x0c0102;
 const DECO_STREAM = 0x0dec0;
+const COURSES = new Map([
+  [RULES_V1.generatorVersion, COURSE_V1],
+  [RULES_V5.generatorVersion, COURSE_V2],
+]);
 
 function mix32(input) {
   let a = (input + 0x9e3779b9) | 0;
@@ -111,9 +115,9 @@ function fallbackCandidates(index, prev, level, band, rules) {
  * options.rejectAllRandom を true にすると乱数の候補をすべて却下し、代替列だけで作る（試験用）。
  */
 export function makeCourse(seed, generatorVersion = RULES_V1.generatorVersion, options = {}) {
-  const rules = options.rules ?? RULES_V1;
-  const course = options.course ?? COURSE_V1;
-  if (generatorVersion !== rules.generatorVersion) {
+  const rules = options.rules ?? (generatorVersion === RULES_V5.generatorVersion ? RULES_V5 : RULES_V1);
+  const course = options.course ?? COURSES.get(generatorVersion);
+  if (!course || generatorVersion !== rules.generatorVersion) {
     throw new Error(`unsupported generator version: ${generatorVersion}`);
   }
   if (!isValidSeed(seed)) throw new Error('seed must be a uint32 integer');
@@ -160,7 +164,8 @@ export function makeCourse(seed, generatorVersion = RULES_V1.generatorVersion, o
 }
 
 /** 生成済みの出題が、帯の条件をすべて満たしているか検査する。 */
-export function validateCourse(courseData, { rules = RULES_V1, course = COURSE_V1 } = {}) {
+export function validateCourse(courseData, { rules = RULES_V1, course = COURSES.get(courseData.generatorVersion ?? rules.generatorVersion) } = {}) {
+  if (!course) throw new Error(`unsupported generator version: ${courseData.generatorVersion}`);
   const problems = [];
   let prev = rules.initialColor;
   let prevLevel = null;

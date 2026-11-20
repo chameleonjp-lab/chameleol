@@ -10,6 +10,7 @@ import { verifyResult } from '../../supabase/functions/_shared/kamereoru/replay.
 const V1 = 'kamereoru-rules-v1';
 const V3 = 'kamereoru-rules-v3';
 const V4 = 'kamereoru-rules-v4';
+const V5 = 'kamereoru-rules-v5';
 const versions = [V3, V1];
 const request = (supportedRulesVersions = versions) => ({ requestId: uuid(), secret: randomSecret(), launchId: uuid(), name: 'bonus', gameVersion: '0.1.0', ...(supportedRulesVersions === undefined ? {} : { supportedRulesVersions }) });
 const identity = ({ requestId, playId, seed, rulesVersion, generatorVersion, gameVersion, name, acceptedAt }) => ({ requestId, playId, seed, rulesVersion, generatorVersion, gameVersion, name, acceptedAt });
@@ -34,7 +35,7 @@ function perfectBody(start, { quitAt = null } = {}) {
   const { state } = replayHistory(game, rec.entries);
   const summary = summarize(state, rules);
   return {
-    body: { format: 'kamereoru-result-v1', playId: start.playId, launchId: start.launchId, seed: start.seed, rulesVersion: rules.rulesVersion, generatorVersion: 'kamereoru-course-v1', gameVersion: '0.1.0', history: rec.entries, claimed: summary },
+    body: { format: 'kamereoru-result-v1', playId: start.playId, launchId: start.launchId, seed: start.seed, rulesVersion: rules.rulesVersion, generatorVersion: rules.generatorVersion, gameVersion: '0.1.0', history: rec.entries, claimed: summary },
     summary,
   };
 }
@@ -264,5 +265,60 @@ test('new v4 reservation is bound to a launch and returns verified v4 score only
     assert.equal(own.verifiedScore.rulesVersion, V4);
     assert.deepEqual(own.verifiedScore.score, summary.score);
     assert.deepEqual((await status(srv, start, randomSecret())), { playId: start.playId, error: 'forbidden' });
+  } finally { await srv.close(); }
+});
+
+test('v5 ranked replay verifies the adjusted course and rejects a mismatched generator', () => {
+  const start = { playId: uuid(), launchId: uuid(), seed: 1, rulesVersion: V5, generatorVersion: 'kamereoru-course-v2' };
+  const { body, summary } = perfectBody(start);
+  const input = { ...start, body, acceptedAt: '2026-11-20T00:00:00Z', receivedAt: '2026-11-20T00:10:00Z' };
+  const verified = verifyResult(input);
+  assert.equal(verified.status, 'official');
+  assert.equal(verified.values.buildings, 50);
+  assert.equal(verified.values.rankAverage, 10000);
+  assert.deepEqual(verified.verdict.verifiedScore.score, summary.score);
+  const wrongCourse = { ...body, generatorVersion: 'kamereoru-course-v1' };
+  assert.equal(verifyResult({ ...input, body: wrongCourse }).verdict.reason, 'start_mismatch');
+
+  const rules = rulesForVersion(V5);
+  const game = createGame({ seed: start.seed, rules });
+  const rec = createRecorder(rules);
+  for (const [i, target] of game.course.targets.slice(0, 20).entries()) {
+    rec.push({ type: 'color', t: i * rules.buildingMs, ...target, v: i === 19 ? rules.valMax : target.v });
+  }
+  rec.push({ type: 'quit', t: 20 * rules.buildingMs });
+  const easedRun = replayHistory(game, rec.entries);
+  assert.equal(easedRun.state.alert / rules.alert.unitsPerPoint, 9);
+  const replayed = verifyResult({ ...input, body: { ...body, history: rec.entries, claimed: easedRun.summary } });
+  assert.equal(replayed.status, 'official');
+  assert.equal(replayed.values.rankAverage, easedRun.summary.rankAverage);
+  assert.deepEqual(replayed.verdict.verifiedScore.score, easedRun.summary.score);
+});
+
+test('v4 retries stay on the old course, and v4 and v5 results share one ranking', { skip: SKIP }, async () => {
+  const srv = await freshServer('mixed_course', { processAfterComplete: false });
+  try {
+    const oldReq = { ...request([V4, V3, V1]), name: 'oldcourse' };
+    const newReq = { ...request([V5, V4, V3, V1]), name: 'newcourse' };
+    const old = await srv.call('start', oldReq);
+    assert.deepEqual(identity((await srv.call('start', { ...oldReq, supportedRulesVersions: newReq.supportedRulesVersions })).body), identity(old.body));
+    const next = await srv.call('start', newReq);
+    assert.equal(old.body.rulesVersion, V4);
+    assert.equal(old.body.generatorVersion, 'kamereoru-course-v1');
+    assert.equal(next.body.rulesVersion, V5);
+    assert.equal(next.body.generatorVersion, 'kamereoru-course-v2');
+
+    for (const start of [{ ...oldReq, ...old.body }, { ...newReq, ...next.body }]) {
+      await srv.sql("update private.kamereoru_starts set accepted_at=now()-interval '10 minutes' where play_id=$1", [start.playId]);
+      const launch = await srv.call('launch', { launchId: start.launchId, ranked: true, playId: start.playId, secret: start.secret, gameVersion: start.gameVersion });
+      assert.equal(launch.status, 200, JSON.stringify(launch.body));
+      await submitBonus(srv, start);
+      await srv.handler.processJobs();
+      const result = await status(srv, start);
+      assert.equal(result.status, 'official');
+      assert.equal(result.verifiedScore.rulesVersion, start.rulesVersion);
+    }
+    const ranking = (await srv.call('ranking', {}, { method: 'GET' })).body.rows;
+    assert.deepEqual(ranking.map(({ name, rank }) => [name, rank]), [['newcourse', 1], ['oldcourse', 1]]);
   } finally { await srv.close(); }
 });

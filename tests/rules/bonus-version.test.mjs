@@ -37,7 +37,7 @@ for(const [v,key] of [[1,'RULES_V3'],[2,'RULES_V4']])test(`v${v} successor prese
  assert.deepEqual(after.summary.perBuilding.map((b,i)=>[b[0],b[1],b[2]-after.state.buildings[i].bonusPoints]),before.summary.perBuilding);
 });
 test('new standalone sessions default to v4 while createGame retains v1',()=>{
- assert.equal(new GameSession({playId:'new',seed:17}).rules.rulesVersion,'kamereoru-rules-v4');
+ assert.equal(new GameSession({playId:'new',seed:17}).rules.rulesVersion,'kamereoru-rules-v5');
  assert.equal(createGame({seed:17}).rules,RULES_V1);
  assert.equal(rulesApi.rulesForVersion('unknown'),null);
 });
