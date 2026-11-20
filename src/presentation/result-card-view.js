@@ -1,6 +1,5 @@
 // 結果カードと、画像を共有・保存する操作。投稿用のリンクは App が表示する。
 import { t } from '../i18n/i18n.js';
-import { requestResultCardDownload } from './result-card-download.js';
 import { drawResultCard, describeResultCard, CARD_W, CARD_H } from './result-card-draw.js';
 import { rtext } from './result-card-text.js';
 
@@ -96,19 +95,8 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
   const canvas = el('canvas', 'result-card-canvas', null, card);
   canvas.width = HALF[0];
   canvas.height = HALF[1];
-  canvas.setAttribute('role', 'button');
-  canvas.setAttribute('tabindex', '0');
-  canvas.setAttribute('title', tx('card.viewerTitle'));
+  canvas.setAttribute('role', 'img');
   canvas.setAttribute('data-testid', 'result-card-canvas');
-  // The card itself is an optional full-screen preview for iOS "Save to Photos".
-  // The dedicated Save button downloads immediately, without opening this preview.
-  listen(canvas, 'click', () => openViewer());
-  listen(canvas, 'keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      openViewer();
-    }
-  });
   const summary = el('p', 'result-card-summary', null, card);
   summary.setAttribute('aria-hidden', 'true');
   const title = host.querySelector('.result-title');
@@ -124,13 +112,7 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
     listen(b, 'click', onClick);
     return b;
   };
-  const saveBtn = mk('result-card-save', 'result-card-save', () => {
-    // One user tap starts the browser download; the image viewer remains available via the explicit view API.
-    if (!requestResultCardDownload({ controller, doc })) {
-      const view = cardViewState(snapshot);
-      setStatus(view.prepared || view.failedWithout ? 'card.failed' : 'card.preparing');
-    }
-  }, host.querySelector('.result-actions') ?? secondary);
+  const saveBtn = mk('result-card-save', 'result-card-save', () => openViewer(), host.querySelector('.result-actions') ?? secondary);
   const imageShareBtn = mk('result-card-image-share', 'result-card-image-share', () => controller?.share?.());
   const copyBtn = mk('result-card-copy', 'result-card-copy', () => onCopyText?.());
   const retryBtn = mk('result-card-retry', 'result-card-retry', () => { controller?.retry?.(); });
@@ -148,7 +130,7 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
     const info = drawResultCard(canvas, { model: snapshot.model, portrait: snapshot.portraitImage ?? null, locale: locale(), failed: view.failedWithout });
     void info;
     const text = describeResultCard(snapshot.model, locale(), { failed: view.failedWithout, portrait: snapshot.portraitImage });
-    canvas.setAttribute('aria-label', `${text.label} — ${tx('card.viewerTitle')}`);
+    canvas.setAttribute('aria-label', text.label);
     summary.textContent = text.summary;
   }
 
@@ -164,7 +146,7 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
     imageShareBtn.textContent = tx('card.imageShare');
     imageShareBtn.disabled = view.shareDisabled;
     copyBtn.textContent = tx('releaseCopy');
-    saveBtn.disabled = !view.prepared || view.state === 'sharing';
+    saveBtn.disabled = view.state === 'unavailable' && !view.prepared;
     retryBtn.textContent = tx('card.retry');
     retryBtn.hidden = !view.showRetry;
     secondary.classList.toggle('is-share-failed', view.shareFailed && rtext('card.shareFailed', undefined, locale()) === null);
@@ -220,25 +202,22 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
     const closeBtn = el('button', 'btn btn-small result-card-viewer-close', tx('common.close'), header);
     closeBtn.type = 'button';
     closeBtn.setAttribute('data-testid', 'result-card-viewer-close');
+    const hint = el('p', 'result-card-viewer-hint', tx('card.saveHint'), root);
+    hint.id = 'result-card-viewer-hint';
+    root.setAttribute('aria-describedby', hint.id);
+    // Use a real image so Safari's native long-press Save to Photos action remains available.
     const img = el('img', 'result-card-viewer-image', null, root);
     img.src = url;
     img.alt = describeResultCard(snapshot.model, locale()).label;
     img.width = CARD_W;
     img.height = CARD_H;
     img.setAttribute('data-testid', 'result-card-viewer-image');
-    el('p', 'result-card-viewer-hint', tx('card.saveHint'), root);
-    const link = el('a', 'btn btn-primary result-card-viewer-download', tx('card.save'), root);
-    link.href = url;
-    link.setAttribute('download', 'chameleol-result.png');
-    link.setAttribute('data-testid', 'result-card-viewer-download');
     const onKey = (event) => {
       if (event.key === 'Escape') { event.preventDefault(); closeViewer(); return; }
       if (event.key !== 'Tab') return;
-      const order = [closeBtn, link];
-      const at = order.indexOf(doc.activeElement);
-      const next = event.shiftKey ? (at <= 0 ? order.length - 1 : at - 1) : (at < 0 || at === order.length - 1 ? 0 : at + 1);
+      // Close is the only keyboard control; keep focus within the open image.
       event.preventDefault();
-      order[next].focus();
+      closeBtn.focus();
     };
     closeBtn.addEventListener('click', () => closeViewer());
     doc.addEventListener('keydown', onKey);
@@ -265,7 +244,7 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
     canvas.height = view.size[1];
     paint();
     restoreScroll();
-    if (refocus) canvas.focus?.({ preventScroll: true });
+    if (refocus) saveBtn.focus?.({ preventScroll: true });
   }
 
   function dispose() {

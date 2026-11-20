@@ -157,7 +157,7 @@ test('share: X opens before the PNG is ready; an explicit image share passes one
   } finally { await env.close(); }
 });
 
-test('one-tap PNG download and optional card preview release pixels and revoke the URL on close', async () => {
+test('save screen: an img from the prepared PNG, the screen card frees its pixels, closing revokes the URL', async () => {
   const env = await launch();
   try {
     const { page } = env;
@@ -166,13 +166,7 @@ test('one-tap PNG download and optional card preview release pixels and revoke t
     await toReady(page);
     const closedBytes = await heldBytes(page);
     assert.equal(await page.locator('.result-actions .result-card-save').textContent(), 'スコア画像を保存');
-    const [downloadStarted] = await Promise.all([
-      page.waitForEvent('download'),
-      page.locator('.result-card-save').click(),
-    ]);
-    assert.equal(downloadStarted.suggestedFilename(), 'chameleol-result.png');
-    assert.equal(await page.locator('.result-card-viewer').count(), 0, 'saving does not show the in-game viewer');
-    await page.locator('.result-card-canvas').click();
+    await page.locator('.result-card-save').click();
     await page.waitForSelector(id('result-card-viewer-image'));
     await page.waitForFunction(() => document.querySelector('.result-card-viewer-image').complete);
     const open = await page.evaluate(() => {
@@ -184,9 +178,9 @@ test('one-tap PNG download and optional card preview release pixels and revoke t
     assert.deepEqual(open.canvas, [0, 0]);
     assert.equal(open.dialog, 'true');
     assert.equal(open.active, 'result-card-viewer-close');
-    const download = page.getByTestId('result-card-viewer-download');
-    assert.equal(await download.getAttribute('href'), open.src);
-    assert.equal(await download.getAttribute('download'), 'chameleol-result.png');
+    const hint = await page.locator('.result-card-viewer-hint').textContent();
+    assert.ok(hint.includes('長押し') && hint.includes('写真に保存'), hint);
+    assert.equal(await page.getByTestId('result-card-viewer-download').count(), 0, 'no file-download button');
     const viewerBytes = await heldBytes(page);
     assert.ok(viewerBytes.total <= BUDGET, `viewer open ${viewerBytes.total}`);
     assert.ok(viewerBytes.total < closedBytes.total + 1_000_000);
@@ -199,9 +193,9 @@ test('one-tap PNG download and optional card preview release pixels and revoke t
     const whilePending = await page.evaluate(() => {
       __kamereoru.resultCardController.retry();
       document.querySelector('.result-card-save').click();
-      return { viewers: document.querySelectorAll('[data-testid="result-card-viewer"]').length, state: __kamereoru.resultCardController.snapshot().state, saveDisabled: document.querySelector('.result-card-save').disabled };
+      return { viewers: document.querySelectorAll('[data-testid="result-card-viewer"]').length, state: __kamereoru.resultCardController.snapshot().state };
     });
-    assert.deepEqual(whilePending, { viewers: 0, state: 'pending', saveDisabled: true });
+    assert.deepEqual(whilePending, { viewers: 0, state: 'pending' });
     assert.deepEqual(env.errors, []);
   } finally { await env.close(); }
 });
@@ -275,7 +269,7 @@ test('E090 can open in the first 600ms, gives way to the portrait capture, and b
   } finally { await env.close(); }
 });
 
-test('result updates and rotation release the PNG buffer before E090 expands, invalidate previews and restore the preview focus', async (t) => {
+test('result updates and rotation release the PNG buffer before E090 expands, invalidate saved images and restore the save action focus', async (t) => {
   const env = await launch({ width: 402, height: 874, scale: 2 });
   try {
     const { page } = env;
@@ -313,7 +307,7 @@ test('result updates and rotation release the PNG buffer before E090 expands, in
     assert.deepEqual(update,{prepared:null,state:'pending'},'a confirmation-only update invalidates the old file synchronously');
     await toReady(page);
     assert.equal(await page.evaluate(() => __kamereoru.resultCardController.snapshot().prepared.file!==__oldSharedFile),true);
-    await page.locator('.result-card-canvas').click();
+    await page.locator('.result-card-save').click();
     await page.waitForFunction(() => document.querySelector('.result-card-viewer-image')?.complete);
     const closed = await page.evaluate(() => {
       const a=__kamereoru;
@@ -321,7 +315,7 @@ test('result updates and rotation release the PNG buffer before E090 expands, in
       a.lastResult.netState='official';a.renderResultStatus();
       return { viewer:!!document.querySelector('.result-card-viewer'), focus:document.activeElement?.getAttribute('data-testid'), revoked:__revoked.includes(url) };
     });
-    assert.deepEqual(closed,{viewer:false,focus:'result-card-canvas',revoked:true});
+    assert.deepEqual(closed,{viewer:false,focus:'result-card-save',revoked:true});
     await toReady(page);
     await page.evaluate(() => { globalThis.__beforeRotation=__kamereoru.resultCardController.snapshot().prepared.file; });
     await page.setViewportSize({ width:874,height:402 });

@@ -106,12 +106,8 @@ test('normal loop: tongue, claimed street and police lead to a prepared result i
   const cancel=await page.evaluate(()=>({shares:__shares,opened:__opened.length,viewer:!!document.querySelector('.result-card-viewer'),manual:!!document.querySelector('.share-manual')}));
   assert.equal(cancel.shares[0].files.length,1);assert.equal(cancel.shares[0].files[0].type,'image/png');assert.equal(cancel.shares[0].url,'https://chameleonjp-lab.github.io/chameleol/');
   assert.equal(cancel.opened,0);assert.equal(cancel.viewer,false);assert.equal(cancel.manual,false);
-  const [download] = await Promise.all([page.waitForEvent('download'),page.locator(id('result-card-save')).click()]);
-  assert.equal(download.suggestedFilename(),'chameleol-result.png');
-  assert.equal(await page.locator('.result-card-viewer').count(),0,'saving skips the in-game preview');
+  await page.locator(id('result-card-save')).click();await page.waitForFunction(()=>document.querySelector('.result-card-viewer-image')?.naturalWidth===1200);
   assert.ok((await heldBytes(page)).total<=BUDGET);
-  await page.locator('.result-card-canvas').click();
-  await page.waitForFunction(()=>document.querySelector('.result-card-viewer-image')?.naturalWidth===1200);
   await page.locator(id('result-card-viewer-close')).click();
   assert.equal(await page.getByTestId('result-share').isVisible(),true,'result sharing is visible with the link filter');
   const intent=await openXShare(page, 'result-share');

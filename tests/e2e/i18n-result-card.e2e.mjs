@@ -107,7 +107,7 @@ for (const [width, height] of layouts) {
         assert.doesNotMatch(payload.text, /\{\w+\}|(?:card|evidence|presentation)\.[a-zA-Z]/);
         await fits(page, `${lang} share error`, '.result-card-status, .result-card-secondary button');
 
-        await page.locator('.result-card-canvas').click();
+        await page.locator('.result-card-save').click();
         await page.waitForFunction(() => document.querySelector('.result-card-viewer-image')?.naturalWidth === 1200);
         assert.equal(await page.locator('.result-card-viewer-title').textContent(), M['card.viewerTitle']);
         assert.equal(await page.locator('.result-card-viewer-hint').textContent(), M['card.saveHint']);

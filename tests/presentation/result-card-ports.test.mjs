@@ -183,35 +183,7 @@ test('retry and image share happen only on an explicit tap and a retry never sha
   assert.equal(controller.calls.share, 1);
 });
 
-test('save button downloads immediately and does not open the preview', () => {
-  const { host, window, document } = setup();
-  const controller = fakeController(snap());
-  const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
-  ports.onChange(controller.snapshot());
-  const view = ports.mount({ host, controller, scope: scopeStub() });
-  let downloads = 0;
-  const originalCreate = document.createElement.bind(document);
-  document.createElement = (tag, ...rest) => {
-    const node = originalCreate(tag, ...rest);
-    if (tag === 'a') node.click = () => {
-      downloads += 1;
-      assert.equal(node.download, 'chameleol-result.png');
-    };
-    return node;
-  };
-  try {
-    click(window, host.querySelector('.result-card-save'));
-    assert.equal(downloads, 1);
-    assert.equal(controller.calls.getImageUrl, 1);
-    assert.equal(document.querySelector('[data-testid="result-card-viewer"]'), null);
-    assert.equal(document.querySelector('a[download]'), null, 'temporary download link removed');
-  } finally {
-    document.createElement = originalCreate;
-    view.dispose();
-  }
-});
-
-test('the optional preview asks for the URL only on card tap, shows an img, frees the canvas, and revokes on close', () => {
+test('the save screen asks for the URL only on tap, shows an img, frees the canvas, and revokes on close', () => {
   const { host, window, document } = setup();
   const controller = fakeController(snap());
   const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
@@ -219,14 +191,16 @@ test('the optional preview asks for the URL only on card tap, shows an img, free
   ports.mount({ host, controller, scope: scopeStub() });
   assert.equal(controller.calls.getImageUrl, 0);
   const canvas = host.querySelector('.result-card-canvas');
-  click(window, host.querySelector('.result-card-canvas'));
+  click(window, host.querySelector('.result-card-save'));
   assert.equal(controller.calls.getImageUrl, 1);
   const viewer = document.querySelector('[data-testid="result-card-viewer"]');
   assert.ok(viewer);
   assert.equal(viewer.getAttribute('role'), 'dialog');
   assert.equal(viewer.getAttribute('aria-modal'), 'true');
   assert.equal(viewer.querySelector('img').getAttribute('src'), 'blob:fake-url');
-  assert.equal(viewer.querySelector('a').getAttribute('download'), 'chameleol-result.png');
+  assert.equal(viewer.querySelector('.result-card-viewer-hint').textContent, t('card.saveHint'));
+  assert.equal(viewer.getAttribute('aria-describedby'), 'result-card-viewer-hint');
+  assert.equal(viewer.querySelector('[download]'), null, 'no download link in long-press image viewer');
   assert.equal(canvas.width * canvas.height, 0, 'the screen card releases its pixels while the viewer covers it');
   assert.equal(ports.describeResources().viewerImageBytes, 1200 * 630 * 4);
   click(window, viewer.querySelector('[data-testid="result-card-viewer-close"]'));
@@ -236,13 +210,13 @@ test('the optional preview asks for the URL only on card tap, shows an img, free
   // 準備中は開かない
   controller.set(snap({ state: 'pending', prepared: null }));
   ports.onChange(controller.snapshot());
-  click(window, host.querySelector('.result-card-canvas'));
+  click(window, host.querySelector('.result-card-save'));
   assert.equal(document.querySelector('[data-testid="result-card-viewer"]'), null);
   assert.equal(host.querySelector('.result-card-status').textContent, t('card.preparing'));
 });
 
 for (const exit of ['close', 'revision', 'dispose']) {
-  test(`preview dialog isolates the background and restores existing state on ${exit}`, () => {
+  test(`save dialog isolates the background and restores existing state on ${exit}`, () => {
     const { host, window, document } = setup();
     const controller = fakeController(snap());
     const ports = createResultCardPorts({ result:{}, host, scope:scopeStub() });
@@ -253,7 +227,7 @@ for (const exit of ['close', 'revision', 'dispose']) {
     const oldX=window.scrollX,oldY=window.scrollY,oldScroll=window.scrollTo;
     const restored=[];window.scrollX=12;window.scrollY=430;window.scrollTo=(x,y)=>restored.push([x,y]);
     try {
-      click(window, host.querySelector('.result-card-canvas'));
+      click(window,host.querySelector('.result-card-save'));
       const dialog=document.querySelector('.result-card-viewer');
       assert.equal(host.hasAttribute('inert'),true,'the real background cannot receive user interaction');
       assert.equal(host.getAttribute('aria-hidden'),'true');
@@ -281,7 +255,7 @@ for (const exit of ['close', 'revision', 'dispose']) {
   });
 }
 
-test('preview dialog restores single-axis overflow and mixed priorities without losing declarations', () => {
+test('save dialog restores single-axis overflow and mixed priorities without losing declarations', () => {
   const {host,window,document}=setup();
   // LinkeDOM does not expand CSS shorthands. Model the CSSOM overflow boundary;
   // the browser suite also exercises these declarations with native CSSStyleDeclaration.
@@ -312,7 +286,7 @@ test('preview dialog restores single-axis overflow and mixed priorities without 
   const before=[htmlStyle.declarations(),bodyStyle.declarations()];
   const controller=fakeController(snap()),ports=createResultCardPorts({result:{},host,scope:scopeStub()});
   const view=ports.mount({host,controller,scope:scopeStub()});
-  click(window, host.querySelector('.result-card-canvas'));
+  click(window,host.querySelector('.result-card-save'));
   for(const style of [htmlStyle,bodyStyle])for(const axis of ['overflow-x','overflow-y']){
     assert.equal(style.getPropertyValue(axis),'hidden');assert.equal(style.getPropertyPriority(axis),'important');
   }
@@ -321,18 +295,18 @@ test('preview dialog restores single-axis overflow and mixed priorities without 
   view.dispose();
 });
 
-test('a revised image restores preview focus, while screen disposal never focuses an outgoing view', () => {
+test('a revised image restores the save action focus, while screen disposal never focuses an outgoing view', () => {
   const { host, window, document } = setup();
   const controller = fakeController(snap());
   const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
   const view = ports.mount({ host, controller, scope: scopeStub() });
-  const preview = host.querySelector('.result-card-canvas');
-  let restored = 0;preview.focus = () => { restored += 1; };
-  click(window, preview);
+  const save = host.querySelector('.result-card-save');
+  let restored = 0;save.focus = () => { restored += 1; };
+  click(window, save);
   ports.onChange(snap({ revision: 2, state: 'pending', prepared: null }));
   assert.equal(document.querySelector('.result-card-viewer'), null);
-  assert.equal(restored, 1, 'same-screen automatic closure returns to its preview action');
-  controller.set(snap());click(window, preview);view.dispose();
+  assert.equal(restored, 1, 'same-screen automatic closure returns to its save action');
+  controller.set(snap());click(window, save);view.dispose();
   assert.equal(restored, 1, 'leaving results does not focus an old action');
 });
 test('a new revision closes the viewer, Escape closes it, and disposing the screen revokes the URL', () => {
@@ -341,17 +315,17 @@ test('a new revision closes the viewer, Escape closes it, and disposing the scre
   const ports = createResultCardPorts({ result: {}, host, scope: scopeStub() });
   ports.onChange(controller.snapshot());
   const view = ports.mount({ host, controller, scope: scopeStub() });
-  click(window, host.querySelector('.result-card-canvas'));
+  click(window, host.querySelector('.result-card-save'));
   ports.onChange(snap({ state: 'sharing' }));
   assert.ok(document.querySelector('[data-testid="result-card-viewer"]'), 'a state-only change keeps the viewer');
   ports.onChange(snap({ revision: 2, prepared: null, state: 'pending' }));
   assert.equal(document.querySelector('[data-testid="result-card-viewer"]'), null, 'a stale image is closed');
   controller.set(snap());
-  click(window, host.querySelector('.result-card-canvas'));
+  click(window, host.querySelector('.result-card-save'));
   document.dispatchEvent(Object.assign(new window.Event('keydown', { bubbles: true, cancelable: true }), { key: 'Escape' }));
   assert.equal(document.querySelector('[data-testid="result-card-viewer"]'), null);
   const revokes = controller.calls.revoke;
-  click(window, host.querySelector('.result-card-canvas'));
+  click(window, host.querySelector('.result-card-save'));
   view.dispose();
   assert.equal(document.querySelector('[data-testid="result-card-viewer"]'), null);
   assert.equal(controller.calls.revoke, revokes + 1);
@@ -578,7 +552,7 @@ test('all 15 dictionaries reach card/error/save/model/turn DOM and aria text wit
     assert.ok(host.querySelector('.result-card-summary').textContent.includes(M['card.bonusMissing']), locale);
     controller.set({...current, state:'failed'});ports.onChange(controller.snapshot());
     assert.equal(host.querySelector('.result-card-status').textContent, M['card.shareFailed'], locale);
-    click(window, host.querySelector('.result-card-canvas'));
+    click(window, host.querySelector('.result-card-save'));
     assert.equal(document.querySelector('.result-card-viewer-title').textContent, M['card.viewerTitle'], locale);
     assert.ok(document.querySelector('.result-card-viewer-image').alt.includes(M['card.bonusMissing']), locale);
     click(window, document.querySelector('.result-card-viewer-close'));
