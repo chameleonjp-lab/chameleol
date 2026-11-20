@@ -302,15 +302,31 @@ export function createHandler(options: HandlerOptions) {
           join private.kamereoru_clear_admissions a using (play_id)
           join private.kamereoru_results r using (play_id)
           order by c.name_key, a.confirmed_order
+        ), best_clears as (
+          -- A later verified 50-building clear improves this percentage, but
+          -- never changes the original admission number.
+          select name_key, max(rank_avg)::int as average
+          from private.kamereoru_clears
+          group by name_key
+        ), entries as (
+          select o.ordinal, f.name, b.average, f.confirmed_order
+          from first_clears f
+          join private.kamereoru_clear_ordinals o using (name_key)
+          join best_clears b using (name_key)
         ), snapshot as (
-          select md5(coalesce(string_agg(confirmed_order::text, ',' order by confirmed_order), '')) as version
-          from first_clears
+          -- Include mutable names and best percentages in the page version.
+          -- A score update while paging starts a fresh list, never a mixed one.
+          select md5(coalesce(string_agg(
+            ordinal::text || ':' || confirmed_order::text || ':' ||
+            encode(convert_to(name, 'UTF8'), 'hex') || ':' || average::text,
+            ',' order by ordinal
+          ), '')) as version
+          from entries
         ), page as (
-          select o.ordinal, f.name
-          from first_clears f join private.kamereoru_clear_ordinals o using (name_key)
-          cross join snapshot s
-          where o.ordinal > case when s.version = $1::text then coalesce($2::bigint, 0) else 0 end
-          order by o.ordinal
+          select e.ordinal, e.name, e.average
+          from entries e cross join snapshot s
+          where e.ordinal > case when s.version = $1::text then coalesce($2::bigint, 0) else 0 end
+          order by e.ordinal
           limit $3
         )
         select version, (

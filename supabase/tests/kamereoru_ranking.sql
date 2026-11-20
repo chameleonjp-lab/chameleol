@@ -37,8 +37,8 @@ declare
   n int := jsonb_array_length(page -> 'rows');
   last30 text;
 begin
-  if n <> 32 then
-    raise exception 'expected 32 rows (1-29 + three at 30), got %', n;
+  if n <> 34 then
+    raise exception 'expected all 34 non-hall names, got %', n;
   end if;
   if (rs -> 28 ->> 'rank')::int <> 29 or (rs -> 29 ->> 'rank')::int <> 30 or (rs -> 31 ->> 'rank')::int <> 30 then
     raise exception 'unexpected ranks %', rs;
@@ -48,9 +48,9 @@ begin
   if last30 <> 't30-a,t30-b,t30-c' then
     raise exception 'tie order %', last30;
   end if;
-  -- 33位（49棟）は一覧の対象外。ただし個人の順位は一覧を切る前に計算する
-  if exists (select 1 from jsonb_array_elements(rs) r where r ->> 'name' = 'low1') then
-    raise exception 'rank 33 must not be listed';
+  -- サーバーは全順位を保持する。ゲーム側だけが30位で表示を打ち切る。
+  if not exists (select 1 from jsonb_array_elements(rs) r where r ->> 'name' = 'low1' and r ->> 'rank' = '33') then
+    raise exception 'rank 33 must be included in complete ranking';
   end if;
   if (private.kamereoru_rank_of('low1') ->> 'rank')::int <> 33 then
     raise exception 'personal rank of low1 should be 33, got %', private.kamereoru_rank_of('low1');
