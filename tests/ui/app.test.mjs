@@ -69,6 +69,17 @@ function pause() {
   app.showPause('user');
 }
 
+test('the home does not show release identifiers', () => {
+  const runtime = app.runtime;
+  try {
+    app.runtime = { ...runtime, assetVersion: '0.1.0-123456789a' };
+    app.showHome();
+    assert.doesNotMatch(root.textContent, /0\.1\.0-123456789a|kamereoru-rules-v[45]/);
+  } finally {
+    app.runtime = runtime;
+  }
+});
+
 test('first-clear date reaches the result context; a later clear keeps the original stored date', async () => {
   const clearSession = async (playId) => {
     const session = new GameSession({ playId, launchId: playId + '-launch', seed: 1, ranked: false, name: '', gameVersion: 'test' });

@@ -68,7 +68,7 @@ for (const dir of sources) {
     contentHash.update(readFileSync(f));
   }
 }
-for (const file of ['index.html', 'assets/credits.md', socialImageSource, 'scripts/build.mjs', 'ranking-manifest.json']) {
+for (const file of ['index.html', 'latest.html', 'assets/credits.md', socialImageSource, 'scripts/build.mjs', 'ranking-manifest.json']) {
   contentHash.update(file);
   contentHash.update(readFileSync(join(ROOT, file)));
 }
@@ -150,6 +150,7 @@ function entryHtml(prefix) {
 for (const dir of [DIST, vroot]) cpSync(join(ROOT, 'ranking-manifest.json'), join(dir, 'ranking-manifest.json'));
 writeFileSync(join(vroot, 'index.html'), entryHtml('./'));
 writeFileSync(join(DIST, 'index.html'), entryHtml(`./v/${assetVersion}/`));
+cpSync(join(ROOT, 'latest.html'), join(DIST, 'latest.html'));
 // GitHub Pages で Jekyll の処理を止める
 writeFileSync(join(DIST, '.nojekyll'), '');
 
@@ -158,6 +159,7 @@ for (const f of [...walk(vroot)].sort()) files[relative(DIST, f)] = sha(readFile
 files[socialImage] = sha(readFileSync(join(DIST, socialImage)));
 files['ranking-manifest.json'] = sha(readFileSync(join(DIST, 'ranking-manifest.json')));
 files['index.html'] = sha(readFileSync(join(DIST, 'index.html')));
+files['latest.html'] = sha(readFileSync(join(DIST, 'latest.html')));
 const release = {
   gameVersion: GAME_VERSION,
   assetVersion,
