@@ -1,6 +1,6 @@
 // ไทย
 export default {
-  releaseRunRank: "อันดับรอบนี้: {rank} จาก {total} รอบ (เล่นทั้งหมด {total} รอบ)",
+  releaseRunRank: "อันดับรอบนี้: {rank} จาก {total} รอบ",
   releaseClearOrdinal: "ลำดับที่ผ่านครบครั้งแรก: {ordinal}",
   releaseCorrectedResult: "ผลการเล่นรอบนี้",
   releasePending: "กำลังคำนวณอันดับ",
