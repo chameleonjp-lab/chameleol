@@ -1073,13 +1073,17 @@ export class App {
     const renderGuide = () => {
       if (!current() || !guidance || !ready) return;
       const v=guidance.view();
-      const audioRunning=session.running&&!document.hidden&&!this.takenOver&&(this.coverEl?.hidden??true);
+      const canOperate = !document.hidden && !this.takenOver && (this.coverEl?.hidden ?? true);
+      const audioRunning = session.running && canOperate;
       if(audioRunning!==guideAudioRunning){guideAudioRunning=audioRunning;if(audioRunning){this.audio.startGameAudio({reset:firstAudioStart});firstAudioStart=false;}else this.audio.stopGameAudio();}
       guideUI?.render(v);
       presentationHud.setGuideActive(Boolean(v.step));
       controls.setLocked(!v.brightnessUnlocked);
       if (v.stationary) controls.setValues(v.color);
-      controls.setEnabled(!this.takenOver && !document.hidden && (this.coverEl?.hidden ?? true) && (session.running || v.stationary));
+      controls.setEnabled(canOperate && (session.running || v.stationary));
+      const showBrightnessGuide = canOperate && session.running && !session.ended && !v.step
+        && v.brightnessUnlocked && v.building >= 23 && v.building <= 30;
+      controls.setBrightnessGuide(showBrightnessGuide ? v.target.v : null);
     };
     guideUI = mountGuidance({host:guideHost,controls});
     scope.own(()=>guideUI.dispose());

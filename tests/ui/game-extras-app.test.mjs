@@ -157,3 +157,39 @@ test('bird verification warmup reports the real building/phase at each frame wit
  assert.equal(inspect(app.session),before);assert.equal(JSON.stringify(app.extrasMemory),extras);
  assert.equal(view.controller.snapshot().cameo,null,'preview warming does not consume a production claim');
 });
+
+test('the brightness range follows the current wall on buildings 23–30 only', async () => {
+  setup();
+  const session = new GameSession({ playId: 'brightness-range', seed: 1 });
+  await app.showGame(session, { fresh: true });
+  const range = document.querySelector('.bar .bar-guide-range');
+  const paletteTarget = document.querySelector('.palette-guide-target');
+  const barTarget = document.querySelector('.bar-guide-target');
+
+  for (const [i, wall] of session.game.course.targets.slice(0, 31).entries()) {
+    session.apply({ type: 'color', t: i * session.rules.buildingMs, ...wall });
+    const before = inspect(session);
+    app.renderGuidance();
+    assert.equal(inspect(session), before, 'rendering the range does not change the session or its input history');
+    const building = i + 1;
+    const visible = building >= 23 && building <= 30;
+    assert.equal(range.hidden, !visible, `building ${building}`);
+    if (!visible) continue;
+
+    assert.equal(paletteTarget.style.display, 'none');
+    assert.equal(barTarget.style.display, 'none');
+    assert.ok(Math.abs(Number.parseFloat(range.style.top) - Math.max(0, 100 - wall.v * 0.015)) < 1e-9);
+    assert.equal(Number.parseFloat(range.style.bottom), wall.v / 200);
+
+    if (building === 23) {
+      session.pause('user');
+      app.showPause('user');
+      app.renderGuidance();
+      assert.equal(range.hidden, true);
+      app.coverEl.hidden = true;
+      session.startClock(performance.now());
+      app.renderGuidance();
+      assert.equal(range.hidden, false);
+    }
+  }
+});

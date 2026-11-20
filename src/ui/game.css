@@ -504,6 +504,21 @@ h3 {
   inset: 0;
   border-radius: 14px;
 }
+.bar-guide-range {
+  position: absolute;
+  right: 4px;
+  width: 9px;
+  border: 2px solid #c5f4ff;
+  border-left: 0;
+  border-radius: 0 4px 4px 0;
+  background: rgba(116, 227, 255, 0.28);
+  filter: drop-shadow(0 0 1px #080d21);
+  pointer-events: none;
+}
+.controls.disabled .bar-guide-range,
+.controls.bar-locked .bar-guide-range {
+  display: none;
+}
 .bar-marker {
   width: 64px;
   height: 14px;
