@@ -7,7 +7,7 @@ import { randomSecret } from '../../src/storage/store.js';
 import { sha256Hex } from '../../src/net/api.js';
 
 /** 正式記録などを直接作る（再計算は results.test.mjs で確かめ済み。ここでは順位の規則を見る）。 */
-async function mk(srv, name, buildings, avg, { status = 'official', receivedAgo = null } = {}) {
+async function mk(srv, name, buildings, avg, { status = 'official', receivedAgo = null, endReason = null } = {}) {
   const secret = randomSecret();
   const hash = await sha256Hex(secret);
   const rows = await srv.sql(
@@ -22,7 +22,7 @@ async function mk(srv, name, buildings, avg, { status = 'official', receivedAgo 
      select $1, result_id, $2, $2, '{"history":[]}'::jsonb, repeat('0', 64), 2, 'verifying', now() - coalesce($3::interval, '0 seconds') from private.kamereoru_result_claims where play_id = $1`,
     [playId, name, receivedAgo],
   );
-  await srv.sql('select private.kamereoru_finalize($1, $2, $3::jsonb, $4::jsonb)', [playId, status, JSON.stringify({ buildings, rankAverage: avg }), JSON.stringify({ reason: 'test' })]);
+  await srv.sql('select private.kamereoru_finalize($1, $2, $3::jsonb, $4::jsonb)', [playId, status, JSON.stringify({ buildings, rankAverage: avg, endReason }), JSON.stringify({ reason: 'test' })]);
   return { playId, secret };
 }
 
@@ -49,7 +49,7 @@ test('RANK-TEST-05/R9: 同率1位45名をページ分割しても、途中で新
     const names = [...p1.rows, ...p2.rows].map((r) => r.name);
     assert.equal(new Set(names).size, names.length, '重複なし');
     assert.equal(names.filter((n) => n.startsWith('tie')).length, 45, '45名全員');
-    assert.equal(names.includes('second'), false, '2位は46位のため30位以内に入らない');
+    assert.equal(names.includes('second'), true, '46位もサーバーには保持し、ゲーム画面側だけ30位で切る');
     // 更新すると新しい集計の先頭へ
     const latest = await page(srv, { limit: 30 });
     assert.ok(latest.version > p1.version);
@@ -63,6 +63,46 @@ test('RANK-TEST-05/R9: 同率1位45名をページ分割しても、途中で新
   } finally {
     await srv.close();
   }
+});
+
+test('Hall of Fame is separate; later verified clears replace only the best matching percent', { skip: SKIP }, async () => {
+  const srv = await freshServer('hall_best');
+  const hall = async () => (await srv.call('hall-of-fame', null, {method:'GET'})).body;
+  const rank = async name => (await srv.call('rank', {name})).body.rank;
+  try {
+    const firstClear = await mk(srv, 'A', 50, 8000, {endReason:'cleared'});
+    await mk(srv, 'B', 49, 9300);
+    await mk(srv, 'C', 48, 9500);
+    assert.deepEqual((await page(srv)).rows.map(x => [x.name,x.rank]), [['B',1],['C',2]]);
+    assert.equal(await rank('A'), null);
+    let first = await hall();
+    assert.deepEqual(first.rows, [{ordinal:1,name:'A',average:8000}]);
+    const firstVersion = first.version;
+
+    const betterClear = await mk(srv, 'A', 50, 9500, {endReason:'cleared'});
+    const after = await hall();
+    assert.equal(after.version === firstVersion,false,'higher match updates the page snapshot');
+    assert.deepEqual(after.rows, [{ordinal:1,name:'A',average:9500}]);
+    assert.equal((await hall()).rows.length,1,'a name enters the Hall of Fame only once');
+    assert.deepEqual((await page(srv)).rows.map(x => x.name),['B','C']);
+
+    // Do not count an officially verified but non-cleared run as a Hall record.
+    await mk(srv, 'A', 50, 9900);
+    assert.deepEqual((await hall()).rows, [{ordinal:1,name:'A',average:9500}]);
+    const pinned = await srv.call('hall-of-fame?version='+firstVersion+'&after=1', null, {method:'GET'});
+    assert.equal(pinned.body.restarted,true,'a match update invalidates the old paging version');
+
+    await srv.sql("select private.kamereoru_admin_decide($1, 'rejected', 'test', 'admin')", [betterClear.playId]);
+    assert.deepEqual((await hall()).rows, [{ordinal:1,name:'A',average:8000}]);
+    assert.equal(await rank('A'),null);
+    // The best stored run remains 50/99%; withdrawing the last *clear*
+    // must still restore the name to normal ranking without losing the best.
+    await srv.sql("select private.kamereoru_admin_decide($1, 'rejected', 'test', 'admin')", [firstClear.playId]);
+    assert.deepEqual((await hall()).rows,[]);
+    assert.deepEqual((await page(srv)).rows.map(x => [x.name,x.rank]), [['A',1],['B',2],['C',3]]);
+    assert.equal(await rank('A'),1);
+    assert.equal((await best(srv,'A')).rank_avg,9900);
+  } finally { await srv.close(); }
 });
 
 test('RANK-TEST-06/07: 自己ベストは実在する1プレイ。合成しない。0棟は候補外、同じ組なら従来のベストを維持', { skip: SKIP }, async () => {
