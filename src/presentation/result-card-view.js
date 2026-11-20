@@ -1,5 +1,6 @@
 // 結果カードと、画像を共有・保存する操作。投稿用のリンクは App が表示する。
 import { t } from '../i18n/i18n.js';
+import { requestResultCardDownload } from './result-card-download.js';
 import { drawResultCard, describeResultCard, CARD_W, CARD_H } from './result-card-draw.js';
 import { rtext } from './result-card-text.js';
 
@@ -112,7 +113,13 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
     listen(b, 'click', onClick);
     return b;
   };
-  const saveBtn = mk('result-card-save', 'result-card-save', () => openViewer(), host.querySelector('.result-actions') ?? secondary);
+  const saveBtn = mk('result-card-save', 'result-card-save', () => {
+    // One user tap starts the browser download; the image viewer remains available via the explicit view API.
+    if (!requestResultCardDownload({ controller, doc })) {
+      const view = cardViewState(snapshot);
+      setStatus(view.prepared || view.failedWithout ? 'card.failed' : 'card.preparing');
+    }
+  }, host.querySelector('.result-actions') ?? secondary);
   const imageShareBtn = mk('result-card-image-share', 'result-card-image-share', () => controller?.share?.());
   const copyBtn = mk('result-card-copy', 'result-card-copy', () => onCopyText?.());
   const retryBtn = mk('result-card-retry', 'result-card-retry', () => { controller?.retry?.(); });
@@ -146,7 +153,7 @@ export function mountResultCardView({ host, controller, scope, onCopyText, initi
     imageShareBtn.textContent = tx('card.imageShare');
     imageShareBtn.disabled = view.shareDisabled;
     copyBtn.textContent = tx('releaseCopy');
-    saveBtn.disabled = view.state === 'unavailable' && !view.prepared;
+    saveBtn.disabled = !view.prepared || view.state === 'sharing';
     retryBtn.textContent = tx('card.retry');
     retryBtn.hidden = !view.showRetry;
     secondary.classList.toggle('is-share-failed', view.shareFailed && rtext('card.shareFailed', undefined, locale()) === null);
