@@ -1,6 +1,6 @@
 // 한국어
 export default {
-  releaseRunRank: "이번 플레이 순위: {total}회 중 {rank}위 (누적 {total}회)",
+  releaseRunRank: "이번 플레이 순위: {total}회 중 {rank}위",
   releaseClearOrdinal: "첫 완주 순서: {ordinal}번째",
   releaseCorrectedResult: "이번 플레이 결과",
   releasePending: "순위 집계 중",
