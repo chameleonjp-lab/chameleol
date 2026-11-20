@@ -70,10 +70,11 @@ export function createControls({
   const paletteGuide = h('div', { class: 'guide-target palette-guide-target', 'aria-hidden': 'true', style: { pointerEvents: 'none', position: 'absolute', left: '0', top: '0', display: 'none' } });
   const palette = h('div', { class: 'palette', role: 'slider', 'aria-label': t('controls.palette') }, [canvas, paletteGuide, paletteMarker]);
   const barFill = h('div', { class: 'bar-fill' });
+  const barGuideRange = h('div', { class: 'bar-guide-range', 'aria-hidden': 'true', hidden: true });
   const barMarker = h('div', { class: 'marker bar-marker', 'aria-hidden': 'true' });
   const barGuide = h('div', { class: 'guide-target bar-guide-target', 'aria-hidden': 'true', style: { pointerEvents: 'none', position: 'absolute', top: '0', display: 'none' } });
   const lockLabel = h('div', { class: 'bar-lock' }, [h('span', { class: 'lock-icon', 'aria-hidden': 'true' }, '🔒'), h('span', { class: 'lock-text', 'data-i18n': 'controls.locked' }, t('controls.locked'))]);
-  const bar = h('div', { class: 'bar', role: 'slider', 'aria-label': t('controls.bar') }, [barFill, barGuide, barMarker, lockLabel]);
+  const bar = h('div', { class: 'bar', role: 'slider', 'aria-label': t('controls.bar') }, [barFill, barGuideRange, barGuide, barMarker, lockLabel]);
   const barHint = h('div', { class: 'bar-hint', 'aria-hidden': 'true' }, [
     h('span', { 'data-i18n': 'controls.barTop' }, t('controls.barTop')),
     h('span', { 'data-i18n': 'controls.barBottom' }, t('controls.barBottom')),
@@ -121,6 +122,7 @@ export function createControls({
   });
   let paletteSize = 0;
   let guideTarget = null;
+  let brightnessGuide = null;
 
   function render(values = router.values) {
     if (guideTarget) {
@@ -193,6 +195,16 @@ export function createControls({
       paletteGuide.style.display = target ? '' : 'none';
       barGuide.style.display = target && target.showBrightness !== false ? '' : 'none';
       render();
+    },
+    setBrightnessGuide(target) {
+      if (brightnessGuide === target) return;
+      brightnessGuide = target;
+      barGuideRange.hidden = target == null;
+      if (target == null) return;
+      const darkest = target * 0.5;
+      const brightest = Math.min(rules.valMax, target * 1.5);
+      barGuideRange.style.top = `${100 * (rules.valMax - brightest) / rules.valMax}%`;
+      barGuideRange.style.bottom = `${100 * darkest / rules.valMax}%`;
     },
     setValues(values) {
       const previous = router.values;
