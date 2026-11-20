@@ -1,6 +1,6 @@
 // Русский
 export default {
-  releaseRunRank: "Место в этой игре: {rank} из {total} (всего игр: {total})",
+  releaseRunRank: "Место в этой игре: {rank} из {total}",
   releaseClearOrdinal: "Порядок первого прохождения: {ordinal}",
   releaseCorrectedResult: "Результат этой игры",
   releasePending: "Подсчитываем места",
