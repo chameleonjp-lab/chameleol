@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { launch, openXShare } from './helpers.mjs';
 import { id, BUDGET, openApp, playToResult, toReady, cardState, advanceUntil, heldBytes, liveWebgl } from './fixtures/result-card-helpers.mjs';
 
-test('save dialog blocks background focus and scrolling, preserves native image interaction, and restores page state', async () => {
+test('optional preview blocks background focus and scrolling, preserves native image interaction, and restores page state', async () => {
   const env=await launch();
   try {
     const {page}=env;await openApp(env);await playToResult(page);await toReady(page);
@@ -15,7 +15,7 @@ test('save dialog blocks background focus and scrolling, preserves native image 
       scrollTo(0,Math.max(0,save.getBoundingClientRect().top+scrollY-100));
     });
     const before=await page.evaluate(()=>({y:scrollY,position:document.body.style.position}));
-    await page.locator('.result-card-save').click();await page.waitForSelector('.result-card-viewer-image');
+    await page.locator('.result-card-canvas').click();await page.waitForSelector('.result-card-viewer-image');
     const locked=await page.evaluate(()=>{
       document.querySelector('[data-testid="result-again"]').focus();
       const late=document.createElement('button');late.id='late-background';document.body.append(late);
@@ -30,7 +30,7 @@ test('save dialog blocks background focus and scrolling, preserves native image 
     await page.locator(id('result-card-viewer-close')).click();
     const restored=await page.evaluate(()=>({y:scrollY,position:document.body.style.position,overflow:document.body.style.getPropertyValue('overflow'),priority:document.body.style.getPropertyPriority('overflow'),inert:document.querySelector('#test-root').inert,late:document.querySelector('#late-background').inert,old:document.querySelector('#existing-background').getAttribute('inert'),aria:document.querySelector('#existing-background').getAttribute('aria-hidden'),focus:document.activeElement.getAttribute('data-testid')}));
     assert.ok(Math.abs(restored.y-before.y)<=1,'closing restores the original scroll position');
-    assert.deepEqual({...restored,y:0},{y:0,position:before.position,overflow:'auto',priority:'important',inert:false,late:false,old:'already',aria:'false',focus:'result-card-save'});
+    assert.deepEqual({...restored,y:0},{y:0,position:before.position,overflow:'auto',priority:'important',inert:false,late:false,old:'already',aria:'false',focus:'result-card-canvas'});
     const beforeAxes=await page.evaluate(()=>{
       document.body.style.removeProperty('overflow');
       document.body.style.setProperty('overflow-y','scroll','important');
@@ -38,11 +38,11 @@ test('save dialog blocks background focus and scrolling, preserves native image 
       document.documentElement.style.setProperty('overflow-y','scroll');
       return [document.documentElement,document.body].map(node=>['overflow-x','overflow-y'].map(axis=>[node.style.getPropertyValue(axis),node.style.getPropertyPriority(axis)]));
     });
-    await page.locator('.result-card-save').click();
+    await page.locator('.result-card-canvas').click();
     assert.deepEqual(await page.evaluate(()=>[document.documentElement,document.body].map(node=>['overflow-x','overflow-y'].map(axis=>getComputedStyle(node).getPropertyValue(axis)))),[['hidden','hidden'],['hidden','hidden']]);
     await page.keyboard.press('Escape');
     assert.deepEqual(await page.evaluate(()=>[document.documentElement,document.body].map(node=>['overflow-x','overflow-y'].map(axis=>[node.style.getPropertyValue(axis),node.style.getPropertyPriority(axis)]))),beforeAxes,'axis-specific values and priorities survive closing');
-    await page.locator('.result-card-save').click();
+    await page.locator('.result-card-canvas').click();
     const left=await page.evaluate(()=>{__kamereoru.showHome();return {position:document.body.style.position,inert:document.querySelector('#test-root').inert,viewer:!!document.querySelector('.result-card-viewer')};});
     assert.deepEqual(left,{position:before.position,inert:false,viewer:false});
     assert.deepEqual(env.errors,[]);
@@ -66,7 +66,13 @@ for(const mode of ['files','payload','missing','failure']) {
       assert.equal(await advanceUntil(page,async()=>await cardState(page)===expected),true);
       const failed=await page.evaluate(()=>({sameFile:__kamereoru.resultCardController.snapshot().prepared.file===__fileBeforeFailure,windows:__opened.length,shares:__shares.length}));
       assert.deepEqual(failed,{sameFile:true,windows:0,shares:mode==='failure'?1:0});
-      await page.locator('.result-card-save').click();
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page.locator('.result-card-save').click(),
+      ]);
+      assert.equal(download.suggestedFilename(),'chameleol-result.png');
+      assert.equal(await page.locator('.result-card-viewer').count(),0,'saving skips the preview even after a share failure');
+      await page.locator('.result-card-canvas').click();
       await page.waitForFunction(()=>document.querySelector('.result-card-viewer-image')?.complete);
       assert.equal(await page.evaluate(()=>document.querySelector('.result-card-viewer-image').naturalWidth),1200);
       await page.keyboard.press('Escape');
@@ -111,7 +117,9 @@ test('failed PNG generation frees its buffer before notifying the open model, th
     const samples=await page.evaluate(()=>__failureNotifications);
     assert.equal(samples.length,1);assert.equal(samples[0].generation,0);assert.ok(samples[0].total<=BUDGET);
     t.diagnostic(`failure notification: ${JSON.stringify(samples)}`);
-    await page.locator('.result-card-save').click();assert.equal(await page.locator('.result-card-viewer').count(),0);
+    assert.equal(await page.locator('.result-card-save').isDisabled(),true,'a failed PNG cannot be downloaded');
+    await page.evaluate(()=>document.querySelector('.result-card-save').click());
+    assert.equal(await page.locator('.result-card-viewer').count(),0);
     await page.locator('.result-card-retry').click();await toReady(page);
     assert.equal(await page.evaluate(()=>__shares.length+__opened.length),0);
     assert.ok(await page.evaluate(()=>__kamereoru.resultCardController.snapshot().prepared.file.size)>0);
@@ -119,13 +127,13 @@ test('failed PNG generation frees its buffer before notifying the open model, th
   } finally {await env.close();}
 });
 
-test('eight repeated save/model/regenerate/remount cycles release old URLs, controllers and rendering surfaces',async(t)=>{
+test('eight repeated preview/model/regenerate/remount cycles release old URLs, controllers and rendering surfaces',async(t)=>{
   const env=await launch({scale:2});
   try {
     const {page}=env;await openApp(env);await playToResult(page);await toReady(page);
     await page.evaluate(()=>{__webgl.clear();globalThis.__retiredControllers=[];});
     for(let i=0;i<8;i++) {
-      await page.locator('.result-card-save').click();await page.waitForFunction(()=>document.querySelector('.result-card-viewer-image')?.complete);
+      await page.locator('.result-card-canvas').click();await page.waitForFunction(()=>document.querySelector('.result-card-viewer-image')?.complete);
       await page.keyboard.press('Escape');
       assert.equal(await page.evaluate(()=>__createdUrls.filter(u=>!__revoked.includes(u)).length),0);
       await page.locator('[data-panel="turn"]').click();await page.waitForSelector('.result-turn-canvas');
