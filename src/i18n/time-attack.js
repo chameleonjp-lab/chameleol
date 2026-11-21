@@ -1,5 +1,6 @@
 // 同系色タイムアタックの翻訳。通常のメッセージ辞書へ影響させない。
-import {TITLE_NAMES_JA,titleForTime} from '../rules/time-attack/v1/index.js';
+import {titleForTime} from '../rules/time-attack/v1/index.js';
+import {TA_TITLES} from './time-attack-titles.js';
 const keys=['mode','start','clear','quit','time','building','family','color','brightness','red','green','blue',
  'paused','resume','notCleared','unrankedQuestion','startError','anonymous','verifying','again','ranking','shareMode','shareRecord'];
 const labels={
@@ -19,21 +20,6 @@ const labels={
  vi:['Chế độ tính giờ','Chế độ màu cùng tông','Hoàn thành 30 tòa nhà!','Thoát','Thời gian','Tòa nhà','Nhóm màu','Màu','Độ sáng','Đỏ','Lục','Lam','Tạm dừng','Tiếp tục','Chưa hoàn thành','Không thể kết nối bảng xếp hạng. Chơi không xếp hạng?','Không thể bắt đầu','Không xếp hạng','Đang xác minh','Chơi lại','Xếp hạng','Chế độ tính giờ','Kỷ lục'],
  th:['โหมดจับเวลา','โหมดสีโทนเดียวกัน','ผ่านครบ 30 อาคาร!','ออก','เวลา','อาคาร','กลุ่มสี','สี','ความสว่าง','สีแดง','สีเขียว','สีน้ำเงิน','หยุดชั่วคราว','เล่นต่อ','ยังไม่สำเร็จ','ติดต่ออันดับไม่ได้ เล่นแบบไม่จัดอันดับหรือไม่?','เริ่มไม่ได้','ไม่นับอันดับ','กำลังตรวจสอบ','เล่นอีกครั้ง','อันดับ','โหมดจับเวลา','สถิติ']
 };
-const EN_TITLES=[
- 'Lightning Chameleon','Flash Thief','Instant Thief','Gale Thief','Phantom Mimic','Silent Thief',
- 'Moonlit Thief','Rooftop Thief','Master of Disguise','Master of Color','Color-Matching Master',
- 'Light and Shade Master','Shade Master','Shadow-Crossing Expert','Rooftop Expert','Alleyway Expert',
- 'Gem Connoisseur','Gem Concealer','Gem Courier','Vault Keeper','Color Artisan','Light and Shade Artisan',
- 'Color Sample Artisan','Wall Color Artisan','Cobblestone Artisan','Sign Color Artisan','Rooftop Color Artisan',
- 'Window Watcher','Alley Watcher','Street Corner Watcher','Night Guide','Rooftop Guide','Alley Guide',
- 'Street Corner Guide','Night Investigator','Alley Investigator','Wall Color Investigator',
- 'Windowlight Observer','Streetlight Observer','Moonshadow Observer','Wall Color Apprentice',
- 'Sign Color Apprentice','Rooftop Walking Apprentice','Alley Walking Apprentice',
- 'Disguise Trainee','Brightness Trainee','Color-Changing Trainee','Color-Finding Trainee',
- 'Rooftop Explorer','Alley Explorer','Street Corner Explorer','Cobblestone Walker',
- 'Under-Roof Walker','Alley Walker','Moonlit Stroller','Streetlight Stroller',
- 'Street Corner Stroller','City-Wandering Chameleon'
-];
 const FINISH={
  ja:'30棟完走',en:'30 buildings completed',es:'30 edificios completados',
  'pt-BR':'30 prédios concluídos','zh-Hans':'完成30栋',fr:'30 bâtiments terminés',
@@ -51,6 +37,6 @@ export function timeAttackTitle(cs,language='ja'){
  const i=Number(key.slice(-2))-1;
  // 日本語の確定称号は厳密に保持。英語は対応訳、その他の言語には翻訳された
  // 「称号」という枠の中へ内容を表示する。固有名は順次自然訳を追加する。
- return language==='ja'?TITLE_NAMES_JA[i]:EN_TITLES[i];
+ return (TA_TITLES[language]??TA_TITLES.en)[i];
 }
-export {EN_TITLES,labels,keys};
+export {TA_TITLES,labels,keys};
