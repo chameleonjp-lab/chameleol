@@ -206,7 +206,7 @@ export function publicView(state,course){
     brightnessEnabled:state.building>=15,
     currentColor:{...state.color},targetColor:visible?{...target}:null,
     travelElapsedMs:state.travelElapsedMs,
-    scenePosition:state.building-1+(state.phase==='travel'?state.travelElapsedMs/MOVE_MS:0)
+    scenePosition:state.building-1+((state.phase==='travel'||(state.phase==='paused'&&state.savedPhase==='travel'))?state.travelElapsedMs/MOVE_MS:0)
   };
 }
 export function replayTimeAttack(payload) {
