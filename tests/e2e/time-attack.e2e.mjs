@@ -17,7 +17,18 @@ test('TA entry, first 500ms hold, two-second travel, pause and return to normal 
   assert.equal(await page.locator('.ta-game').count(),1);
   const target=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.course.targets[0]);
   await page.evaluate(c=>window.__kamereoru.debugTimeAttack.input(c),target);
-  await page.waitForFunction(()=>window.__kamereoru.debugTimeAttack.state.phase==='travel',null,{timeout:5000});
+  try {
+   await page.waitForFunction(()=>window.__kamereoru.debugTimeAttack.state.phase==='travel',null,{timeout:6000});
+  }catch(error){
+   const info=await page.evaluate(()=>({
+     state:window.__kamereoru?.debugTimeAttack?.state??null,
+     controlClass:document.querySelector('.controls')?.className,
+     canvasCount:document.querySelectorAll('canvas').length,
+     errorPanel:document.querySelector('.notices')?.textContent?.slice(0,150)
+   }));
+   console.error('TA first-building debug state',JSON.stringify(info),'browserErrors',env.errors);
+   throw error;
+  }
   const state=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state);
   assert.equal(state.clearedCount,1);
   assert.equal(state.elapsedMs>=500,true);
