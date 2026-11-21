@@ -123,6 +123,27 @@ test('a retired 30-building receipt still verifies, while public ranking reads o
   assert.deepEqual(listed.body.rows.map(row=>[row.name,row.elapsedCs,row.family]),[[old.name,1000,'all']]);
  }finally{await srv.close();}
 });
+
+test('the public leaderboard exposes an empty current board before the new schema is installed', {skip:SKIP},async()=>{
+ const srv=await freshServer('ta_course_rollout');
+ try{
+  await srv.sql('alter function private.kamereoru_ta_ranking_page(bigint,integer,integer,text) rename to ta_test_later_page');
+  await srv.sql('alter function private.kamereoru_ta_stats(text) rename to ta_test_later_stats');
+  await srv.sql('alter function private.kamereoru_ta_rank_of(text,text) rename to ta_test_later_rank');
+  const page=await srv.call('time-attack-ranking?version=3&after=1',{}, {method:'GET'});
+  assert.equal(page.status,200);
+  assert.equal(page.body.course,'all');
+  assert.deepEqual(page.body.rows,[]);
+  assert.equal(page.body.restarted,true);
+  const stats=await srv.call('time-attack-stats',{}, {method:'GET'});
+  assert.equal(stats.status,200);
+  assert.equal(stats.body.totalPlays,0);
+  assert.equal(stats.body.participantCount,0);
+  const result=await srv.call('time-attack-rank',{name:'旧コース'});
+  assert.equal(result.status,200);
+  assert.equal(result.body.rank,null);
+ }finally{await srv.close();}
+});
 test('TA rejects forged result and wrong secret, allows owner to request one review', {skip:SKIP},async()=>{
  const srv=await freshServer('ta_reject');
  try{

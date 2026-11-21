@@ -36,6 +36,17 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
  waitUntil?:(p:Promise<any>)=>void
 }){
  const call=async(text:string,params:unknown[]=[])=>{try{return await db.query(text,params);}catch(e){dbError(e);}};
+ async function readCurrentBoard(text:string,params:unknown[],empty:Record<string,unknown>){
+  try{
+   const [row]=await db.query(text,params);
+   return row.r;
+  }catch(e:any){
+   // During rollout the new schema may still need approval. Keep the retired
+   // board private and expose an empty current board until its SQL is present.
+   if(e?.code==='42883'&&/^function private\.kamereoru_ta_/.test(e.message))return empty;
+   dbError(e);
+  }
+ }
  const task=(p:Promise<any>)=>{const safe=p.catch(e=>log({event:'ta_job_error',reason:String(e?.message??e).slice(0,120)}));waitUntil?.(safe);};
  async function throttle(req:Request,name:string,limit:number){
   const ip=req.headers.get('cf-connecting-ip')??req.headers.get('x-forwarded-for')?.split(',')[0]??'unknown';
@@ -176,15 +187,15 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
     const course=b.course??'all';
     if(course!=='all')throw error(422,'bad_course');
     await throttle(req,'read',1200);
-    const rows=await call('select private.kamereoru_ta_rank_of($1,$2) as r',[n.key,course]);
-    return json(200,rows[0].r);
+    return json(200,await readCurrentBoard('select private.kamereoru_ta_rank_of($1,$2) as r',
+      [n.key,course],{rank:null}));
    }
    if(route==='time-attack-stats'&&req.method==='GET'){
     const course=url.searchParams.get('course')??'all';
     if(course!=='all')throw error(422,'bad_course');
     await throttle(req,'read',1200);
-    const rows=await call('select private.kamereoru_ta_stats($1) as r',[course]);
-    return json(200,rows[0].r);
+    return json(200,await readCurrentBoard('select private.kamereoru_ta_stats($1) as r',
+      [course],{totalPlays:0,participantCount:0}));
    }
    if(route==='time-attack-ranking'&&req.method==='GET'){
     await throttle(req,'read',1200);
@@ -194,9 +205,9 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
     if((v===null)!==(a===null)||!/^([0-9]{1,17})$/.test(l)||
       (v!==null&&!/^[0-9]{1,17}$/.test(v))||(a!==null&&!/^[0-9]{1,10}$/.test(a)))throw error(422,'bad_cursor');
     const limit=safeInt(Number(l),1,100);
-    const rows=await call('select private.kamereoru_ta_ranking_page($1::bigint,$2::integer,$3::integer,$4) as r',[
-      v,a,limit,course]);
-    const r=rows[0].r;
+    const empty={version:0,course,rows:[],nextAfter:null,nameCount:0,restarted:v!==null&&Number(v)!==0};
+    const r=await readCurrentBoard('select private.kamereoru_ta_ranking_page($1::bigint,$2::integer,$3::integer,$4) as r',
+      [v,a,limit,course],empty);
     return json(200,{...r,version:Number(r.version)});
    }
    if(route==='time-attack-process'&&req.method==='POST'){
