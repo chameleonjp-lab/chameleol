@@ -15,6 +15,9 @@
 - [完成版要件仕様書](docs/superpowers/specs/2026-11-21-chameleol-time-attack-spec.md)：54要件、58称号、18群の受入条件。
 - [敵対的検証と修正記録](docs/reviews/2026-11-21-chameleol-time-attack-review.md)：既存処理の流用で起きる混在、時計・取消・再送などの反例と修正。
 - [実装計画書](docs/superpowers/plans/2026-11-21-chameleol-time-attack-plan.md)：ゲーム・保存・サーバー・実験場の変更先と、T0〜T9の作業・確認・公開順。
+- [新モードの実装検証記録](docs/acceptance/time-attack/verification.md)：ゲームPR #51、実験場PR #57と、本番DB/Edgeの配備範囲・未確認事項。
+- [公開と切戻し手順](docs/acceptance/time-attack/operations.md)：実際の適用済みSQL版と受付無効の状態、後続の安全な公開順。
+
 
 この追加は文書のみです。TAのゲーム実装、テーブル作成、本番公開は後続の実装工程です。通常モードの既存仕様とデータは、この文書PRでは変更しません。
 

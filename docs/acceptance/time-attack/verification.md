@@ -1,0 +1,38 @@
+# 同系色タイムアタック：実装・検証記録
+
+作成日：2026-11-21（日本時間）。この文書は **実装PR #51** の現状を記録するもので、未完了を合格扱いしない。
+
+## 対象
+- ゲーム実装PR： https://github.com/chameleonjp-lab/chameleol/pull/51
+- 実験場実装PR： https://github.com/chameleonjp-lab/chameleonjp_lab/pull/57
+- 要件：[完成版仕様](../../superpowers/specs/2026-11-21-chameleol-time-attack-spec.md)、[実装計画](../../superpowers/plans/2026-11-21-chameleol-time-attack-plan.md)
+
+## 読み取りで確認した本番状態
+
+- Supabaseプロジェクト：`chameleonJP-Lab` / `mlpnjgezrnhdxsxolyzj`
+- 適用されたTA専用マイグレーション：`20261121054659_kamereoru_time_attack_v1_20261121`
+- `private.kamereoru_ta_*` の基礎テーブルが10個存在し、受付設定 `accepting=false`。
+- 作成後のTAカウントは開始0・結果0。匿名/ログインユーザーに生テーブルの直接SELECT/INSERT権限なし。
+- 専用統計 `private.kamereoru_ta_stats()` は `totalPlays=0,participantCount=0`、専用順位 `private.kamereoru_ta_ranking_page(null,null,100)` は空一覧とページ版1を返した。
+- 本番Edge Function `kamereoru` をv6→v7へ更新。既存v6の13ソースファイルはGitHub mainと全件一致した状態で確認し、v7では既存の入口/受信だけを拡張し、TA専用の2ファイルを追加した。JWT検証設定は元のfalseを維持。
+- Supabase Advisory: 非公開TA表のRLS「ポリシーなし」は意図した直接接続禁止。TA新設のインデックス未使用は、利用記録が0件の段階では異常ではない。ほかの既存ゲームの警告を本PRで変更しない。
+
+## コードとCIで確認する内容
+- 30棟の決定的な出題、色/明度95%、同時500ms、2秒移動29回、タイムの最速35秒と58区分、10分超完走。
+- TAの開始/完走/再審査は独立したテーブル・Edge経路・IndexedDBへ保存し、通常の上位順位・殿堂入り・保存IDを変更しない。
+- 匿名開始はカウントだけ、名前あり・30棟正式完走だけ順位、同タイムは同順位、100件単位で続き取得。
+- 15言語の58称号と画面、端末のX共有、画面遷移・停止・中断。
+- `npm test`, `npm run test:sql`, `npm run check:engines`、5シャードのブラウザ試験の最終runをPR #51のChecksで確認する。個別の通し試験は使い捨てDBであり、本番へ試験スコアを送らない。
+
+## 実行履歴・注意
+- 初回のSQL検査でVIEWへRLSを適用しようとした問題を修正。
+- 再審査関数のSQL引用符を修正。
+- Browser CIで、重い描画により長い更新停止を検知して自動一時停止する挙動を確認。実プレーの自動停止は維持し、判定・移動UIの検証には公開しない検証専用の正確な時計を使用する。
+- 実験場 [GitHub Actions #114](https://github.com/chameleonjp-lab/chameleonjp_lab/actions/runs/44871858384) は成功。Chromium/WebKitを含む。
+- ゲームPR #51の最終CIとiPhone 17 Pro Safariの実機音・操作・移動は、この文書の更新時には未確認。実機不在で自動ブラウザを実機合格に読み替えない。
+
+## 未公開・段階公開の条件
+- **TA受付はfalse、専用ゲーム開始ボタンは本番で無効、実験場PRは未マージ。** 本番DBや既存ゲームの削除・初期化はしていない。
+- 新しいタイムアタックの毎分検証cronは実行していない。長期運用時は専用worker秘密とVault/pg_netの設定が必要。追加の継続実行や料金が生じ得る設定は、事前にユーザーの承認を確認する。
+- 公開順は、専用受付と検証の準備→ゲームPR #51マージ・配信→開始受付とホーム有効化→実験場PR #57マージ・配信。ユーザーによるPRマージを勝手に代行しない。
+- 暫定切戻しはTA受付/ボタンだけ停止し、既存のTA記録や通常の記録は保持する。v6のEdge原本を再配備する場合は未処理TAがないことを確認する。
