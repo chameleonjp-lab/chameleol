@@ -8,11 +8,11 @@ const require = createRequire(import.meta.url);
 export const { chromium } = require('playwright');
 export const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
-export async function launch({ width = 402, height = 874, locale = 'ja-JP', languages = null, root = ROOT, scale = 1 } = {}) {
+export async function launch({ width = 402, height = 874, locale = 'ja-JP', languages = null, root = ROOT, scale = 1, mobile = true } = {}) {
   const server = await startServer({ rootDir: root, listenPort: 0 });
   const port = server.address().port;
   const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined, args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scale, hasTouch: true, isMobile: true, locale });
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scale, hasTouch: mobile, isMobile: mobile, locale });
   // System Chromium also requests an implicit favicon. It is browser chrome,
   // not an application asset; keep that request from polluting console checks.
   await context.route('**/favicon.ico', (route) => route.fulfill({ status: 204 }));
