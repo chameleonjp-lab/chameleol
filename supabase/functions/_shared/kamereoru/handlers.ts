@@ -5,6 +5,7 @@
 import { normalizeName } from './shared/name.js';
 import { RULES_V1 } from './rules/v1/index.js';
 import { SUPPORTED_RULES, verifyResult } from './replay.ts';
+import { createTimeAttackHandler } from './time-attack-handlers.ts';
 
 export interface Db {
   query(text: string, params?: unknown[]): Promise<any[]>;
@@ -12,6 +13,7 @@ export interface Db {
 
 export interface HandlerOptions {
   db: Db;
+  workerSecret?: string;
   ipSalt?: string;
   allowedOrigin?: string;
   waitUntil?: (p: Promise<unknown>) => void;
@@ -74,6 +76,8 @@ function mapDbError(err: any): HttpError {
 
 export function createHandler(options: HandlerOptions) {
   const { db } = options;
+  const timeAttack = createTimeAttackHandler({db,workerSecret:options.workerSecret ?? '',
+    ipSalt:options.ipSalt ?? '',log: options.log,waitUntil:options.waitUntil});
   const limits = { ...DEFAULT_LIMITS, ...(options.limits ?? {}) };
   const leaseSeconds = options.leaseSeconds ?? 60;
   const log = options.log ?? (() => {});
@@ -350,6 +354,12 @@ export function createHandler(options: HandlerOptions) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     const url = new URL(req.url);
     const route = url.pathname.split('/').filter(Boolean).pop() ?? '';
+    if (route.startsWith('time-attack-')) {
+      const response = await timeAttack.handle(req,url);
+      const headers = new Headers(response.headers);
+      for (const [key,value] of Object.entries(cors)) headers.set(key,value);
+      return new Response(response.body,{status:response.status,headers});
+    }
     const fn = routes[route];
     const allowed = (route === 'ranking' || route === 'stats' || route === 'hall-of-fame')
       ? req.method === 'GET' : req.method === 'POST';
