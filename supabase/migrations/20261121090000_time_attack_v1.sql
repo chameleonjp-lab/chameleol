@@ -339,7 +339,7 @@ $$;
 
 create function private.kamereoru_ta_review(
  p_play uuid,p_hash bytea
-) returns text language plpgsql security definer set search_path='' as $
+) returns text language plpgsql security definer set search_path='' as $$
 declare rowstatus text; was_requested boolean;
 begin
  if not exists(select 1 from private.kamereoru_ta_starts
@@ -354,7 +354,7 @@ begin
  update private.kamereoru_ta_results set status='under_review',review_requested=true where play_id=p_play;
  insert into private.kamereoru_ta_audit(play_id,event) values(p_play,'review_requested');
  return 'under_review';
-end $;
+end $$;
 
 -- No direct Data API access. Edge connects with SUPABASE_DB_URL.
 do $$
