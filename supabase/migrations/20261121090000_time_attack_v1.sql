@@ -307,7 +307,7 @@ begin
  with slice as (select position,rank,display_name as name,elapsed_cs as "elapsedCs",
     family,title_id as "titleId",official_at as "officialAt"
     from private.kamereoru_ta_ranking_rows
-    where version=v and position>coalesce(p_after,0)
+    where version=v and position>case when p_version is null or p_version=v then coalesce(p_after,0) else 0 end
     order by position limit p_limit+1)
  select coalesce(jsonb_agg(to_jsonb(slice) order by position),'[]'::jsonb) into rows from slice;
  if jsonb_array_length(rows)>p_limit then
