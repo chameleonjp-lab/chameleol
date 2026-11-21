@@ -109,8 +109,15 @@ async function runTimeAttack(app,store,course,launch){
   document.removeEventListener('visibilitychange',onVisibility);
   stage?.dispose(); if(app.stage===stage)app.stage=null;
   store.close();app.taController=null;
+  if(app.runtime.isVerification)app.debugTimeAttack=null;
  }};
  app.taController=controller;
+ if(app.runtime.isVerification)app.debugTimeAttack={
+  get state(){return structuredClone(state);},
+  get course(){return course;},
+  input(value){input(value);},
+  pause(){pause('user');},
+ };
  stage=await createStage(stageBox,{course:visualCourse,rules:stageRules,
   decorations:makeDecorations(course.seed),presentationEnabled:false});
  if(!current()){stage.dispose();return;}
