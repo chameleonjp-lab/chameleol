@@ -147,3 +147,17 @@ test('time attack availability and launch flags are separate production settings
   assert.notEqual(readOnly.assetVersion, enabled.assetVersion);
   assert.match(readFileSync(join(root, 'dist/index.html'), 'utf8'), /name="kamereoru-time-attack" content="1"/);
 });
+
+test('a normal refresh of the official Pages build keeps time attack enabled and allows an explicit pause', () => {
+  const official = {
+    api: 'https://mlpnjgezrnhdxsxolyzj.supabase.co/functions/v1/kamereoru',
+    publicUrl: 'https://chameleonjp-lab.github.io/chameleol/',
+  };
+  const active = build(official);
+  assert.equal(active.timeAttack.available, true);
+  assert.equal(active.timeAttack.enabled, true);
+  const paused = build({ ...official, taEnabled: '0' });
+  assert.equal(paused.timeAttack.available, true);
+  assert.equal(paused.timeAttack.enabled, false);
+  assert.notEqual(build({ ...official, api: 'https://example.invalid/kamereoru' }).timeAttack.available, true);
+});

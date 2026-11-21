@@ -7,7 +7,10 @@ import { button } from './screens.js';
 const DETAIL_URL = 'https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=chameleol';
 
 export function rankingLink(testid) {
-  return h('a', { class: 'btn ranking-link', href: DETAIL_URL, 'data-testid': testid }, t('home.ranking'));
+  return h('a', { class: 'btn ranking-link', href: DETAIL_URL, 'data-testid': testid }, [
+    testid === 'home-ranking' ? h('span', { class: 'ranking-link-icon', 'aria-hidden': 'true' }, '🏆') : null,
+    h('span', {}, t('home.ranking')),
+  ]);
 }
 
 /** 同じ集計版の続きを position でまとめ、版が切り替わったときは全行を交換する。 */

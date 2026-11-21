@@ -1,23 +1,47 @@
--- OPERATIONAL SCRIPT: time-attack background verification.
--- NOT a migration. Do not execute until a game/lab release candidate is tested,
--- the worker secret has been configured and production enablement is approved.
---
--- Requirements:
--- 1. pg_cron and vault exist in chameleonJP-Lab.
--- 2. Create a 32-byte secure random base64url (43 chars) secret outside this file.
--- 3. Store same secret in Supabase Edge Function:
---       KAMEREORU_TA_WORKER_SECRET
---    and in Vault secret name "kamereoru_ta_worker_secret".
--- 4. The Edge Function must accept POST time-attack-process with this secret.
--- 5. The scheduled task must NOT contain the plaintext secret.
---
--- On 2026-11-21, pg_cron and Vault were available, pg_net was not enabled.
--- The following ALTER/CREATE operations require a separate production rollout.
-
+-- Hosted setup for the time-attack worker. Apply after the TA migrations and
+-- endpoint have been verified. Supabase Vault holds the signing key. pg_net
+-- only queues a time-limited token for this one worker route.
 create extension if not exists pg_net with schema extensions;
 
--- Re-read the cron job when running this. Its name is stable; do not create duplicates.
--- Only run once after verifying no job with this name already exists.
+do $$
+begin
+  if not exists (select 1 from vault.secrets where name = 'kamereoru_ta_worker_secret') then
+    perform vault.create_secret(
+      encode(extensions.gen_random_bytes(32), 'hex'),
+      'kamereoru_ta_worker_secret',
+      'Signing key for short-lived tokens for the Chameleol time attack worker'
+    );
+  end if;
+end $$;
+
+create or replace function private.kamereoru_ta_worker_token(p_slot bigint)
+returns text language sql stable set search_path = '' as $$
+  select encode(extensions.hmac(
+    convert_to('chameleol:time-attack:process:' || p_slot::text, 'UTF8'),
+    convert_to(s.decrypted_secret, 'UTF8'),
+    'sha256'
+  ), 'hex')
+  from vault.decrypted_secrets s
+  where s.name = 'kamereoru_ta_worker_secret';
+$$;
+
+create or replace function private.kamereoru_ta_worker_authorized(p_token text)
+returns boolean language sql stable set search_path = '' as $$
+  with current_slot as (
+    select floor(extract(epoch from statement_timestamp()) / 60)::bigint as slot
+  )
+  select coalesce(p_token ~ '^[a-f0-9]{64}$' and (
+    p_token = private.kamereoru_ta_worker_token(slot)
+    or p_token = private.kamereoru_ta_worker_token(slot - 1)
+  ), false)
+  from current_slot;
+$$;
+
+revoke execute on function private.kamereoru_ta_worker_token(bigint) from public, anon, authenticated, service_role;
+revoke execute on function private.kamereoru_ta_worker_authorized(text) from public, anon, authenticated, service_role;
+
+-- The database checks the queue every minute, but only calls the Edge Function
+-- when there is verification work eligible for pickup.
 select cron.schedule(
   'kamereoru-ta-process-every-minute',
   '* * * * *',
@@ -25,22 +49,19 @@ select cron.schedule(
     select net.http_post(
       url := 'https://mlpnjgezrnhdxsxolyzj.supabase.co/functions/v1/kamereoru/time-attack-process',
       headers := jsonb_build_object(
-        'Content-Type','application/json',
-        'X-TA-Worker-Secret',(
-          select decrypted_secret
-          from vault.decrypted_secrets
-          where name='kamereoru_ta_worker_secret'
-          limit 1
-        )
+        'Content-Type', 'application/json',
+        'X-TA-Worker-Token', private.kamereoru_ta_worker_token(floor(extract(epoch from statement_timestamp()) / 60)::bigint)
       ),
       body := '{}'::jsonb,
       timeout_milliseconds := 8000
+    )
+    where exists (
+      select 1 from private.kamereoru_ta_jobs
+      where status <> 'finished' and (lease_until is null or lease_until <= statement_timestamp())
     );
   $job$
 );
 
--- Once per day, prune only large replay details of settled records and old
--- immutable ranking snapshots. Starts, scores, names and audit are retained.
 select cron.schedule(
   'kamereoru-ta-retention-daily',
   '0 3 * * *',
@@ -49,17 +70,3 @@ select cron.schedule(
            private.kamereoru_ta_prune_rank_versions(now());
   $job$
 );
-
--- Check (read-only):
--- select jobid,schedule,active from cron.job where jobname='kamereoru-ta-process-every-minute';
--- select status, count(*), min(created_at)
---   from private.kamereoru_ta_jobs group by status;
--- select start_time,end_time,status,return_message
---   from cron.job_run_details
---   where jobid=(select jobid from cron.job where jobname='kamereoru-ta-process-every-minute')
---   order by start_time desc limit 10;
---
--- Rollback of a faulty new release:
--- - Disable only new TA reservations and the homepage TA button.
--- - Keep the verified TA API/secret/cron intact for existing pending results and retries.
--- - Do not drop private.kamereoru_ta_* tables or remove completed scores.
