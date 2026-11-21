@@ -39,6 +39,17 @@ select cron.schedule(
   $job$
 );
 
+-- Once per day, prune only large replay details of settled records and old
+-- immutable ranking snapshots. Starts, scores, names and audit are retained.
+select cron.schedule(
+  'kamereoru-ta-retention-daily',
+  '0 3 * * *',
+  $job$
+    select private.kamereoru_ta_purge_details(now()),
+           private.kamereoru_ta_prune_rank_versions(now());
+  $job$
+);
+
 -- Check (read-only):
 -- select jobid,schedule,active from cron.job where jobname='kamereoru-ta-process-every-minute';
 -- select status, count(*), min(created_at)
