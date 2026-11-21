@@ -130,3 +130,15 @@ test('TA rejects forged result and wrong secret, allows owner to request one rev
   assert.equal(stats.body.participantCount,0);
  }finally{await srv.close();}
 });
+
+test('TA accepts valid 20-grapheme Unicode names without a stricter SQL character cap', {skip:SKIP},async()=>{
+ const srv=await freshServer('ta_unicode');
+ try{
+  await srv.sql('update private.kamereoru_ta_config set accepting=true');
+  const name='👨‍👩‍👧‍👦'.repeat(20);
+  assert.ok([...name].length>80);
+  assert.ok(new TextEncoder().encode(name).length<=1000);
+  const start=await reserve(srv,name);
+  assert.equal(start.name,name);
+ }finally{await srv.close();}
+});
