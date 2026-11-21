@@ -90,6 +90,7 @@ test('TA official 30-building replay, idempotent start/launch, stats and ranked 
 test('TA anonymous launch counts once but never enters ranking, and stays independent of regular main', {skip:SKIP},async()=>{
  const srv=await freshServer('ta_guest');
  try{
+  await srv.sql('update private.kamereoru_ta_config set accepting=true');
   const launchId=uuid(),payload={launchId,modeId:MODE_ID,ranked:false,
    playId:null,family:'green',gameVersion:version};
   assert.equal((await srv.call('time-attack-launch',payload)).status,200);
