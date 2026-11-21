@@ -14,6 +14,9 @@ import { areaOf } from './rules/v1/course.js';
 import { GameSession } from './game/session.js';
 import { alertWordKey, createAlertStageTracker, createInstantSuccessTracker, matchWordKey } from './game/feedback.js';
 import { createControls } from './ui/controls.js';
+import { startTimeAttack } from './ui/time-attack.js';
+import { flushTimeAttackPending } from './net/time-attack.js';
+import { timeAttackText } from './i18n/time-attack.js';
 import { desktopSettings } from './ui/desktop-settings.js';
 import { hasDesktopControls, normalizeScrollSpeed } from './ui/desktop-input.js';
 import { h, clear, isolatedText } from './ui/dom.js';
@@ -94,6 +97,8 @@ export class App {
     this.raf = 0;
     this.notices = [];
     this.lastResult = null;
+    this.taController = null;
+    this.timeAttackStarting = false;
   }
 
   // ---------- 起動 ----------
@@ -125,6 +130,7 @@ export class App {
     globalThis.addEventListener('pagehide', () => this.saveNow('pagehide'));
     globalThis.addEventListener('online', async () => {
       await this.flushNetwork();
+      void flushTimeAttackPending(this.api);
       if (this.renderResultStatus) await this.pollResult();
     });
     // 画面に触れた時に音を準備する（本編の外だけ。停止中は「再開」を押すまで音を出さない）
@@ -137,6 +143,7 @@ export class App {
     });
     this.showHome();
     this.flushNetwork();
+    void flushTimeAttackPending(this.api);
   }
 
   /** 本編の外（ホーム・結果・練習など）で流す曲を決めて、音を準備する。 */
@@ -316,6 +323,9 @@ export class App {
 
   // ---------- 画面の切り替え ----------
   mount(el, rerender = null) {
+    if (this.taController) {
+      const ta=this.taController;this.taController=null;ta.dispose();
+    }
     this.stopReleaseCheck?.();
     this.stopReleaseCheck = null;
     if (!el.classList.contains('game')) this.cancelStartAttempt();
@@ -383,6 +393,8 @@ export class App {
       field.el,
       h('div', { class: 'home-actions' }, [
         button('home.start', () => this.startFlow(field.value), { primary: true, className: 'btn-start', testid: 'home-start' }),
+        h('button', {type:'button',class:'btn btn-time-attack','data-testid':'home-time-attack',
+          onclick:()=>{if(!this.startAttempt)void startTimeAttack(this,field.value);}},timeAttackText('start',getLanguage())+' · 30'),
         continueBtn,
         h('div', { class: 'home-grid' }, [
           practiceBtn,
@@ -398,7 +410,7 @@ export class App {
     this.mount(el, () => this.showHome());
     this.stopReleaseCheck = watchPublicRelease(this.runtime, () =>
       !this.store.memory && !this.session && !this.savedRun && !this.foreignRun && !this.startAttempt
-      && !this.nameWrite && document.activeElement !== field.input && !this.layer.hasChildNodes());
+      && !this.nameWrite && !this.taController && !this.timeAttackStarting && document.activeElement !== field.input && !this.layer.hasChildNodes());
     this.mountShowcase(homeArt);
     if (!showOnline) return;
     this.store
