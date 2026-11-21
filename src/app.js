@@ -393,8 +393,8 @@ export class App {
       field.el,
       h('div', { class: 'home-actions' }, [
         button('home.start', () => this.startFlow(field.value), { primary: true, className: 'btn-start', testid: 'home-start' }),
-        h('button', {type:'button',class:'btn btn-time-attack','data-testid':'home-time-attack',
-          onclick:()=>{if(!this.startAttempt)void startTimeAttack(this,field.value);}},timeAttackText('start',getLanguage())+' · 30'),
+        (this.runtime.timeAttackEnabled || this.runtime.isVerification) ? h('button', {type:'button',class:'btn btn-time-attack','data-testid':'home-time-attack',
+          onclick:()=>{if(!this.startAttempt)void startTimeAttack(this,field.value);}},timeAttackText('start',getLanguage())+' · 30') : null,
         continueBtn,
         h('div', { class: 'home-grid' }, [
           practiceBtn,
