@@ -249,13 +249,14 @@ async function runTimeAttack(app,store,course,launch){
 }
 export function showTimeAttackResult(app,summary,launch,family,result){
  const cleared=summary.reason==='cleared';
+ const statusEl=h('p',{class:'note ta-registration'},!launch.ranked?txt('anonymous'):txt('verifying'));
  const content=h('div',{class:'ta-result-card'},[
   h('p',{class:'ta-kicker'},txt('mode')),
   h('h1',{},cleared?txt('clear'):txt('quit')),
   h('p',{class:'ta-result-time'},cleared?formatTime(summary.elapsedCs):'—'),
   h('p',{class:'ta-result-title'},cleared?timeAttackTitle(summary.elapsedCs,getLanguage()):txt('notCleared')),
   h('p',{class:'note'},txt(family)),
-  h('p',{class:'note'},!launch.ranked?txt('anonymous'):txt('verifying'))
+  statusEl
  ]);
  const actions=[smallButton(txt('again'),()=>void startTimeAttack(app,app.nameRaw),true),
   smallButton(txt('ranking'),()=>{globalThis.location.href='https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=chameleol&tab=time-attack';}),
@@ -265,4 +266,24 @@ export function showTimeAttackResult(app,summary,launch,family,result){
   actions.splice(2,0,xShareForm(text,'time-attack-share').el);
  }
  app.mount(h('main',{class:'screen ta-result'},[content,...actions]),null);
+ const screen=app.screenGeneration;
+ if(cleared&&launch.ranked&&result?.playId&&app.api.configured){
+  const statusLabels={official:'official',rejected:'rejected',pending_review:'pending',
+    under_review:'pending',verifying:'verifying',no_rank:'anonymous'};
+  const poll=async(attempt)=>{
+   if(app.screenGeneration!==screen||attempt>6)return;
+   try{
+    const res=await app.api.post('time-attack-status',{items:[{playId:result.playId,secret:launch.secret}]});
+    if(app.screenGeneration!==screen)return;
+    if(res.modeId!==MODE_ID||!Array.isArray(res.items))throw Error('invalid_status');
+    const status=res.items[0];
+    if(status?.status && status.status!=='not_received'){
+     statusEl.textContent=txt(statusLabels[status.status]??'verifying');
+     if(['official','rejected','no_rank','pending_review','under_review'].includes(status.status))return;
+    }
+   }catch{if(attempt>=6)statusEl.textContent=txt('pending');}
+   setTimeout(()=>void poll(attempt+1),1500);
+  };
+  void poll(0);
+ }
 }
