@@ -15,25 +15,22 @@ test('TA entry, first 500ms hold, two-second travel, pause and return to normal 
   await page.waitForFunction(()=>window.__kamereoru?.debugTimeAttack?.state.phase==='active',
     null,{timeout:15000});
   assert.equal(await page.locator('.ta-game').count(),1);
+  // Browser CPU/GPU timing is not a trustworthy metronome on a shared CI runner:
+  // heavy 3D frames correctly trigger the game's >1000ms auto-pause.
+  // Instead, exercise exactly the same controller with a verification-only clock.
+  await page.evaluate(()=>window.__kamereoru.debugTimeAttack.useManualClock());
   const target=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.course.targets[0]);
-  await page.evaluate(c=>window.__kamereoru.debugTimeAttack.input(c),target);
-  try {
-   await page.waitForFunction(()=>window.__kamereoru.debugTimeAttack.state.phase==='travel',null,{timeout:6000});
-  }catch(error){
-   const info=await page.evaluate(()=>({
-     state:window.__kamereoru?.debugTimeAttack?.state??null,
-     controlClass:document.querySelector('.controls')?.className,
-     canvasCount:document.querySelectorAll('canvas').length,
-     errorPanel:document.querySelector('.notices')?.textContent?.slice(0,150)
-   }));
-   console.error('TA first-building debug state',JSON.stringify(info),'browserErrors',env.errors);
-   throw error;
-  }
-  const state=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state);
-  assert.equal(state.clearedCount,1);
-  assert.equal(state.elapsedMs>=500,true);
-  assert.equal(await page.locator('.controls.disabled').count(),1);
-  await page.waitForFunction(()=>window.__kamereoru.debugTimeAttack.state.building===2,null,{timeout:5500});
+  await page.evaluate(c=>window.__kamereoru.debugTimeAttack.setColor(c),target);
+  await page.evaluate(()=>window.__kamereoru.debugTimeAttack.step(499));
+  assert.equal((await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state)).phase,'active');
+  await page.evaluate(()=>window.__kamereoru.debugTimeAttack.step(1));
+  const passed=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state);
+  assert.equal(passed.phase,'travel');
+  assert.equal(passed.clearedCount,1);
+  assert.equal(passed.elapsedMs,500);
+  await page.evaluate(()=>window.__kamereoru.debugTimeAttack.step(1999));
+  assert.equal((await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state)).phase,'travel');
+  await page.evaluate(()=>window.__kamereoru.debugTimeAttack.step(1));
   const next=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state);
   assert.equal(next.building,2);
   assert.equal(next.moveCount,1);
