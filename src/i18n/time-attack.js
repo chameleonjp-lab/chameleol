@@ -27,7 +27,25 @@ const FINISH={
  it:'30 edifici completati','zh-Hant':'完成30棟',id:'30 gedung selesai',
  tr:'30 bina tamamlandı',vi:'Hoàn thành 30 tòa nhà',th:'ผ่านครบ 30 อาคาร'
 };
+const replaceRun={
+  "ja": "前のタイムアタックが続行中です。前の記録を途中終了として、新しく始めますか？",
+  "en": "A time-attack run is still active. End that run and start a new one?",
+  "es": "Hay una partida contrarreloj activa. ¿Terminarla y comenzar otra?",
+  "pt-BR": "Há uma partida contra o tempo ativa. Encerrar e começar outra?",
+  "zh-Hans": "仍有正在进行的计时挑战。结束上一局并开始新挑战吗？",
+  "fr": "Une partie contre-la-montre est encore active. La terminer et recommencer ?",
+  "de": "Ein Zeitangriff läuft noch. Diesen beenden und einen neuen starten?",
+  "ko": "진행 중인 타임어택이 있습니다. 이전 플레이를 끝내고 새로 시작할까요?",
+  "ru": "Есть активный забег на время. Завершить его и начать новый?",
+  "it": "Una sfida a tempo è ancora attiva. Terminarla e ricominciare?",
+  "zh-Hant": "仍有正在進行的計時挑戰。結束上一局並開始新挑戰嗎？",
+  "id": "Masih ada permainan kejar waktu. Akhiri dan mulai yang baru?",
+  "tr": "Devam eden bir zaman yarışı var. Bitirip yeniden başlansın mı?",
+  "vi": "Vẫn có lượt chơi tính giờ đang diễn ra. Kết thúc lượt đó và bắt đầu lượt mới?",
+  "th": "ยังมีการแข่งจับเวลาที่กำลังเล่นอยู่ ต้องการจบครั้งก่อนแล้วเริ่มใหม่หรือไม่?"
+};
 export function timeAttackText(key,language='ja'){
+ if(key==='replaceRun')return replaceRun[language]??replaceRun.en;
  const words=labels[language]??labels.en,ix=keys.indexOf(key);
  return ix<0?key:(words[ix]??labels.en[ix]);
 }
