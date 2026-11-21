@@ -1,3 +1,4 @@
+import { RULES_VERSION as TA_RULES, COURSE_VERSION as TA_COURSE, HISTORY_FORMAT as TA_HISTORY, RESULT_FORMAT as TA_RESULT } from '../src/rules/time-attack/v1/index.js';
 // 公開用の配布物を dist/ に作る。
 // - 資源は版ごとのフォルダ v/<assetVersion>/ に置く。各版のフォルダは単独で遊べる入口（index.html）を持つ。
 // - dist/index.html は「今の版」の入口。切り戻しは入口だけを旧版へ戻し、新旧の v/ フォルダは両方残す。
@@ -15,7 +16,7 @@ import { GAME_VERSION } from '../src/config/runtime.js';
 import { RULES_V1, RULES_V2, RULES_V3, RULES_V4, RULES_V5 } from '../src/rules/v1/index.js';
 import { SNAPSHOT_FORMAT } from '../src/game/session.js';
 import { RESULT_FORMAT } from '../src/net/outbox.js';
-import { computeManifest, check as checkShared } from './sync-shared.mjs';
+import { computeManifest, check as checkShared, timeAttackFingerprint } from './sync-shared.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DIST = join(ROOT, 'dist');
@@ -29,6 +30,8 @@ const env = process.env.KAMEREORU_ENV ?? 'verification';
 const api = process.env.KAMEREORU_API ?? '';
 const publicUrl = process.env.KAMEREORU_PUBLIC_URL ?? '';
 const standalone = process.env.KAMEREORU_STANDALONE === '1';
+const timeAttackAvailable = env === 'production' && Boolean(api) && process.env.KAMEREORU_TA_AVAILABLE === '1';
+const timeAttackEnabled = env !== 'production' || (timeAttackAvailable && process.env.KAMEREORU_TA_ENABLED === '1');
 if (standalone && api) {
   console.error('KAMEREORU_STANDALONE cannot be combined with KAMEREORU_API');
   process.exit(1);
@@ -72,7 +75,7 @@ for (const file of ['index.html', 'latest.html', 'assets/credits.md', socialImag
   contentHash.update(file);
   contentHash.update(readFileSync(join(ROOT, file)));
 }
-contentHash.update(JSON.stringify({ env, api, publicUrl, standalone, commit }));
+contentHash.update(JSON.stringify({ env, api, publicUrl, standalone, timeAttackAvailable, timeAttackEnabled, commit }));
 const assetVersion = `${GAME_VERSION}-${contentHash.digest('hex').slice(0, 10)}`;
 
 // 以前の版のフォルダを残す（切り戻し・旧版の保存の再開のため）
@@ -112,6 +115,8 @@ function entryHtml(prefix) {
     html = html.replace(new RegExp(`<meta name="${name}" content="[^"]*" />`), `<meta name="${name}" content="${value}" />`);
   };
   setMeta('kamereoru-env', env);
+  setMeta('kamereoru-time-attack', timeAttackEnabled ? '1' : '0');
+  setMeta('kamereoru-time-attack-available', timeAttackAvailable ? '1' : '0');
   setMeta('kamereoru-api', api);
   setMeta('kamereoru-public-url', publicUrl);
   setMeta('kamereoru-version', GAME_VERSION);
@@ -166,6 +171,11 @@ const release = {
   commit,
   env,
   rankingApi: env === 'production' && !standalone ? api : null,
+  timeAttack: {
+    available: timeAttackAvailable, enabled: timeAttackEnabled,
+    rulesVersion: TA_RULES, generatorVersion: TA_COURSE, historyFormat: TA_HISTORY, resultFormat: TA_RESULT,
+    rulesFingerprint: timeAttackFingerprint(),
+  },
   rulesVersion: RULES_V5.rulesVersion,
   supportedRulesVersions: [RULES_V1, RULES_V2, RULES_V3, RULES_V4, RULES_V5].map((rules) => rules.rulesVersion),
   preferredRankedRulesVersion: RULES_V5.rulesVersion,

@@ -10,12 +10,19 @@ import { RULES_FILES } from '../src/rules/v1/manifest.js';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEST = join(ROOT, 'supabase', 'functions', '_shared', 'kamereoru');
 
+// The TA replay bundle is checked byte-for-byte, without changing the legacy
+// v1 manifest fingerprint used to verify old ranking submissions.
+export const TA_SHARED = [{ from: 'src/rules/time-attack/v1/index.js', to: 'rules/time-attack/v1/index.js' }];
 export const SHARED = [
   ...RULES_FILES.map((f) => ({ from: `src/rules/v1/${f}`, to: `rules/v1/${f}` })),
   { from: 'src/shared/name.js', to: 'shared/name.js' },
 ];
 
 export const sha = (buf) => createHash('sha256').update(buf).digest('hex');
+
+export function timeAttackFingerprint() {
+  return sha(TA_SHARED.map(({ from, to }) => `${to}:${sha(readFileSync(join(ROOT, from)))}`).join('\n'));
+}
 
 export function computeManifest() {
   const files = {};
@@ -26,7 +33,7 @@ export function computeManifest() {
 
 export function check() {
   const problems = [];
-  for (const { from, to } of SHARED) {
+  for (const { from, to } of [...SHARED, ...TA_SHARED]) {
     const dest = join(DEST, to);
     if (!existsSync(dest)) {
       problems.push(`missing ${to}`);
@@ -49,12 +56,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     console.log('shared files are in sync');
   } else {
-    for (const { from, to } of SHARED) {
+    for (const { from, to } of [...SHARED, ...TA_SHARED]) {
       const dest = join(DEST, to);
       mkdirSync(join(dest, '..'), { recursive: true });
       writeFileSync(dest, readFileSync(join(ROOT, from)));
     }
     writeFileSync(join(DEST, 'manifest.json'), `${JSON.stringify(computeManifest(), null, 2)}\n`);
-    console.log('synced', SHARED.length, 'files');
+    console.log('synced', SHARED.length + TA_SHARED.length, 'files');
   }
 }

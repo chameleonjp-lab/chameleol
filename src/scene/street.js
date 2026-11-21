@@ -1375,6 +1375,13 @@ export function createThreeStage(container, { course, decorations, rules = RULES
       reactions?.event(event);accents?.event(event);
       if(event.type==='instantSuccess')ringUntil=event.t+450;
     },
+    // The next target is revealed only after the full 2-second travel.
+    setTimeAttackTarget(index,value){
+      if(disposed||!Number.isInteger(index)||index<1||index>rules.buildingCount)return;
+      course.targets[index-1]={...value};
+      const slotIndex=slots.findIndex(slot=>slot.index===index);
+      if(slotIndex>=0) layoutSlot(slotIndex,index,course.targets[index-1],decorations[index-1]);
+    },
     setBestDistance(value){accents?.setBestDistance(value);stepper?.setBestDistance(value);},
     presentationStats(){const a=accents?.stats()??{},r=reactions?.stats()??{};return {...a,mode,tongue:travelTongue?.stats()??null,actors:r,policeExtra:paintedPoliceExtra,activeIds:[...(a.activeIds??[]),...(r.activeIds??[]),...(paintedPoliceExtra?.id===34?[34]:[]),...(paintedPoliceExtra?.id===39&&a.footprints>0?[39]:[]),...(successRing.visible?[41]:[])],successRings:successRing.visible?1:0,enabled:presentationEnabled};},
     forcePresentationEffect(id,preview=null){

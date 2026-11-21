@@ -139,6 +139,10 @@ export function createDomStage(container, { course, rules = RULES_V1, presentati
   applyOutline(1);
   return {
     kind: 'dom',
+    // Only the currently playable TA wall receives its actual target color.
+    setTimeAttackTarget(index,value) {
+      if (index>=1&&index<=rules.buildingCount) course.targets[index-1]={...value};
+    },
     outlineStyle: () => ({ stage: outlineInfo.stage, thickness: outlineInfo.thickness, rgb: [...outlineInfo.rgb] }),
     update({ t, color, policeStage = 0, presentation }) {
       if (disposed) return;

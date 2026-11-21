@@ -50,6 +50,38 @@
         "cleared",
         "quit"
       ]
+    },
+    {
+      "mode_id": "chameleol_time_attack",
+      "display_order": 61,
+      "game_slug": "chameleol",
+      "title": "タイムアタック",
+      "top_ranking_type": "best",
+      "score_order": "asc",
+      "score_unit": "秒",
+      "score_scale": 100,
+      "score_decimals": 2,
+      "score_label": "クリアタイム",
+      "first_score_label": "初回クリアタイム",
+      "best_score_label": "最速タイム",
+      "score_min": 1500,
+      "score_max": 900719925468300,
+      "ranked_results": [
+        "cleared"
+      ],
+      "play_count": {
+        "count_at": "start",
+        "rpc": "kamereoru/time-attack-launch",
+        "idempotency": true
+      },
+      "submission": {
+        "rpc": "kamereoru/time-attack-complete",
+        "automatic": true,
+        "idempotency": true,
+        "timeout_ms": 8000
+      },
+      "ranking_rpc": "kamereoru/time-attack-ranking",
+      "stats_rpc": "kamereoru/time-attack-stats"
     }
   ]
 }

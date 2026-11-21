@@ -15,7 +15,7 @@ for (const file of files) cpSync(new URL(file, source), join(root, file), { recu
 execFileSync('git', ['init', '-q'], { cwd: root });
 execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '--allow-empty', '-qm', 'test'], { cwd: root });
 
-function build({ api = '', publicUrl = 'https://example.invalid/chameleol/', standalone = '', env = 'production', args = [] } = {}) {
+function build({ api = '', publicUrl = 'https://example.invalid/chameleol/', standalone = '', env = 'production', args = [], taAvailable = '', taEnabled = '' } = {}) {
   execFileSync(process.execPath, ['scripts/build.mjs', ...args], {
     cwd: root,
     env: {
@@ -24,6 +24,8 @@ function build({ api = '', publicUrl = 'https://example.invalid/chameleol/', sta
       KAMEREORU_API: api,
       KAMEREORU_PUBLIC_URL: publicUrl,
       KAMEREORU_STANDALONE: standalone,
+      KAMEREORU_TA_AVAILABLE: taAvailable,
+      KAMEREORU_TA_ENABLED: taEnabled,
     },
     stdio: 'pipe',
   });
@@ -127,4 +129,21 @@ test('published game exposes its verified ranking manifest and only the producti
   assert.equal(manifest.submission_mode, 'verified');
   assert.equal(build({ api, env: 'verification' }).rankingApi, null);
   assert.equal(build({ standalone: '1' }).rankingApi, null);
+});
+
+
+test('time attack availability and launch flags are separate production settings', () => {
+  const api = 'https://example.invalid/functions/v1/kamereoru';
+  const hidden = build({ api, taEnabled: '1' });
+  const readOnly = build({ api, taAvailable: '1' });
+  const enabled = build({ api, taAvailable: '1', taEnabled: '1' });
+  assert.equal(hidden.timeAttack.available, false);
+  assert.equal(hidden.timeAttack.enabled, false);
+  assert.equal(readOnly.timeAttack.available, true);
+  assert.equal(readOnly.timeAttack.enabled, false);
+  assert.equal(enabled.timeAttack.available, true);
+  assert.equal(enabled.timeAttack.enabled, true);
+  assert.equal(enabled.timeAttack.rulesVersion, 'kamereoru-time-attack-rules-v1');
+  assert.notEqual(readOnly.assetVersion, enabled.assetVersion);
+  assert.match(readFileSync(join(root, 'dist/index.html'), 'utf8'), /name="kamereoru-time-attack" content="1"/);
 });

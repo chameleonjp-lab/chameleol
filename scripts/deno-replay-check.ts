@@ -3,6 +3,8 @@
 import { SUPPORTED_RULES, verifyResult } from '../supabase/functions/_shared/kamereoru/replay.ts';
 import { createGame, replayHistory, hsvToRgb8, rgb8ToLab, ciede2000, deltaEToMatchUnits, RULES_V1, rulesForVersion } from '../supabase/functions/_shared/kamereoru/rules/v1/index.js';
 
+import { replayTimeAttack, InvalidTimeAttackHistoryError } from '../supabase/functions/_shared/kamereoru/rules/time-attack/v1/index.js';
+
 const root = new URL('../', import.meta.url);
 const golden = (await Deno.readTextFile(new URL('tests/rules/fixtures/deltae-golden.txt', root))).trim();
 let text = '';
@@ -29,4 +31,15 @@ for (const f of loadReplayFixtures()) {
     body: { format: 'kamereoru-result-v1', playId: 'p', launchId: 'l', rulesVersion: f.rulesVersion, generatorVersion: RULES_V1.generatorVersion, seed: f.seed, history: f.history, claimed: f.expected },
   });
   console.log(JSON.stringify({ engine: `Deno ${Deno.version.deno}`, check: `replay ${f.name}`, ok: same && v.status === 'official' }));
+}
+
+const timeAttackFixtures = new URL('tests/replay/time-attack-fixtures/', root);
+for await (const entry of Deno.readDir(timeAttackFixtures)) {
+  if (!entry.isFile || !entry.name.endsWith('.json')) continue;
+  const fixture = JSON.parse(await Deno.readTextFile(new URL(entry.name, timeAttackFixtures)));
+  let actual = null;
+  try { actual = replayTimeAttack(fixture.history); }
+  catch (error) { if (!(error instanceof InvalidTimeAttackHistoryError)) throw error; }
+  console.log(JSON.stringify({ engine: `Deno ${Deno.version.deno}`, check: `TA replay ${fixture.name}`,
+    ok: JSON.stringify(actual) === JSON.stringify(fixture.expected) }));
 }

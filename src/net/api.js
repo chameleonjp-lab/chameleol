@@ -2,12 +2,13 @@
 // 失敗は「再試行できる」（通信断・時間切れ・5xx・429）と「再試行しない」（形式や照合の拒否）に分ける。
 
 export class ApiError extends Error {
-  constructor(code, { retryable = false, status = 0, detail = null } = {}) {
+  constructor(code, { retryable = false, status = 0, detail = null, retryAfterMs = null } = {}) {
     super(code);
     this.code = code;
     this.retryable = retryable;
     this.status = status;
     this.detail = detail;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
@@ -15,10 +16,13 @@ export function createApi({ base, destination, fetchImpl = null, timeoutMs = 800
   const doFetch = fetchImpl ?? ((...args) => globalThis.fetch(...args));
   const configured = typeof base === 'string' && base.length > 0;
 
-  async function request(method, path, body = null, { timeout = timeoutMs } = {}) {
+  async function request(method, path, body = null, { timeout = timeoutMs, signal = null } = {}) {
     if (!configured) throw new ApiError('not_configured', { retryable: false });
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
-    const timer = setTimeout(() => controller?.abort(), timeout);
+    const abort = () => controller?.abort();
+    if (signal?.aborted) abort();
+    else signal?.addEventListener('abort', abort, { once: true });
+    const timer = setTimeout(abort, timeout);
     try {
       const res = await doFetch(`${base.replace(/\/$/, '')}/${path}`, {
         method,
@@ -38,12 +42,17 @@ export function createApi({ base, destination, fetchImpl = null, timeoutMs = 800
       const code = incomplete ? 'invalid_response' : data?.error ?? `http_${res.status}`;
       const retryable = incomplete || res.status === 0 || res.status >= 500 || res.status === 429 ||
         res.status === 408 || data?.retryable === true;
-      throw new ApiError(code, {retryable, status: res.status, detail: data?.detail ?? null});
+      const wait = res.headers?.get?.('retry-after');
+      const retryAfterMs = wait == null ? null : /^\d+$/.test(wait) ? Number(wait) * 1000
+        : Math.max(0, Date.parse(wait) - Date.now()) || null;
+      const serverWait = Number.isSafeInteger(data?.retryAfterMs) && data.retryAfterMs >= 0 ? data.retryAfterMs : null;
+      throw new ApiError(code, {retryable, status: res.status, detail: data?.detail ?? null, retryAfterMs: retryAfterMs ?? serverWait });
     } catch (err) {
       if (err instanceof ApiError) throw err;
       throw new ApiError(controller?.signal.aborted || err?.name === 'AbortError' ? 'timeout' : 'network', {retryable: true});
     } finally {
       clearTimeout(timer);
+      signal?.removeEventListener('abort', abort);
     }
   }
 

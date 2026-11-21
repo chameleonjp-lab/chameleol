@@ -3,7 +3,7 @@
 // - Deno（本番の Edge Function と同じ実行環境）があれば、サーバーの検証処理（replay.ts）でも比べる
 // 使い方: node scripts/cross-engine-check.mjs   （DENO_BIN で deno の場所を指定できる）
 import { build } from 'esbuild';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +24,13 @@ const bundle = await build({
   target: 'es2020',
 });
 const code = bundle.outputFiles[0].text;
+const taBundle = await build({
+  entryPoints: [join(ROOT, 'src', 'rules', 'time-attack', 'v1', 'index.js')],
+  bundle: true, format: 'iife', globalName: 'TA', write: false, target: 'es2020',
+});
+const taFixtureDir = join(ROOT, 'tests', 'replay', 'time-attack-fixtures');
+const taFixtures = readdirSync(taFixtureDir).filter(name => name.endsWith('.json')).sort()
+  .map(name => JSON.parse(readFileSync(join(taFixtureDir, name), 'utf8')));
 
 // 色差の照合値（tests/rules/color.test.mjs と同じ400組）
 const GOLDEN_SRC = `
@@ -47,6 +54,9 @@ try {
   const loaded = vm.evalCode(code);
   if (loaded.error) throw new Error(`QuickJS load failed: ${JSON.stringify(vm.dump(loaded.error))}`);
   loaded.value.dispose();
+  const taLoaded = vm.evalCode(taBundle.outputFiles[0].text);
+  if (taLoaded.error) throw new Error(`QuickJS time attack load failed: ${JSON.stringify(vm.dump(taLoaded.error))}`);
+  taLoaded.value.dispose();
   const g = vm.evalCode(GOLDEN_SRC);
   if (g.error) throw new Error(JSON.stringify(vm.dump(g.error)));
   const digest = createHash('sha256').update(vm.dump(g.value)).digest('hex');
@@ -66,6 +76,21 @@ try {
     r.value.dispose();
     const { makeCourse } = await import('../src/rules/v1/index.js');
     results.push({ engine: 'QuickJS', check: `course ${seed}`, ok: got === JSON.stringify(makeCourse(seed).targets) });
+  }
+  for (const fixture of taFixtures) {
+    const result = vm.evalCode(`(() => {
+      try { return JSON.stringify(TA.replayTimeAttack(${JSON.stringify(fixture.history)})); }
+      catch (error) { if (error.name === 'InvalidTimeAttackHistoryError') return 'null'; throw error; }
+    })()`);
+    if (result.error) {
+      const info = vm.dump(result.error);
+      result.error.dispose();
+      throw new Error(JSON.stringify(info));
+    }
+    const actual = JSON.parse(vm.dump(result.value));
+    result.value.dispose();
+    results.push({ engine: 'QuickJS', check: `TA replay ${fixture.name}`,
+      ok: JSON.stringify(actual) === JSON.stringify(fixture.expected) });
   }
 } finally {
   vm.dispose();
