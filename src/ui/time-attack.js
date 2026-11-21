@@ -9,7 +9,7 @@ import {MODE_ID,RULES_VERSION,COURSE_VERSION,HISTORY_FORMAT,generateTimeAttackCo
 import {normalizeName} from '../shared/name.js';
 import {openTimeAttackStore} from '../storage/time-attack-store.js';
 import {createTimeAttackMemoryStore} from '../storage/time-attack-memory-store.js';
-import {newTimeAttackStart,reserveTimeAttack,abandonTimeAttack,
+import {TA_CLIENT_VERSION,newTimeAttackStart,reserveTimeAttack,abandonTimeAttack,
   newAnonymousTimeAttack,makeTimeAttackLaunch,makeTimeAttackResult,flushTimeAttackPending} from '../net/time-attack.js';
 import {t,getLanguage} from '../i18n/i18n.js';
 import {timeAttackText,timeAttackTitle} from '../i18n/time-attack.js';
@@ -48,7 +48,7 @@ export async function startTimeAttack(app,rawName){
    if(!okay){store.close();return;}
   }
   if(!name.empty && app.api.configured && !store.memory){
-   const request=newTimeAttackStart(name.name,app.api,app.runtime.gameVersion);
+   const request=newTimeAttackStart(name.name,app.api,TA_CLIENT_VERSION);
    try{
     reservation=await reserveTimeAttack(app.api,store,request);
     if(generateTimeAttackCourse(reservation.seed).family!==reservation.family)throw Error('course_mismatch');
@@ -61,7 +61,7 @@ export async function startTimeAttack(app,rawName){
    }
   }
   const random=new Uint32Array(1);crypto.getRandomValues(random);
-  const anon=reservation?null:newAnonymousTimeAttack(app.api,app.runtime.gameVersion,random[0],
+  const anon=reservation?null:newAnonymousTimeAttack(app.api,TA_CLIENT_VERSION,random[0],
     generateTimeAttackCourse(random[0]).family);
   const record=reservation??anon;
   const course=generateTimeAttackCourse(record.seed);
