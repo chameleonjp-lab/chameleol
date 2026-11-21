@@ -342,7 +342,7 @@ do $$
 declare r record;
 begin
  for r in select table_name from information_schema.tables
-   where table_schema='private' and table_name like 'kamereoru_ta_%' loop
+   where table_schema='private' and table_type='BASE TABLE' and table_name like 'kamereoru_ta_%' loop
   execute format('alter table private.%I enable row level security',r.table_name);
   execute format('revoke all on table private.%I from public, anon, authenticated',r.table_name);
  end loop;
