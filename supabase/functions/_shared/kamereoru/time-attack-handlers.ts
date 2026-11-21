@@ -191,9 +191,14 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
     return json(200,{...r,version:Number(r.version)});
    }
    if(route==='time-attack-process'&&req.method==='POST'){
-    if(!workerSecret||!SECRET.test(workerSecret))throw error(403,'forbidden');
     const input=req.headers.get('x-ta-worker-secret')??'';
-    if(!SECRET.test(input)||await sha(input)!==await sha(workerSecret))throw error(403,'forbidden');
+    const token=req.headers.get('x-ta-worker-token')??'';
+    let authorized = SECRET.test(workerSecret) && SECRET.test(input) && await sha(input) === await sha(workerSecret);
+    if (!authorized && SHA.test(token)) {
+      const rows = await call('select private.kamereoru_ta_worker_authorized($1) as authorized', [token]);
+      authorized = rows[0]?.authorized === true;
+    }
+    if (!authorized) throw error(403,'forbidden');
     return json(200,await processJobs(5));
    }
    throw error(404,'not_found');

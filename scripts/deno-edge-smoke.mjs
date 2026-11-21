@@ -107,7 +107,15 @@ try {
   const taChunk = await post('time-attack-chunk', { ...taResult, index: 0, total: 1, length: Buffer.byteLength(taText),
     sha256: await sha256Hex(taText), data: taText });
   const taComplete = await post('time-attack-complete', taResult);
+  psql(dbUrl, ['-c', `create function private.kamereoru_ta_worker_authorized(text)
+    returns boolean language sql as $$ select $1 = repeat('a',64) $$`]);
   const taUnauthorized = await post('time-attack-process', {});
+  const taInvalidToken = await fetch(`${base}/time-attack-process`, {
+    method: 'POST', headers: { 'x-ta-worker-token': 'b'.repeat(64) },
+  });
+  const taWorkerToken = await fetch(`${base}/time-attack-process`, {
+    method: 'POST', headers: { 'x-ta-worker-token': 'a'.repeat(64) },
+  });
   const taWorker = await fetch(`${base}/time-attack-process`, { method: 'POST', headers: { 'x-ta-worker-secret': workerSecret } });
   let taResultStatus;
   for (let i = 0; i < 20; i += 1) {
@@ -118,7 +126,7 @@ try {
   }
   const taRanking = await fetch(`${base}/time-attack-ranking?limit=100`).then((r) => r.json());
   steps.push(['TA start/launch/chunk/complete', taStart.status, taLaunch.status, taChunk.status, taComplete.status]);
-  steps.push(['TA worker and result', taUnauthorized.status, taWorker.status, taResultStatus?.status]);
+  steps.push(['TA worker and result', taUnauthorized.status, taInvalidToken.status, taWorkerToken.status, taWorker.status, taResultStatus?.status]);
   steps.push(['TA ranking', taRanking.nameCount, taRanking.rows?.[0]?.elapsedCs]);
   for (const s of steps) console.log(s.join('\t'));
   const best = ranking.rows?.[0];
@@ -128,7 +136,7 @@ try {
     && claimed.buildings === 3 && ranking.ok === true && ranking.rows.length === 1
     && best?.name === req.name && best.rank === 1 && best.buildings === 3 && best.average === claimed.rankAverage
     && (taStart.status === 200 && taLaunch.status === 200 && taChunk.status === 200 && taComplete.status === 200)
-    && taUnauthorized.status === 403 && taWorker.status === 200 && taResultStatus?.status === 'official'
+    && taUnauthorized.status === 403 && taInvalidToken.status === 403 && taWorkerToken.status === 200 && taWorker.status === 200 && taResultStatus?.status === 'official'
     && taRanking.modeId === MODE_ID && taRanking.rows?.[0]?.elapsedCs === taHistory.end.elapsedCs;
   console.log(ok ? 'EDGE SMOKE OK' : 'EDGE SMOKE FAILED');
   if (!ok) {

@@ -1029,7 +1029,7 @@ body {
 }
 .home-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: 6px;
 }
@@ -1043,9 +1043,6 @@ body {
 }
 .home-grid [data-testid='home-practice']::before {
   content: '🎨';
-}
-.home-grid [data-testid='home-ranking']::before {
-  content: '🏆';
 }
 .home-grid [data-testid='home-howto']::before {
   content: '📖';
@@ -1661,9 +1658,19 @@ body {
 .guide-practice-actions .btn { margin: 0; max-width: 100%; }
 
 .ranking-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4em;
   text-align: center;
   text-decoration: none;
+}
+.ranking-link-icon {
+  flex: none;
+  line-height: 1;
+}
+.ranking-link > span {
+  min-width: 0;
 }
 .ranking-result .rank-list {
   --ranking-row-height: 2.75em;

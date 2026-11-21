@@ -30,8 +30,14 @@ const env = process.env.KAMEREORU_ENV ?? 'verification';
 const api = process.env.KAMEREORU_API ?? '';
 const publicUrl = process.env.KAMEREORU_PUBLIC_URL ?? '';
 const standalone = process.env.KAMEREORU_STANDALONE === '1';
-const timeAttackAvailable = env === 'production' && Boolean(api) && process.env.KAMEREORU_TA_AVAILABLE === '1';
-const timeAttackEnabled = env !== 'production' || (timeAttackAvailable && process.env.KAMEREORU_TA_ENABLED === '1');
+const manifest = JSON.parse(readFileSync(join(ROOT, 'ranking-manifest.json'), 'utf8'));
+// Keep subsequent official Pages refreshes live. Other destinations still opt in.
+const withoutTrailingSlash = value => value.replace(/\/+$/, '');
+const officialTimeAttack = withoutTrailingSlash(publicUrl) === withoutTrailingSlash(manifest.canonical_url)
+  && withoutTrailingSlash(api) === 'https://mlpnjgezrnhdxsxolyzj.supabase.co/functions/v1/kamereoru';
+const timeAttackFlag = name => (process.env[name] || (officialTimeAttack ? '1' : '0')) === '1';
+const timeAttackAvailable = env === 'production' && Boolean(api) && timeAttackFlag('KAMEREORU_TA_AVAILABLE');
+const timeAttackEnabled = env !== 'production' || (timeAttackAvailable && timeAttackFlag('KAMEREORU_TA_ENABLED'));
 if (standalone && api) {
   console.error('KAMEREORU_STANDALONE cannot be combined with KAMEREORU_API');
   process.exit(1);
@@ -102,7 +108,6 @@ cpSync(join(ROOT, 'assets', 'credits.md'), join(vroot, 'credits.md'));
 // 共有サービスが参照する画像のURLはゲームの公開版に依存させない。
 cpSync(join(ROOT, socialImageSource), join(DIST, socialImage));
 
-const manifest = JSON.parse(readFileSync(join(ROOT, 'ranking-manifest.json'), 'utf8'));
 const socialImageAlt = '宝石を持ったカメレオンと、夜の街並み、色を選ぶ円形パレット。';
 
 function escapeAttribute(value) {
