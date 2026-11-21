@@ -5,7 +5,7 @@ declare v jsonb; a uuid:='11111111-2222-4333-8444-555555555555';
   h bytea:=decode(repeat('aa',32),'hex'); p uuid;
 begin
  if (select count(*) from information_schema.tables
-   where table_schema='private' and table_name like 'kamereoru_ta_%')<>10 then
+   where table_schema='private' and table_type='BASE TABLE' and table_name like 'kamereoru_ta_%')<>10 then
     raise exception 'ten dedicated tables expected'; end if;
  if has_table_privilege('anon','private.kamereoru_ta_starts','select') or
     has_table_privilege('authenticated','private.kamereoru_ta_results','insert') then
