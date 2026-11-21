@@ -1,0 +1,24 @@
+/* タイムアタック専用の画面。通常モードのHUDには適用しない。 */
+.btn-time-attack {border:2px solid #78dce6;background:linear-gradient(120deg,#12334d,#204b58);color:#e6faff;font-weight:750}
+.ta-game .stage-wrap{position:relative;min-height:360px}
+.ta-game .ta-hud{position:absolute;inset:8px 8px auto;z-index:16;display:grid;grid-template-columns:1fr 1fr 1fr 42px;gap:4px;pointer-events:none}
+.ta-game .ta-stat{min-width:0;background:rgba(14,23,47,.86);border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:4px 5px;text-align:center;color:#fff;line-height:1.3}
+.ta-game .ta-stat-label{font-size:10px;display:block;color:#bbf9ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ta-game .ta-stat strong{display:block;font-size:clamp(12px,3.1vw,17px);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ta-game .ta-pause{min-height:42px;margin:0;padding:4px;width:42px;pointer-events:auto;font-size:24px}
+.ta-game .ta-match-stats{position:absolute;bottom:30px;left:8px;right:8px;z-index:15;display:flex;justify-content:center;gap:8px;pointer-events:none}
+.ta-game .ta-match-stats .ta-stat{width:min(40%,140px)}
+.ta-game .ta-hold-track{position:absolute;bottom:8px;left:10%;right:10%;height:14px;border-radius:10px;overflow:hidden;border:2px solid #e6fcff;background:rgba(0,0,0,.65);z-index:15;pointer-events:none}
+.ta-game .ta-hold-progress{height:100%;width:0;background:#66f2a4;transition:width 70ms linear}
+.ta-game .ta-overlay{position:absolute;inset:0;z-index:35;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;background:rgba(7,13,31,.98);text-align:center}
+.ta-game .ta-overlay .btn{max-width:280px}
+.ta-result{max-width:520px;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.ta-result-card{text-align:center;padding:24px 15px;border:1px solid #92ffb0;border-radius:22px;background:linear-gradient(155deg,#102a43,#102b2d)}
+.ta-result-card .ta-kicker{letter-spacing:.04em;color:#adf6ff;font-weight:700}
+.ta-result-time{font-variant-numeric:tabular-nums;font-weight:850;font-size:clamp(48px,12vw,75px);line-height:1.2;margin:12px 0;white-space:nowrap}
+.ta-result-title{font-weight:800;font-size:clamp(20px,5vw,28px);margin:8px 0 16px}
+.ta-result .btn{margin:2px 0}
+.ta-result form{width:100%}
+@media(max-width:430px){.ta-game .ta-hud{inset:4px 4px auto;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr) 38px;gap:3px}
+.ta-game .ta-pause{width:38px;min-height:38px}.ta-game .ta-stat{padding:3px}}
+@media(prefers-reduced-motion:reduce){.ta-game .ta-hold-progress{transition:none}}
