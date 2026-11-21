@@ -121,6 +121,8 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
    if(route==='time-attack-complete'&&req.method==='POST'){
     const b=await read(req);uuid(b.playId);uuid(b.resultId);secret(b.secret);
     const hash=await sha(b.secret);
+    const [existing]=await call("select r.status from private.kamereoru_ta_results r join private.kamereoru_ta_result_claims c using(play_id) where r.play_id=$1 and r.result_id=$2 and c.secret_hash=decode($3,'hex')",[b.playId,b.resultId,hash]);
+    if(existing)return json(200,{playId:b.playId,resultId:b.resultId,status:existing.status,duplicate:true});
     const [f]=await call("select c.sha256,c.total_length,c.chunk_count,coalesce(string_agg(u.chunk_text,'' order by u.chunk_index),'') as body, count(u.chunk_index)::integer as parts from private.kamereoru_ta_result_claims c left join private.kamereoru_ta_uploads u using(play_id) where c.play_id=$1 and c.result_id=$2 and c.secret_hash=decode($3,'hex') group by c.sha256,c.total_length,c.chunk_count",[
       b.playId,b.resultId,hash]);
     if(!f)throw error(403,'not_owner');
