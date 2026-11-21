@@ -337,6 +337,25 @@ returns jsonb language sql security definer set search_path='' as $$
   'participantCount',(select count(*) from private.kamereoru_ta_bests))
 $$;
 
+create function private.kamereoru_ta_review(
+ p_play uuid,p_hash bytea
+) returns text language plpgsql security definer set search_path='' as $
+declare rowstatus text; was_requested boolean;
+begin
+ if not exists(select 1 from private.kamereoru_ta_starts
+   where play_id=p_play and secret_hash=p_hash) then
+  raise exception using errcode='KM403',message='not_owner';end if;
+ select status,review_requested into rowstatus,was_requested
+ from private.kamereoru_ta_results where play_id=p_play for update;
+ if not found then raise exception using errcode='KM404',message='result_not_found';end if;
+ if was_requested then return rowstatus;end if;
+ if rowstatus<>'rejected' then
+  raise exception using errcode='KM409',message='review_not_available';end if;
+ update private.kamereoru_ta_results set status='under_review',review_requested=true where play_id=p_play;
+ insert into private.kamereoru_ta_audit(play_id,event) values(p_play,'review_requested');
+ return 'under_review';
+end $;
+
 -- No direct Data API access. Edge connects with SUPABASE_DB_URL.
 do $$
 declare r record;
