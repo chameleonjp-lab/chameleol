@@ -27,7 +27,7 @@ function currentName(app){
  return res.ok?res:{ok:false,empty:true,name:''};
 }
 export async function startTimeAttack(app,rawName){
- if(app.timeAttackStarting||app.taController)return;
+ if(app.timeAttackStarting||app.taController||app.startAttempt)return;
  app.timeAttackStarting=true;
  let store=null,reservation=null;
  try{
@@ -87,7 +87,7 @@ async function runTimeAttack(app,store,course,launch){
  app.mount(screen,null);
  const generation=app.screenGeneration;
  const current=()=>app.screenGeneration===generation&&app.taController?.id===generation;
- let disposed=false,raf=0,finishing=false,lastNow=null,fraction=0;
+ let disposed=false,raf=0,finishing=false,lastNow=null,fraction=0,stage=null;
  let state=createTimeAttackState(course);
  const events=[],visualCourse={seed:course.seed,targets:course.targets.map(()=>({h:0,s:0,v:3000}))};
  const owner=crypto.randomUUID?.()??String(Date.now())+'-'+Math.random();
@@ -99,7 +99,7 @@ async function runTimeAttack(app,store,course,launch){
   store.close();app.taController=null;
  }};
  app.taController=controller;
- const stage=await createStage(stageBox,{course:visualCourse,rules:stageRules,
+ stage=await createStage(stageBox,{course:visualCourse,rules:stageRules,
   decorations:makeDecorations(course.seed),presentationEnabled:false});
  if(!current()){stage.dispose();return;}
  app.stage=stage;
