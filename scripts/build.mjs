@@ -15,6 +15,8 @@ import { GAME_VERSION } from '../src/config/runtime.js';
 import { RULES_V1, RULES_V2, RULES_V3, RULES_V4, RULES_V5 } from '../src/rules/v1/index.js';
 import { SNAPSHOT_FORMAT } from '../src/game/session.js';
 import { RESULT_FORMAT } from '../src/net/outbox.js';
+import {MODE_ID as TIME_ATTACK_MODE,RULES_VERSION as TA_RULES_VERSION,COURSE_VERSION as TA_COURSE_VERSION,
+  HISTORY_FORMAT as TA_HISTORY_FORMAT,RESULT_FORMAT as TA_RESULT_FORMAT} from '../src/rules/time-attack/v1/index.js';
 import { computeManifest, check as checkShared } from './sync-shared.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -29,6 +31,7 @@ const env = process.env.KAMEREORU_ENV ?? 'verification';
 const api = process.env.KAMEREORU_API ?? '';
 const publicUrl = process.env.KAMEREORU_PUBLIC_URL ?? '';
 const standalone = process.env.KAMEREORU_STANDALONE === '1';
+const timeAttackEnabled = env === 'production' && !standalone && !!api && process.env.KAMEREORU_TA_ENABLED === '1';
 if (standalone && api) {
   console.error('KAMEREORU_STANDALONE cannot be combined with KAMEREORU_API');
   process.exit(1);
@@ -72,7 +75,7 @@ for (const file of ['index.html', 'latest.html', 'assets/credits.md', socialImag
   contentHash.update(file);
   contentHash.update(readFileSync(join(ROOT, file)));
 }
-contentHash.update(JSON.stringify({ env, api, publicUrl, standalone, commit }));
+contentHash.update(JSON.stringify({ env, api, publicUrl, standalone, timeAttackEnabled, commit }));
 const assetVersion = `${GAME_VERSION}-${contentHash.digest('hex').slice(0, 10)}`;
 
 // 以前の版のフォルダを残す（切り戻し・旧版の保存の再開のため）
@@ -115,6 +118,7 @@ function entryHtml(prefix) {
   setMeta('kamereoru-api', api);
   setMeta('kamereoru-public-url', publicUrl);
   setMeta('kamereoru-version', GAME_VERSION);
+  setMeta('kamereoru-time-attack-enabled', timeAttackEnabled ? '1' : '0');
   html = html.replace('<meta name="kamereoru-public-url"', `<meta name="kamereoru-asset-version" content="${assetVersion}" />\n    <meta name="kamereoru-commit" content="${commit}" />\n    <meta name="kamereoru-public-url"`);
   html = html.replace('href="./src/ui/game.css"', `href="${prefix}src/ui/game.css"`);
   html = html.replace('"three": "./vendor/three.module.min.js"', `"three": "${prefix}vendor/three.module.min.js"`);
@@ -166,6 +170,9 @@ const release = {
   commit,
   env,
   rankingApi: env === 'production' && !standalone ? api : null,
+  timeAttack: {available: env === 'production' && !standalone && !!api, enabled: timeAttackEnabled,
+    modeId:TIME_ATTACK_MODE,rulesVersion:TA_RULES_VERSION,generatorVersion:TA_COURSE_VERSION,
+    historyFormat:TA_HISTORY_FORMAT,resultFormat:TA_RESULT_FORMAT},
   rulesVersion: RULES_V5.rulesVersion,
   supportedRulesVersions: [RULES_V1, RULES_V2, RULES_V3, RULES_V4, RULES_V5].map((rules) => rules.rulesVersion),
   preferredRankedRulesVersion: RULES_V5.rulesVersion,
