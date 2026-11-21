@@ -32,3 +32,5 @@
 専用の `time-attack-process` は256ビットの秘密で保護。Edge側 `KAMEREORU_TA_WORKER_SECRET` とVault `kamereoru_ta_worker_secret` の一致が必要。接続元に公開するPublishable keyでは呼び出せない。
 
 この環境には秘密の設定用の専用操作がなく、定期実行は有効化していない。承認なしでVault秘密・pg_net・cronを追加せず、設定できたという報告もしない。
+
+公開ビルドでは、読み取りだけ公開する段階で `KAMEREORU_TA_AVAILABLE=1` と `KAMEREORU_TA_ENABLED=0` を指定する。開始ボタンを有効にする公開で `KAMEREORU_TA_ENABLED=1` を指定する。公開前に `node scripts/check-ranking-release.mjs --time-attack <ランキング受付URL>` で両モードの読み取りを確認する。

@@ -1,0 +1,30 @@
+{
+  "name": "quit-partial",
+  "expected": {
+    "modeId": "chameleol_time_attack",
+    "rulesVersion": "kamereoru-time-attack-rules-v1",
+    "generatorVersion": "kamereoru-time-attack-course-v1",
+    "family": "red",
+    "reason": "quit",
+    "buildings": 1,
+    "moveCount": 1,
+    "executedTravelMs": 425,
+    "elapsedMs": 500,
+    "elapsedCs": 50,
+    "titleId": null
+  },
+  "history": {
+    "format": "kamereoru-time-attack-history-v1",
+    "modeId": "chameleol_time_attack",
+    "rulesVersion": "kamereoru-time-attack-rules-v1",
+    "generatorVersion": "kamereoru-time-attack-course-v1",
+    "seed": 1,
+    "family": "red",
+    "events": [
+      {"seq":0,"t":0,"kind":"ready","building":1},
+      {"seq":1,"t":0,"kind":"input","h":100,"s":7500,"v":10000},
+      {"seq":2,"t":500,"kind":"travel","fromBuilding":1}
+    ],
+    "end": {"seq":3,"t":925,"kind":"end","reason":"quit","elapsedMs":500,"elapsedCs":50}
+  }
+}

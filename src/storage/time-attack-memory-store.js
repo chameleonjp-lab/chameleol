@@ -1,33 +1,36 @@
-// IndexedDBが使えない時だけの一時保存。再読み込みでは復元できないことを明示して使う。
-const ITEMS=['starts','launches','outbox','records','runs','kv'];
-const KEYS={starts:'requestId',launches:'launchId',outbox:'playId',records:'playId',runs:'slot'};
-export function createTimeAttackMemoryStore(){
- const tables=new Map(ITEMS.map(n=>[n,new Map()]));
- const tbl=n=>{const x=tables.get(n);if(!x)throw Error('invalid_table');return x;};
- return {
-  memory:true,
-  async getAll(name){return [...tbl(name).values()].map(x=>structuredClone(x));},
-  async get(name,key){const x=tbl(name).get(key);return x?structuredClone(x):undefined;},
-  async put(name,item,key){tbl(name).set(key??item[KEYS[name]],structuredClone(item));},
-  async remove(name,key){tbl(name).delete(key);},
-  async begin(launch,owner){
-   const runs=tbl('runs'),old=runs.get('time-attack');
-   if(old?.status==='active')throw Error('active_time_attack_exists');
-   if(tbl('launches').has(launch.launchId))throw Error('duplicate_launch');
-   tbl('launches').set(launch.launchId,{...launch,sent:false});
-   runs.set('time-attack',{slot:'time-attack',status:'active',playId:launch.playId??launch.launchId,owner});
-  },
-  async finish(launch,owner,result=null){
-   const runs=tbl('runs'),row=runs.get('time-attack');
-   if(!row||row.status!=='active'||row.owner!==owner||row.playId!==(launch.playId??launch.launchId))
-    throw Error('stale_time_attack_run');
-   if(result)tbl(result.ranked?'outbox':'records').set(result.playId,result);
-   runs.set('time-attack',{...row,status:'ended'});
-  },
-  async abandonOrphan(){
-   const r=tbl('runs').get('time-attack');if(r?.status==='active')
-    tbl('runs').set('time-attack',{...r,status:'abandoned'});
-  },
-  close(){}
- };
+export class StaleTimeAttackWriter extends Error {}
+
+export class TimeAttackMemoryStore {
+  constructor() {
+    this.tables = Object.fromEntries(
+      ['starts', 'launches', 'outbox', 'records', 'runs', 'kv'].map(name => [name, new Map()]),
+    );
+  }
+
+  async get(name, id) { return structuredClone(this.tables[name].get(id)); }
+  async getAll(name) { return Array.from(this.tables[name].values(), item => structuredClone(item)); }
+  async put(name, item) { this.tables[name].set(item.id, structuredClone(item)); }
+  async remove(name, id) { this.tables[name].delete(id); }
+
+  async begin(launch, attempt, signal) {
+    if (signal.aborted) throw signal.reason;
+    const run = this.tables.runs.get('time-attack');
+    if (run && run.ownerEpoch > attempt.ownerEpoch) throw new StaleTimeAttackWriter();
+    this.tables.runs.set('time-attack', { id: 'time-attack', ...attempt, launchId: launch.id });
+    this.tables.launches.set(launch.id, structuredClone(launch));
+    this.tables.starts.delete(attempt.attemptId);
+  }
+
+  async finish(attempt, record, outbox) {
+    const run = this.tables.runs.get('time-attack');
+    if (run?.attemptId !== attempt.attemptId || run.ownerEpoch !== attempt.ownerEpoch) throw new StaleTimeAttackWriter();
+    const prior = this.tables.kv.get('timeAttackLocalBest')?.elapsedCs ?? null;
+    const newBest = record.result.reason === 'cleared' && (prior === null || record.result.elapsedCs < prior);
+    const bestElapsedCs = newBest ? record.result.elapsedCs : prior;
+    this.tables.records.set(record.id, structuredClone({ ...record, bestElapsedCs, newBest }));
+    if (outbox) this.tables.outbox.set(outbox.id, structuredClone(outbox));
+    if (newBest) this.tables.kv.set('timeAttackLocalBest', { id: 'timeAttackLocalBest', elapsedCs: bestElapsedCs });
+    this.tables.runs.delete('time-attack');
+    return { bestElapsedCs, newBest };
+  }
 }

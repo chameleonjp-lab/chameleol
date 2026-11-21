@@ -55,7 +55,7 @@
       "mode_id": "chameleol_time_attack",
       "display_order": 61,
       "game_slug": "chameleol",
-      "title": "カメレオる 同系色タイムアタック",
+      "title": "タイムアタック",
       "top_ranking_type": "best",
       "score_order": "asc",
       "score_unit": "秒",
@@ -69,7 +69,6 @@
       "ranked_results": [
         "cleared"
       ],
-      "client_version": "0.1.0-ta.1",
       "play_count": {
         "count_at": "start",
         "rpc": "kamereoru/time-attack-launch",

@@ -1,37 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {IDBFactory} from 'fake-indexeddb';
-import {openTimeAttackStore,TIME_ATTACK_DB} from '../../src/storage/time-attack-store.js';
-import {createTimeAttackMemoryStore} from '../../src/storage/time-attack-memory-store.js';
+import { IDBFactory } from 'fake-indexeddb';
+import { openTimeAttackStore, TIME_ATTACK_DB } from '../../src/storage/time-attack-store.js';
+import { StaleTimeAttackWriter } from '../../src/storage/time-attack-memory-store.js';
 
-const run=async(store)=>{
- const launch={launchId:'launch-test',ranked:false,playId:null,seed:4,family:'red',gameVersion:'0.1.0-ta.1'};
- await store.begin(launch,'tab-a');
- const slot=await store.get('runs','time-attack');
- assert.equal(slot.status,'active');assert.equal(slot.playId,'launch-test');
- await assert.rejects(store.begin({...launch,launchId:'second'},'tab-b'),/active_time_attack_exists/);
- await assert.rejects(store.finish(launch,'tab-b'),/stale_time_attack_run/);
- const result={playId:'guest-result',resultId:'guest-1',ranked:false,elapsedCs:3591};
- await store.finish(launch,'tab-a',result);
- assert.equal((await store.get('records','guest-result')).elapsedCs,3591);
- assert.equal((await store.get('runs','time-attack')).status,'ended');
- await assert.rejects(store.finish(launch,'tab-a',result),/stale_time_attack_run/);
- await store.begin({...launch,launchId:'next'},'tab-b');
- assert.equal((await store.getAll('launches')).length,2);
- await store.abandonOrphan();
- assert.equal((await store.get('runs','time-attack')).status,'abandoned');
- store.close();
-};
-test('isolated IndexedDB stores one launch, guest result and guarded active run',async()=>{
- const indexedDB=new IDBFactory();
- const store=await openTimeAttackStore({indexedDB});
- assert.equal(TIME_ATTACK_DB,'kamereoru-time-attack');
- await run(store);
- const reopened=await openTimeAttackStore({indexedDB});
- assert.equal((await reopened.get('launches','launch-test')).launchId,'launch-test');
- assert.equal((await reopened.get('records','guest-result')).ranked,false);
- reopened.close();
+const launch = id => ({ id, body: { launchId: id } });
+const owner = (attemptId, ownerEpoch) => ({ attemptId, ownerEpoch });
+const receipt = (id, elapsedCs, reason = 'cleared') => ({ id, result: { reason, elapsedCs } });
+
+test('TA uses its own database and count boundary; cancelling before commit leaves no launch', async () => {
+  const idb = new IDBFactory();
+  const store = await openTimeAttackStore(idb);
+  const pending = new AbortController();
+  const begin = store.begin(launch('a'), owner('a', 1), pending.signal);
+  pending.abort();
+  await assert.rejects(begin);
+  assert.equal((await store.getAll('launches')).length, 0);
+  await store.begin(launch('b'), owner('b', 2), new AbortController().signal);
+  store.close();
+  assert.deepEqual((await idb.databases()).map(db => db.name), [TIME_ATTACK_DB]);
+  const reopened = await openTimeAttackStore(idb);
+  assert.deepEqual((await reopened.getAll('launches')).map(item => item.id), ['b']);
+  reopened.close();
 });
-test('memory fallback has the same run ownership and record contract',async()=>{
- await run(createTimeAttackMemoryStore());
+
+test('stale writer cannot finish over a newer one; result and upload commit with the best together', async () => {
+  const idb = new IDBFactory();
+  const a = await openTimeAttackStore(idb);
+  const b = await openTimeAttackStore(idb);
+  const signal = new AbortController().signal;
+  await a.begin(launch('a'), owner('a', 1), signal);
+  await b.begin(launch('b'), owner('b', 2), signal);
+  await assert.rejects(a.finish(owner('a', 1), receipt('a', 1500), { id: 'a' }), StaleTimeAttackWriter);
+  const published = await b.finish(owner('b', 2), receipt('b', 3000), { id: 'b' });
+  assert.deepEqual(published, { bestElapsedCs: 3000, newBest: true });
+  await a.begin(launch('c'), owner('c', 3), signal);
+  const slower = await a.finish(owner('c', 3), receipt('c', 4000), null);
+  assert.deepEqual(slower, { bestElapsedCs: 3000, newBest: false });
+  assert.deepEqual((await a.getAll('launches')).map(row => row.id), ['a','b','c']);
+  assert.deepEqual((await a.getAll('records')).map(row => row.id), ['b','c']);
+  assert.deepEqual((await a.getAll('outbox')).map(row => row.id), ['b']);
+  a.close(); b.close();
 });

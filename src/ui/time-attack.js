@@ -1,310 +1,434 @@
-// 30棟の同系色タイムアタック。通常のApp/Session/保存とは分離する。
-import {h} from './dom.js';
-import {createControls} from './controls.js';
-import {createStage} from '../scene/stage.js';
-import {makeDecorations,RULES_V5} from '../rules/v1/index.js';
-import {MODE_ID,RULES_VERSION,COURSE_VERSION,HISTORY_FORMAT,generateTimeAttackCourse,
- createTimeAttackState,applyTimeAttackEvent,publicView,replayTimeAttack,
- centiseconds,formatTime,formatTimeJa,titleNameJa} from '../rules/time-attack/v1/index.js';
-import {normalizeName} from '../shared/name.js';
-import {openTimeAttackStore} from '../storage/time-attack-store.js';
-import {createTimeAttackMemoryStore} from '../storage/time-attack-memory-store.js';
-import {TA_CLIENT_VERSION,newTimeAttackStart,reserveTimeAttack,abandonTimeAttack,
-  newAnonymousTimeAttack,makeTimeAttackLaunch,makeTimeAttackResult,flushTimeAttackPending} from '../net/time-attack.js';
-import {t,getLanguage} from '../i18n/i18n.js';
-import {timeAttackText,timeAttackTitle} from '../i18n/time-attack.js';
-import {xShareForm} from './share.js';
-import {randomSecret} from '../storage/store.js';
+import { h } from './dom.js';
+import { backButton, button, toast } from './screens.js';
+import { createControls } from './controls.js';
+import { createTimeAttackResult } from './time-attack-result.js';
+import { TimeAttackSession } from '../game/time-attack-session.js';
+import { makeDecorations, RULES_V5 } from '../rules/v1/index.js';
+import {
+  MODE_ID, RULES_VERSION, COURSE_VERSION, generateTimeAttackCourse, publicView, centiseconds, formatTime,
+} from '../rules/time-attack/v1/index.js';
+import { normalizeName } from '../shared/name.js';
+import { openTimeAttackStore } from '../storage/time-attack-store.js';
+import { TimeAttackMemoryStore, StaleTimeAttackWriter } from '../storage/time-attack-memory-store.js';
+import { createTimeAttackAttempt, reserveTimeAttack } from '../net/time-attack-start.js';
+import { createTimeAttackOutbox, createTimeAttackUpload } from '../net/time-attack-outbox.js';
+import { t } from '../i18n/i18n.js';
 
-const txt=(key)=>timeAttackText(key,getLanguage());
-function smallButton(text,onClick,primary=false){
- return h('button',{type:'button',class:'btn'+(primary?' btn-primary':''),onclick:onClick},text);
+const TA_CLIENT_VERSION = '0.1.0-ta.1';
+const NEUTRAL_WALL = Object.freeze({ h: 0, s: 0, v: 3000 });
+const STAGE_RULES = Object.freeze({ ...RULES_V5, buildingCount: 30, buildingMs: 2000, brightnessUnlockBuilding: 15 });
+
+export function installTimeAttack(app) {
+  const memory = new TimeAttackMemoryStore();
+  const taf = { memory, result: null, store: null };
+  taf.ready = openTimeAttackStore().then(store => { taf.store = store; }).catch(() => {});
+  taf.network = createTimeAttackOutbox(app.api, {
+    stores: () => [taf.store, memory].filter(Boolean),
+    onRecord: record => {
+      if (taf.result?.id !== record.id) return;
+      taf.result = record;
+      taf.repaintResult?.();
+    },
+  });
+  taf.ready.then(() => taf.network.flush());
+  return taf;
 }
-function badge(label,value){
- return h('div',{class:'ta-stat'},[h('span',{class:'ta-stat-label'},label),h('strong',{},value)]);
+
+function statistic(key, testid) {
+  const value = h('strong', { 'data-testid': testid }, '—');
+  return { value, el: h('div', { class: 'ta-stat' }, [h('span', { class: 'ta-stat-label' }, t(key)), value]) };
 }
-function currentName(app){
- const res=normalizeName(app.nameRaw);
- return res.ok?res:{ok:false,empty:true,name:''};
+
+function requestRunLock() {
+  const locks = globalThis.navigator?.locks;
+  if (!locks) return Promise.resolve(() => {});
+  return new Promise((resolve, reject) => {
+    locks.request('kamereoru-time-attack-run', { ifAvailable: true }, lock => {
+      if (!lock) return resolve(null);
+      return new Promise(release => resolve(release));
+    }).catch(reject);
+  });
 }
-export async function startTimeAttack(app,rawName){
- if(app.timeAttackStarting||app.taController||app.startAttempt)return;
- app.timeAttackStarting=true;
- let store=null,reservation=null;
- try{
-  const name=normalizeName(rawName);
-  if(!name.ok){app.layer?.append(h('p',{class:'notice'},t('name.fixBeforeStart')));return;}
-  try{store=await openTimeAttackStore();}
-  catch{store=createTimeAttackMemoryStore();}
-  const old=await store.get('runs','time-attack');
-  if(old?.status==='active'){
-   const replace=globalThis.confirm?.(txt('replaceRun'))??false;
-   if(!replace){store.close();return;}
-   await store.abandonOrphan();
+
+export function startTimeAttack(app, rawName) {
+  if (!app.runtime.timeAttackEnabled || app.taPreparation || app.taController || app.startAttempt || app.session) return;
+  const name = normalizeName(rawName);
+  if (!name.ok) {
+    app.layer?.append(h('p', { class: 'notice', role: 'alert' }, t('name.fixBeforeStart')));
+    return;
   }
-  // Formal ranked play requires server-issued seed and reservation.
-  if(!name.empty && (!app.api.configured||store.memory)){
-   const okay=globalThis.confirm?.(txt('unrankedQuestion'))??false;
-   if(!okay){store.close();return;}
-  }
-  if(!name.empty && app.api.configured && !store.memory){
-   const request=newTimeAttackStart(name.name,app.api,TA_CLIENT_VERSION);
-   try{
-    reservation=await reserveTimeAttack(app.api,store,request);
-    if(generateTimeAttackCourse(reservation.seed).family!==reservation.family)throw Error('course_mismatch');
-   }catch(e){
-    // A failed ranked reservation must not silently turn into an anonymous ranked result.
-    const playUnranked=globalThis.confirm?.(txt('unrankedQuestion'))??false;
-    if(!playUnranked){store.close();return;}
-    await abandonTimeAttack(app.api,store,reservation??request).catch(()=>{});
-    reservation=null;
-   }
-  }
-  const random=new Uint32Array(1);crypto.getRandomValues(random);
-  const anon=reservation?null:newAnonymousTimeAttack(app.api,TA_CLIENT_VERSION,random[0],
-    generateTimeAttackCourse(random[0]).family);
-  const record=reservation??anon;
-  const course=generateTimeAttackCourse(record.seed);
-  const launch=makeTimeAttackLaunch(record);
-  await runTimeAttack(app,store,course,launch);
- }catch(error){
-  try{app.taController?.dispose();}catch{}
-  store?.close();
-  app.showHome();
-  app.layer?.append(h('p',{class:'notice'},txt('startError')));
-  console.warn('[time-attack] unable to launch',String(error?.message??error));
- }finally{
-  app.timeAttackStarting=false;
- }
-}
-async function runTimeAttack(app,store,course,launch){
- const stageBox=h('div',{class:'stage ta-stage','data-testid':'ta-stage'});
- const cover=h('div',{class:'ta-overlay',hidden:true});
- const hudTime=badge(txt('time'),formatTime(0));
- const hudBuilding=badge(txt('building'),'1 / 30');
- const hudFamily=badge(txt('family'),txt(course.family));
- const hudMatch=badge(txt('color'),'0%');
- const hudLight=badge(txt('brightness'),'—');
- const holdFill=h('div',{class:'ta-hold-progress'});
- const pauseBtn=smallButton('Ⅱ',()=>pause('user'));
- pauseBtn.classList.add('ta-pause');
- const top=h('div',{class:'ta-hud'},[hudBuilding,hudTime,hudFamily,pauseBtn]);
- const hold=h('div',{class:'ta-hold-track'},holdFill);
- const stats=h('div',{class:'ta-match-stats'},[hudMatch,hudLight]);
- const controls=createControls({scrollSpeed:app.pcScrollSpeed,
-  onChange:(value)=>input(value)});
- const screen=h('main',{class:'screen game ta-game'},[
-  h('div',{class:'stage-wrap'},[stageBox,top,stats,hold,cover]),controls.el
- ]);
- app.mount(screen,null);
- const generation=app.screenGeneration;
- const current=()=>app.screenGeneration===generation&&app.taController?.id===generation;
- let disposed=false,raf=0,finishing=false,lastNow=null,fraction=0,stage=null,manualClock=false;
- let state=createTimeAttackState(course);
- const events=[],visualCourse={seed:course.seed,targets:course.targets.map(()=>({h:0,s:0,v:3000}))};
- const owner=crypto.randomUUID?.()??String(Date.now())+'-'+Math.random();
- const stageRules={...RULES_V5,buildingCount:30,buildingMs:2000,brightnessUnlockBuilding:15};
- const controller={id:generation,dispose(){
-  disposed=true;cancelAnimationFrame(raf);controls.destroy();
-  document.removeEventListener('visibilitychange',onVisibility);
-  stage?.dispose(); if(app.stage===stage)app.stage=null;
-  store.close();app.taController=null;
-  if(app.runtime.isVerification)app.debugTimeAttack=null;
- }};
- app.taController=controller;
- if(app.runtime.isVerification)app.debugTimeAttack={
-  get state(){return structuredClone(state);},
-  get course(){return course;},
-  useManualClock(){manualClock=true;lastNow=null;fraction=0;},
-  setColor(value){if(state.phase!=='active')throw Error('not_active');add('input',value);draw();},
-  step(ms){
-   if(!manualClock||!Number.isSafeInteger(ms)||ms<0)throw Error('invalid_manual_step');
-   state=applyTimeAttackEvent(state,{kind:'tick',t:state.t+ms},course);
-   if(state.phase==='await_travel')add('travel',{fromBuilding:state.building});
-   else if(state.phase==='await_ready'){
-    stage.setTimeAttackTarget?.(state.building+1,course.targets[state.building]);
-    add('ready',{building:state.building+1});
-    controls.setLocked(state.building<15);controls.setValues(state.color);
-   }else if(state.phase==='cleared'){void endGame('cleared');}
-   draw();
-  },
-  input(value){input(value);},
-  pause(){pause('user');},
- };
- stage=await createStage(stageBox,{course:visualCourse,rules:stageRules,
-  decorations:makeDecorations(course.seed),presentationEnabled:false});
- if(!current()){stage.dispose();return;}
- app.stage=stage;
- await store.begin(launch,owner);
- if(!current())return;
- if(store.memory && app.api.configured){
-   void app.api.post('time-attack-launch',{launchId:launch.launchId,playId:null,ranked:false,
-     family:launch.family,gameVersion:launch.gameVersion,modeId:MODE_ID}).catch(()=>{});
- } else void flushTimeAttackPending(app.api);
- // 時計を動かすのは最初の目標色の描画と操作を許可した後。
- function add(kind,extra={}){
-  const event={seq:events.length,t:state.t,kind,...extra};
-  const next=applyTimeAttackEvent(state,event,course);
-  events.push(event);state=next;
-  return next;
- }
- function advance(now){
-  if(!current()||disposed||finishing)return;
-  if(!['active','travel'].includes(state.phase)){lastNow=now;return;}
-  if(lastNow===null){lastNow=now;return;}
-  const delta=now-lastNow;lastNow=now;
-  if(delta>1000 || delta<0){pause('stalled');return;}
-  fraction+=delta;
-  const step=Math.floor(fraction);
-  if(step<=0)return;
-  const before=state.t;
-  state=applyTimeAttackEvent(state,{kind:'tick',t:state.t+step},course);
-  fraction-=state.t-before;
-  if(state.phase==='await_travel'){
-   add('travel',{fromBuilding:state.building});
-   fraction=0;lastNow=now;
-  }else if(state.phase==='await_ready'){
-   stage.setTimeAttackTarget?.(state.building+1,course.targets[state.building]);
-   add('ready',{building:state.building+1});
-   controls.setLocked(state.building<15);
-   controls.setValues(state.color);
-   fraction=0;lastNow=now;
-  }else if(state.phase==='cleared'){
-   fraction=0;
-   void endGame('cleared');
-  }
- }
- function draw(){
-  if(!current()||disposed||finishing)return;
-  const v=publicView(state,course);
-  hudBuilding.lastChild.textContent=v.building+' / 30';
-  hudTime.lastChild.textContent=formatTime(centiseconds(v.elapsedMs));
-  hudMatch.lastChild.textContent=v.colorMatchUnits===null?'—':(v.colorMatchUnits/1000000).toFixed(1)+'%';
-  hudLight.lastChild.textContent=v.brightnessMatchUnits===null?'—':(v.brightnessMatchUnits/1000000).toFixed(1)+'%';
-  hudLight.hidden=!v.brightnessEnabled;
-  holdFill.style.width=Math.min(100,v.holdMs/500*100)+'%';
-  controls.setEnabled(v.phase==='active');
-  const sceneTime=v.scenePosition*2000;
-  stage.update({t:sceneTime,color:v.currentColor,policeStage:0,
-   walking:v.phase==='travel',running:v.phase==='travel',
-   presentation:{t:state.t,building:state.building,running:v.phase==='travel',
-    moving:v.phase==='travel',hidden:document.hidden}});
- }
- function loop(now){
-  if(!current()||disposed)return;
-  if(document.hidden&&state.phase!=='paused')pause('hidden');
-  else if(!manualClock)advance(now);
-  draw();
-  raf=requestAnimationFrame(loop);
- }
- function input(value){
-  if(!current()||state.phase!=='active'||finishing)return;
-  advance(performance.now());
-  if(state.phase!=='active')return;
-  try{add('input',value);}catch(e){console.warn('TA input rejected',e);}
-  draw();
- }
- function onVisibility(){if(document.hidden)pause('hidden');}
- function pause(reason){
-  if(!current()||finishing||state.phase==='paused'||['cleared','quit'].includes(state.phase))return;
-  lastNow=null;fraction=0;
-  if(state.phase!=='prepared')add('pause');
-  controls.setEnabled(false);
-  cover.hidden=false;
-  cover.replaceChildren(
-   h('h2',{},txt('paused')),
-   smallButton(txt('resume'),()=>{
-    if(state.phase==='paused')add('resume');
-    else if(state.phase==='prepared'){stage.setTimeAttackTarget?.(1,course.targets[0]);add('ready',{building:1});}
-    cover.hidden=true;cover.replaceChildren();lastNow=null;fraction=0;draw();
-   },true),
-   smallButton(txt('quit'),()=>void endGame('quit'))
-  );
-  draw();
- }
- async function endGame(reason){
-  if(finishing||!current())return;
-  finishing=true;cancelAnimationFrame(raf);
-  controls.setEnabled(false);
-  if(state.phase==='paused'&&reason==='quit')add('end',{reason:'quit',elapsedMs:state.elapsedMs,elapsedCs:centiseconds(state.elapsedMs)});
-  else add('end',{reason,elapsedMs:state.elapsedMs,elapsedCs:centiseconds(state.elapsedMs)});
-  let summary;
-  const payload={format:HISTORY_FORMAT,modeId:MODE_ID,rulesVersion:RULES_VERSION,generatorVersion:COURSE_VERSION,
-   seed:course.seed,family:course.family,events,end:{seq:events.length,t:state.t,kind:'end',
-    reason,elapsedMs:state.elapsedMs,elapsedCs:centiseconds(state.elapsedMs)}};
-  // add('end') already emitted; persist exactly one explicit terminal event.
-  // Build the evidence sequence excluding the terminal event, with its original sequence id.
-  payload.events=events.slice(0,-1);
-  const end=events.at(-1);
-  payload.end=end;
-  try{summary=replayTimeAttack(payload);}catch(e){
-   console.warn('TA local replay mismatch',e);summary={reason,buildings:state.clearedCount,
-    elapsedMs:state.elapsedMs,elapsedCs:centiseconds(state.elapsedMs),titleId:null};
-  }
-  let result=null;
-  if(reason==='cleared'){
-   try{result=await makeTimeAttackResult(launch,payload,summary);}
-   catch(error){result={playId:launch.playId??crypto.randomUUID(),ranked:false,
-     elapsedCs:summary.elapsedCs,reason:'cleared',titleId:summary.titleId,state:'too_large',family:course.family};}
-  }
-  try{await store.finish(launch,owner,result);}catch(error){console.warn('TA finish save',error);}
-  if(!current())return;
-  showTimeAttackResult(app,summary,launch,course.family,result);
-  if(result?.ranked)void flushTimeAttackPending(app.api);
- }
- document.addEventListener('visibilitychange',onVisibility);
- controls.layout();controls.setValues(state.color);controls.setLocked(true);
- controls.setEnabled(false);
- // Warm the 3D stage and browser shaders while the clock is still in 'prepared'.
- // Initial rendering can exceed the long-stall threshold, especially on iPhone/WebGL.
- // The first target and timer become active together, only after the warmup frame.
- draw();
- raf=requestAnimationFrame(()=>{
-  if(!current()||disposed)return;
-  stage.setTimeAttackTarget?.(1,course.targets[0]);
-  add('ready',{building:1});
-  controls.setEnabled(true);
-  lastNow=null;fraction=0;
-  raf=requestAnimationFrame(loop);
- });
-}
-export function showTimeAttackResult(app,summary,launch,family,result){
- const cleared=summary.reason==='cleared';
- const statusEl=h('p',{class:'note ta-registration'},!launch.ranked?txt('anonymous'):txt('verifying'));
- const content=h('div',{class:'ta-result-card'},[
-  h('p',{class:'ta-kicker'},txt('mode')),
-  h('h1',{},cleared?txt('clear'):txt('quit')),
-  h('p',{class:'ta-result-time'},cleared?formatTime(summary.elapsedCs):'—'),
-  h('p',{class:'ta-result-title'},cleared?timeAttackTitle(summary.elapsedCs,getLanguage()):txt('notCleared')),
-  h('p',{class:'note'},txt(family)),
-  statusEl
- ]);
- const actions=[smallButton(txt('again'),()=>void startTimeAttack(app,app.nameRaw),true),
-  smallButton(txt('ranking'),()=>{globalThis.location.href='https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=chameleol&tab=time-attack';}),
-  smallButton(t('common.home'),()=>app.showHome())];
- if(cleared){
-  const text=[txt('shareMode'),txt('shareRecord')+': '+(getLanguage()==='ja'?formatTimeJa(summary.elapsedCs):formatTime(summary.elapsedCs)),'#カメレオる'].join('\n');
-  actions.splice(2,0,xShareForm(text,'time-attack-share').el);
- }
- app.mount(h('main',{class:'screen ta-result'},[content,...actions]),null);
- const screen=app.screenGeneration;
- if(cleared&&launch.ranked&&result?.playId&&app.api.configured){
-  const statusLabels={official:'official',rejected:'rejected',pending_review:'pending',
-    under_review:'pending',verifying:'verifying',no_rank:'anonymous'};
-  const poll=async(attempt)=>{
-   if(app.screenGeneration!==screen||attempt>6)return;
-   try{
-    const res=await app.api.post('time-attack-status',{items:[{playId:result.playId,secret:launch.secret}]});
-    if(app.screenGeneration!==screen)return;
-    if(res.modeId!==MODE_ID||!Array.isArray(res.items))throw Error('invalid_status');
-    const status=res.items[0];
-    if(status?.status && status.status!=='not_received'){
-     statusEl.textContent=txt(statusLabels[status.status]??'verifying');
-     if(['official','rejected','no_rank','pending_review','under_review'].includes(status.status))return;
+  const context = app.timeAttack;
+  context.result = null;
+  context.repaintResult = null;
+  let active = null;
+  let reservationAttempt = null;
+  let reservedStore = null;
+  let readyMessage = null;
+  let cancelled = false;
+  let audienceOnly = false;
+  let allowMemory = false;
+
+  function abandon() {
+    const attempt = reservationAttempt;
+    const store = reservedStore;
+    reservationAttempt = null;
+    reservedStore = null;
+    if (attempt && store) {
+      store.put('starts', { ...attempt, abandoned: true })
+        .then(() => context.network.flush(true)).catch(() => {});
     }
-   }catch{if(attempt>=6)statusEl.textContent=txt('pending');}
-   setTimeout(()=>void poll(attempt+1),1500);
+  }
+
+  const flow = {
+    cancel() {
+      if (cancelled) return;
+      cancelled = true;
+      active?.abort();
+      if (!active) abandon();
+    },
+    hidden() {
+      if (active) active.abort();
+    },
   };
-  void poll(0);
- }
+
+  function intro(message = null) {
+    readyMessage = message;
+    const primary = button(message === 'ta.startFailed' ? 'ta.retry' : 'ta.start',
+      () => begin(), { primary: true, testid: 'ta-start' });
+    const actions = [primary];
+    if (message === 'ta.startFailed') {
+      actions.push(button('ta.localStart', () => { abandon(); audienceOnly = true; begin(); }, { testid: 'ta-local-start' }));
+    }
+    if (message === 'ta.storageFailed') {
+      actions.push(button('ta.continueWithoutSaving', () => { allowMemory = true; begin(); }, { testid: 'ta-memory-start' }));
+    }
+    actions.push(button('home.records', () => showTimeAttackRecords(app), { testid: 'ta-start-records' }));
+    actions.push(button('common.cancel', () => app.showHome(), { testid: 'ta-start-cancel' }));
+
+    app.taPreparation = null;
+    app.mount(h('main', { class: 'screen ta-intro', 'data-testid': 'ta-intro' }, [
+      h('h1', {}, t('ta.mode')), h('p', {}, t('ta.instructions')),
+      message ? h('p', { class: 'notice', role: 'status' }, t(message)) : null,
+      h('div', { class: 'ta-start-actions' }, actions),
+    ]), () => { if (!active) intro(readyMessage); });
+    app.taPreparation = flow;
+  }
+
+  async function begin() {
+    if (active || cancelled || document.hidden) return;
+    const attemptAbort = new AbortController();
+    const { signal } = attemptAbort;
+    active = attemptAbort;
+
+    app.root.querySelectorAll('.ta-start-actions button:not([data-testid="ta-start-cancel"])')
+      .forEach(el => { el.disabled = true; });
+    const status = h('p', { class: 'notice', role: 'status' }, t('ta.preparing'));
+    app.root.querySelector('.ta-intro')?.append(status);
+
+    let release, stageController, committed = false;
+    let failedView = null;
+    try {
+      await context.ready;
+      signal.throwIfAborted();
+      const store = allowMemory ? context.memory : context.store;
+      if (!store) { failedView = 'ta.storageFailed'; return; }
+      release = await requestRunLock();
+      if (!release) { failedView = 'ta.activeElsewhere'; return; }
+      signal.throwIfAborted();
+
+      const ranked = !audienceOnly && !name.empty;
+      if (ranked && !app.api.configured) { failedView = 'ta.startFailed'; return; }
+      const attempt = ranked && reservationAttempt ? reservationAttempt : createTimeAttackAttempt({
+        destination: app.api.destination, name: ranked ? name.name : '', gameVersion: TA_CLIENT_VERSION,
+      });
+      attempt.ownerEpoch = performance.timeOrigin + performance.now();
+      let course, playId = null;
+
+      if (ranked) {
+        reservationAttempt = attempt;
+        reservedStore = store;
+        try { await store.put('starts', attempt); }
+        catch { failedView = 'ta.storageFailed'; return; }
+        signal.throwIfAborted();
+        try {
+          const reservation = await reserveTimeAttack(app.api, attempt, signal);
+          course = reservation.course;
+          playId = reservation.playId;
+        } catch {
+          failedView = 'ta.startFailed';
+          return;
+        }
+      } else {
+        course = generateTimeAttackCourse(globalThis.crypto.getRandomValues(new Uint32Array(1))[0]);
+      }
+
+      const { requestId, launchId, secret, gameVersion } = attempt.request;
+      const launch = { id: launchId, requestId, destination: attempt.destination, body: {
+        launchId, playId, secret: ranked ? secret : null, ranked, modeId: MODE_ID,
+        rulesVersion: RULES_VERSION, generatorVersion: COURSE_VERSION, gameVersion, family: course.family,
+      } };
+      signal.throwIfAborted();
+      // Mount under an opaque cover so the canvas can size itself before the
+      // launch transaction. The preparation flow still owns cancellation.
+      app.taPreparation = null;
+      stageController = prepareGame(app, store, attempt, launch, course, flow.cancel);
+      app.taPreparation = flow;
+      await stageController.ready;
+      if (document.hidden) attemptAbort.abort();
+      signal.throwIfAborted();
+      try {
+        await store.begin(launch, { attemptId: attempt.attemptId, ownerEpoch: attempt.ownerEpoch }, signal);
+      } catch (error) {
+        if (error instanceof StaleTimeAttackWriter) failedView = 'ta.activeElsewhere';
+        else if (!signal.aborted) failedView = 'ta.storageFailed';
+        return;
+      }
+      committed = true;
+      reservationAttempt = null;
+      reservedStore = null;
+      context.network.flush(true);
+      if (cancelled || app.taController !== stageController) return;
+      app.taPreparation = null;
+      stageController.start(release, allowMemory, signal.aborted);
+      release = null;
+    } catch {
+      if (!signal.aborted) failedView = 'ta.startFailed';
+    } finally {
+      release?.();
+      active = null;
+      if (!committed && (signal.aborted || cancelled)) abandon();
+      if (!committed && !cancelled && app.taPreparation === flow) intro(failedView);
+    }
+  }
+
+  intro();
+}
+
+function prepareGame(app, store, attempt, launch, course, onCancel) {
+  const context = app.timeAttack;
+  const session = new TimeAttackSession(course);
+  const visualCourse = { seed: course.seed, targets: Array(30).fill(NEUTRAL_WALL) };
+  const stageBox = h('div', { class: 'stage ta-stage', 'data-testid': 'ta-stage' });
+  const cover = h('div', { class: 'ta-overlay' }, [
+    h('p', { role: 'status' }, t('ta.preparing')),
+    button('common.cancel', () => { onCancel(); app.showHome(); }, { testid: 'ta-loading-cancel' }),
+  ]);
+  const building = statistic('ta.buildingLabel', 'ta-building');
+  const time = statistic('ta.timeLabel', 'ta-time');
+  const family = statistic('ta.familyLabel', 'ta-family');
+  family.value.textContent = t(`ta.family.${course.family}`);
+  const color = statistic('ta.colorLabel', 'ta-color');
+  const light = statistic('ta.brightnessLabel', 'ta-brightness');
+  const fill = h('div', { class: 'ta-hold-progress' });
+  const hold = h('div', { class: 'ta-hold-track', role: 'progressbar', 'aria-label': t('ta.holdLabel'),
+    'aria-valuemin': 0, 'aria-valuemax': 500, 'aria-valuenow': 0 }, fill);
+  const pauseButton = h('button', { type: 'button', class: 'btn btn-pause ta-pause',
+    'aria-label': t('ta.pause'), 'data-testid': 'ta-pause', onclick: () => pause() }, 'Ⅱ');
+  const controls = createControls({ scrollSpeed: app.pcScrollSpeed, ...app.controlAudioCallbacks(), onChange(value) {
+    if (document.hidden || !started || finishing) return;
+    session.input(value, performance.now());
+    draw();
+  } });
+  controls.setEnabled(false);
+  controls.setLocked(true);
+  const screen = h('main', { class: 'screen game ta-game', 'data-testid': 'ta-game' }, [
+    h('div', { class: 'stage-wrap' }, [stageBox,
+      h('div', { class: 'ta-hud' }, [building.el, time.el, family.el, pauseButton]),
+      h('div', { class: 'ta-match-stats' }, [color.el, light.el]), hold, cover]),
+    controls.el,
+  ]);
+  app.mount(screen);
+  let stage, shownBuilding = null, phase, raf = 0, disposed = false, finishing = false;
+  let started = false, release = null, memoryOnly = false;
+  const reduceMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const controller = {
+    dispose() {
+      disposed = true;
+      cancelAnimationFrame(raf);
+      controls.destroy();
+      stage?.dispose();
+      release?.();
+    },
+    onVisibility() { if (document.hidden && started) pause(); },
+    onPageHide() { if (started) pause(); },
+    start(releaseLock, volatile, wasHidden) {
+      release = releaseLock;
+      memoryOnly = volatile;
+      started = true;
+      cover.replaceChildren();
+      if (document.hidden || wasHidden) session.pauseAtCurrentTime();
+      draw();
+      if (memoryOnly) screen.append(h('p', { class: 'ta-volatile', role: 'status' }, t('ta.offlineQueue')));
+      raf = requestAnimationFrame(loop);
+    },
+  };
+  app.taController = controller;
+  controller.ready = (async () => {
+    const prepared = await app.stageFactory(stageBox, {
+      course: visualCourse, rules: STAGE_RULES, decorations: makeDecorations(course.seed), presentationEnabled: false,
+    });
+    if (disposed) { prepared.dispose(); return; }
+    stage = prepared;
+    controls.layout();
+    stage.resize();
+  })();
+
+  function pause() {
+    if (!started || finishing) return;
+    session.pause(performance.now());
+    draw();
+  }
+
+  function loop(now) {
+    if (disposed || finishing) return;
+    if (document.hidden) session.pause(now);
+    else session.frame(now);
+    if (session.state.phase === 'cleared') void finish();
+    else {
+      draw();
+      raf = requestAnimationFrame(loop);
+    }
+  }
+
+  function draw() {
+    if (disposed || !stage || finishing) return;
+    const view = publicView(session.state, course);
+    const playable = view.phase === 'active' && !document.hidden;
+    const paused = view.phase === 'paused' || session.hiddenBeforeReady;
+    const visibleBuilding = playable ? view.building : null;
+    if (shownBuilding !== visibleBuilding) {
+      if (shownBuilding !== null) stage.setTimeAttackTarget?.(shownBuilding, NEUTRAL_WALL);
+      if (visibleBuilding !== null) stage.setTimeAttackTarget?.(visibleBuilding, view.targetColor);
+      shownBuilding = visibleBuilding;
+    }
+    if (phase !== view.phase) {
+      controls.releaseAll();
+      controls.setValues(view.currentColor);
+      controls.setLocked(!view.brightnessEnabled);
+      controls.setEnabled(playable);
+      phase = view.phase;
+    } else if (!playable) {
+      controls.setEnabled(false);
+    }
+    if (paused && !cover.querySelector('[data-testid="ta-resume"]')) {
+      cover.replaceChildren(h('h2', {}, t('ta.paused')),
+        button('ta.resume', () => {
+          if (document.hidden) return;
+          session.resume(performance.now());
+          phase = null;
+          draw();
+        }, { primary: true, testid: 'ta-resume' }),
+        button('ta.quit', () => void finish(), { testid: 'ta-quit' }));
+    } else if (!paused) {
+      const traveling = ['await_travel', 'travel', 'await_ready'].includes(view.phase);
+      const label = traveling ? t('ta.travel') : '';
+      if (cover.textContent !== label) cover.textContent = label;
+    }
+    cover.classList.toggle('ta-overlay-travel', !paused);
+    cover.hidden = !paused && !cover.textContent;
+    pauseButton.disabled = paused || view.phase === 'prepared';
+    screen.dataset.phase = view.phase;
+    building.value.textContent = `${view.building} / 30`;
+    time.value.textContent = formatTime(centiseconds(view.elapsedMs));
+    color.value.textContent = view.colorMatchUnits == null ? '—' : `${(view.colorMatchUnits / 1e6).toFixed(1)}%`;
+    light.value.textContent = view.brightnessMatchUnits == null ? '—' : `${(view.brightnessMatchUnits / 1e6).toFixed(1)}%`;
+    light.el.hidden = !view.brightnessEnabled;
+    fill.style.width = `${view.holdMs / 5}%`;
+    hold.setAttribute('aria-valuenow', String(view.holdMs));
+    const position = reduceMotion?.matches ? Math.floor(view.scenePosition) : view.scenePosition;
+    stage.update({ t: position * 2000, color: view.currentColor, policeStage: 0,
+      walking: !reduceMotion?.matches && view.phase === 'travel', running: !paused,
+      presentation: { t: session.state.t, building: view.building, running: !paused } });
+  }
+
+  async function finish() {
+    if (disposed || finishing) return;
+    finishing = true;
+    cancelAnimationFrame(raf);
+    controls.releaseAll();
+    controls.setEnabled(false);
+    cover.replaceChildren(h('p', { role: 'status' }, t('ta.preparing')));
+    cover.classList.remove('ta-overlay-travel');
+    cover.hidden = false;
+    const { history, historyTooLarge, result } = session.finish();
+    let outbox = null;
+    if (history && launch.body.ranked) {
+      try { outbox = await createTimeAttackUpload(history, launch); } catch { /* Keep the local record. */ }
+    }
+    const limited = historyTooLarge || (history && launch.body.ranked && !outbox);
+    const record = { id: launch.id, destination: launch.destination, result,
+      playId: launch.body.playId, secret: launch.body.secret, finishedAt: Date.now(), status: outbox ? 'uploading' : limited ? 'too_large' : 'local_only' };
+    context.result = record;
+    try {
+      const best = await store.finish({ attemptId: attempt.attemptId, ownerEpoch: attempt.ownerEpoch }, record, outbox);
+      Object.assign(context.result, best);
+    } catch {
+      context.result.status = 'storage_failed';
+    }
+    if (disposed) return;
+    showResult(app, store);
+    context.network.flush(true);
+  }
+
+  return controller;
+}
+
+function showResult(app, store) {
+  const context = app.timeAttack;
+  const render = () => {
+    const record = context.result;
+    if (!record) return;
+    const { status, result, bestElapsedCs, newBest, reviewRequested } = record;
+    return createTimeAttackResult({
+      result, status, bestElapsedCs, newBest, reviewRequested,
+      onResend: () => context.network.flush(true),
+      onRetry: () => startTimeAttack(app, app.nameRaw),
+      onHome: () => app.showHome(),
+      onReview: status === 'rejected' && !reviewRequested && record.playId
+        ? async () => {
+          try { await context.network.review(store, record); }
+          catch { toast(app.layer, t('records.reviewFailed'), { kind: 'warn' }); }
+        } : undefined,
+    });
+  };
+  const screen = render();
+  const repaint = () => {
+    if (screen.isConnected && context.result) screen.replaceChildren(...render().childNodes);
+  };
+  app.mount(screen, repaint);
+  context.repaintResult = repaint;
+}
+
+
+export function showTimeAttackRecords(app) {
+  const context = app.timeAttack;
+  const entries = h('div', { class: 'ta-start-actions', 'aria-live': 'polite' });
+  const screen = h('main', { class: 'screen records-screen' }, [
+    h('h1', {}, t('ta.mode')), h('h2', {}, t('records.title')),
+    button('records.refresh', async () => { await context.network.flush(true); await load(); }),
+    entries, backButton(() => app.showRecords()),
+  ]);
+  app.mount(screen, () => showTimeAttackRecords(app));
+
+  async function load() {
+    await context.ready;
+    const stores = [context.store, context.memory].filter(Boolean);
+    const rows = (await Promise.all(stores.map(async store => {
+      const records = await store.getAll('records').catch(() => []);
+      return records.map(record => ({ store, record }));
+    }))).flat().sort((a, b) => (b.record.finishedAt ?? 0) - (a.record.finishedAt ?? 0));
+    if (!screen.isConnected) return;
+    entries.replaceChildren(...rows.map(({ store, record }) => {
+      const { elapsedCs, reason, clearedCount } = record.result;
+      const title = reason === 'cleared' ? t('ta.clearTime') : t('ta.quitSummary', { count: clearedCount });
+      return h('button', { type: 'button', class: 'btn', onclick: () => {
+        context.result = record;
+        showResult(app, store);
+        context.network.flush(true);
+      } }, [title, ' ', h('bdi', {}, formatTime(elapsedCs))]);
+    }));
+    if (!rows.length) entries.append(h('p', { class: 'note' }, t('records.empty')));
+  }
+
+  void load();
 }

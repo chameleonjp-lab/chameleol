@@ -1,7 +1,7 @@
 // 同系色モード専用の受付。通常の starts/results/ranking 関数へ絶対に流さない。
 // 内部DB接続からだけ非公開テーブルへアクセスし、公開時は最小限の表示値のみ返す。
 import {normalizeName} from './shared/name.js';
-import {MODE_ID,RULES_VERSION,COURSE_VERSION,HISTORY_FORMAT,generateTimeAttackCourse,
+import {MODE_ID,RULES_VERSION,COURSE_VERSION,HISTORY_FORMAT,timeAttackFamilyForSeed,InvalidTimeAttackHistoryError,
   replayTimeAttack} from './rules/time-attack/v1/index.js';
 type DB={query(text:string,params?:unknown[]):Promise<any[]>};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -45,9 +45,11 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
   if(rows[0]?.ok!==true)throw error(429,'rate_limited',true);
  }
  async function processJobs(limit=2){
-  const claimed=await call('select * from private.kamereoru_ta_claim_jobs($1)',[limit]);
+  const began = performance.now();
   let processed=0;
-  for(const j of claimed){
+  for (let i = 0; i < limit && performance.now() - began < 900; i++) {
+   const [j] = await call('select * from private.kamereoru_ta_claim_jobs($1)', [1]);
+   if (!j) break;
    let status='rejected',values:Record<string,unknown>={},verdict:Record<string,unknown>={reason:'invalid_replay'};
    try{
     const [r]=await call('select r.body, s.seed,s.family,s.play_id,s.launch_id,s.game_version,s.created_at,r.accepted_at from private.kamereoru_ta_results r join private.kamereoru_ta_starts s using(play_id) where r.play_id=$1',[j.play_id]);
@@ -57,17 +59,24 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
       payload?.launchId!==r.launch_id||payload?.gameVersion!==r.game_version||payload?.format!==HISTORY_FORMAT)throw Error('reservation_mismatch');
     const computed=replayTimeAttack(payload);
     const elapsedWall=Date.parse(r.accepted_at)-Date.parse(r.created_at);
-    const neededWall=computed.elapsedMs+(computed.reason==='cleared'?29*2000:0);
+    const neededWall=computed.elapsedMs+computed.executedTravelMs;
     if(Number.isFinite(elapsedWall)&&neededWall>elapsedWall+5000)throw Error('faster_than_wall_clock');
     status=computed.reason==='cleared'?'official':'no_rank';
     values={reason:computed.reason,buildings:computed.buildings,elapsedMs:computed.elapsedMs,
       elapsedCs:computed.elapsedCs,titleId:computed.titleId};
     verdict={reason:'verified'};
    }catch(e:any){
-    verdict={reason:String(e?.message??e).slice(0,100)};
-    if(j.attempts>=3&&verdict.reason==='temporarily_unavailable')status='pending_review';
+    if (e instanceof InvalidTimeAttackHistoryError) {
+     verdict={reason:String(e.message).slice(0,100)};
+    } else if (['reservation_mismatch', 'faster_than_wall_clock'].includes(e?.message)) {
+     verdict={reason:e.message};
+    } else {
+     if (j.attempts < 3) continue;
+     status = 'pending_review';
+     verdict = {reason:'verifier_error'};
+    }
    }
-   try{await call('select private.kamereoru_ta_finalize($1,$2,$3,$4::jsonb,$5::jsonb) as r',[
+   try{await call('select private.kamereoru_ta_finalize($1,$2,$3,$4::text::jsonb,$5::text::jsonb) as r',[
     j.play_id,j.claim_token,status,JSON.stringify(values),JSON.stringify(verdict)]);
     processed++;
    }catch(e){log({event:'ta_finalize_retryable',reason:String((e as any)?.message??e).slice(0,80)});}
@@ -82,15 +91,16 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
    if(route==='time-attack-start'&&req.method==='POST'){
     const b=await read(req);uuid(b.requestId);uuid(b.launchId);secret(b.secret);
     const n=normalizeName(b.name);
-    if(!n.ok||n.empty||n.name!==b.name||b.rulesVersion!==RULES_VERSION||!b.gameVersion)throw error(422,'bad_start');
+    const requested = b.supportedRulesVersions ?? [b.rulesVersion];
+    if(!n.ok||n.empty||n.name!==b.name||!Array.isArray(requested)||requested.length!==1||requested[0]!==RULES_VERSION||!b.gameVersion)throw error(422,'bad_start');
     const existing=await call('select 1 from private.kamereoru_ta_starts where request_id=$1',[b.requestId]);
     if(!existing.length)await throttle(req,'start',30);
     const rand=new Uint32Array(1);crypto.getRandomValues(rand);const seed=rand[0];
-    const course=generateTimeAttackCourse(seed);
+    const family=timeAttackFamilyForSeed(seed);
     const rows=await call("select private.kamereoru_ta_start($1,$2,decode($3,'hex'),$4,$5,$6,$7,$8,$9) as r",[
-      b.requestId,b.launchId,await sha(b.secret),n.name,n.key,RULES_VERSION,b.gameVersion,seed,course.family]);
+      b.requestId,b.launchId,await sha(b.secret),n.name,n.key,RULES_VERSION,b.gameVersion,seed,family]);
     const r=rows[0]?.r;
-    if(generateTimeAttackCourse(Number(r.seed)).family!==r.family)throw error(503,'seed_mismatch');
+    if(timeAttackFamilyForSeed(Number(r.seed))!==r.family)throw error(503,'seed_mismatch');
     return json(200,r);
    }
    if(route==='time-attack-abandon'&&req.method==='POST'){
@@ -111,12 +121,13 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
    if(route==='time-attack-chunk'&&req.method==='POST'){
     const b=await read(req);uuid(b.playId);uuid(b.resultId);secret(b.secret);
     safeInt(b.index,0,63);safeInt(b.total,1,64);safeInt(b.length,1,LIMITS.total);
-    if(typeof b.sha256!=='string'||!SHA.test(b.sha256)||typeof b.data!=='string'||
-      new TextEncoder().encode(b.data).length>LIMITS.chunk||b.data.length===0)throw error(422,'bad_chunk');
+    const chunk = b.chunk ?? b.data;
+    if(typeof b.sha256!=='string'||!SHA.test(b.sha256)||typeof chunk!=='string'||
+      new TextEncoder().encode(chunk).length>LIMITS.chunk||chunk.length===0)throw error(422,'bad_chunk');
     await throttle(req,'chunk',3000);
     const rows=await call("select private.kamereoru_ta_put_chunk($1,$2,decode($3,'hex'),$4,$5,$6,$7,$8) as r",[
-      b.playId,b.resultId,await sha(b.secret),b.index,b.total,b.length,b.sha256,b.data]);
-    return json(200,rows[0].r);
+      b.playId,b.resultId,await sha(b.secret),b.index,b.total,b.length,b.sha256,chunk]);
+    return json(200,{...rows[0].r,playId:b.playId,resultId:b.resultId,index:b.index});
    }
    if(route==='time-attack-complete'&&req.method==='POST'){
     const b=await read(req);uuid(b.playId);uuid(b.resultId);secret(b.secret);
@@ -140,10 +151,11 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
     const results=[];
     for(const i of b.items){
      uuid(i.playId);secret(i.secret);
-     const rows=await call("select r.status,r.reason,r.elapsed_cs,r.title_id,r.family from private.kamereoru_ta_results r join private.kamereoru_ta_starts s using(play_id) where r.play_id=$1 and s.secret_hash=decode($2,'hex')",[
+     const rows=await call("select r.status,r.reason,r.elapsed_ms,r.elapsed_cs,r.title_id,r.family,r.review_requested from private.kamereoru_ta_results r join private.kamereoru_ta_starts s using(play_id) where r.play_id=$1 and s.secret_hash=decode($2,'hex')",[
        i.playId,await sha(i.secret)]);
      results.push({playId:i.playId,status:rows[0]?.status??'not_received',
-      reason:rows[0]?.reason??null,elapsedCs:rows[0]?.elapsed_cs??null,
+      reason:rows[0]?.reason??null,elapsedMs:rows[0]?.elapsed_ms==null?null:Number(rows[0].elapsed_ms),
+      elapsedCs:rows[0]?.elapsed_cs==null?null:Number(rows[0].elapsed_cs),reviewRequested:rows[0]?.review_requested===true,
       titleId:rows[0]?.title_id??null,family:rows[0]?.family??null});
     }
     task(processJobs(2));
@@ -179,7 +191,7 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
     return json(200,{...r,version:Number(r.version)});
    }
    if(route==='time-attack-process'&&req.method==='POST'){
-    if(!workerSecret||!SECRET.test(workerSecret))throw error(503,'worker_not_configured');
+    if(!workerSecret||!SECRET.test(workerSecret))throw error(403,'forbidden');
     const input=req.headers.get('x-ta-worker-secret')??'';
     if(!SECRET.test(input)||await sha(input)!==await sha(workerSecret))throw error(403,'forbidden');
     return json(200,await processJobs(5));
@@ -188,8 +200,11 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
   }catch(e:any){
    const status=Number.isInteger(e?.status)?e.status:500;
    if(status>=500)log({event:'ta_error',route,reason:String(e?.message??e).slice(0,120)});
-   return new Response(JSON.stringify({ok:false,modeId:MODE_ID,error:e?.code??'internal_error',retryable:e?.retryable??status>=500}),
-    {status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
+   const retryAfter = status===429 ? 600-(Math.floor(Date.now()/1000)%600) : null;
+   const headers = new Headers({'content-type':'application/json; charset=utf-8','cache-control':'no-store'});
+   if (retryAfter!==null) headers.set('retry-after', String(retryAfter));
+   return new Response(JSON.stringify({ok:false,modeId:MODE_ID,error:e?.code??'internal_error',
+    retryable:e?.retryable??status>=500,retryAfterMs:retryAfter===null?undefined:retryAfter*1000}),{status,headers});
   }
  }
  return {handle,processJobs};

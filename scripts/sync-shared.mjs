@@ -20,6 +20,10 @@ export const SHARED = [
 
 export const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 
+export function timeAttackFingerprint() {
+  return sha(TA_SHARED.map(({ from, to }) => `${to}:${sha(readFileSync(join(ROOT, from)))}`).join('\n'));
+}
+
 export function computeManifest() {
   const files = {};
   for (const { from, to } of SHARED) files[to] = sha(readFileSync(join(ROOT, from)));
@@ -58,6 +62,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       writeFileSync(dest, readFileSync(join(ROOT, from)));
     }
     writeFileSync(join(DEST, 'manifest.json'), `${JSON.stringify(computeManifest(), null, 2)}\n`);
-    console.log('synced', SHARED.length, 'files');
+    console.log('synced', SHARED.length + TA_SHARED.length, 'files');
   }
 }

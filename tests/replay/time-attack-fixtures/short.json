@@ -1,0 +1,17 @@
+{
+  "name": "short",
+  "expected": null,
+  "history": {
+    "format": "kamereoru-time-attack-history-v1",
+    "modeId": "chameleol_time_attack",
+    "rulesVersion": "kamereoru-time-attack-rules-v1",
+    "generatorVersion": "kamereoru-time-attack-course-v1",
+    "seed": 0,
+    "family": "blue",
+    "events": [
+      {"seq":0,"t":0,"kind":"ready","building":1},
+      {"seq":1,"t":0,"kind":"input","h":25000,"s":9500,"v":10000}
+    ],
+    "end": {"seq":2,"t":499,"kind":"end","reason":"cleared","elapsedMs":499,"elapsedCs":50}
+  }
+}

@@ -1,57 +1,266 @@
-// 同系色タイムアタックを実画面で確認する。iPhone Safari実機の代用ではない。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {launch,openHome} from './helpers.mjs';
+import { join } from 'node:path';
+import { launch, openHome, openXShare } from './helpers.mjs';
+import { barFromV, pointFromHs } from '../../src/rules/v1/color.js';
+import {
+  COURSE_VERSION, formatTime, generateTimeAttackCourse, MODE_ID, replayTimeAttack, RULES_VERSION, TITLE_NAMES_JA,
+} from '../../src/rules/time-attack/v1/index.js';
 
-test('TA entry, first 500ms hold, two-second travel, pause and return to normal home',async()=>{
- const env=await launch({width:402,height:700});
- try{
-  const {page,url}=env;
-  await openHome(page,url);
-  assert.equal(await page.locator('[data-testid=home-time-attack]').count(),1);
-  const buttons=await page.locator('.home-actions .btn').allTextContents();
-  assert.ok(buttons.findIndex(x=>x.includes('はじめる'))<buttons.findIndex(x=>x.includes('同系色')));
-  await page.click('[data-testid=home-time-attack]');
-  await page.waitForFunction(()=>typeof window.__kamereoru?.debugTimeAttack?.useManualClock==='function',
-    null,{timeout:15000});
-  await page.evaluate(()=>window.__kamereoru.debugTimeAttack.useManualClock());
-  await page.waitForFunction(()=>window.__kamereoru?.debugTimeAttack?.state.phase==='active',
-    null,{timeout:15000});
-  assert.equal(await page.locator('.ta-game').count(),1);
-  // Browser CPU/GPU timing is not a trustworthy metronome on a shared CI runner:
-  // heavy 3D frames correctly trigger the game's >1000ms auto-pause.
-  // Instead, exercise exactly the same controller with a verification-only clock.
-  const beforeElapsed=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state.elapsedMs);
-  const target=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.course.targets[0]);
-  await page.evaluate(c=>window.__kamereoru.debugTimeAttack.setColor(c),target);
-  await page.evaluate(()=>window.__kamereoru.debugTimeAttack.step(499));
-  assert.equal((await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state)).phase,'active');
-  await page.evaluate(()=>window.__kamereoru.debugTimeAttack.step(1));
-  const passed=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state);
-  assert.equal(passed.phase,'travel');
-  assert.equal(passed.clearedCount,1);
-  assert.equal(passed.elapsedMs,beforeElapsed+500);
-  await page.evaluate(()=>window.__kamereoru.debugTimeAttack.step(1999));
-  assert.equal((await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state)).phase,'travel');
-  await page.evaluate(()=>window.__kamereoru.debugTimeAttack.step(1));
-  const next=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state);
-  assert.equal(next.building,2);
-  assert.equal(next.moveCount,1);
-  await page.locator('.ta-pause').click();
-  await page.locator('.ta-overlay').waitFor({state:'visible'});
-  const paused=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state.t);
-  await page.waitForTimeout(400);
-  const during=await page.evaluate(()=>window.__kamereoru.debugTimeAttack.state);
-  assert.equal(during.t,paused,'pause should not change the timer');
-  await page.locator('.ta-overlay .btn').first().click();
-  await page.waitForFunction(()=>window.__kamereoru.debugTimeAttack.state.phase==='active');
-  await page.locator('.ta-pause').click();
-  await page.locator('.ta-overlay .btn').last().click();
-  await page.waitForSelector('.ta-result-card');
-  assert.equal(await page.getByText('未クリア',{exact:true}).count(),1);
-  await page.locator('.ta-result > .btn').last().click();
-  await page.waitForSelector('[data-testid=home-start]');
-  assert.equal(await page.locator('.ta-game').count(),0);
-  assert.deepEqual(env.errors,[]);
- }finally{await env.close();}
+const fixtureName = '色合わせテスト';
+const playId = '4fd21726-9e7e-4a51-8b73-c44d444e844a';
+const course = generateTimeAttackCourse(5);
+
+async function mockTimeAttack(env) {
+  const calls = [];
+  const chunks = [];
+  let submitted;
+  let summary;
+  await env.context.addInitScript(() => {
+    localStorage.setItem('kamereoru.apiBase', '/fixture-time-attack');
+  });
+  await env.context.route('**/fixture-time-attack/**', async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.split('/').at(-1);
+    const body = request.postDataJSON();
+    calls.push({ path, body });
+    let response;
+    switch (path) {
+      case 'time-attack-start':
+        response = { playId, seed: course.seed, family: course.family, rulesVersion: RULES_VERSION,
+          generatorVersion: COURSE_VERSION, acceptedAt: new Date().toISOString(), expiresAt: null };
+        break;
+      case 'time-attack-launch':
+        response = { counted: true, launchId: body.launchId };
+        break;
+      case 'time-attack-abandon':
+        response = { status: 'abandoned' };
+        break;
+      case 'time-attack-chunk':
+        chunks[body.index] = body.data;
+        response = { playId, resultId: body.resultId, index: body.index };
+        break;
+      case 'time-attack-complete':
+        submitted = JSON.parse(chunks.join(''));
+        summary = replayTimeAttack(submitted);
+        response = { playId, resultId: body.resultId, status: 'verifying' };
+        break;
+      case 'time-attack-status':
+        response = { items: [{ playId, ...summary, status: summary ? 'official' : 'not_received' }] };
+        break;
+      default:
+        await route.fulfill({ json: { ok: false, error: 'fixture_unsupported' } });
+        return;
+    }
+    await route.fulfill({ json: { ok: true, modeId: MODE_ID, ...response } });
+  });
+  return { calls, submitted: () => submitted, summary: () => summary };
+}
+
+async function paintColor(page, color, { brightness = false } = {}) {
+  const palette = await page.locator('.ta-game .palette').boundingBox();
+  assert.ok(palette);
+  const { dx, dy } = pointFromHs(color.h, color.s, Math.min(palette.width, palette.height) / 2);
+  await page.touchscreen.tap(palette.x + palette.width / 2 + dx, palette.y + palette.height / 2 + dy);
+  if (brightness) {
+    const bar = await page.locator('.ta-game .bar').boundingBox();
+    assert.ok(bar);
+    await page.touchscreen.tap(bar.x + bar.width / 2, bar.y + Math.max(1, barFromV(color.v, bar.height)));
+  }
+}
+
+function phase(page, value) {
+  return page.locator(`[data-testid="ta-game"][data-phase="${value}"]`);
+}
+
+async function visibleTargets(page) {
+  return page.evaluate(() => globalThis.__taRenderedTargets);
+}
+
+async function setHidden(page, hidden) {
+  await page.evaluate(value => {
+    globalThis.__taHidden = value;
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, hidden);
+}
+
+async function checkFit(page, selectors) {
+  const overflow = await page.evaluate(items => items.flatMap(selector => {
+    const element = document.querySelector(selector);
+    if (!element) return [selector];
+    const r = element.getBoundingClientRect();
+    return r.left >= 0 && r.right <= innerWidth + 1 && r.top >= 0 && r.bottom <= innerHeight + 1 ? [] : [selector];
+  }), selectors);
+  assert.deepEqual(overflow, []);
+}
+
+async function takeEvidence(page, name) {
+  const directory = process.env.TA_SCREENSHOTS;
+  if (directory) await page.screenshot({ path: join(directory, `${name}.png`) });
+}
+
+test('time attack plays 30 walls with hidden targets, timed travel, brightness and ranked submission', { timeout: 120_000 }, async () => {
+  const env = await launch({ width: 402, height: 700 });
+  const { page } = env;
+  try {
+    const mock = await mockTimeAttack(env);
+    await page.clock.install();
+    await env.context.addInitScript(() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!globalThis.__taHidden });
+    });
+    await openHome(page, env.url);
+    await page.evaluate(async () => {
+      const { createDomStage } = await import('/src/scene/stage.js');
+      const app = globalThis.__kamereoru;
+      app.stageFactory = async (container, options) => {
+        captureVisibleTargets();
+        const stage = createDomStage(container, options);
+        const update = stage.update;
+        function captureVisibleTargets() {
+          globalThis.__taRenderedTargets = options.course.targets.flatMap((color, index) => color.s > 0 ? [index + 1] : []);
+        }
+        stage.update = (...args) => { update(...args); captureVisibleTargets(); };
+        return stage;
+      };
+    });
+    await page.locator('#name-input').fill(fixtureName);
+    await page.getByTestId('home-time-attack').tap();
+    await page.getByTestId('ta-intro').waitFor();
+    assert.equal(mock.calls.filter(({ path }) => path.startsWith('time-attack-')).length, 0);
+    await page.getByTestId('ta-start-cancel').tap();
+    await page.getByTestId('home-time-attack').tap();
+    await page.getByTestId('ta-start').tap();
+    await phase(page, 'active').waitFor();
+    assert.equal(await page.getByTestId('ta-building').textContent(), '1 / 30');
+    assert.deepEqual(await visibleTargets(page), [1]);
+    assert.equal(await page.getByTestId('ta-brightness').isVisible(), false);
+    await checkFit(page, ['.ta-hud', '.ta-stage', '.ta-game .palette', '.ta-game .bar']);
+    await takeEvidence(page, 'time-attack-dom-402x700');
+
+    await paintColor(page, course.targets[0]);
+    await page.clock.runFor(175);
+    assert.ok(Number.parseFloat(await page.getByTestId('ta-color').textContent()) >= 95);
+    assert.ok(Number(await page.getByRole('progressbar').getAttribute('aria-valuenow')) > 0);
+    await setHidden(page, true);
+    await phase(page, 'paused').waitFor();
+    const stopped = await page.getByTestId('ta-time').textContent();
+    assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuenow'), '0');
+    assert.deepEqual(await visibleTargets(page), []);
+    await page.clock.runFor(350);
+    await setHidden(page, false);
+    await page.clock.runFor(350);
+    assert.equal(await page.getByTestId('ta-time').textContent(), stopped);
+    await phase(page, 'paused').waitFor();
+    await page.getByTestId('ta-resume').tap();
+    await page.clock.runFor(550);
+    await phase(page, 'travel').waitFor();
+    assert.deepEqual(await visibleTargets(page), []);
+    const traveling = await page.getByTestId('ta-time').textContent();
+    await page.clock.runFor(850);
+    assert.equal(await page.getByTestId('ta-time').textContent(), traveling);
+    assert.equal(await page.getByTestId('ta-building').textContent(), '1 / 30');
+    await page.clock.runFor(1250);
+    await phase(page, 'active').waitFor();
+
+    for (let building = 2; building <= 30; building++) {
+      assert.equal(await page.getByTestId('ta-building').textContent(), `${building} / 30`);
+      assert.deepEqual(await visibleTargets(page), [building]);
+      assert.equal(await page.getByTestId('ta-brightness').isVisible(), building >= 15);
+      const target = course.targets[building - 1];
+      if (building === 15) {
+        await paintColor(page, target);
+        await page.clock.runFor(550);
+        assert.equal(await phase(page, 'active').count(), 1);
+        assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuenow'), '0');
+      }
+      await paintColor(page, target, { brightness: building >= 15 });
+      await page.clock.runFor(550);
+      if (building < 30) {
+        await phase(page, 'travel').waitFor();
+        await page.clock.runFor(2050);
+        await phase(page, 'active').waitFor();
+      }
+    }
+
+    await page.getByTestId('ta-result').waitFor();
+    await page.clock.runFor(5000);
+    await page.waitForFunction(() => document.querySelector('[data-testid="ta-result-status"]')?.textContent.includes('記録を確認しました'));
+    const accepted = mock.summary();
+    assert.ok(accepted);
+    assert.equal(accepted.buildings, 30);
+    assert.equal(accepted.executedTravelMs, 58000);
+    assert.equal(accepted.moveCount, 29);
+    assert.equal(await page.getByTestId('ta-result-time').textContent(), formatTime(accepted.elapsedCs));
+    assert.equal(await page.getByTestId('ta-result-title').textContent(), TITLE_NAMES_JA[Number(accepted.titleId.slice(-2)) - 1]);
+    assert.equal(await page.getByTestId('ta-ranking').getAttribute('href'),
+      'https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=chameleol&tab=time-attack');
+    const share = await openXShare(page, 'ta-share');
+    assert.equal(share.searchParams.get('url'), 'https://chameleonjp-lab.github.io/chameleol/');
+    assert.deepEqual(share.searchParams.get('text').split(/\r?\n/), [
+      'タイムアタックモード', `記録：${formatTime(accepted.elapsedCs, 'ja', { share: true })}`, '#カメレオる',
+    ]);
+    const { events, end } = mock.submitted();
+    assert.deepEqual(events[0], { seq: 0, t: 0, kind: 'ready', building: 1 });
+    const movements = events.filter(event => event.kind === 'travel');
+    for (const move of movements) {
+      const nextWall = events.find(event => event.kind === 'ready' && event.building === move.fromBuilding + 1);
+      assert.equal(nextWall.t - move.t, 2000);
+    }
+    assert.equal(end.t, accepted.elapsedMs + 58000);
+    const launches = mock.calls.filter(({ path }) => path === 'time-attack-launch');
+    assert.equal(launches.length, 1);
+    assert.equal(launches[0].body.ranked, true);
+    assert.equal(mock.calls.filter(({ path }) => path === 'launch' || path === 'start').length, 0);
+    await takeEvidence(page, 'time-attack-result-402x700');
+    await page.getByTestId('ta-home').tap();
+    await page.getByTestId('home-start').waitFor();
+    assert.deepEqual(env.errors, []);
+  } finally {
+    await env.close();
+  }
+});
+
+test('the three-dimensional stage fits a landscape mobile viewport and can pause and quit', { timeout: 40_000 }, async () => {
+  const env = await launch({ width: 874, height: 402 });
+  const { page } = env;
+  try {
+    await openHome(page, env.url);
+    await page.evaluate(() => {
+      const app = globalThis.__kamereoru;
+      const factory = app.stageFactory;
+      app.stageFactory = async (container, options) => {
+        const stage = await factory(container, options);
+        globalThis.__taThree = { kind: stage.kind, targets: options.course.targets };
+        return stage;
+      };
+    });
+    await page.getByTestId('home-time-attack').tap();
+    await page.getByTestId('ta-start').tap();
+    await phase(page, 'active').waitFor();
+    await page.locator('[data-testid="ta-stage"] canvas').waitFor({ state: 'visible' });
+    assert.equal(await page.evaluate(() => globalThis.__taThree.kind), 'three');
+    assert.equal(await page.evaluate(() => globalThis.__taThree.targets.filter(color => color.s > 0).length), 1);
+    await checkFit(page, ['.ta-hud', '.ta-game .palette', '.ta-game .bar']);
+    await takeEvidence(page, 'time-attack-three-874x402');
+    await page.setViewportSize({ width: 402, height: 874 });
+    await checkFit(page, ['.ta-hud', '.ta-game .palette', '.ta-game .bar']);
+    await takeEvidence(page, 'time-attack-three-402x874');
+    const pause = page.getByTestId('ta-pause');
+    const resume = page.getByTestId('ta-resume');
+    if (await pause.isEnabled()) {
+      // A slow screenshot on software WebGL can trip the game's auto-pause.
+      await pause.tap({ timeout: 3000 }).catch(async error => {
+        if (!await resume.isVisible()) throw error;
+      });
+    }
+    await resume.waitFor();
+    assert.equal(await page.getByTestId('ta-color').textContent(), '—');
+    assert.ok(await page.evaluate(() => globalThis.__taThree.targets.every(color => color.s === 0)));
+    await page.getByTestId('ta-quit').tap();
+    await page.getByTestId('ta-result').waitFor();
+    assert.equal(await page.getByTestId('ta-share').count(), 0);
+    assert.deepEqual(env.errors, []);
+  } finally {
+    await env.close();
+  }
 });

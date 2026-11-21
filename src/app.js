@@ -14,9 +14,7 @@ import { areaOf } from './rules/v1/course.js';
 import { GameSession } from './game/session.js';
 import { alertWordKey, createAlertStageTracker, createInstantSuccessTracker, matchWordKey } from './game/feedback.js';
 import { createControls } from './ui/controls.js';
-import { startTimeAttack } from './ui/time-attack.js';
-import { flushTimeAttackPending } from './net/time-attack.js';
-import { timeAttackText } from './i18n/time-attack.js';
+import { installTimeAttack, showTimeAttackRecords, startTimeAttack } from './ui/time-attack.js';
 import { desktopSettings } from './ui/desktop-settings.js';
 import { hasDesktopControls, normalizeScrollSpeed } from './ui/desktop-input.js';
 import { h, clear, isolatedText } from './ui/dom.js';
@@ -98,7 +96,7 @@ export class App {
     this.notices = [];
     this.lastResult = null;
     this.taController = null;
-    this.timeAttackStarting = false;
+    this.taPreparation = null;
   }
 
   // ---------- 起動 ----------
@@ -127,10 +125,15 @@ export class App {
     await this.checkSavedRun();
     onLanguageChange(() => this.rerender?.());
     document.addEventListener('visibilitychange', () => this.onVisibility());
-    globalThis.addEventListener('pagehide', () => this.saveNow('pagehide'));
+    this.timeAttack = installTimeAttack(this);
+    globalThis.addEventListener('pagehide', () => {
+      this.taPreparation?.hidden();
+      this.taController?.onPageHide();
+      this.saveNow('pagehide');
+    });
     globalThis.addEventListener('online', async () => {
       await this.flushNetwork();
-      void flushTimeAttackPending(this.api);
+      void this.timeAttack.network.flush(true);
       if (this.renderResultStatus) await this.pollResult();
     });
     // 画面に触れた時に音を準備する（本編の外だけ。停止中は「再開」を押すまで音を出さない）
@@ -143,12 +146,11 @@ export class App {
     });
     this.showHome();
     this.flushNetwork();
-    void flushTimeAttackPending(this.api);
   }
 
   /** 本編の外（ホーム・結果・練習など）で流す曲を決めて、音を準備する。 */
   async wakeMenuAudio() {
-    if (this.session || !this.menuTheme) return false;
+    if (this.session || this.taController || !this.menuTheme) return false;
     const gen = this.screenGeneration;
     let ready = false;
     try {
@@ -156,7 +158,7 @@ export class App {
     } catch {
       return false;
     }
-    if (!ready || this.session || !this.menuTheme) return false;
+    if (!ready || this.session || this.taController || !this.menuTheme) return false;
     if (this.screenGeneration === gen) {
       this.audio.setMusic(this.menuTheme);
     }
@@ -323,9 +325,12 @@ export class App {
 
   // ---------- 画面の切り替え ----------
   mount(el, rerender = null) {
-    if (this.taController) {
-      const ta=this.taController;this.taController=null;ta.dispose();
-    }
+    const preparation = this.taPreparation;
+    this.taPreparation = null;
+    preparation?.cancel();
+    const controller = this.taController;
+    this.taController = null;
+    controller?.dispose();
     this.stopReleaseCheck?.();
     this.stopReleaseCheck = null;
     if (!el.classList.contains('game')) this.cancelStartAttempt();
@@ -393,8 +398,10 @@ export class App {
       field.el,
       h('div', { class: 'home-actions' }, [
         button('home.start', () => this.startFlow(field.value), { primary: true, className: 'btn-start', testid: 'home-start' }),
-        (this.runtime.timeAttackEnabled || this.runtime.isVerification) ? h('button', {type:'button',class:'btn btn-time-attack','data-testid':'home-time-attack',
-          onclick:()=>{if(!this.startAttempt)void startTimeAttack(this,field.value);}},timeAttackText('start',getLanguage())+' · 30') : null,
+        this.runtime.timeAttackEnabled ? h('button', {
+          type: 'button', class: 'btn btn-time-attack', 'data-testid': 'home-time-attack',
+          onclick: () => startTimeAttack(this, field.value),
+        }, [h('span', {}, t('ta.home')), h('small', {}, t('ta.homeNote'))]) : null,
         continueBtn,
         h('div', { class: 'home-grid' }, [
           practiceBtn,
@@ -410,7 +417,7 @@ export class App {
     this.mount(el, () => this.showHome());
     this.stopReleaseCheck = watchPublicRelease(this.runtime, () =>
       !this.store.memory && !this.session && !this.savedRun && !this.foreignRun && !this.startAttempt
-      && !this.nameWrite && !this.taController && !this.timeAttackStarting && document.activeElement !== field.input && !this.layer.hasChildNodes());
+      && !this.nameWrite && !this.taController && !this.taPreparation && document.activeElement !== field.input && !this.layer.hasChildNodes());
     this.mountShowcase(homeArt);
     if (!showOnline) return;
     this.store
@@ -1510,10 +1517,13 @@ export class App {
   }
 
   onVisibility() {
+    this.taController?.onVisibility();
     if (document.visibilityState !== 'hidden') {
+      this.timeAttack?.network.flush(true);
       if (this.renderResultStatus) this.pollResult();
       return;
     }
+    this.taPreparation?.hidden();
     this.countdownActive = false;
     const session = this.session;
     if (!session || session.ended) {
@@ -2035,6 +2045,7 @@ export class App {
         view.load();
       }, { className: 'btn-small' }),
       view.el,
+      (this.runtime.timeAttackEnabled || this.runtime.timeAttackAvailable) && button('ta.mode', () => showTimeAttackRecords(this), { testid: 'ta-records' }),
       backButton(() => this.showHome()),
     ]);
     this.mount(el, () => this.showRecords());

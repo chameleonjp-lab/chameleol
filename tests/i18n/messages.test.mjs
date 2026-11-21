@@ -152,3 +152,30 @@ test('all 15 release dictionaries include the rank, clear order, pending and sha
     if(locale!=='ja') assert.notEqual(MESSAGES[locale][key],MESSAGES.ja[key],locale+' '+key);
   }
 });
+
+test('all 58 Time Attack titles match the specification in Japanese and have distinct translations', async () => {
+  const { createHash } = await import('node:crypto');
+  const { createTimeAttackTitleExport } = await import('../../scripts/export-time-attack-titles.mjs');
+  const sourceCommit = 'a'.repeat(40);
+  const exported = createTimeAttackTitleExport(sourceCommit);
+  assert.equal(exported.sourceCommit, sourceCommit);
+  assert.equal(exported.titles.length, 58);
+  assert.equal(exported.contentSha256, createHash('sha256').update(JSON.stringify(exported.titles)).digest('hex'));
+
+  const specification = readFileSync(join(ROOT, 'docs/superpowers/specs/2026-11-21-chameleol-time-attack-spec.md'), 'utf8');
+  const japanTitles = [...specification.matchAll(/^\| (\d+) \| [^|]+ \| (.+) \|$/gm)].map(match => match[2]);
+  assert.deepEqual(exported.titles.map(row => row.labels.ja), japanTitles);
+  assert.equal(exported.titles[0].minCs, 1500);
+  assert.equal(exported.titles[0].maxCs, 3500);
+  assert.equal(exported.titles.at(-1).maxCs, 60000);
+  for (const [index, row] of exported.titles.entries()) {
+    assert.equal(row.id, `ta.title.${String(index + 1).padStart(2, '0')}`);
+    if (index) assert.equal(row.minCs, exported.titles[index - 1].maxCs + 1);
+    for (const lang of LANGUAGE_IDS) assert.equal(row.labels[lang], t(row.id, null, lang));
+  }
+  for (const lang of LANGUAGE_IDS) {
+    const titles = exported.titles.map(row => row.labels[lang]);
+    assert.equal(new Set(titles).size, 58, lang);
+    if (lang !== 'en') assert.ok(exported.titles.every(row => row.labels[lang] !== row.labels.en), lang);
+  }
+});
