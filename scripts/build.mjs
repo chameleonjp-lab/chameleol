@@ -15,6 +15,7 @@ import { GAME_VERSION } from '../src/config/runtime.js';
 import { RULES_V1, RULES_V2, RULES_V3, RULES_V4, RULES_V5 } from '../src/rules/v1/index.js';
 import { SNAPSHOT_FORMAT } from '../src/game/session.js';
 import { RESULT_FORMAT } from '../src/net/outbox.js';
+import {TA_CLIENT_VERSION} from '../src/net/time-attack.js';
 import {MODE_ID as TIME_ATTACK_MODE,RULES_VERSION as TA_RULES_VERSION,COURSE_VERSION as TA_COURSE_VERSION,
   HISTORY_FORMAT as TA_HISTORY_FORMAT,RESULT_FORMAT as TA_RESULT_FORMAT} from '../src/rules/time-attack/v1/index.js';
 import { computeManifest, check as checkShared } from './sync-shared.mjs';
@@ -171,7 +172,7 @@ const release = {
   env,
   rankingApi: env === 'production' && !standalone ? api : null,
   timeAttack: {available: env === 'production' && !standalone && !!api, enabled: timeAttackEnabled,
-    modeId:TIME_ATTACK_MODE,rulesVersion:TA_RULES_VERSION,generatorVersion:TA_COURSE_VERSION,
+    modeId:TIME_ATTACK_MODE,clientVersion:TA_CLIENT_VERSION,rulesVersion:TA_RULES_VERSION,generatorVersion:TA_COURSE_VERSION,
     historyFormat:TA_HISTORY_FORMAT,resultFormat:TA_RESULT_FORMAT},
   rulesVersion: RULES_V5.rulesVersion,
   supportedRulesVersions: [RULES_V1, RULES_V2, RULES_V3, RULES_V4, RULES_V5].map((rules) => rules.rulesVersion),
