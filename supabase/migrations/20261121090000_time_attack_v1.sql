@@ -175,6 +175,10 @@ begin
    r.game_version<>p_game_version then raise exception using errcode='KM409',message='launch_conflict';end if;
   return pg_catalog.jsonb_build_object('launchId',p_launch,'counted',true);
  end if;
+ -- During a staged release, reject new anonymous sessions while accepting=false.
+ -- A counted launch retry above remains valid even if registration is later disabled.
+ if not p_ranked and not (select accepting from private.kamereoru_ta_config where id=1) then
+  raise exception using errcode='KM503',message='time_attack_not_enabled';end if;
  if p_ranked then
   select * into st from private.kamereoru_ta_starts where play_id=p_play for update;
   if not found or st.status='abandoned' or st.launch_id<>p_launch or st.secret_hash<>p_hash or
