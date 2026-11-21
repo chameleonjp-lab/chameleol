@@ -1,5 +1,10 @@
 /* タイムアタック専用の画面。通常モードのHUDには適用しない。 */
-.btn-time-attack {border:2px solid #78dce6;background:linear-gradient(120deg,#12334d,#204b58);color:#e6faff;font-weight:750}
+.btn.btn-time-attack {
+  border: 2px solid #ffc279;
+  background: linear-gradient(120deg, #ffb45c, #ef8738);
+  color: #2d1509;
+  font-weight: 750;
+}
 .ta-game .stage-wrap{position:relative;min-height:0}
 .ta-game .ta-hud{position:absolute;inset:8px 8px auto;z-index:16;display:grid;grid-template-columns:1fr 1fr 42px;gap:4px;pointer-events:none}
 .ta-game .ta-stat{min-width:0;background:rgba(14,23,47,.86);border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:4px 5px;text-align:center;color:#fff;line-height:1.3}
@@ -27,7 +32,7 @@
 @media(prefers-reduced-motion:reduce){.ta-game .ta-hold-progress{transition:none}}
 
 .btn-time-attack span, .btn-time-attack small { display: block; }
-.btn-time-attack small { margin-top: .2rem; color: #bfe6ed; font-size: .8rem; font-weight: 600; }
+.btn-time-attack small { margin-top: .2rem; color: #4a240d; font-size: .8rem; font-weight: 600; }
 .ta-game .ta-overlay[hidden] { display: none; }
 .ta-game .ta-overlay-travel { inset: auto 8px 62px; z-index: 20; padding: 8px; border-radius: 10px; pointer-events: none; }
 .ta-intro { max-width: 480px; display: grid; align-content: center; gap: 14px; }
