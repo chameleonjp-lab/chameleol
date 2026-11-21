@@ -50,11 +50,11 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
   for(const j of claimed){
    let status='rejected',values:Record<string,unknown>={},verdict:Record<string,unknown>={reason:'invalid_replay'};
    try{
-    const [r]=await call('select r.body, s.seed,s.family,s.play_id,s.launch_id,s.created_at,r.accepted_at from private.kamereoru_ta_results r join private.kamereoru_ta_starts s using(play_id) where r.play_id=$1',[j.play_id]);
+    const [r]=await call('select r.body, s.seed,s.family,s.play_id,s.launch_id,s.game_version,s.created_at,r.accepted_at from private.kamereoru_ta_results r join private.kamereoru_ta_starts s using(play_id) where r.play_id=$1',[j.play_id]);
     if(!r)throw Error('missing_input');
     const payload=r.body;
     if(payload?.seed!==Number(r.seed)||payload?.family!==r.family||payload?.playId!==r.play_id||
-      payload?.launchId!==r.launch_id||payload?.format!==HISTORY_FORMAT)throw Error('reservation_mismatch');
+      payload?.launchId!==r.launch_id||payload?.gameVersion!==r.game_version||payload?.format!==HISTORY_FORMAT)throw Error('reservation_mismatch');
     const computed=replayTimeAttack(payload);
     const elapsedWall=Date.parse(r.accepted_at)-Date.parse(r.created_at);
     const neededWall=computed.elapsedMs+(computed.reason==='cleared'?29*2000:0);
