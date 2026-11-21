@@ -17,7 +17,7 @@ test('chunks preserve UTF-8 text and enforce the byte and chunk limits', () => {
 });
 
 test('ranked reservation retry reuses all identifiers and rejects the normal-mode response', async () => {
-  const attempt = { request: { requestId: 'request' } };
+  const attempt = { request: { requestId: 'request', rulesVersion: RULES_VERSION } };
   const requests = [];
   const api = {
     async post(path, body) {

@@ -22,13 +22,14 @@ const bindResize=wholeFunction('  function resize() {','\n  function assignSlots
 const bindNdc=wholeFunction('  function ndcToCam(nx, ny, depth, out) {','\n  let disposed = false;');
 const atlas=JSON.parse(readFileSync(new URL('../../src/presentation/assets/atlas.json',import.meta.url),'utf8'));
 
-function fixture(width,height){
+function fixture(width,height,centerOnBuilding=false){
  let rect={width,height};const canvasSizes=[];
  const skyPos=new Float32Array(18),skyGeo=new THREE.BufferGeometry();skyGeo.setAttribute('position',new THREE.BufferAttribute(skyPos,3));
  const starGeo=new THREE.BufferGeometry();starGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
  const env={disposed:false,lastArgs:null,opening:false,extended:true,viewW:1,viewH:1,hudBottom:76,
   container:{getBoundingClientRect:()=>rect},renderer:{setSize:(w,h)=>canvasSizes.push([w,h])},
   camera:new THREE.PerspectiveCamera(44,.78,.5,700),THREE,CAM:{dx:3.2,y:5.2,z:22,lookDx:6,lookY:4.2,lookZ:0,fov:44},
+  centerOnBuilding,cameraDx:centerOnBuilding?0:3.2,lookDx:centerOnBuilding?0:6,
   SCREEN_X:.38,SCREEN_Y:.31,SIDEWALK_Y:.22,HERO_Z:2.5,
   camQuat:new THREE.Quaternion(),heroNdc:{},horizonNdc:0,v3:new THREE.Vector3(),
   sky:new THREE.Object3D(),skyPos,skyGeo,starGeo,STAR_N:2,starNdc:[-.2,.5,.3,.7],
@@ -84,6 +85,20 @@ test('real resize retains a current quaternion as well as translation and leaves
  c.position.set(123.4,5.17,22);c.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),.025));c.updateMatrixWorld(true);
  const before=pose(c);f.env.lastArgs={t:60100};f.resize();
  assert.deepEqual(pose(c),before);assert.equal(f.env.lastArgs.t,60100);f.dispose();
+});
+
+test('the time attack camera keeps the hero and wall center aligned in both orientations', () => {
+  for (const [width, height] of [[402, 420], [874, 240]]) {
+    const f = fixture(width, height, true);
+    try {
+      f.resize();
+      const { camera } = f.env;
+      const hero = project(camera, new THREE.Vector3(0, 1.62, 2.5), width, height);
+      const wall = project(camera, new THREE.Vector3(0, 4, 0), width, height);
+      assertNear(hero.x, width / 2);
+      assertNear(wall.x, hero.x);
+    } finally { f.dispose(); }
+  }
 });
 
 test('resizing before the tutorial keeps the camera outside the shop', () => {

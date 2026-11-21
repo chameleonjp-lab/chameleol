@@ -5,7 +5,7 @@ import { createTimeAttackResult } from './time-attack-result.js';
 import { TimeAttackSession } from '../game/time-attack-session.js';
 import { makeDecorations, RULES_V5 } from '../rules/v1/index.js';
 import {
-  MODE_ID, RULES_VERSION, COURSE_VERSION, generateTimeAttackCourse, publicView, centiseconds, formatTime,
+  MODE_ID, CURRENT_RULES_VERSION, COURSE_VERSION, generateTimeAttackCourse, publicView, centiseconds, formatTime,
 } from '../rules/time-attack/v1/index.js';
 import { normalizeName } from '../shared/name.js';
 import { openTimeAttackStore } from '../storage/time-attack-store.js';
@@ -14,7 +14,7 @@ import { createTimeAttackAttempt, reserveTimeAttack } from '../net/time-attack-s
 import { createTimeAttackOutbox, createTimeAttackUpload } from '../net/time-attack-outbox.js';
 import { t } from '../i18n/i18n.js';
 
-const TA_CLIENT_VERSION = '0.1.0-ta.1';
+const TA_CLIENT_VERSION = '0.1.0-ta.2';
 const NEUTRAL_WALL = Object.freeze({ h: 0, s: 0, v: 3000 });
 const STAGE_RULES = Object.freeze({ ...RULES_V5, buildingCount: 30, buildingMs: 2000, brightnessUnlockBuilding: 15 });
 
@@ -159,13 +159,14 @@ export function startTimeAttack(app, rawName) {
           return;
         }
       } else {
-        course = generateTimeAttackCourse(globalThis.crypto.getRandomValues(new Uint32Array(1))[0]);
+        const [seed] = globalThis.crypto.getRandomValues(new Uint32Array(1));
+        course = generateTimeAttackCourse(seed, CURRENT_RULES_VERSION);
       }
 
       const { requestId, launchId, secret, gameVersion } = attempt.request;
       const launch = { id: launchId, requestId, destination: attempt.destination, body: {
         launchId, playId, secret: ranked ? secret : null, ranked, modeId: MODE_ID,
-        rulesVersion: RULES_VERSION, generatorVersion: COURSE_VERSION, gameVersion, family: course.family,
+        rulesVersion: course.rulesVersion, generatorVersion: COURSE_VERSION, gameVersion, family: course.family,
       } };
       signal.throwIfAborted();
       // Mount under an opaque cover so the canvas can size itself before the
@@ -238,7 +239,7 @@ function prepareGame(app, store, attempt, launch, course, onCancel) {
     controls.el,
   ]);
   app.mount(screen);
-  let stage, shownBuilding = null, phase, raf = 0, disposed = false, finishing = false;
+  let stage, shownBuilding = null, phase, controlBuilding, raf = 0, disposed = false, finishing = false;
   let started = false, release = null, memoryOnly = false;
   const reduceMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
   const controller = {
@@ -265,7 +266,8 @@ function prepareGame(app, store, attempt, launch, course, onCancel) {
   app.taController = controller;
   controller.ready = (async () => {
     const prepared = await app.stageFactory(stageBox, {
-      course: visualCourse, rules: STAGE_RULES, decorations: makeDecorations(course.seed), presentationEnabled: false,
+      course: visualCourse, rules: STAGE_RULES, decorations: makeDecorations(course.seed),
+      presentationEnabled: false, centerOnBuilding: true,
     });
     if (disposed) { prepared.dispose(); return; }
     stage = prepared;
@@ -301,12 +303,13 @@ function prepareGame(app, store, attempt, launch, course, onCancel) {
       if (visibleBuilding !== null) stage.setTimeAttackTarget?.(visibleBuilding, view.targetColor);
       shownBuilding = visibleBuilding;
     }
-    if (phase !== view.phase) {
+    if (phase !== view.phase || controlBuilding !== view.building) {
       controls.releaseAll();
       controls.setValues(view.currentColor);
       controls.setLocked(!view.brightnessEnabled);
       controls.setEnabled(playable);
       phase = view.phase;
+      controlBuilding = view.building;
     } else if (!playable) {
       controls.setEnabled(false);
     }
@@ -336,7 +339,7 @@ function prepareGame(app, store, attempt, launch, course, onCancel) {
     fill.style.width = `${view.holdMs / 5}%`;
     hold.setAttribute('aria-valuenow', String(view.holdMs));
     const position = reduceMotion?.matches ? Math.floor(view.scenePosition) : view.scenePosition;
-    stage.update({ t: position * 2000, color: view.currentColor, policeStage: 0,
+    stage.update({ t: (position + 0.5) * STAGE_RULES.buildingMs, color: view.currentColor, policeStage: 0,
       walking: !reduceMotion?.matches && view.phase === 'travel', running: !paused,
       presentation: { t: session.state.t, building: view.building, running: !paused } });
   }

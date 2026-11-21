@@ -5,21 +5,18 @@ import { spawn } from 'node:child_process';
 import { startCluster, buildTemplate, createTestDb, psql } from './testdb.mjs';
 import { randomSecret } from '../src/storage/store.js';
 import { uuid, sha256Hex } from '../src/net/api.js';
-import { MODE_ID, RULES_VERSION, COURSE_VERSION } from '../src/rules/time-attack/v1/index.js';
-import { readFileSync } from 'node:fs';
-import { generateTimeAttackCourse } from '../src/rules/time-attack/v1/index.js';
+import { COURSE_VERSION, CURRENT_RULES_VERSION, generateTimeAttackCourse, HOLD_MS, MODE_ID } from '../src/rules/time-attack/v1/index.js';
+import { TimeAttackSession } from '../src/game/time-attack-session.js';
 
 function timeAttackHistory({ seed, playId, launchId, gameVersion }) {
-  const fixture = JSON.parse(readFileSync(new URL('../tests/replay/time-attack-fixtures/clear.json', import.meta.url), 'utf8'));
-  const course = generateTimeAttackCourse(seed);
-  const events = [...fixture.history.events];
-  let building = 0;
-  for (let index = 0; index < events.length; index++) {
-    const event = events[index];
-    if (event.kind === 'ready') building = event.building;
-    if (event.kind === 'input') events[index] = { ...event, ...course.targets[building-1] };
+  const course = generateTimeAttackCourse(seed, CURRENT_RULES_VERSION);
+  const session = new TimeAttackSession(course);
+  session.frame(0);
+  for (let index = 0; index < course.targets.length; index++) {
+    session.input(course.targets[index], index * HOLD_MS);
+    session.frame((index + 1) * HOLD_MS);
   }
-  return { ...fixture.history, seed, family: course.family, events, playId, launchId, gameVersion };
+  return { ...session.finish().history, playId, launchId, gameVersion };
 }
 import { RULES_V4, createGame, createRecorder, replayHistory } from '../src/rules/v1/index.js';
 
@@ -92,11 +89,11 @@ try {
   steps.push(['ranking', 200, `version=${ranking.version} rows=${ranking.rows?.length}`]);
   psql(dbUrl, ['-c', 'update private.kamereoru_ta_config set accepting=true']);
   const taReq = { requestId: uuid(), secret: randomSecret(), launchId: uuid(), name: 'タイム試験', gameVersion: '0.1.0',
-    rulesVersion: RULES_VERSION, supportedRulesVersions: [RULES_VERSION] };
+    rulesVersion: CURRENT_RULES_VERSION, supportedRulesVersions: [CURRENT_RULES_VERSION] };
   const taStart = await post('time-attack-start', taReq);
   const taPlayId = taStart.body.playId;
   const taLaunch = await post('time-attack-launch', { playId: taPlayId, launchId: taReq.launchId, secret: taReq.secret,
-    ranked: true, modeId: MODE_ID, gameVersion: taReq.gameVersion, rulesVersion: RULES_VERSION,
+    ranked: true, modeId: MODE_ID, gameVersion: taReq.gameVersion, rulesVersion: CURRENT_RULES_VERSION,
     generatorVersion: COURSE_VERSION, family: taStart.body.family });
   psql(dbUrl, ['-c', "update private.kamereoru_ta_starts set created_at = now() - interval '2 minutes'"]);
   const taHistory = timeAttackHistory({
@@ -135,7 +132,8 @@ try {
     && result?.status === 'official' && result.verifiedScore?.score.total === claimed.score.total
     && claimed.buildings === 3 && ranking.ok === true && ranking.rows.length === 1
     && best?.name === req.name && best.rank === 1 && best.buildings === 3 && best.average === claimed.rankAverage
-    && (taStart.status === 200 && taLaunch.status === 200 && taChunk.status === 200 && taComplete.status === 200)
+    && (taStart.status === 200 && taStart.body.rulesVersion === CURRENT_RULES_VERSION &&
+        taLaunch.status === 200 && taChunk.status === 200 && taComplete.status === 200)
     && taUnauthorized.status === 403 && taInvalidToken.status === 403 && taWorkerToken.status === 200 && taWorker.status === 200 && taResultStatus?.status === 'official'
     && taRanking.modeId === MODE_ID && taRanking.rows?.[0]?.elapsedCs === taHistory.end.elapsedCs;
   console.log(ok ? 'EDGE SMOKE OK' : 'EDGE SMOKE FAILED');

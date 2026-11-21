@@ -4,12 +4,12 @@ import { join } from 'node:path';
 import { launch, openHome, openXShare } from './helpers.mjs';
 import { barFromV, pointFromHs } from '../../src/rules/v1/color.js';
 import {
-  COURSE_VERSION, formatTime, generateTimeAttackCourse, MODE_ID, replayTimeAttack, RULES_VERSION, TITLE_NAMES_JA,
+  COURSE_VERSION, CURRENT_RULES_VERSION, formatTime, generateTimeAttackCourse, MODE_ID, replayTimeAttack, TITLE_NAMES_JA,
 } from '../../src/rules/time-attack/v1/index.js';
 
 const fixtureName = '色合わせテスト';
 const playId = '4fd21726-9e7e-4a51-8b73-c44d444e844a';
-const course = generateTimeAttackCourse(5);
+const course = generateTimeAttackCourse(5, CURRENT_RULES_VERSION);
 
 async function mockTimeAttack(env) {
   const calls = [];
@@ -27,7 +27,7 @@ async function mockTimeAttack(env) {
     let response;
     switch (path) {
       case 'time-attack-start':
-        response = { playId, seed: course.seed, family: course.family, rulesVersion: RULES_VERSION,
+        response = { playId, seed: course.seed, family: course.family, rulesVersion: CURRENT_RULES_VERSION,
           generatorVersion: COURSE_VERSION, acceptedAt: new Date().toISOString(), expiresAt: null };
         break;
       case 'time-attack-launch':
@@ -94,12 +94,21 @@ async function checkFit(page, selectors) {
   assert.deepEqual(overflow, []);
 }
 
+async function checkDomCenter(page) {
+  const offset = await page.evaluate(() => {
+    const center = el => { const rect = el.getBoundingClientRect(); return rect.left + rect.width / 2; };
+    const stage = document.querySelector('.ta-stage');
+    return center(stage.querySelector('.dom-wall:nth-child(2)')) - center(stage.querySelector('.dom-hero'));
+  });
+  assert.ok(Math.abs(offset) < 2, `wall center is ${offset}px from the hero`);
+}
+
 async function takeEvidence(page, name) {
   const directory = process.env.TA_SCREENSHOTS;
   if (directory) await page.screenshot({ path: join(directory, `${name}.png`) });
 }
 
-test('time attack plays 30 walls with hidden targets, timed travel, brightness and ranked submission', { timeout: 120_000 }, async () => {
+test('time attack plays 30 centered walls with immediate transitions, brightness and ranked submission', { timeout: 120_000 }, async () => {
   const env = await launch({ width: 402, height: 700 });
   const { page } = env;
   try {
@@ -126,6 +135,7 @@ test('time attack plays 30 walls with hidden targets, timed travel, brightness a
     await page.locator('#name-input').fill(fixtureName);
     await page.getByTestId('home-time-attack').tap();
     await page.getByTestId('ta-intro').waitFor();
+    assert.match(await page.getByTestId('ta-intro').textContent(), /90%以上.*すぐ切り替わります/);
     assert.equal(mock.calls.filter(({ path }) => path.startsWith('time-attack-')).length, 0);
     await page.getByTestId('ta-start-cancel').tap();
     await page.getByTestId('home-time-attack').tap();
@@ -133,6 +143,7 @@ test('time attack plays 30 walls with hidden targets, timed travel, brightness a
     await phase(page, 'active').waitFor();
     assert.equal(await page.getByTestId('ta-building').textContent(), '1 / 30');
     assert.deepEqual(await visibleTargets(page), [1]);
+    await checkDomCenter(page);
     assert.equal(await page.getByTestId('ta-brightness').isVisible(), false);
     await checkFit(page, ['.ta-hud', '.ta-stage', '.ta-game .palette', '.ta-game .bar']);
     await takeEvidence(page, 'time-attack-dom-402x700');
@@ -153,14 +164,9 @@ test('time attack plays 30 walls with hidden targets, timed travel, brightness a
     await phase(page, 'paused').waitFor();
     await page.getByTestId('ta-resume').tap();
     await page.clock.runFor(550);
-    await phase(page, 'travel').waitFor();
-    assert.deepEqual(await visibleTargets(page), []);
-    const traveling = await page.getByTestId('ta-time').textContent();
-    await page.clock.runFor(850);
-    assert.equal(await page.getByTestId('ta-time').textContent(), traveling);
-    assert.equal(await page.getByTestId('ta-building').textContent(), '1 / 30');
-    await page.clock.runFor(1250);
-    await phase(page, 'active').waitFor();
+    assert.deepEqual(await visibleTargets(page), [2]);
+    assert.equal(await page.getByTestId('ta-building').textContent(), '2 / 30');
+    await checkDomCenter(page);
 
     for (let building = 2; building <= 30; building++) {
       assert.equal(await page.getByTestId('ta-building').textContent(), `${building} / 30`);
@@ -171,15 +177,12 @@ test('time attack plays 30 walls with hidden targets, timed travel, brightness a
         await paintColor(page, target);
         await page.clock.runFor(550);
         assert.equal(await phase(page, 'active').count(), 1);
+        assert.equal(await page.getByTestId('ta-building').textContent(), '15 / 30');
         assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuenow'), '0');
       }
       await paintColor(page, target, { brightness: building >= 15 });
       await page.clock.runFor(550);
-      if (building < 30) {
-        await phase(page, 'travel').waitFor();
-        await page.clock.runFor(2050);
-        await phase(page, 'active').waitFor();
-      }
+      if (building < 30) assert.equal(await phase(page, 'active').count(), 1);
     }
 
     await page.getByTestId('ta-result').waitFor();
@@ -188,8 +191,9 @@ test('time attack plays 30 walls with hidden targets, timed travel, brightness a
     const accepted = mock.summary();
     assert.ok(accepted);
     assert.equal(accepted.buildings, 30);
-    assert.equal(accepted.executedTravelMs, 58000);
-    assert.equal(accepted.moveCount, 29);
+    assert.equal(accepted.executedTravelMs, 0);
+    assert.equal(accepted.moveCount, 0);
+    assert.equal(accepted.rulesVersion, CURRENT_RULES_VERSION);
     assert.equal(await page.getByTestId('ta-result-time').textContent(), formatTime(accepted.elapsedCs));
     assert.equal(await page.getByTestId('ta-result-title').textContent(), TITLE_NAMES_JA[Number(accepted.titleId.slice(-2)) - 1]);
     assert.equal(await page.getByTestId('ta-ranking').getAttribute('href'),
@@ -201,12 +205,9 @@ test('time attack plays 30 walls with hidden targets, timed travel, brightness a
     ]);
     const { events, end } = mock.submitted();
     assert.deepEqual(events[0], { seq: 0, t: 0, kind: 'ready', building: 1 });
-    const movements = events.filter(event => event.kind === 'travel');
-    for (const move of movements) {
-      const nextWall = events.find(event => event.kind === 'ready' && event.building === move.fromBuilding + 1);
-      assert.equal(nextWall.t - move.t, 2000);
-    }
-    assert.equal(end.t, accepted.elapsedMs + 58000);
+    assert.equal(events.filter(event => event.kind === 'travel').length, 0);
+    assert.equal(events.filter(event => event.kind === 'ready').length, 30);
+    assert.equal(end.t, accepted.elapsedMs);
     const launches = mock.calls.filter(({ path }) => path === 'time-attack-launch');
     assert.equal(launches.length, 1);
     assert.equal(launches[0].body.ranked, true);
@@ -231,6 +232,12 @@ test('the three-dimensional stage fits a landscape mobile viewport and can pause
       app.stageFactory = async (container, options) => {
         const stage = await factory(container, options);
         globalThis.__taThree = { kind: stage.kind, targets: options.course.targets };
+        const update = stage.update;
+        stage.update = frame => {
+          globalThis.__taThree.block = frame.t / options.rules.buildingMs;
+          globalThis.__taThree.centerOnBuilding = options.centerOnBuilding;
+          update(frame);
+        };
         return stage;
       };
     });
@@ -239,6 +246,8 @@ test('the three-dimensional stage fits a landscape mobile viewport and can pause
     await phase(page, 'active').waitFor();
     await page.locator('[data-testid="ta-stage"] canvas').waitFor({ state: 'visible' });
     assert.equal(await page.evaluate(() => globalThis.__taThree.kind), 'three');
+    assert.equal(await page.evaluate(() => globalThis.__taThree.block), 0.5);
+    assert.equal(await page.evaluate(() => globalThis.__taThree.centerOnBuilding), true);
     assert.equal(await page.evaluate(() => globalThis.__taThree.targets.filter(color => color.s > 0).length), 1);
     await checkFit(page, ['.ta-hud', '.ta-game .palette', '.ta-game .bar']);
     await takeEvidence(page, 'time-attack-three-874x402');
