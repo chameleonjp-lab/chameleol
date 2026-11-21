@@ -44,7 +44,85 @@ const replaceRun={
   "vi": "Vẫn có lượt chơi tính giờ đang diễn ra. Kết thúc lượt đó và bắt đầu lượt mới?",
   "th": "ยังมีการแข่งจับเวลาที่กำลังเล่นอยู่ ต้องการจบครั้งก่อนแล้วเริ่มใหม่หรือไม่?"
 };
+const statusMessages={
+  "ja": {
+    "official": "ランキングに登録しました",
+    "rejected": "記録を確認できませんでした",
+    "pending": "記録を確認待ちです"
+  },
+  "en": {
+    "official": "Added to the ranking",
+    "rejected": "Result could not be verified",
+    "pending": "Result awaiting verification"
+  },
+  "es": {
+    "official": "Registrado en la clasificación",
+    "rejected": "No se pudo verificar el resultado",
+    "pending": "Resultado pendiente de verificación"
+  },
+  "pt-BR": {
+    "official": "Registrado no ranking",
+    "rejected": "Não foi possível verificar o resultado",
+    "pending": "Aguardando verificação"
+  },
+  "zh-Hans": {
+    "official": "已登记至排行榜",
+    "rejected": "无法核实记录",
+    "pending": "等待核实记录"
+  },
+  "fr": {
+    "official": "Inscrit au classement",
+    "rejected": "Résultat non vérifiable",
+    "pending": "Résultat en attente de vérification"
+  },
+  "de": {
+    "official": "In Rangliste eingetragen",
+    "rejected": "Ergebnis konnte nicht geprüft werden",
+    "pending": "Ergebnis wartet auf Prüfung"
+  },
+  "ko": {
+    "official": "랭킹에 등록되었습니다",
+    "rejected": "기록을 확인할 수 없습니다",
+    "pending": "기록 확인 대기 중"
+  },
+  "ru": {
+    "official": "Результат внесён в рейтинг",
+    "rejected": "Не удалось проверить результат",
+    "pending": "Результат ожидает проверки"
+  },
+  "it": {
+    "official": "Registrato in classifica",
+    "rejected": "Impossibile verificare il risultato",
+    "pending": "Risultato in attesa di verifica"
+  },
+  "zh-Hant": {
+    "official": "已登錄至排行榜",
+    "rejected": "無法核實紀錄",
+    "pending": "等待核實紀錄"
+  },
+  "id": {
+    "official": "Tercatat di peringkat",
+    "rejected": "Hasil tidak dapat diverifikasi",
+    "pending": "Menunggu verifikasi hasil"
+  },
+  "tr": {
+    "official": "Sıralamaya eklendi",
+    "rejected": "Sonuç doğrulanamadı",
+    "pending": "Sonuç doğrulanmayı bekliyor"
+  },
+  "vi": {
+    "official": "Đã ghi vào bảng xếp hạng",
+    "rejected": "Không thể xác minh kết quả",
+    "pending": "Đang chờ xác minh kết quả"
+  },
+  "th": {
+    "official": "บันทึกลงอันดับแล้ว",
+    "rejected": "ไม่สามารถยืนยันผลได้",
+    "pending": "กำลังรอตรวจสอบผล"
+  }
+};
 export function timeAttackText(key,language='ja'){
+ if(['official','rejected','pending'].includes(key))return (statusMessages[language]??statusMessages.en)[key];
  if(key==='replaceRun')return replaceRun[language]??replaceRun.en;
  const words=labels[language]??labels.en,ix=keys.indexOf(key);
  return ix<0?key:(words[ix]??labels.en[ix]);
