@@ -99,7 +99,7 @@ async function runTimeAttack(app,store,course,launch){
  app.mount(screen,null);
  const generation=app.screenGeneration;
  const current=()=>app.screenGeneration===generation&&app.taController?.id===generation;
- let disposed=false,raf=0,finishing=false,lastNow=null,fraction=0,stage=null;
+ let disposed=false,raf=0,finishing=false,lastNow=null,fraction=0,stage=null,manualClock=false;
  let state=createTimeAttackState(course);
  const events=[],visualCourse={seed:course.seed,targets:course.targets.map(()=>({h:0,s:0,v:3000}))};
  const owner=crypto.randomUUID?.()??String(Date.now())+'-'+Math.random();
@@ -115,6 +115,19 @@ async function runTimeAttack(app,store,course,launch){
  if(app.runtime.isVerification)app.debugTimeAttack={
   get state(){return structuredClone(state);},
   get course(){return course;},
+  useManualClock(){manualClock=true;lastNow=null;fraction=0;},
+  setColor(value){if(state.phase!=='active')throw Error('not_active');add('input',value);draw();},
+  step(ms){
+   if(!manualClock||!Number.isSafeInteger(ms)||ms<0)throw Error('invalid_manual_step');
+   state=applyTimeAttackEvent(state,{kind:'tick',t:state.t+ms},course);
+   if(state.phase==='await_travel')add('travel',{fromBuilding:state.building});
+   else if(state.phase==='await_ready'){
+    stage.setTimeAttackTarget?.(state.building+1,course.targets[state.building]);
+    add('ready',{building:state.building+1});
+    controls.setLocked(state.building<15);controls.setValues(state.color);
+   }else if(state.phase==='cleared'){void endGame('cleared');}
+   draw();
+  },
   input(value){input(value);},
   pause(){pause('user');},
  };
@@ -180,7 +193,7 @@ async function runTimeAttack(app,store,course,launch){
  function loop(now){
   if(!current()||disposed)return;
   if(document.hidden&&state.phase!=='paused')pause('hidden');
-  else advance(now);
+  else if(!manualClock)advance(now);
   draw();
   raf=requestAnimationFrame(loop);
  }
