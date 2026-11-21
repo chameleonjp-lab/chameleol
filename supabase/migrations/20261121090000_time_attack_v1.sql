@@ -105,7 +105,7 @@ end $$;
 
 create function private.kamereoru_ta_start(
  p_request uuid,p_launch uuid,p_hash bytea,p_name text,p_key text,
- p_rules text,p_game_version text
+ p_rules text,p_game_version text,p_seed bigint,p_family text
 ) returns jsonb language plpgsql security definer set search_path='' as $$
 declare r private.kamereoru_ta_starts%rowtype; v_seed bigint; v_play uuid;
 begin
@@ -128,12 +128,13 @@ begin
   raise exception using errcode='KM503',message='time_attack_not_enabled';end if;
  if exists(select 1 from private.kamereoru_ta_starts where launch_id=p_launch) then
    raise exception using errcode='KM409',message='launch_collision';end if;
- v_seed:=pg_catalog.floor(pg_catalog.random()*4294967296)::bigint;
+ if p_seed<0 or p_seed>4294967295 or p_family not in ('red','green','blue') then
+   raise exception using errcode='KM422',message='bad_seed';end if;
+ v_seed:=p_seed;
  v_play:=pg_catalog.gen_random_uuid();
  insert into private.kamereoru_ta_starts
  (request_id,launch_id,play_id,secret_hash,display_name,name_key,seed,family,rules_version,game_version)
- values(p_request,p_launch,v_play,p_hash,p_name,p_key,v_seed,
-  case mod(v_seed,3) when 0 then 'red' when 1 then 'green' else 'blue' end,
+ values(p_request,p_launch,v_play,p_hash,p_name,p_key,v_seed,p_family,
   p_rules,p_game_version) returning * into r;
  return pg_catalog.jsonb_build_object('playId',r.play_id,'seed',r.seed,'family',r.family,
   'rulesVersion',r.rules_version,'generatorVersion','kamereoru-time-attack-course-v1',
