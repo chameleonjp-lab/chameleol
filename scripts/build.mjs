@@ -31,13 +31,9 @@ const api = process.env.KAMEREORU_API ?? '';
 const publicUrl = process.env.KAMEREORU_PUBLIC_URL ?? '';
 const standalone = process.env.KAMEREORU_STANDALONE === '1';
 const manifest = JSON.parse(readFileSync(join(ROOT, 'ranking-manifest.json'), 'utf8'));
-// Keep subsequent official Pages refreshes live. Other destinations still opt in.
-const withoutTrailingSlash = value => value.replace(/\/+$/, '');
-const officialTimeAttack = withoutTrailingSlash(publicUrl) === withoutTrailingSlash(manifest.canonical_url)
-  && withoutTrailingSlash(api) === 'https://mlpnjgezrnhdxsxolyzj.supabase.co/functions/v1/kamereoru';
-const timeAttackFlag = name => (process.env[name] || (officialTimeAttack ? '1' : '0')) === '1';
-const timeAttackAvailable = env === 'production' && Boolean(api) && timeAttackFlag('KAMEREORU_TA_AVAILABLE');
-const timeAttackEnabled = env !== 'production' || (timeAttackAvailable && timeAttackFlag('KAMEREORU_TA_ENABLED'));
+// Production releases opt in to showing the time-attack records and start button.
+const timeAttackAvailable = env === 'production' && Boolean(api) && process.env.KAMEREORU_TA_AVAILABLE === '1';
+const timeAttackEnabled = env !== 'production' || (timeAttackAvailable && process.env.KAMEREORU_TA_ENABLED === '1');
 if (standalone && api) {
   console.error('KAMEREORU_STANDALONE cannot be combined with KAMEREORU_API');
   process.exit(1);
