@@ -8,6 +8,7 @@ import {MODE_ID,RULES_VERSION,COURSE_VERSION,HISTORY_FORMAT,generateTimeAttackCo
  centiseconds,formatTime,formatTimeJa,titleNameJa} from '../rules/time-attack/v1/index.js';
 import {normalizeName} from '../shared/name.js';
 import {openTimeAttackStore} from '../storage/time-attack-store.js';
+import {createTimeAttackMemoryStore} from '../storage/time-attack-memory-store.js';
 import {newTimeAttackStart,reserveTimeAttack,abandonTimeAttack,
   newAnonymousTimeAttack,makeTimeAttackLaunch,makeTimeAttackResult,flushTimeAttackPending} from '../net/time-attack.js';
 import {t,getLanguage} from '../i18n/i18n.js';
@@ -33,11 +34,20 @@ export async function startTimeAttack(app,rawName){
  try{
   const name=normalizeName(rawName);
   if(!name.ok){app.layer?.append(h('p',{class:'notice'},t('name.fixBeforeStart')));return;}
-  store=await openTimeAttackStore();
-  await store.abandonOrphan();
-  const original={generation:app.screenGeneration};
+  try{store=await openTimeAttackStore();}
+  catch{store=createTimeAttackMemoryStore();}
+  const old=await store.get('runs','time-attack');
+  if(old?.status==='active'){
+   const replace=globalThis.confirm?.(txt('replaceRun'))??false;
+   if(!replace){store.close();return;}
+   await store.abandonOrphan();
+  }
   // Formal ranked play requires server-issued seed and reservation.
-  if(!name.empty && app.api.configured){
+  if(!name.empty && (!app.api.configured||store.memory)){
+   const okay=globalThis.confirm?.(txt('unrankedQuestion'))??false;
+   if(!okay){store.close();return;}
+  }
+  if(!name.empty && app.api.configured && !store.memory){
    const request=newTimeAttackStart(name.name,app.api,app.runtime.gameVersion);
    try{
     reservation=await reserveTimeAttack(app.api,store,request);
@@ -58,7 +68,9 @@ export async function startTimeAttack(app,rawName){
   const launch=makeTimeAttackLaunch(record);
   await runTimeAttack(app,store,course,launch);
  }catch(error){
+  try{app.taController?.dispose();}catch{}
   store?.close();
+  app.showHome();
   app.layer?.append(h('p',{class:'notice'},txt('startError')));
   console.warn('[time-attack] unable to launch',String(error?.message??error));
  }finally{
@@ -105,7 +117,10 @@ async function runTimeAttack(app,store,course,launch){
  app.stage=stage;
  await store.begin(launch,owner);
  if(!current())return;
- void flushTimeAttackPending(app.api);
+ if(store.memory && app.api.configured){
+   void app.api.post('time-attack-launch',{launchId:launch.launchId,playId:null,ranked:false,
+     family:launch.family,gameVersion:launch.gameVersion,modeId:MODE_ID}).catch(()=>{});
+ } else void flushTimeAttackPending(app.api);
  // 時計を動かすのは最初の目標色の描画と操作を許可した後。
  function add(kind,extra={}){
   const event={seq:events.length,t:state.t,kind,...extra};
