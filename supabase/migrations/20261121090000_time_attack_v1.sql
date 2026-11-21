@@ -227,7 +227,9 @@ begin
  if not found or cl.result_id<>p_result or cl.secret_hash<>p_hash then
   raise exception using errcode='KM403',message='not_owner';end if;
  if exists(select 1 from private.kamereoru_ta_results where play_id=p_play) then
-  return pg_catalog.jsonb_build_object('status','verifying','playId',p_play,'resultId',p_result);
+  return pg_catalog.jsonb_build_object('status',(
+    select status from private.kamereoru_ta_results where play_id=p_play
+   ),'duplicate',true,'playId',p_play,'resultId',p_result);
  end if;
  select string_agg(u.chunk_text,'' order by u.chunk_index) into bodytext
  from private.kamereoru_ta_uploads u where u.play_id=p_play;
@@ -355,6 +357,57 @@ begin
  insert into private.kamereoru_ta_audit(play_id,event) values(p_play,'review_requested');
  return 'under_review';
 end $$;
+
+-- Retain finished records, IDs, accepted digests and audit permanently. Delete only
+-- the large replay detail of settled, older-than-30-day results. Never trim
+-- a pending review or a rejected result which can still request a review.
+create function private.kamereoru_ta_purge_details(p_now timestamptz default now())
+returns integer language plpgsql security definer set search_path='' as $ta_cleanup$
+declare n integer;
+begin
+ with eligible as (
+  select r.play_id
+  from private.kamereoru_ta_results r
+  where r.accepted_at<p_now-interval '30 days'
+    and (r.status in ('official','no_rank')
+     or (r.status='rejected' and r.review_requested))
+    and r.body<>'{}'::jsonb
+ ), updated as (
+  update private.kamereoru_ta_results r set body='{}'::jsonb
+  from eligible e where r.play_id=e.play_id
+  returning r.play_id
+ )
+ select count(*) into n from updated;
+ delete from private.kamereoru_ta_uploads u
+ where exists (
+  select 1 from private.kamereoru_ta_results r
+  where r.play_id=u.play_id and r.body='{}'::jsonb
+    and r.accepted_at<p_now-interval '30 days'
+    and (r.status in ('official','no_rank')
+     or (r.status='rejected' and r.review_requested))
+ );
+ return n;
+end $ta_cleanup$;
+
+create function private.kamereoru_ta_prune_rank_versions(p_now timestamptz default now())
+returns integer language plpgsql security definer set search_path='' as $ta_prune$
+declare n integer;
+begin
+ with expired as (
+  select version from private.kamereoru_ta_ranking_versions
+  where created_at<p_now-interval '24 hours'
+    and version<>(select max(version) from private.kamereoru_ta_ranking_versions)
+ ), deleted as (
+  delete from private.kamereoru_ta_ranking_rows r
+  using expired e where r.version=e.version
+  returning r.version
+ )
+ select count(distinct version) into n from deleted;
+ delete from private.kamereoru_ta_ranking_versions v
+ where v.created_at<p_now-interval '24 hours'
+   and v.version<>(select max(version) from private.kamereoru_ta_ranking_versions);
+ return n;
+end $ta_prune$;
 
 -- No direct Data API access. Edge connects with SUPABASE_DB_URL.
 do $$
