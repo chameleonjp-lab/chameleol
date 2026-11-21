@@ -147,6 +147,13 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
     task(processJobs(2));
     return json(200,{items:results});
    }
+   if(route==='time-attack-review'&&req.method==='POST'){
+    const b=await read(req);uuid(b.playId);secret(b.secret);
+    await throttle(req,'status',600);
+    const [r]=await call("select private.kamereoru_ta_review($1,decode($2,'hex')) as status",[
+      b.playId,await sha(b.secret)]);
+    return json(200,{status:r.status});
+   }
    if(route==='time-attack-rank'&&req.method==='POST'){
     const b=await read(req),n=normalizeName(b.name);if(!n.ok||n.empty)return json(200,{rank:null});
     await throttle(req,'read',1200);
