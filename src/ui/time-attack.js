@@ -313,7 +313,8 @@ function prepareGame(app, store, attempt, launch, course, onCancel) {
       shownBuilding = visibleBuilding;
     }
     if (phase !== view.phase || controlBuilding !== view.building) {
-      controls.releaseAll();
+      // Instant wall changes keep the current drag. Disabling the controls
+      // still releases input on pause and during any travel.
       controls.setValues(view.currentColor);
       controls.setLocked(!view.brightnessEnabled);
       if (controls.el.classList.contains('ta-palette-only') === view.brightnessEnabled) {

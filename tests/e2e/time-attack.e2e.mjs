@@ -57,11 +57,16 @@ async function mockTimeAttack(env) {
   return { calls, submitted: () => submitted, summary: () => summary };
 }
 
-async function paintColor(page, color, { brightness = false } = {}) {
+async function palettePoint(page, color) {
   const palette = await page.locator('.ta-game .palette').boundingBox();
   assert.ok(palette);
   const { dx, dy } = pointFromHs(color.h, color.s, Math.min(palette.width, palette.height) / 2);
-  await page.touchscreen.tap(palette.x + palette.width / 2 + dx, palette.y + palette.height / 2 + dy);
+  return { x: palette.x + palette.width / 2 + dx, y: palette.y + palette.height / 2 + dy };
+}
+
+async function paintColor(page, color, { brightness = false } = {}) {
+  const { x, y } = await palettePoint(page, color);
+  await page.touchscreen.tap(x, y);
   if (brightness) {
     const bar = await page.locator('.ta-game .bar').boundingBox();
     assert.ok(bar);
@@ -245,6 +250,60 @@ test('time attack plays 20 centered walls with immediate transitions, brightness
     await env.close();
   }
 });
+
+for (const mobile of [true, false]) {
+  const input = mobile ? 'touch' : 'mouse';
+  test(`time attack keeps the ${input} palette drag across walls and the brightness unlock`, { timeout: 40_000 }, async () => {
+    const env = await launch({ width: mobile ? 402 : 1024, height: 700, mobile });
+    const { page } = env;
+    try {
+      await mockTimeAttack(env);
+      await page.clock.install();
+      await openHome(page, env.url);
+      await page.evaluate(async () => {
+        const { createDomStage } = await import('/src/scene/stage.js');
+        globalThis.__kamereoru.stageFactory = async (container, options) => createDomStage(container, options);
+      });
+      await page.locator('#name-input').fill(fixtureName);
+      await page.getByTestId('home-time-attack').click();
+      await page.getByTestId('ta-start').click();
+      await phase(page, 'active').waitFor();
+
+      const palette = page.locator('.ta-game .palette');
+      assert.equal(await page.locator('.ta-game .controls').evaluate(el => el.classList.contains('desktop-controls')), !mobile);
+      const cdp = mobile ? await env.context.newCDPSession(page) : null;
+      const first = await palettePoint(page, course.targets[0]);
+      if (cdp) {
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [first] });
+      } else {
+        await page.mouse.move(first.x, first.y);
+        assert.equal(await page.getByTestId('ta-color').isVisible(), false, 'moving without clicking should select the color');
+        await page.mouse.down();
+      }
+
+      for (let building = 2; building <= 11; building++) {
+        await page.clock.runFor(550);
+        assert.equal(await page.getByTestId('ta-building').textContent(), `${building} / 20`);
+        const previous = await palette.getAttribute('aria-valuetext');
+        const next = await palettePoint(page, course.targets[building - 1]);
+        if (cdp) {
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [next] });
+        } else {
+          await page.mouse.move(next.x, next.y);
+        }
+        assert.notEqual(await palette.getAttribute('aria-valuetext'), previous, `the held ${input} should move the palette cursor on wall ${building}`);
+        assert.equal(await page.getByTestId('ta-color').isVisible(), false);
+      }
+
+      assert.equal(await page.locator('.ta-game .bar').isVisible(), true);
+      if (cdp) await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      else await page.mouse.up();
+      assert.deepEqual(env.errors, []);
+    } finally {
+      await env.close();
+    }
+  });
+}
 
 test('the three-dimensional stage fits a landscape mobile viewport and can pause and quit', { timeout: 40_000 }, async () => {
   const env = await launch({ width: 874, height: 402 });
