@@ -240,12 +240,20 @@ async function runTimeAttack(app,store,course,launch){
   if(result?.ranked)void flushTimeAttackPending(app.api);
  }
  document.addEventListener('visibilitychange',onVisibility);
- stage.setTimeAttackTarget?.(1,course.targets[0]);
- add('ready',{building:1});
  controls.layout();controls.setValues(state.color);controls.setLocked(true);
- controls.setEnabled(true);
- lastNow=null;
- raf=requestAnimationFrame(loop);
+ controls.setEnabled(false);
+ // Warm the 3D stage and browser shaders while the clock is still in 'prepared'.
+ // Initial rendering can exceed the long-stall threshold, especially on iPhone/WebGL.
+ // The first target and timer become active together, only after the warmup frame.
+ draw();
+ raf=requestAnimationFrame(()=>{
+  if(!current()||disposed)return;
+  stage.setTimeAttackTarget?.(1,course.targets[0]);
+  add('ready',{building:1});
+  controls.setEnabled(true);
+  lastNow=null;fraction=0;
+  raf=requestAnimationFrame(loop);
+ });
 }
 export function showTimeAttackResult(app,summary,launch,family,result){
  const cleared=summary.reason==='cleared';
