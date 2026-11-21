@@ -3,7 +3,8 @@
 import { ciede2000, deltaEToMatchUnits, hsvToLab } from '../../v1/color.js';
 export const MODE_ID = 'chameleol_time_attack';
 export const RULES_VERSION = 'kamereoru-time-attack-rules-v1';
-export const CURRENT_RULES_VERSION = 'kamereoru-time-attack-rules-v2';
+export const INSTANT_RULES_VERSION = 'kamereoru-time-attack-rules-v2';
+export const CURRENT_RULES_VERSION = 'kamereoru-time-attack-rules-v3';
 export const COURSE_VERSION = 'kamereoru-time-attack-course-v1';
 export const HISTORY_FORMAT = 'kamereoru-time-attack-history-v1';
 export const RESULT_FORMAT = 'kamereoru-time-attack-result-v1';
@@ -14,14 +15,20 @@ export class InvalidTimeAttackHistoryError extends Error {
   }
 }
 export const BUILDINGS = 30, HOLD_MS = 500, MOVE_MS = 2000, MIN_RAW_MS = 15000;
-export const TIME_ATTACK_BUILDING_COUNT = BUILDINGS;
-export const TIME_ATTACK_MIN_CLEAR_MS = MIN_RAW_MS;
+export const TIME_ATTACK_BUILDING_COUNT = 20;
+export const TIME_ATTACK_BRIGHTNESS_START = 11;
+export const TIME_ATTACK_MIN_CLEAR_MS = TIME_ATTACK_BUILDING_COUNT * HOLD_MS;
+export const MATCH_DISPLAY_LIMIT = 85000000;
 export const MATCH_MIN = 95000000;
 export const MAX_HISTORY_EVENTS = 200000;
 const NEXT_MAX_EXCLUSIVE = 90000000;
 const RULES = new Map([
-  [RULES_VERSION, Object.freeze({ matchMin: MATCH_MIN, moveMs: MOVE_MS })],
-  [CURRENT_RULES_VERSION, Object.freeze({ matchMin: 90000000, moveMs: 0 })],
+  [RULES_VERSION, Object.freeze({ matchMin: MATCH_MIN, moveMs: MOVE_MS, buildings: BUILDINGS, brightnessStart: 15 })],
+  [INSTANT_RULES_VERSION, Object.freeze({ matchMin: 90000000, moveMs: 0, buildings: BUILDINGS, brightnessStart: 15 })],
+  [CURRENT_RULES_VERSION, Object.freeze({
+    matchMin: 90000000, moveMs: 0, buildings: TIME_ATTACK_BUILDING_COUNT,
+    brightnessStart: TIME_ATTACK_BRIGHTNESS_START,
+  })],
 ]);
 const MS_MAX = Number.MAX_SAFE_INTEGER - MOVE_MS * (BUILDINGS - 1);
 const CS_MAX = Math.ceil(MS_MAX / 10);
@@ -54,8 +61,9 @@ export const TIME_ATTACK_TITLES = Object.freeze(TITLE_LIMITS_CS.map((maxCs, inde
   minCs: index === 0 ? MIN_RAW_MS / 10 : TITLE_LIMITS_CS[index - 1] + 1,
   maxCs,
 })));
-export function titleForTime(cs) {
-  if (!isTimeAttackCentiseconds(cs) || cs<MIN_RAW_MS/10 || cs>60000) return null;
+export function titleForTime(cs, rulesVersion) {
+  const buildings=timeAttackBuildingCount(rulesVersion);
+  if (!buildings || !isTimeAttackCentiseconds(cs) || cs<buildings*HOLD_MS/10 || cs>60000) return null;
   const idx=TITLE_LIMITS_CS.findIndex(n=>cs<=n);
   return TIME_ATTACK_TITLES[idx].id;
 }
@@ -121,27 +129,49 @@ function randomStream(seed) {
     return v%n;
   };
 }
-export function timeAttackFamilyForSeed(seed) {
-  return FAMILIES[randomStream(seed)(FAMILIES.length)];
+export function timeAttackFamilyForSeed(seed, rulesVersion = RULES_VERSION) {
+  const choose = randomStream(seed);
+  return rulesVersion === CURRENT_RULES_VERSION ? 'all' : FAMILIES[choose(FAMILIES.length)];
 }
 export function supportsTimeAttackRules(version) {
   return RULES.has(version);
 }
+
+export function timeAttackBuildingCount(rulesVersion) {
+  return RULES.get(rulesVersion ?? RULES_VERSION)?.buildings ?? null;
+}
+
+// Cover all six hue ranges in each ten-wall section. Within a range, select
+// hue and saturation independently of the previous section's order.
+const ALL_COLOR_SECTORS = Array.from({ length: 6 }, (_, sector) =>
+  Array.from({ length: 15 * 14 }, (_, index) => {
+    const color = { h: sector * 6000 + Math.floor(index / 14) * 400, s: 3500 + (index % 14) * 500 };
+    return { color, lab: fullBrightnessLab(color) };
+  }));
+
 export function generateTimeAttackCourse(seed, rulesVersion = RULES_VERSION) {
-  if (!supportsTimeAttackRules(rulesVersion)) throw new InvalidTimeAttackHistoryError('invalid_rules');
+  const rules=RULES.get(rulesVersion);
+  if (!rules) throw new InvalidTimeAttackHistoryError('invalid_rules');
   const choose=randomStream(seed);
-  const family=FAMILIES[choose(FAMILIES.length)];
-  const all=familyColors(family).map(color=>({color,lab:fullBrightnessLab(color)}));
+  const fullPalette=rulesVersion===CURRENT_RULES_VERSION;
+  const family=fullPalette?'all':FAMILIES[choose(FAMILIES.length)];
+  const all=fullPalette?null:familyColors(family).map(color=>({color,lab:fullBrightnessLab(color)}));
   const targets=[];
   const vals=Array.from({length:21},(_,i)=>5000+i*250);
-  let previousLab;
-  for(let b=1;b<=BUILDINGS;b++){
+  let previousLab, sectors=[];
+  for(let b=1;b<=rules.buildings;b++){
     const prev=targets[b-2];
-    const eligible=b===1?all:all.filter(candidate=>labMatch(candidate.lab,previousLab)<NEXT_MAX_EXCLUSIVE);
+    let candidates=all;
+    if(fullPalette){
+      if(!sectors.length||b===rules.brightnessStart)sectors=[0,1,2,3,4,5];
+      const [sector]=sectors.splice(choose(sectors.length),1);
+      candidates=ALL_COLOR_SECTORS[sector];
+    }
+    const eligible=b===1?candidates:candidates.filter(candidate=>labMatch(candidate.lab,previousLab)<NEXT_MAX_EXCLUSIVE);
     if(!eligible.length)throw Error('no_next_color');
     const {color,lab}=eligible[choose(eligible.length)];
     let v=10000;
-    if(b>=15){
+    if(b>=rules.brightnessStart){
       const pv=prev?.v??10000;
       const possible=vals.filter(x=>Math.abs(x-pv)>=1000);
       if(!possible.length)throw Error('no_next_brightness');
@@ -156,20 +186,20 @@ const copy=s=>({...s,color:{...s.color}});
 function updateMatch(s,course){
   const target=course.targets[s.building-1];
   s.colorMatchUnits=colorMatch(s.color,target);
-  s.brightnessMatchUnits=s.building>=15?brightnessMatch(s.color,target):null;
+  s.brightnessMatchUnits=s.building>=RULES.get(course.rulesVersion).brightnessStart?brightnessMatch(s.color,target):null;
 }
 function good(s,matchMin){
   return s.colorMatchUnits>=matchMin &&
-    (s.building<15 || s.brightnessMatchUnits>=matchMin);
+    (s.brightnessMatchUnits===null || s.brightnessMatchUnits>=matchMin);
 }
 export function createTimeAttackState(course) {
-  if(!course||!supportsTimeAttackRules(course.rulesVersion)||
-    !FAMILIES.includes(course.family)||course.targets?.length!==BUILDINGS)throw Error('invalid_course');
+  if(!course||course.targets?.length!==timeAttackBuildingCount(course.rulesVersion)||
+    course.family!==timeAttackFamilyForSeed(course.seed,course.rulesVersion))throw Error('invalid_course');
   return {phase:'prepared',savedPhase:null,t:0,elapsedMs:0,travelElapsedMs:0,executedTravelMs:0,
     building:1,clearedCount:0,moveCount:0,holdMs:0,color:{h:0,s:0,v:10000},ended:false,
     colorMatchUnits:null,brightnessMatchUnits:null,family:course.family};
 }
-function advanceTime(s,target,allowClamp,{matchMin,moveMs}) {
+function advanceTime(s,target,allowClamp,{matchMin,moveMs,buildings}) {
   if(!Number.isSafeInteger(target)||target<s.t || target>Number.MAX_SAFE_INTEGER)throw new InvalidTimeAttackHistoryError('invalid_time');
   if(!['active','travel'].includes(s.phase)){
     if(target!==s.t)throw new InvalidTimeAttackHistoryError('time_during_gate');
@@ -185,7 +215,7 @@ function advanceTime(s,target,allowClamp,{matchMin,moveMs}) {
       if(dt>MS_MAX-s.elapsedMs)throw new InvalidTimeAttackHistoryError('elapsed_overflow');
       s.t+=dt;s.elapsedMs+=dt;s.holdMs=HOLD_MS;
       s.clearedCount=s.building;
-      if(s.building===BUILDINGS)s.phase='cleared';
+      if(s.building===buildings)s.phase='cleared';
       else s.phase=moveMs>0?'await_travel':'await_ready';
       return s;
     }
@@ -227,7 +257,7 @@ export function applyTimeAttackEvent(state,event,course) {
   if(event.kind==='input'){
     if(s.phase!=='active')throw new InvalidTimeAttackHistoryError('invalid_input_phase');
     const c={h:event.h,s:event.s,v:event.v};
-    if(!isHsv(c)||(s.building<15&&c.v!==10000))throw new InvalidTimeAttackHistoryError('invalid_color');
+    if(!isHsv(c)||(s.building<rules.brightnessStart&&c.v!==10000))throw new InvalidTimeAttackHistoryError('invalid_color');
     s.color=c;
     updateMatch(s,course);
     if(!good(s,rules.matchMin))s.holdMs=0;
@@ -243,9 +273,9 @@ export function applyTimeAttackEvent(state,event,course) {
   }
   if(event.kind==='end'){
     if(event.reason==='cleared'){
-      const requiredMoves=rules.moveMs>0?BUILDINGS-1:0;
-      if(s.phase!=='cleared'||s.clearedCount!==BUILDINGS||s.moveCount!==requiredMoves||
-        s.elapsedMs<MIN_RAW_MS||s.t!==s.elapsedMs+requiredMoves*rules.moveMs)throw new InvalidTimeAttackHistoryError('invalid_clear');
+      const requiredMoves=rules.moveMs>0?rules.buildings-1:0;
+      if(s.phase!=='cleared'||s.clearedCount!==rules.buildings||s.moveCount!==requiredMoves||
+        s.elapsedMs<rules.buildings*HOLD_MS||s.t!==s.elapsedMs+requiredMoves*rules.moveMs)throw new InvalidTimeAttackHistoryError('invalid_clear');
     } else if(event.reason==='quit'){
       if(s.phase==='cleared'||s.phase==='prepared')throw new InvalidTimeAttackHistoryError('invalid_quit_phase');
     } else throw new InvalidTimeAttackHistoryError('invalid_end_reason');
@@ -262,7 +292,7 @@ export function publicView(state,course){
     clearedCount:state.clearedCount,elapsedMs:state.elapsedMs,holdMs:state.holdMs,
     colorMatchUnits:visible?state.colorMatchUnits:null,
     brightnessMatchUnits:visible?state.brightnessMatchUnits:null,
-    brightnessEnabled:state.building>=15,
+    brightnessEnabled:state.building>=RULES.get(course.rulesVersion).brightnessStart,
     currentColor:{...state.color},targetColor:visible?{...target}:null,
     travelElapsedMs:state.travelElapsedMs,
     scenePosition:state.building-1+travelPosition
@@ -284,7 +314,7 @@ export function replayTimeAttack(payload) {
     !Array.isArray(payload.events)||payload.events.length===0||payload.events.length+1>MAX_HISTORY_EVENTS)throw new InvalidTimeAttackHistoryError('invalid_history');
   const first=payload.events[0];
   if(first?.kind!=='ready'||first.t!==0||first.building!==1)throw new InvalidTimeAttackHistoryError('invalid_initial_ready');
-  if(payload.family!==timeAttackFamilyForSeed(payload.seed))throw new InvalidTimeAttackHistoryError('family_mismatch');
+  if(payload.family!==timeAttackFamilyForSeed(payload.seed,payload.rulesVersion))throw new InvalidTimeAttackHistoryError('family_mismatch');
   const course=generateTimeAttackCourse(payload.seed,payload.rulesVersion);
   let state=createTimeAttackState(course);
   for(let i=0;i<payload.events.length;i++){
@@ -302,5 +332,5 @@ export function replayTimeAttack(payload) {
   return {modeId:MODE_ID,rulesVersion:course.rulesVersion,generatorVersion:COURSE_VERSION,
     family:course.family,reason:state.phase,buildings:state.clearedCount,moveCount:state.moveCount,
     executedTravelMs:state.executedTravelMs,elapsedMs:state.elapsedMs,elapsedCs,
-    titleId:state.phase==='cleared'?titleForTime(elapsedCs):null};
+    titleId:state.phase==='cleared'?titleForTime(elapsedCs,course.rulesVersion):null};
 }

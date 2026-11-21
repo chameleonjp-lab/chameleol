@@ -1,10 +1,24 @@
 import {
   applyTimeAttackEvent, centiseconds, COURSE_VERSION, createTimeAttackState,
-  CURRENT_RULES_VERSION, HISTORY_FORMAT, MAX_HISTORY_EVENTS, MODE_ID, RESULT_FORMAT, titleForTime,
+  RULES_VERSION, HISTORY_FORMAT, MAX_HISTORY_EVENTS, MODE_ID, RESULT_FORMAT, titleForTime,
 } from '../rules/time-attack/v1/index.js';
 
 const timed = phase => phase === 'active' || phase === 'travel';
 const pauseable = new Set(['active', 'await_travel', 'travel', 'await_ready']);
+
+function longestColors(targets, durations) {
+  const used = new Set();
+  const result = [];
+  for (const { building, elapsedMs } of [...durations].sort((a, b) => b.elapsedMs - a.elapsedMs || a.building - b.building)) {
+    const hsv = targets[building - 1];
+    const key = `${hsv.h}/${hsv.s}/${hsv.v}`;
+    if (used.has(key)) continue;
+    used.add(key);
+    result.push({ hsv, building, elapsedMs });
+    if (result.length === 3) break;
+  }
+  return result;
+}
 
 export class TimeAttackSession {
   constructor(course) {
@@ -15,16 +29,26 @@ export class TimeAttackSession {
     this.lastUpdate = null;
     this.hiddenBeforeReady = false;
     this.historyTooLarge = false;
+    this.buildingStartedAt = 0;
+    this.buildingTimes = [];
   }
 
   event(kind, fields = {}) {
     const event = { seq: this.events.length, t: this.state.t, kind, ...fields };
+    if (kind === 'ready' && fields.building > 1) this.recordBuildingTime();
     this.state = applyTimeAttackEvent(this.state, event, this.course);
     if (kind !== 'end') {
       if (this.events.length < MAX_HISTORY_EVENTS - 1) this.events.push(event);
       else this.historyTooLarge = true;
     }
     return event;
+  }
+
+  recordBuildingTime() {
+    const { building, elapsedMs } = this.state;
+    const duration = elapsedMs - this.buildingStartedAt;
+    if (duration > 0) this.buildingTimes.push({ building, elapsedMs: duration });
+    this.buildingStartedAt = elapsedMs;
   }
 
   update(now) {
@@ -40,7 +64,7 @@ export class TimeAttackSession {
     const phase = this.state.phase;
     this.state = applyTimeAttackEvent(this.state, { kind: 'tick', t: Math.floor(proposed + 1e-7) }, this.course);
     this.clock = this.state.phase === phase ? proposed : this.state.t;
-    if (this.course.rulesVersion === CURRENT_RULES_VERSION && this.state.phase === 'await_ready') {
+    if (this.course.rulesVersion !== RULES_VERSION && this.state.phase === 'await_ready' && phase === 'active') {
       this.event('ready', { building: this.state.building + 1 });
     }
   }
@@ -85,6 +109,8 @@ export class TimeAttackSession {
     const { phase, elapsedMs, clearedCount } = this.state;
     const reason = phase === 'cleared' ? 'cleared' : 'quit';
     const elapsedCs = centiseconds(elapsedMs);
+    this.recordBuildingTime();
+    const trickyColors = longestColors(this.course.targets, this.buildingTimes);
     const end = phase === 'prepared' ? null : this.event('end', { reason, elapsedMs, elapsedCs });
     const { seed, family, rulesVersion } = this.course;
     const history = end && !this.historyTooLarge ? {
@@ -93,8 +119,8 @@ export class TimeAttackSession {
     } : null;
     return {
       history, historyTooLarge: this.historyTooLarge,
-      result: { format: RESULT_FORMAT, reason, clearedCount, elapsedCs,
-        elapsedMs, family, titleId: reason === 'cleared' ? titleForTime(elapsedCs) : null },
+      result: { format: RESULT_FORMAT, rulesVersion, reason, clearedCount, elapsedCs,
+        elapsedMs, family, trickyColors, titleId: reason === 'cleared' ? titleForTime(elapsedCs, rulesVersion) : null },
     };
   }
 }

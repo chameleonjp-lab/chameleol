@@ -1,13 +1,16 @@
 /* タイムアタック専用の画面。通常モードのHUDには適用しない。 */
 .btn-time-attack {border:2px solid #78dce6;background:linear-gradient(120deg,#12334d,#204b58);color:#e6faff;font-weight:750}
 .ta-game .stage-wrap{position:relative;min-height:0}
-.ta-game .ta-hud{position:absolute;inset:8px 8px auto;z-index:16;display:grid;grid-template-columns:1fr 1fr 1fr 42px;gap:4px;pointer-events:none}
+.ta-game .ta-hud{position:absolute;inset:8px 8px auto;z-index:16;display:grid;grid-template-columns:1fr 1fr 42px;gap:4px;pointer-events:none}
 .ta-game .ta-stat{min-width:0;background:rgba(14,23,47,.86);border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:4px 5px;text-align:center;color:#fff;line-height:1.3}
 .ta-game .ta-stat-label{font-size:10px;display:block;color:#bbf9ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ta-game .ta-stat strong{display:block;font-size:clamp(12px,3.1vw,17px);font-variant-numeric:tabular-nums;white-space:nowrap}
 .ta-game .ta-pause{min-height:42px;margin:0;padding:4px;width:42px;pointer-events:auto;font-size:24px}
 .ta-game .ta-match-stats{position:absolute;bottom:30px;left:8px;right:8px;z-index:15;display:flex;justify-content:center;gap:8px;pointer-events:none}
 .ta-game .ta-match-stats .ta-stat{width:min(40%,140px)}
+.ta-game .ta-stat[hidden]{display:none}
+.ta-game .ta-palette-only{grid-template-columns:minmax(0,1fr)}
+.ta-game .ta-palette-only .bar-wrap{display:none}
 .ta-game .ta-hold-track{position:absolute;bottom:8px;left:10%;right:10%;height:14px;border-radius:10px;overflow:hidden;border:2px solid #e6fcff;background:rgba(0,0,0,.65);z-index:15;pointer-events:none}
 .ta-game .ta-hold-progress{height:100%;width:0;background:#66f2a4;transition:width 70ms linear}
 .ta-game .ta-overlay{position:absolute;inset:0;z-index:35;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;background:rgb(7,13,31);text-align:center}
@@ -19,7 +22,7 @@
 .ta-result-title{font-weight:800;font-size:clamp(20px,5vw,28px);margin:8px 0 16px}
 .ta-result .btn{margin:2px 0}
 .ta-result form{width:100%}
-@media(max-width:430px){.ta-game .ta-hud{inset:4px 4px auto;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr) 38px;gap:3px}
+@media(max-width:430px){.ta-game .ta-hud{inset:4px 4px auto;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) 38px;gap:3px}
 .ta-game .ta-pause{width:38px;min-height:38px}.ta-game .ta-stat{padding:3px}}
 @media(prefers-reduced-motion:reduce){.ta-game .ta-hold-progress{transition:none}}
 
@@ -31,7 +34,38 @@
 .ta-intro p { max-width: 40ch; }
 .ta-start-actions { display: grid; gap: 10px; }
 .ta-volatile { position: absolute; z-index: 20; inset: 58px 8px auto; margin: 0; padding: 5px 8px; border-radius: 8px; background: #133247; color: #fff; pointer-events: none; }
-.time-attack-result-main { border: 1px solid #92ffb0; border-radius: 20px; padding: 18px 12px; background: linear-gradient(155deg,#102a43,#102b2d); text-align: center; }
-.time-attack-result-time { font-size: clamp(32px,10vw,66px); line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.time-attack-result-title { font-size: clamp(18px,5vw,28px); font-weight: 800; }
+.time-attack-result-main {
+  border: 1px solid #92ffb0;
+  border-radius: 20px;
+  padding: 18px 12px 14px;
+  background: radial-gradient(ellipse at 50% 0%, #29586b, transparent 65%), linear-gradient(155deg,#102a43,#102b2d);
+  text-align: center;
+  box-shadow: inset 0 1px 0 #aef6dd66, 0 8px 28px #080b27aa;
+}
+.time-attack-result-label { margin: 0 0 3px; color: #c6e6f1; }
+.time-attack-result-time {
+  margin: 3px 0 12px;
+  font-size: clamp(44px,15vw,82px);
+  line-height: 1.08;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.05em;
+  overflow-wrap: anywhere;
+  color: #e4ff9a;
+  text-shadow: 0 3px #244653, 0 0 25px #9afe8f50;
+}
+.time-attack-result-title { margin: 0; font-size: clamp(16px,4.2vw,23px); font-weight: 800; color: #f4dd8a; }
+.ta-tricky-colors { border-top: 1px solid #86cccc55; padding-top: 10px; }
+.ta-tricky-colors h2 { margin: 0 0 7px; font-size: .96rem; color: #d9f5ff; }
+.ta-tricky-row { display: flex; justify-content: center; gap: 7px; }
+.ta-tricky-color {
+  flex: 0 1 32%; min-width: 0; margin: 0;
+  border: 1px solid color-mix(in srgb, var(--ta-target-color) 64%, #ced9ed);
+  border-radius: 11px;
+  background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--ta-target-color) 23%, #182640), #112238 80%);
+}
+.ta-tricky-portrait { display: grid; place-items: center; height: clamp(59px, 20vw, 105px); padding: 3px 4px; }
+.ta-tricky-portrait canvas { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.ta-tricky-swatch { border-radius: 50%; width: 24px; aspect-ratio: 1; background: var(--ta-target-color); }
+.ta-tricky-color figcaption { padding: 2px 1px 5px; font-size: clamp(.67rem,2.7vw,.86rem); font-variant-numeric: tabular-nums; }
 .time-attack-result .result-actions { display: grid; gap: 8px; margin-top: 12px; }

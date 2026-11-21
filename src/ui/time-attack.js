@@ -5,7 +5,8 @@ import { createTimeAttackResult } from './time-attack-result.js';
 import { TimeAttackSession } from '../game/time-attack-session.js';
 import { makeDecorations, RULES_V5 } from '../rules/v1/index.js';
 import {
-  MODE_ID, CURRENT_RULES_VERSION, COURSE_VERSION, generateTimeAttackCourse, publicView, centiseconds, formatTime,
+  MODE_ID, CURRENT_RULES_VERSION, COURSE_VERSION, MATCH_DISPLAY_LIMIT, TIME_ATTACK_BRIGHTNESS_START,
+  generateTimeAttackCourse, publicView, centiseconds, formatTime, timeAttackBuildingCount,
 } from '../rules/time-attack/v1/index.js';
 import { normalizeName } from '../shared/name.js';
 import { openTimeAttackStore } from '../storage/time-attack-store.js';
@@ -14,9 +15,9 @@ import { createTimeAttackAttempt, reserveTimeAttack } from '../net/time-attack-s
 import { createTimeAttackOutbox, createTimeAttackUpload } from '../net/time-attack-outbox.js';
 import { t } from '../i18n/i18n.js';
 
-const TA_CLIENT_VERSION = '0.1.0-ta.2';
+const TA_CLIENT_VERSION = '0.1.0-ta.3';
 const NEUTRAL_WALL = Object.freeze({ h: 0, s: 0, v: 3000 });
-const STAGE_RULES = Object.freeze({ ...RULES_V5, buildingCount: 30, buildingMs: 2000, brightnessUnlockBuilding: 15 });
+const STAGE_BUILDING_MS = 2000;
 
 export function installTimeAttack(app) {
   const memory = new TimeAttackMemoryStore();
@@ -37,6 +38,11 @@ export function installTimeAttack(app) {
 function statistic(key, testid) {
   const value = h('strong', { 'data-testid': testid }, '—');
   return { value, el: h('div', { class: 'ta-stat' }, [h('span', { class: 'ta-stat-label' }, t(key)), value]) };
+}
+
+function showMatch(stat, units, show = true) {
+  stat.el.hidden = !show || units >= MATCH_DISPLAY_LIMIT;
+  stat.value.textContent = stat.el.hidden || units == null ? '—' : `${(Math.floor(units / 100000) / 10).toFixed(1)}%`;
 }
 
 function requestRunLock() {
@@ -208,7 +214,10 @@ export function startTimeAttack(app, rawName) {
 function prepareGame(app, store, attempt, launch, course, onCancel) {
   const context = app.timeAttack;
   const session = new TimeAttackSession(course);
-  const visualCourse = { seed: course.seed, targets: Array(30).fill(NEUTRAL_WALL) };
+  const total = course.targets.length;
+  const stageRules = { ...RULES_V5, buildingCount: total, buildingMs: STAGE_BUILDING_MS,
+    brightnessUnlockBuilding: TIME_ATTACK_BRIGHTNESS_START };
+  const visualCourse = { seed: course.seed, targets: Array(total).fill(NEUTRAL_WALL) };
   const stageBox = h('div', { class: 'stage ta-stage', 'data-testid': 'ta-stage' });
   const cover = h('div', { class: 'ta-overlay' }, [
     h('p', { role: 'status' }, t('ta.preparing')),
@@ -216,8 +225,6 @@ function prepareGame(app, store, attempt, launch, course, onCancel) {
   ]);
   const building = statistic('ta.buildingLabel', 'ta-building');
   const time = statistic('ta.timeLabel', 'ta-time');
-  const family = statistic('ta.familyLabel', 'ta-family');
-  family.value.textContent = t(`ta.family.${course.family}`);
   const color = statistic('ta.colorLabel', 'ta-color');
   const light = statistic('ta.brightnessLabel', 'ta-brightness');
   const fill = h('div', { class: 'ta-hold-progress' });
@@ -232,15 +239,16 @@ function prepareGame(app, store, attempt, launch, course, onCancel) {
   } });
   controls.setEnabled(false);
   controls.setLocked(true);
+  controls.el.classList.add('ta-palette-only');
   const screen = h('main', { class: 'screen game ta-game', 'data-testid': 'ta-game' }, [
     h('div', { class: 'stage-wrap' }, [stageBox,
-      h('div', { class: 'ta-hud' }, [building.el, time.el, family.el, pauseButton]),
+      h('div', { class: 'ta-hud' }, [building.el, time.el, pauseButton]),
       h('div', { class: 'ta-match-stats' }, [color.el, light.el]), hold, cover]),
     controls.el,
   ]);
   app.mount(screen);
   let stage, shownBuilding = null, phase, controlBuilding, raf = 0, disposed = false, finishing = false;
-  let started = false, release = null, memoryOnly = false;
+  let started = false, release = null, memoryOnly = false, announcedClears = 0;
   const reduceMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
   const controller = {
     dispose() {
@@ -266,7 +274,7 @@ function prepareGame(app, store, attempt, launch, course, onCancel) {
   app.taController = controller;
   controller.ready = (async () => {
     const prepared = await app.stageFactory(stageBox, {
-      course: visualCourse, rules: STAGE_RULES, decorations: makeDecorations(course.seed),
+      course: visualCourse, rules: stageRules, decorations: makeDecorations(course.seed),
       presentationEnabled: false, centerOnBuilding: true,
     });
     if (disposed) { prepared.dispose(); return; }
@@ -295,6 +303,7 @@ function prepareGame(app, store, attempt, launch, course, onCancel) {
   function draw() {
     if (disposed || !stage || finishing) return;
     const view = publicView(session.state, course);
+    playSuccess();
     const playable = view.phase === 'active' && !document.hidden;
     const paused = view.phase === 'paused' || session.hiddenBeforeReady;
     const visibleBuilding = playable ? view.building : null;
@@ -307,6 +316,10 @@ function prepareGame(app, store, attempt, launch, course, onCancel) {
       controls.releaseAll();
       controls.setValues(view.currentColor);
       controls.setLocked(!view.brightnessEnabled);
+      if (controls.el.classList.contains('ta-palette-only') === view.brightnessEnabled) {
+        controls.el.classList.toggle('ta-palette-only', !view.brightnessEnabled);
+        controls.layout();
+      }
       controls.setEnabled(playable);
       phase = view.phase;
       controlBuilding = view.building;
@@ -331,21 +344,27 @@ function prepareGame(app, store, attempt, launch, course, onCancel) {
     cover.hidden = !paused && !cover.textContent;
     pauseButton.disabled = paused || view.phase === 'prepared';
     screen.dataset.phase = view.phase;
-    building.value.textContent = `${view.building} / 30`;
+    building.value.textContent = `${view.building} / ${total}`;
     time.value.textContent = formatTime(centiseconds(view.elapsedMs));
-    color.value.textContent = view.colorMatchUnits == null ? '—' : `${(view.colorMatchUnits / 1e6).toFixed(1)}%`;
-    light.value.textContent = view.brightnessMatchUnits == null ? '—' : `${(view.brightnessMatchUnits / 1e6).toFixed(1)}%`;
-    light.el.hidden = !view.brightnessEnabled;
+    showMatch(color, view.colorMatchUnits);
+    showMatch(light, view.brightnessMatchUnits, view.brightnessEnabled);
     fill.style.width = `${view.holdMs / 5}%`;
     hold.setAttribute('aria-valuenow', String(view.holdMs));
     const position = reduceMotion?.matches ? Math.floor(view.scenePosition) : view.scenePosition;
-    stage.update({ t: (position + 0.5) * STAGE_RULES.buildingMs, color: view.currentColor, policeStage: 0,
+    stage.update({ t: (position + 0.5) * STAGE_BUILDING_MS, color: view.currentColor, policeStage: 0,
       walking: !reduceMotion?.matches && view.phase === 'travel', running: !paused,
       presentation: { t: session.state.t, building: view.building, running: !paused } });
   }
 
+  function playSuccess() {
+    if (announcedClears === session.state.clearedCount) return;
+    announcedClears = session.state.clearedCount;
+    if (!document.hidden) app.audio.play('passBuilding');
+  }
+
   async function finish() {
     if (disposed || finishing) return;
+    playSuccess();
     finishing = true;
     cancelAnimationFrame(raf);
     controls.releaseAll();
@@ -422,8 +441,9 @@ export function showTimeAttackRecords(app) {
     }))).flat().sort((a, b) => (b.record.finishedAt ?? 0) - (a.record.finishedAt ?? 0));
     if (!screen.isConnected) return;
     entries.replaceChildren(...rows.map(({ store, record }) => {
-      const { elapsedCs, reason, clearedCount } = record.result;
-      const title = reason === 'cleared' ? t('ta.clearTime') : t('ta.quitSummary', { count: clearedCount });
+      const { elapsedCs, reason, clearedCount, rulesVersion } = record.result;
+      const total = timeAttackBuildingCount(rulesVersion);
+      const title = reason === 'cleared' ? t('ta.clearTime', { total }) : t('ta.quitSummary', { count: clearedCount, total });
       return h('button', { type: 'button', class: 'btn', onclick: () => {
         context.result = record;
         showResult(app, store);

@@ -108,7 +108,7 @@ async function takeEvidence(page, name) {
   if (directory) await page.screenshot({ path: join(directory, `${name}.png`) });
 }
 
-test('time attack plays 30 centered walls with immediate transitions, brightness and ranked submission', { timeout: 120_000 }, async () => {
+test('time attack plays 20 centered walls with immediate transitions, brightness and ranked submission', { timeout: 120_000 }, async () => {
   const env = await launch({ width: 402, height: 700 });
   const { page } = env;
   try {
@@ -121,6 +121,15 @@ test('time attack plays 30 centered walls with immediate transitions, brightness
     await page.evaluate(async () => {
       const { createDomStage } = await import('/src/scene/stage.js');
       const app = globalThis.__kamereoru;
+      globalThis.__taSuccessSounds = 0;
+      const originalSound = app.audio.play.bind(app.audio);
+      app.audio.play = (name, ...args) => {
+        if (name === 'passBuilding') {
+          globalThis.__taSuccessSounds++;
+          return true;
+        }
+        return originalSound(name, ...args);
+      };
       app.stageFactory = async (container, options) => {
         captureVisibleTargets();
         const stage = createDomStage(container, options);
@@ -141,16 +150,18 @@ test('time attack plays 30 centered walls with immediate transitions, brightness
     await page.getByTestId('home-time-attack').tap();
     await page.getByTestId('ta-start').tap();
     await phase(page, 'active').waitFor();
-    assert.equal(await page.getByTestId('ta-building').textContent(), '1 / 30');
+    assert.equal(await page.getByTestId('ta-building').textContent(), '1 / 20');
     assert.deepEqual(await visibleTargets(page), [1]);
     await checkDomCenter(page);
     assert.equal(await page.getByTestId('ta-brightness').isVisible(), false);
-    await checkFit(page, ['.ta-hud', '.ta-stage', '.ta-game .palette', '.ta-game .bar']);
+    assert.equal(await page.locator('.ta-game .bar').isVisible(), false);
+    await checkFit(page, ['.ta-hud', '.ta-stage', '.ta-game .palette']);
     await takeEvidence(page, 'time-attack-dom-402x700');
 
+    assert.match(await page.getByTestId('ta-color').textContent(), /%$/);
     await paintColor(page, course.targets[0]);
     await page.clock.runFor(175);
-    assert.ok(Number.parseFloat(await page.getByTestId('ta-color').textContent()) >= 95);
+    assert.equal(await page.getByTestId('ta-color').isVisible(), false);
     assert.ok(Number(await page.getByRole('progressbar').getAttribute('aria-valuenow')) > 0);
     await setHidden(page, true);
     await phase(page, 'paused').waitFor();
@@ -165,24 +176,28 @@ test('time attack plays 30 centered walls with immediate transitions, brightness
     await page.getByTestId('ta-resume').tap();
     await page.clock.runFor(550);
     assert.deepEqual(await visibleTargets(page), [2]);
-    assert.equal(await page.getByTestId('ta-building').textContent(), '2 / 30');
+    assert.equal(await page.getByTestId('ta-building').textContent(), '2 / 20');
     await checkDomCenter(page);
 
-    for (let building = 2; building <= 30; building++) {
-      assert.equal(await page.getByTestId('ta-building').textContent(), `${building} / 30`);
+    for (let building = 2; building <= 20; building++) {
+      assert.equal(await page.getByTestId('ta-building').textContent(), `${building} / 20`);
       assert.deepEqual(await visibleTargets(page), [building]);
-      assert.equal(await page.getByTestId('ta-brightness').isVisible(), building >= 15);
+      assert.equal(await page.locator('.ta-game .bar').isVisible(), building >= 11);
       const target = course.targets[building - 1];
-      if (building === 15) {
-        await paintColor(page, target);
+      if (building === 11) {
+        await paintColor(page, { ...target, v: target.v - 1750 }, { brightness: true });
+        assert.equal(await page.getByTestId('ta-color').isVisible(), false);
+        assert.match(await page.getByTestId('ta-brightness').textContent(), /%$/);
+        await paintColor(page, { ...target, v: target.v - 1200 }, { brightness: true });
+        assert.equal(await page.getByTestId('ta-brightness').isVisible(), false);
         await page.clock.runFor(550);
         assert.equal(await phase(page, 'active').count(), 1);
-        assert.equal(await page.getByTestId('ta-building').textContent(), '15 / 30');
+        assert.equal(await page.getByTestId('ta-building').textContent(), '11 / 20');
         assert.equal(await page.getByRole('progressbar').getAttribute('aria-valuenow'), '0');
       }
-      await paintColor(page, target, { brightness: building >= 15 });
+      await paintColor(page, target, { brightness: building >= 11 });
       await page.clock.runFor(550);
-      if (building < 30) assert.equal(await phase(page, 'active').count(), 1);
+      if (building < 20) assert.equal(await phase(page, 'active').count(), 1);
     }
 
     await page.getByTestId('ta-result').waitFor();
@@ -190,7 +205,8 @@ test('time attack plays 30 centered walls with immediate transitions, brightness
     await page.waitForFunction(() => document.querySelector('[data-testid="ta-result-status"]')?.textContent.includes('記録を確認しました'));
     const accepted = mock.summary();
     assert.ok(accepted);
-    assert.equal(accepted.buildings, 30);
+    assert.equal(accepted.buildings, 20);
+    assert.equal(await page.evaluate(() => globalThis.__taSuccessSounds), 20);
     assert.equal(accepted.executedTravelMs, 0);
     assert.equal(accepted.moveCount, 0);
     assert.equal(accepted.rulesVersion, CURRENT_RULES_VERSION);
@@ -198,15 +214,24 @@ test('time attack plays 30 centered walls with immediate transitions, brightness
     assert.equal(await page.getByTestId('ta-result-title').textContent(), TITLE_NAMES_JA[Number(accepted.titleId.slice(-2)) - 1]);
     assert.equal(await page.getByTestId('ta-ranking').getAttribute('href'),
       'https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=chameleol&tab=time-attack');
+    const colors = page.getByTestId('ta-tricky-colors');
+    await colors.getByText('苦手な色', { exact: true }).waitFor();
+    await page.waitForFunction(() => document.querySelectorAll('.ta-tricky-portrait canvas').length === 3);
+    const boxes = await colors.locator('figure').evaluateAll(items => items.map(item => {
+      const box = item.getBoundingClientRect();
+      return { top: box.top, left: box.left, right: box.right };
+    }));
+    assert.equal(boxes.length, 3);
+    assert.ok(boxes.every((box, i) => box.top === boxes[0].top && box.left >= (boxes[i - 1]?.right ?? 0)));
     const share = await openXShare(page, 'ta-share');
     assert.equal(share.searchParams.get('url'), 'https://chameleonjp-lab.github.io/chameleol/');
     assert.deepEqual(share.searchParams.get('text').split(/\r?\n/), [
-      'タイムアタックモード', `記録：${formatTime(accepted.elapsedCs, 'ja', { share: true })}`, '#カメレオる',
+      'タイムアタックモード (全色・20棟)', `記録：${formatTime(accepted.elapsedCs, 'ja', { share: true })}`, '#カメレオる',
     ]);
     const { events, end } = mock.submitted();
     assert.deepEqual(events[0], { seq: 0, t: 0, kind: 'ready', building: 1 });
     assert.equal(events.filter(event => event.kind === 'travel').length, 0);
-    assert.equal(events.filter(event => event.kind === 'ready').length, 30);
+    assert.equal(events.filter(event => event.kind === 'ready').length, 20);
     assert.equal(end.t, accepted.elapsedMs);
     const launches = mock.calls.filter(({ path }) => path === 'time-attack-launch');
     assert.equal(launches.length, 1);
@@ -236,6 +261,8 @@ test('the three-dimensional stage fits a landscape mobile viewport and can pause
         stage.update = frame => {
           globalThis.__taThree.block = frame.t / options.rules.buildingMs;
           globalThis.__taThree.centerOnBuilding = options.centerOnBuilding;
+          const visible = options.course.targets.filter(color => color.s > 0).length;
+          if (visible) globalThis.__taThree.lastVisible = visible;
           update(frame);
         };
         return stage;
@@ -248,11 +275,11 @@ test('the three-dimensional stage fits a landscape mobile viewport and can pause
     assert.equal(await page.evaluate(() => globalThis.__taThree.kind), 'three');
     assert.equal(await page.evaluate(() => globalThis.__taThree.block), 0.5);
     assert.equal(await page.evaluate(() => globalThis.__taThree.centerOnBuilding), true);
-    assert.equal(await page.evaluate(() => globalThis.__taThree.targets.filter(color => color.s > 0).length), 1);
-    await checkFit(page, ['.ta-hud', '.ta-game .palette', '.ta-game .bar']);
+    assert.equal(await page.evaluate(() => globalThis.__taThree.lastVisible), 1);
+    await checkFit(page, ['.ta-hud', '.ta-game .palette']);
     await takeEvidence(page, 'time-attack-three-874x402');
     await page.setViewportSize({ width: 402, height: 874 });
-    await checkFit(page, ['.ta-hud', '.ta-game .palette', '.ta-game .bar']);
+    await checkFit(page, ['.ta-hud', '.ta-game .palette']);
     await takeEvidence(page, 'time-attack-three-402x874');
     const pause = page.getByTestId('ta-pause');
     const resume = page.getByTestId('ta-resume');

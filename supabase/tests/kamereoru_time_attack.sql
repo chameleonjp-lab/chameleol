@@ -21,7 +21,7 @@ begin
   perform private.kamereoru_ta_launch(guest,null,false,null,'green','0.1.0');
   raise exception 'guest count must be closed before the first release';
  exception when sqlstate 'KM503' then null;end;
- update private.kamereoru_ta_config set accepting=true where id=1;
+ update private.kamereoru_ta_config set accepting=true,rules_version='kamereoru-time-attack-rules-v2' where id=1;
  v:=private.kamereoru_ta_start(a,l,h,'Tester','Tester','kamereoru-time-attack-rules-v1','0.1.0',12,'red');
  p:=(v->>'playId')::uuid;
  if p is null or v->>'family'<>'red' or (v->>'seed')::bigint<>12 then

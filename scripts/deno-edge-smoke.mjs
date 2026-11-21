@@ -121,7 +121,7 @@ try {
     if (taResultStatus?.status && taResultStatus.status !== 'verifying') break;
     await new Promise((r) => setTimeout(r, 300));
   }
-  const taRanking = await fetch(`${base}/time-attack-ranking?limit=100`).then((r) => r.json());
+  const taRanking = await fetch(`${base}/time-attack-ranking?course=all&limit=100`).then((r) => r.json());
   steps.push(['TA start/launch/chunk/complete', taStart.status, taLaunch.status, taChunk.status, taComplete.status]);
   steps.push(['TA worker and result', taUnauthorized.status, taInvalidToken.status, taWorkerToken.status, taWorker.status, taResultStatus?.status]);
   steps.push(['TA ranking', taRanking.nameCount, taRanking.rows?.[0]?.elapsedCs]);
@@ -135,7 +135,8 @@ try {
     && (taStart.status === 200 && taStart.body.rulesVersion === CURRENT_RULES_VERSION &&
         taLaunch.status === 200 && taChunk.status === 200 && taComplete.status === 200)
     && taUnauthorized.status === 403 && taInvalidToken.status === 403 && taWorkerToken.status === 200 && taWorker.status === 200 && taResultStatus?.status === 'official'
-    && taRanking.modeId === MODE_ID && taRanking.rows?.[0]?.elapsedCs === taHistory.end.elapsedCs;
+    && taRanking.modeId === MODE_ID && taRanking.course === 'all' && taRanking.rows?.[0]?.family === 'all'
+    && taRanking.rows?.[0]?.elapsedCs === 1000 && taHistory.end.elapsedCs === 1000;
   console.log(ok ? 'EDGE SMOKE OK' : 'EDGE SMOKE FAILED');
   if (!ok) {
     console.log(JSON.stringify({ taRanking, taResultStatus }));
