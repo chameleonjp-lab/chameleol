@@ -11,6 +11,7 @@ const sql = postgres(Deno.env.get('SUPABASE_DB_URL') ?? '', { prepare: false, ma
 const handler = createHandler({
   db: { query: (text: string, params: unknown[] = []) => sql.unsafe(text, params as any[]) as unknown as Promise<any[]> },
   ipSalt: Deno.env.get('KAMEREORU_IP_SALT') ?? '',
+  workerSecret: Deno.env.get('KAMEREORU_TA_WORKER_SECRET') ?? '',
   allowedOrigin: Deno.env.get('KAMEREORU_ALLOWED_ORIGIN') ?? '*',
   waitUntil: (p: Promise<unknown>) => (globalThis as any).EdgeRuntime?.waitUntil?.(p),
   log: (entry: Record<string, unknown>) => console.log(JSON.stringify({ fn: 'kamereoru', ...entry })),
