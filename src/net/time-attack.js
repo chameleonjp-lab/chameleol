@@ -3,6 +3,7 @@ import {uuid,sha256Hex} from './api.js';
 import {randomSecret} from '../storage/store.js';
 import {openTimeAttackStore} from '../storage/time-attack-store.js';
 import {MODE_ID,RULES_VERSION,COURSE_VERSION,HISTORY_FORMAT} from '../rules/time-attack/v1/index.js';
+export const TA_CLIENT_VERSION='0.1.0-ta.1';
 const CHUNK_SIZE=120*1024;
 const safe=(api,item)=>api.configured && item.destination===api.destination;
 export function newTimeAttackStart(name,api,gameVersion){
@@ -48,7 +49,7 @@ async function flushLaunch(api,store,item){
  return true;
 }
 export async function makeTimeAttackResult(launch,payload,display){
- const body=JSON.stringify({...payload,playId:launch.playId,launchId:launch.launchId});
+ const body=JSON.stringify({...payload,playId:launch.playId,launchId:launch.launchId,gameVersion:launch.gameVersion});
  const length=new TextEncoder().encode(body).length;
  if(length>8*1024*1024||payload.events.length>200000)throw Error('history_too_large');
  const chunks=[];for(let i=0;i<body.length;i+=CHUNK_SIZE)chunks.push(body.slice(i,i+CHUNK_SIZE));
