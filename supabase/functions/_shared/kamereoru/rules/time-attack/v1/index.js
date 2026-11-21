@@ -1,8 +1,9 @@
 // 同系色タイムアタックの判定規則。通常の50棟判定エンジンと分離する。
-// 経過時刻は操作可能時間と2秒の移動を含む整数ミリ秒。停止時間は含めない。
+// 履歴の時刻は整数ミリ秒。初版の履歴だけ、操作時間に棟間の移動を加える。
 import { ciede2000, deltaEToMatchUnits, hsvToLab } from '../../v1/color.js';
 export const MODE_ID = 'chameleol_time_attack';
 export const RULES_VERSION = 'kamereoru-time-attack-rules-v1';
+export const CURRENT_RULES_VERSION = 'kamereoru-time-attack-rules-v2';
 export const COURSE_VERSION = 'kamereoru-time-attack-course-v1';
 export const HISTORY_FORMAT = 'kamereoru-time-attack-history-v1';
 export const RESULT_FORMAT = 'kamereoru-time-attack-result-v1';
@@ -18,6 +19,10 @@ export const TIME_ATTACK_MIN_CLEAR_MS = MIN_RAW_MS;
 export const MATCH_MIN = 95000000;
 export const MAX_HISTORY_EVENTS = 200000;
 const NEXT_MAX_EXCLUSIVE = 90000000;
+const RULES = new Map([
+  [RULES_VERSION, Object.freeze({ matchMin: MATCH_MIN, moveMs: MOVE_MS })],
+  [CURRENT_RULES_VERSION, Object.freeze({ matchMin: 90000000, moveMs: 0 })],
+]);
 const MS_MAX = Number.MAX_SAFE_INTEGER - MOVE_MS * (BUILDINGS - 1);
 const CS_MAX = Math.ceil(MS_MAX / 10);
 const FAMILIES = Object.freeze(['red','green','blue']);
@@ -119,7 +124,11 @@ function randomStream(seed) {
 export function timeAttackFamilyForSeed(seed) {
   return FAMILIES[randomStream(seed)(FAMILIES.length)];
 }
-export function generateTimeAttackCourse(seed) {
+export function supportsTimeAttackRules(version) {
+  return RULES.has(version);
+}
+export function generateTimeAttackCourse(seed, rulesVersion = RULES_VERSION) {
+  if (!supportsTimeAttackRules(rulesVersion)) throw new InvalidTimeAttackHistoryError('invalid_rules');
   const choose=randomStream(seed);
   const family=FAMILIES[choose(FAMILIES.length)];
   const all=familyColors(family).map(color=>({color,lab:fullBrightnessLab(color)}));
@@ -141,7 +150,7 @@ export function generateTimeAttackCourse(seed) {
     targets.push({...color,v});
     previousLab=lab;
   }
-  return Object.freeze({seed,family,targets:Object.freeze(targets.map(c=>Object.freeze(c)))});
+  return Object.freeze({seed,family,rulesVersion,targets:Object.freeze(targets.map(c=>Object.freeze(c)))});
 }
 const copy=s=>({...s,color:{...s.color}});
 function updateMatch(s,course){
@@ -149,17 +158,18 @@ function updateMatch(s,course){
   s.colorMatchUnits=colorMatch(s.color,target);
   s.brightnessMatchUnits=s.building>=15?brightnessMatch(s.color,target):null;
 }
-function good(s){
-  return s.colorMatchUnits>=MATCH_MIN &&
-    (s.building<15 || s.brightnessMatchUnits>=MATCH_MIN);
+function good(s,matchMin){
+  return s.colorMatchUnits>=matchMin &&
+    (s.building<15 || s.brightnessMatchUnits>=matchMin);
 }
 export function createTimeAttackState(course) {
-  if(!course||!FAMILIES.includes(course.family)||course.targets?.length!==BUILDINGS)throw Error('invalid_course');
+  if(!course||!supportsTimeAttackRules(course.rulesVersion)||
+    !FAMILIES.includes(course.family)||course.targets?.length!==BUILDINGS)throw Error('invalid_course');
   return {phase:'prepared',savedPhase:null,t:0,elapsedMs:0,travelElapsedMs:0,executedTravelMs:0,
     building:1,clearedCount:0,moveCount:0,holdMs:0,color:{h:0,s:0,v:10000},ended:false,
     colorMatchUnits:null,brightnessMatchUnits:null,family:course.family};
 }
-function advanceTime(s,target,allowClamp) {
+function advanceTime(s,target,allowClamp,{matchMin,moveMs}) {
   if(!Number.isSafeInteger(target)||target<s.t || target>Number.MAX_SAFE_INTEGER)throw new InvalidTimeAttackHistoryError('invalid_time');
   if(!['active','travel'].includes(s.phase)){
     if(target!==s.t)throw new InvalidTimeAttackHistoryError('time_during_gate');
@@ -167,7 +177,7 @@ function advanceTime(s,target,allowClamp) {
   }
   let dt=target-s.t;
   if(s.phase==='active'){
-    const passing=good(s);
+    const passing=good(s,matchMin);
     if(passing && s.holdMs+dt>=HOLD_MS) {
       const allowed=HOLD_MS-s.holdMs;
       if(allowed<dt&&!allowClamp)throw new InvalidTimeAttackHistoryError('event_crossed_building_boundary');
@@ -175,17 +185,18 @@ function advanceTime(s,target,allowClamp) {
       if(dt>MS_MAX-s.elapsedMs)throw new InvalidTimeAttackHistoryError('elapsed_overflow');
       s.t+=dt;s.elapsedMs+=dt;s.holdMs=HOLD_MS;
       s.clearedCount=s.building;
-      s.phase=s.building===BUILDINGS?'cleared':'await_travel';
+      if(s.building===BUILDINGS)s.phase='cleared';
+      else s.phase=moveMs>0?'await_travel':'await_ready';
       return s;
     }
     if(dt>MS_MAX-s.elapsedMs)throw new InvalidTimeAttackHistoryError('elapsed_overflow');
     s.t+=dt;s.elapsedMs+=dt;s.holdMs=passing?s.holdMs+dt:0;
   } else {
-    const allowed=MOVE_MS-s.travelElapsedMs;
+    const allowed=moveMs-s.travelElapsedMs;
     if(dt>allowed&&!allowClamp)throw new InvalidTimeAttackHistoryError('event_crossed_move_boundary');
     dt=Math.min(dt,allowed);
     s.t+=dt;s.travelElapsedMs+=dt;s.executedTravelMs+=dt;
-    if(s.travelElapsedMs===MOVE_MS)s.phase='await_ready';
+    if(s.travelElapsedMs===moveMs)s.phase='await_ready';
   }
   return s;
 }
@@ -193,9 +204,10 @@ export function applyTimeAttackEvent(state,event,course) {
   if(state.ended)throw new InvalidTimeAttackHistoryError('already_ended');
   if(!event||typeof event.kind!=='string')throw new InvalidTimeAttackHistoryError('bad_event');
   const s=copy(state);
+  const rules=RULES.get(course.rulesVersion);
   if(event.kind==='tick'){
     if(s.phase==='paused')return s;
-    return advanceTime(s,event.t,true);
+    return advanceTime(s,event.t,true,rules);
   }
   // pause中は物理時刻が進んでも履歴時刻を進めない
   if(s.phase==='paused'){
@@ -204,11 +216,11 @@ export function applyTimeAttackEvent(state,event,course) {
     if(event.kind==='end'&&event.reason==='quit'){s.phase='quit';s.ended=true;return s;}
     throw new InvalidTimeAttackHistoryError('invalid_paused_event');
   }
-  advanceTime(s,event.t,false);
+  advanceTime(s,event.t,false,rules);
   if(event.kind==='ready'){
     if(s.phase!=='prepared' && s.phase!=='await_ready')throw new InvalidTimeAttackHistoryError('invalid_ready_phase');
     if(s.phase==='prepared' && (event.t!==0||event.building!==1))throw new InvalidTimeAttackHistoryError('invalid_initial_ready');
-    if(s.phase==='await_ready' && (s.travelElapsedMs!==MOVE_MS||event.building!==s.building+1))throw new InvalidTimeAttackHistoryError('invalid_ready_building');
+    if(s.phase==='await_ready' && (s.travelElapsedMs!==rules.moveMs||event.building!==s.building+1))throw new InvalidTimeAttackHistoryError('invalid_ready_building');
     if(s.phase==='await_ready'){s.building+=1;s.travelElapsedMs=0;}
     s.phase='active';s.holdMs=0;updateMatch(s,course);return s;
   }
@@ -218,7 +230,7 @@ export function applyTimeAttackEvent(state,event,course) {
     if(!isHsv(c)||(s.building<15&&c.v!==10000))throw new InvalidTimeAttackHistoryError('invalid_color');
     s.color=c;
     updateMatch(s,course);
-    if(!good(s))s.holdMs=0;
+    if(!good(s,rules.matchMin))s.holdMs=0;
     return s;
   }
   if(event.kind==='travel'){
@@ -231,8 +243,9 @@ export function applyTimeAttackEvent(state,event,course) {
   }
   if(event.kind==='end'){
     if(event.reason==='cleared'){
-      if(s.phase!=='cleared'||s.clearedCount!==BUILDINGS||s.moveCount!==BUILDINGS-1||
-        s.elapsedMs<MIN_RAW_MS||s.t!==s.elapsedMs+(BUILDINGS-1)*MOVE_MS)throw new InvalidTimeAttackHistoryError('invalid_clear');
+      const requiredMoves=rules.moveMs>0?BUILDINGS-1:0;
+      if(s.phase!=='cleared'||s.clearedCount!==BUILDINGS||s.moveCount!==requiredMoves||
+        s.elapsedMs<MIN_RAW_MS||s.t!==s.elapsedMs+requiredMoves*rules.moveMs)throw new InvalidTimeAttackHistoryError('invalid_clear');
     } else if(event.reason==='quit'){
       if(s.phase==='cleared'||s.phase==='prepared')throw new InvalidTimeAttackHistoryError('invalid_quit_phase');
     } else throw new InvalidTimeAttackHistoryError('invalid_end_reason');
@@ -267,12 +280,12 @@ function checkReplayEvent(event, index, terminal) {
 
 export function replayTimeAttack(payload) {
   if(!payload||payload.format!==HISTORY_FORMAT||payload.modeId!==MODE_ID||
-    payload.rulesVersion!==RULES_VERSION||payload.generatorVersion!==COURSE_VERSION||
+    !supportsTimeAttackRules(payload.rulesVersion)||payload.generatorVersion!==COURSE_VERSION||
     !Array.isArray(payload.events)||payload.events.length===0||payload.events.length+1>MAX_HISTORY_EVENTS)throw new InvalidTimeAttackHistoryError('invalid_history');
   const first=payload.events[0];
   if(first?.kind!=='ready'||first.t!==0||first.building!==1)throw new InvalidTimeAttackHistoryError('invalid_initial_ready');
   if(payload.family!==timeAttackFamilyForSeed(payload.seed))throw new InvalidTimeAttackHistoryError('family_mismatch');
-  const course=generateTimeAttackCourse(payload.seed);
+  const course=generateTimeAttackCourse(payload.seed,payload.rulesVersion);
   let state=createTimeAttackState(course);
   for(let i=0;i<payload.events.length;i++){
     const event=payload.events[i];
@@ -286,7 +299,7 @@ export function replayTimeAttack(payload) {
     throw new InvalidTimeAttackHistoryError('elapsed_mismatch');
   }
   if(payload.end.elapsedCs!==elapsedCs)throw new InvalidTimeAttackHistoryError('score_mismatch');
-  return {modeId:MODE_ID,rulesVersion:RULES_VERSION,generatorVersion:COURSE_VERSION,
+  return {modeId:MODE_ID,rulesVersion:course.rulesVersion,generatorVersion:COURSE_VERSION,
     family:course.family,reason:state.phase,buildings:state.clearedCount,moveCount:state.moveCount,
     executedTravelMs:state.executedTravelMs,elapsedMs:state.elapsedMs,elapsedCs,
     titleId:state.phase==='cleared'?titleForTime(elapsedCs):null};

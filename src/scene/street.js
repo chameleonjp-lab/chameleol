@@ -79,10 +79,12 @@ function canvasOf(w, h, draw) {
   return canvas;
 }
 
-export function createThreeStage(container, { course, decorations, rules = RULES_V1, showOpeningShop = false, presentationEnabled=true,verification=false,presentationSet,gameExtrasController }={}) {
+export function createThreeStage(container, { course, decorations, rules = RULES_V1, showOpeningShop = false, presentationEnabled=true,verification=false,presentationSet,gameExtrasController, centerOnBuilding = false }={}) {
   // 演出の組（IF01）。既定は旧経路。extended96 は明示と controller の両方がある時だけ。
   const mode = resolvePresentationMode({ presentationSet, gameExtrasController });
   const extended = mode === 'extended96';
+  const cameraDx = centerOnBuilding ? 0 : CAM.dx;
+  const lookDx = centerOnBuilding ? 0 : CAM.lookDx;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true, stencil: true });
   // 色をそのまま出す：色管理・トーンマッピングを使わない。
   THREE.ColorManagement.enabled = false;
@@ -897,15 +899,15 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     camera.fov = vfov;
     camera.aspect = aspect;
     camera.clearViewOffset();
-    camera.position.set(CAM.dx, CAM.y, CAM.z);
-    camera.lookAt(CAM.lookDx, CAM.lookY, CAM.lookZ);
+    camera.position.set(cameraDx, CAM.y, CAM.z);
+    camera.lookAt(lookDx, CAM.lookY, CAM.lookZ);
     camQuat = camera.quaternion.clone();
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld(true);
     // 主人公の胴体が画面の左 SCREEN_X・下 SCREEN_Y に来るよう、投影をずらす
     v3.set(0, SIDEWALK_Y + 1.4, HERO_Z).project(camera);
     heroNdc = { x: v3.x, y: v3.y };
-    const tx = SCREEN_X * 2 - 1;
+    const tx = centerOnBuilding ? 0 : SCREEN_X * 2 - 1;
     const ty = SCREEN_Y * 2 - 1;
     camera.setViewOffset(viewW, viewH, ((v3.x - tx) / 2) * viewW, ((ty - v3.y) / 2) * viewH, viewW, viewH);
     camera.updateMatrixWorld(true);
@@ -1009,7 +1011,7 @@ export function createThreeStage(container, { course, decorations, rules = RULES
     const now = worldClock * 1000;
     const sx = reducedMotion ? 0 : Math.sin(now * 0.071) * shake;
     const sy = reducedMotion ? 0 : Math.cos(now * 0.093) * shake * 0.7;
-    camera.position.set(x + CAM.dx + sx, CAM.y + Math.sin(time / 1000 * 1.7) * 0.025 + sy, CAM.z);
+    camera.position.set(x + cameraDx + sx, CAM.y + Math.sin(time / 1000 * 1.7) * 0.025 + sy, CAM.z);
     camera.quaternion.copy(camQuat);
     // 雲：時間と進み具合で少しずつ流す
     for (const c of clouds) {

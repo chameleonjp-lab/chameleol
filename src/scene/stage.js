@@ -90,13 +90,14 @@ function webglAvailable() {
 }
 
 /** 仮の図形の舞台。現在と次の壁、体色の比較面だけを出す。 */
-export function createDomStage(container, { course, rules = RULES_V1, presentationSet, gameExtrasController, showOpeningShop = false } = {}) {
+export function createDomStage(container, { course, rules = RULES_V1, presentationSet, gameExtrasController, showOpeningShop = false, centerOnBuilding = false } = {}) {
   const mode = resolvePresentationMode({ presentationSet, gameExtrasController });
   // extended96 では簡易表示でも1フレーム1回 step する（評価区間と一度だけの取得処理を落とさない）。描く物は無い。
   const stepper = mode === 'extended96' ? createExtendedStepper({ controller: gameExtrasController }) : null;
   let disposed = false;
   const walls = [h('div', { class: 'dom-wall' }), h('div', { class: 'dom-wall' }), h('div', { class: 'dom-wall' })];
   const hero = h('div', { class: 'dom-hero' }, [h('div', { class: 'dom-hero-eye' })]);
+  if (centerOnBuilding) hero.style.left = '50%';
   const police = [h('div', { class: 'dom-police' }), h('div', { class: 'dom-police' })];
   const root = h('div', { class: 'dom-stage' }, [...walls, ...police, hero]);
   const shop = showOpeningShop ? h('div', { class: 'dom-wall dom-jewelry-shop', 'aria-hidden': 'true' }, [
@@ -107,7 +108,8 @@ export function createDomStage(container, { course, rules = RULES_V1, presentati
   container.append(root);
   let escape = null, stopClearEnding = null;
   function placeStreet(block) {
-    const W = root.clientWidth * 0.62, anchor = root.clientWidth * 0.32;
+    const W = root.clientWidth * 0.62;
+    const anchor = centerOnBuilding ? root.clientWidth * 0.5 + 3 : root.clientWidth * 0.32;
     const current = Math.max(1, Math.floor(block) + 1);
     walls.forEach((wall, i) => {
       const index = current - 1 + i;

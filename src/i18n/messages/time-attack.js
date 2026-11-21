@@ -15,7 +15,7 @@ const localized = {
 同系色モード
 タイムアタック・30棟
 タイムアタックモード
-同じ色系統で30棟に挑戦。95%以上の一致を0.5秒キープしよう。15棟目からは明るさも合わせます。2秒の移動と一時停止は記録に含みません。
+同じ色系統で30棟に挑戦。90%以上の一致を0.5秒キープしよう。15棟目からは明るさも合わせます。条件を満たすと次の建物にすぐ切り替わります。一時停止中の時間は記録に含みません。
 はじめる
 準備中…
 もう一度接続する
@@ -63,7 +63,7 @@ const localized = {
 Single-color mode
 Time Attack · 30 buildings
 Time Attack Mode
-Take on 30 buildings in one color family. Hold a match of 95% or higher for 0.5 seconds. Match brightness too from building 15. The 2-second moves and pauses are off the clock.
+Take on 30 buildings in one color family. Hold a match of 90% or higher for 0.5 seconds. Match brightness too from building 15. The next building appears immediately. Pauses are off the clock.
 Start
 Getting ready…
 Try connecting again
@@ -111,7 +111,7 @@ Pause
 Modo de una gama de color
 Contrarreloj · 30 edificios
 Modo contrarreloj
-Recorre 30 edificios de una misma gama. Mantén una coincidencia del 95 % o más durante 0,5 segundos. A partir del edificio 15, iguala también el brillo. Los traslados de 2 segundos y las pausas quedan fuera del cronómetro.
+Recorre 30 edificios de una misma gama. Mantén una coincidencia del 90 % o más durante 0,5 segundos. A partir del edificio 15, iguala también el brillo. El siguiente edificio aparece de inmediato. Las pausas quedan fuera del cronómetro.
 Empezar
 Preparando…
 Volver a conectar
@@ -159,7 +159,7 @@ Pausar
 Modo de uma família de cores
 Contra o relógio · 30 prédios
 Modo contra o relógio
-Passe por 30 prédios da mesma família de cores. Mantenha uma correspondência de 95% ou mais por 0,5 segundo. A partir do 15º prédio, ajuste também o brilho. Os deslocamentos de 2 segundos e as pausas ficam fora do cronômetro.
+Passe por 30 prédios da mesma família de cores. Mantenha uma correspondência de 90% ou mais por 0,5 segundo. A partir do 15º prédio, ajuste também o brilho. O próximo prédio aparece na hora. As pausas ficam fora do cronômetro.
 Começar
 Preparando…
 Tentar conectar de novo
@@ -207,7 +207,7 @@ Pausar
 同色系模式
 限时竞速 · 30 栋
 限时竞速模式
-挑战同一色系的 30 栋建筑。匹配度达到 95% 后保持 0.5 秒。从第 15 栋起还要匹配亮度。每次移动的 2 秒和暂停时间不计入成绩。
+挑战同一色系的 30 栋建筑。匹配度达到 90% 后保持 0.5 秒。从第 15 栋起还要匹配亮度。达标后立即切换到下一栋建筑。暂停时间不计入成绩。
 开始
 准备中…
 重新连接
@@ -255,7 +255,7 @@ Pausar
 Mode à gamme unique
 Contre-la-montre · 30 bâtiments
 Mode contre-la-montre
-Enchaînez 30 bâtiments de la même gamme de couleurs. Maintenez une correspondance d’au moins 95 % pendant 0,5 seconde. À partir du bâtiment 15, ajustez aussi la luminosité. Les déplacements de 2 secondes et les pauses sont hors chrono.
+Enchaînez 30 bâtiments de la même gamme de couleurs. Maintenez une correspondance d’au moins 90 % pendant 0,5 seconde. À partir du bâtiment 15, ajustez aussi la luminosité. Le bâtiment suivant apparaît aussitôt. Les pauses sont hors chrono.
 Commencer
 Préparation…
 Retenter la connexion
@@ -303,7 +303,7 @@ Mettre en pause
 Einfarbmodus
 Zeitrennen · 30 Gebäude
 Zeitrennen-Modus
-Meistere 30 Gebäude aus derselben Farbfamilie. Halte eine Übereinstimmung von mindestens 95 % für 0,5 Sekunden. Ab Gebäude 15 passt du auch die Helligkeit an. Die 2 Sekunden Wegzeit und Pausen zählen nicht zur Zeit.
+Meistere 30 Gebäude aus derselben Farbfamilie. Halte eine Übereinstimmung von mindestens 90 % für 0,5 Sekunden. Ab Gebäude 15 passt du auch die Helligkeit an. Das nächste Gebäude erscheint sofort. Pausen zählen nicht zur Zeit.
 Starten
 Wird vorbereitet …
 Erneut verbinden
@@ -351,7 +351,7 @@ Pausieren
 같은 색 계열 모드
 타임 어택 · 건물 30채
 타임 어택 모드
-같은 색 계열의 건물 30채에 도전하세요. 일치도 95% 이상을 0.5초 동안 유지하세요. 15번째 건물부터는 밝기도 맞춰야 합니다. 2초의 이동 시간과 일시 정지 시간은 기록에 포함되지 않습니다.
+같은 색 계열의 건물 30채에 도전하세요. 일치도 90% 이상을 0.5초 동안 유지하세요. 15번째 건물부터는 밝기도 맞춰야 합니다. 조건을 충족하면 즉시 다음 건물로 넘어갑니다. 일시 정지 시간은 기록에 포함되지 않습니다.
 시작
 준비 중…
 다시 연결하기
@@ -399,7 +399,7 @@ Pausieren
 Режим одной гаммы
 На время · 30 зданий
 Режим на время
-Пройдите 30 зданий одной цветовой гаммы. Удерживайте совпадение не ниже 95 % в течение 0,5 секунды. С 15-го здания подбирайте и яркость. Двухсекундные переходы и паузы не учитываются.
+Пройдите 30 зданий одной цветовой гаммы. Удерживайте совпадение не ниже 90 % в течение 0,5 секунды. С 15-го здания подбирайте и яркость. Следующее здание появляется сразу. Паузы не учитываются.
 Начать
 Подготовка…
 Подключиться снова
@@ -447,7 +447,7 @@ Pausieren
 Modalità a gamma unica
 Contro il tempo · 30 edifici
 Modalità contro il tempo
-Affronta 30 edifici della stessa gamma di colori. Mantieni una corrispondenza di almeno il 95% per 0,5 secondi. Dal 15º edificio, abbina anche la luminosità. Gli spostamenti di 2 secondi e le pause restano fuori dal cronometro.
+Affronta 30 edifici della stessa gamma di colori. Mantieni una corrispondenza di almeno il 90% per 0,5 secondi. Dal 15º edificio, abbina anche la luminosità. L’edificio successivo appare subito. Le pause restano fuori dal cronometro.
 Inizia
 Preparazione…
 Riprova a connetterti
@@ -495,7 +495,7 @@ Metti in pausa
 同色系模式
 計時挑戰 · 30 棟
 計時挑戰模式
-挑戰同一色系的 30 棟建築。相符度達到 95% 後維持 0.5 秒。從第 15 棟起也要配合亮度。每次移動的 2 秒和暫停時間不計入成績。
+挑戰同一色系的 30 棟建築。相符度達到 90% 後維持 0.5 秒。從第 15 棟起也要配合亮度。達標後立即切換至下一棟建築。暫停時間不計入成績。
 開始
 準備中…
 重新連線
@@ -543,7 +543,7 @@ Metti in pausa
 Mode satu rumpun warna
 Kejar waktu · 30 gedung
 Mode kejar waktu
-Taklukkan 30 gedung dalam satu rumpun warna. Pertahankan kecocokan minimal 95% selama 0,5 detik. Mulai gedung ke-15, cocokkan juga kecerahannya. Perpindahan 2 detik dan jeda tidak dihitung.
+Taklukkan 30 gedung dalam satu rumpun warna. Pertahankan kecocokan minimal 90% selama 0,5 detik. Mulai gedung ke-15, cocokkan juga kecerahannya. Gedung berikutnya langsung muncul. Jeda tidak dihitung.
 Mulai
 Bersiap…
 Coba sambungkan lagi
@@ -591,7 +591,7 @@ Jeda
 Tek renk ailesi modu
 Zamana karşı · 30 bina
 Zamana karşı modu
-Aynı renk ailesinden 30 binayı geç. En az %95 eşleşmeyi 0,5 saniye boyunca koru. 15. binadan itibaren parlaklığı da eşleştir. 2 saniyelik geçişler ve duraklamalar süreye katılmaz.
+Aynı renk ailesinden 30 binayı geç. En az %90 eşleşmeyi 0,5 saniye boyunca koru. 15. binadan itibaren parlaklığı da eşleştir. Sonraki bina hemen görünür. Duraklamalar süreye katılmaz.
 Başla
 Hazırlanıyor…
 Yeniden bağlan
@@ -639,7 +639,7 @@ Duraklat
 Chế độ cùng tông màu
 Đua thời gian · 30 tòa nhà
 Chế độ đua thời gian
-Thử sức với 30 tòa nhà cùng một tông màu. Giữ độ khớp từ 95% trong 0,5 giây. Từ tòa nhà thứ 15, hãy khớp cả độ sáng. Mỗi lượt di chuyển 2 giây và thời gian tạm dừng đều không được tính.
+Thử sức với 30 tòa nhà cùng một tông màu. Giữ độ khớp từ 90% trong 0,5 giây. Từ tòa nhà thứ 15, hãy khớp cả độ sáng. Tòa nhà tiếp theo xuất hiện ngay. Thời gian tạm dừng không được tính.
 Bắt đầu
 Đang chuẩn bị…
 Thử kết nối lại
@@ -687,7 +687,7 @@ Tạm dừng
 โหมดสีโทนเดียวกัน
 แข่งกับเวลา · 30 อาคาร
 โหมดแข่งกับเวลา
-ผ่านอาคาร 30 หลังในกลุ่มสีเดียวกัน รักษาความตรงกันอย่างน้อย 95% ไว้ 0.5 วินาที ตั้งแต่อาคารหลังที่ 15 ต้องปรับความสว่างให้ตรงกันด้วย ช่วงเดินทาง 2 วินาทีและช่วงหยุดพักไม่ถูกนับเวลา
+ผ่านอาคาร 30 หลังในกลุ่มสีเดียวกัน รักษาความตรงกันอย่างน้อย 90% ไว้ 0.5 วินาที ตั้งแต่อาคารหลังที่ 15 ต้องปรับความสว่างให้ตรงกันด้วย เมื่อผ่านเงื่อนไข อาคารถัดไปจะปรากฏทันที ช่วงหยุดพักไม่ถูกนับเวลา
 เริ่ม
 กำลังเตรียม…
 ลองเชื่อมต่ออีกครั้ง

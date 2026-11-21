@@ -1,5 +1,5 @@
 import {
-  MODE_ID, RULES_VERSION, COURSE_VERSION,
+  MODE_ID, CURRENT_RULES_VERSION, COURSE_VERSION,
   generateTimeAttackCourse,
 } from '../rules/time-attack/v1/index.js';
 import { randomSecret } from '../storage/store.js';
@@ -15,7 +15,7 @@ export function createTimeAttackAttempt({ destination, name, gameVersion }) {
   return {
     id: requestId, attemptId: requestId, destination,
     request: { requestId, launchId: uuid(), secret: randomSecret(), name,
-      supportedRulesVersions: [RULES_VERSION], rulesVersion: RULES_VERSION, gameVersion },
+      supportedRulesVersions: [CURRENT_RULES_VERSION], rulesVersion: CURRENT_RULES_VERSION, gameVersion },
   };
 }
 
@@ -33,14 +33,14 @@ export async function reserveTimeAttack(api, attempt, signal, { delays = [700, 1
     signal.throwIfAborted();
     try {
       const response = requireTimeAttack(await api.post('time-attack-start', attempt.request, { signal }));
-      if (!UUID_RE.test(response.playId ?? '') || response.rulesVersion !== RULES_VERSION ||
+      if (!UUID_RE.test(response.playId ?? '') || response.rulesVersion !== attempt.request.rulesVersion ||
           response.generatorVersion !== COURSE_VERSION ||
           !Number.isInteger(response.seed) || response.seed < 0 || response.seed > 0xffffffff ||
           !Number.isFinite(Date.parse(response.acceptedAt)) || response.expiresAt !== null) {
         throw new ApiError('invalid_time_attack_start');
       }
       signal.throwIfAborted();
-      const course = generateTimeAttackCourse(response.seed);
+      const course = generateTimeAttackCourse(response.seed, response.rulesVersion);
       if (course.family !== response.family) throw new ApiError('time_attack_family_mismatch');
       return { playId: response.playId, course };
     } catch (error) {

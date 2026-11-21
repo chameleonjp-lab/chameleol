@@ -1,6 +1,6 @@
 import {
   applyTimeAttackEvent, centiseconds, COURSE_VERSION, createTimeAttackState,
-  HISTORY_FORMAT, MAX_HISTORY_EVENTS, MODE_ID, RESULT_FORMAT, RULES_VERSION, titleForTime,
+  CURRENT_RULES_VERSION, HISTORY_FORMAT, MAX_HISTORY_EVENTS, MODE_ID, RESULT_FORMAT, titleForTime,
 } from '../rules/time-attack/v1/index.js';
 
 const timed = phase => phase === 'active' || phase === 'travel';
@@ -40,6 +40,9 @@ export class TimeAttackSession {
     const phase = this.state.phase;
     this.state = applyTimeAttackEvent(this.state, { kind: 'tick', t: Math.floor(proposed + 1e-7) }, this.course);
     this.clock = this.state.phase === phase ? proposed : this.state.t;
+    if (this.course.rulesVersion === CURRENT_RULES_VERSION && this.state.phase === 'await_ready') {
+      this.event('ready', { building: this.state.building + 1 });
+    }
   }
 
   frame(now) {
@@ -54,8 +57,9 @@ export class TimeAttackSession {
   }
 
   input(color, now) {
+    const building = this.state.building;
     this.update(now);
-    if (this.state.phase !== 'active') return false;
+    if (this.state.phase !== 'active' || this.state.building !== building) return false;
     const { h, s, v } = this.state.color;
     if (h !== color.h || s !== color.s || v !== color.v) this.event('input', color);
     return true;
@@ -82,9 +86,9 @@ export class TimeAttackSession {
     const reason = phase === 'cleared' ? 'cleared' : 'quit';
     const elapsedCs = centiseconds(elapsedMs);
     const end = phase === 'prepared' ? null : this.event('end', { reason, elapsedMs, elapsedCs });
-    const { seed, family } = this.course;
+    const { seed, family, rulesVersion } = this.course;
     const history = end && !this.historyTooLarge ? {
-      format: HISTORY_FORMAT, modeId: MODE_ID, rulesVersion: RULES_VERSION,
+      format: HISTORY_FORMAT, modeId: MODE_ID, rulesVersion,
       generatorVersion: COURSE_VERSION, seed, family, events: this.events, end,
     } : null;
     return {

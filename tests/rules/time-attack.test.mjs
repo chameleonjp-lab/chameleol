@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {generateTimeAttackCourse, familyColors, createTimeAttackState,applyTimeAttackEvent,replayTimeAttack,
   centiseconds,titleForTime,TITLE_NAMES_JA,TITLE_LIMITS_CS,colorMatch,brightnessMatch,HISTORY_FORMAT,
-  MODE_ID,RULES_VERSION,COURSE_VERSION,MOVE_MS,publicView,timeAttackFamilyForSeed,TIME_ATTACK_TITLES,
+  MODE_ID,RULES_VERSION,CURRENT_RULES_VERSION,COURSE_VERSION,MOVE_MS,publicView,timeAttackFamilyForSeed,TIME_ATTACK_TITLES,
   isTimeAttackCentiseconds,formatTime,
   InvalidTimeAttackHistoryError} from '../../src/rules/time-attack/v1/index.js';
 import { ciede2000, deltaEToMatchUnits, hsvToLab } from '../../src/rules/v1/color.js';
@@ -148,7 +148,7 @@ test('58 titles cover all 1500..60000 centiseconds with exact boundaries',()=>{
  assert.equal(isTimeAttackCentiseconds(900719925468301),false);
 });
 
-test('course optimization keeps the rule version and its exact fixed-seed draws', () => {
+test('both rule versions preserve the same fixed-seed draws', () => {
   const cases = [
     [0, 'blue', '2d97a424cd591712a03dfcdaf5cef24d1a6c2d383de64dd3dcd68d3c7db56ba7'],
     [1, 'red', '857c2fdf56bf4f08c323ccf971b0fdc720fd97e88a0166c8ecfac9c17cac691a'],
@@ -156,10 +156,13 @@ test('course optimization keeps the rule version and its exact fixed-seed draws'
     [4294967295, 'red', 'b4dddb6231155b3f04aefba96df608ddcf95482ee816b7b4489e1e97d21cb49a'],
   ];
   for (const [seed, family, digest] of cases) {
-    const course = generateTimeAttackCourse(seed);
-    assert.equal(course.family, family);
     assert.equal(timeAttackFamilyForSeed(seed), family);
-    assert.equal(createHash('sha256').update(JSON.stringify(course)).digest('hex'), digest);
+    for (const version of [RULES_VERSION, CURRENT_RULES_VERSION]) {
+      const { rulesVersion, ...course } = generateTimeAttackCourse(seed, version);
+      assert.equal(rulesVersion, version);
+      assert.equal(course.family, family);
+      assert.equal(createHash('sha256').update(JSON.stringify(course)).digest('hex'), digest);
+    }
   }
 });
 

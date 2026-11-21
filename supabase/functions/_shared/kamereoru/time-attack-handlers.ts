@@ -1,7 +1,7 @@
 // 同系色モード専用の受付。通常の starts/results/ranking 関数へ絶対に流さない。
 // 内部DB接続からだけ非公開テーブルへアクセスし、公開時は最小限の表示値のみ返す。
 import {normalizeName} from './shared/name.js';
-import {MODE_ID,RULES_VERSION,COURSE_VERSION,HISTORY_FORMAT,timeAttackFamilyForSeed,InvalidTimeAttackHistoryError,
+import {MODE_ID,HISTORY_FORMAT,timeAttackFamilyForSeed,InvalidTimeAttackHistoryError,supportsTimeAttackRules,
   replayTimeAttack} from './rules/time-attack/v1/index.js';
 type DB={query(text:string,params?:unknown[]):Promise<any[]>};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -52,11 +52,12 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
    if (!j) break;
    let status='rejected',values:Record<string,unknown>={},verdict:Record<string,unknown>={reason:'invalid_replay'};
    try{
-    const [r]=await call('select r.body, s.seed,s.family,s.play_id,s.launch_id,s.game_version,s.created_at,r.accepted_at from private.kamereoru_ta_results r join private.kamereoru_ta_starts s using(play_id) where r.play_id=$1',[j.play_id]);
+    const [r]=await call('select r.body, s.seed,s.family,s.play_id,s.launch_id,s.game_version,s.rules_version,s.created_at,r.accepted_at from private.kamereoru_ta_results r join private.kamereoru_ta_starts s using(play_id) where r.play_id=$1',[j.play_id]);
     if(!r)throw Error('missing_input');
     const payload=r.body;
     if(payload?.seed!==Number(r.seed)||payload?.family!==r.family||payload?.playId!==r.play_id||
-      payload?.launchId!==r.launch_id||payload?.gameVersion!==r.game_version||payload?.format!==HISTORY_FORMAT)throw Error('reservation_mismatch');
+      payload?.launchId!==r.launch_id||payload?.gameVersion!==r.game_version||
+      payload?.rulesVersion!==r.rules_version||payload?.format!==HISTORY_FORMAT)throw Error('reservation_mismatch');
     const computed=replayTimeAttack(payload);
     const elapsedWall=Date.parse(r.accepted_at)-Date.parse(r.created_at);
     const neededWall=computed.elapsedMs+computed.executedTravelMs;
@@ -92,13 +93,15 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
     const b=await read(req);uuid(b.requestId);uuid(b.launchId);secret(b.secret);
     const n=normalizeName(b.name);
     const requested = b.supportedRulesVersions ?? [b.rulesVersion];
-    if(!n.ok||n.empty||n.name!==b.name||!Array.isArray(requested)||requested.length!==1||requested[0]!==RULES_VERSION||!b.gameVersion)throw error(422,'bad_start');
+    if(!n.ok||n.empty||n.name!==b.name||!Array.isArray(requested)||requested.length!==1||
+      !supportsTimeAttackRules(requested[0])||(b.rulesVersion!=null&&b.rulesVersion!==requested[0])||
+      !b.gameVersion)throw error(422,'bad_start');
     const existing=await call('select 1 from private.kamereoru_ta_starts where request_id=$1',[b.requestId]);
     if(!existing.length)await throttle(req,'start',30);
     const rand=new Uint32Array(1);crypto.getRandomValues(rand);const seed=rand[0];
     const family=timeAttackFamilyForSeed(seed);
     const rows=await call("select private.kamereoru_ta_start($1,$2,decode($3,'hex'),$4,$5,$6,$7,$8,$9) as r",[
-      b.requestId,b.launchId,await sha(b.secret),n.name,n.key,RULES_VERSION,b.gameVersion,seed,family]);
+      b.requestId,b.launchId,await sha(b.secret),n.name,n.key,requested[0],b.gameVersion,seed,family]);
     const r=rows[0]?.r;
     if(timeAttackFamilyForSeed(Number(r.seed))!==r.family)throw error(503,'seed_mismatch');
     return json(200,r);

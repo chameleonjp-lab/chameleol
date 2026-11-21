@@ -1,4 +1,4 @@
-import { RULES_VERSION as TA_RULES, COURSE_VERSION as TA_COURSE, HISTORY_FORMAT as TA_HISTORY, RESULT_FORMAT as TA_RESULT } from '../src/rules/time-attack/v1/index.js';
+import { CURRENT_RULES_VERSION as TA_RULES, COURSE_VERSION as TA_COURSE, HISTORY_FORMAT as TA_HISTORY, RESULT_FORMAT as TA_RESULT } from '../src/rules/time-attack/v1/index.js';
 // 公開用の配布物を dist/ に作る。
 // - 資源は版ごとのフォルダ v/<assetVersion>/ に置く。各版のフォルダは単独で遊べる入口（index.html）を持つ。
 // - dist/index.html は「今の版」の入口。切り戻しは入口だけを旧版へ戻し、新旧の v/ フォルダは両方残す。
