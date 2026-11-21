@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TimeAttackSession } from '../../src/game/time-attack-session.js';
-import { colorMatch, CURRENT_RULES_VERSION, generateTimeAttackCourse, publicView, replayTimeAttack } from '../../src/rules/time-attack/v1/index.js';
+import { colorMatch, CURRENT_RULES_VERSION, INSTANT_RULES_VERSION, generateTimeAttackCourse, publicView, replayTimeAttack } from '../../src/rules/time-attack/v1/index.js';
 
 const course = generateTimeAttackCourse(789123);
 const ready = () => {
@@ -9,6 +9,34 @@ const ready = () => {
   session.frame(0);
   return session;
 };
+
+test('current course uses every hue range in each half, and tricky colors use active time only', () => {
+  const course = generateTimeAttackCourse(3256, CURRENT_RULES_VERSION);
+  assert.equal(course.targets.length, 20);
+  for (const half of [course.targets.slice(0, 10), course.targets.slice(10)]) {
+    assert.equal(new Set(half.map(target => Math.floor(target.h / 6000))).size, 6);
+  }
+  assert.ok(course.targets.slice(0, 10).every(target => target.v === 10000));
+  assert.notEqual(course.targets[10].v, 10000);
+  const session = new TimeAttackSession(course);
+  session.frame(0);
+  session.input(course.targets[0], 0);
+  session.frame(500);
+  session.frame(700);
+  session.pause(700);
+  session.resume(5700);
+  session.input(course.targets[1], 5900);
+  session.frame(6400);
+  session.input(course.targets[2], 6500);
+  session.frame(7000);
+  session.pause(7800);
+  const { result, history } = session.finish();
+  assert.equal(replayTimeAttack(history).elapsedMs, 2800);
+  assert.deepEqual(result.trickyColors.map(({ elapsedMs, building }) => [building, elapsedMs]), [
+    [2, 900], [4, 800], [3, 600],
+  ]);
+  assert.deepEqual(result.trickyColors.map(({ hsv }) => hsv), [course.targets[1], course.targets[3], course.targets[2]]);
+});
 
 test('fractional frames accumulate to the same time as fewer larger frames', () => {
   const many = ready(), two = ready();
@@ -92,7 +120,7 @@ test('travel gates ignore input and excess time, completing once at 73 seconds o
 });
 
 test('90% is inclusive and the new rules switch walls on the frame that completes the hold', () => {
-  const course = generateTimeAttackCourse(789123, CURRENT_RULES_VERSION);
+  const course = generateTimeAttackCourse(789123, INSTANT_RULES_VERSION);
   const run = new TimeAttackSession(course);
   run.frame(0);
   const target = course.targets[0];
@@ -132,7 +160,7 @@ test('90% is inclusive and the new rules switch walls on the frame that complete
   assert.equal(history.end.t, 16000);
   assert.equal(history.events.filter(e => e.kind === 'travel').length, 0);
   const result = replayTimeAttack(history);
-  assert.equal(result.rulesVersion, CURRENT_RULES_VERSION);
+  assert.equal(result.rulesVersion, INSTANT_RULES_VERSION);
   assert.equal(result.buildings, 30);
   assert.equal(result.executedTravelMs, 0);
 });

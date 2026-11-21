@@ -99,11 +99,11 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
     const existing=await call('select 1 from private.kamereoru_ta_starts where request_id=$1',[b.requestId]);
     if(!existing.length)await throttle(req,'start',30);
     const rand=new Uint32Array(1);crypto.getRandomValues(rand);const seed=rand[0];
-    const family=timeAttackFamilyForSeed(seed);
+    const family=timeAttackFamilyForSeed(seed,requested[0]);
     const rows=await call("select private.kamereoru_ta_start($1,$2,decode($3,'hex'),$4,$5,$6,$7,$8,$9) as r",[
       b.requestId,b.launchId,await sha(b.secret),n.name,n.key,requested[0],b.gameVersion,seed,family]);
     const r=rows[0]?.r;
-    if(timeAttackFamilyForSeed(Number(r.seed))!==r.family)throw error(503,'seed_mismatch');
+    if(timeAttackFamilyForSeed(Number(r.seed),r.rulesVersion)!==r.family)throw error(503,'seed_mismatch');
     return json(200,r);
    }
    if(route==='time-attack-abandon'&&req.method==='POST'){
@@ -114,7 +114,7 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
    }
    if(route==='time-attack-launch'&&req.method==='POST'){
     const b=await read(req);uuid(b.launchId);if(b.modeId!==MODE_ID||typeof b.ranked!=='boolean')throw error(422,'bad_launch');
-    if(!['red','green','blue'].includes(b.family)||!b.gameVersion)throw error(422,'bad_launch');
+    if(!['red','green','blue','all'].includes(b.family)||!b.gameVersion)throw error(422,'bad_launch');
     if(b.ranked){uuid(b.playId);secret(b.secret);}else if(b.playId!=null)throw error(422,'anonymous_play_id');
     await throttle(req,'launch',300);
     const rows=await call("select private.kamereoru_ta_launch($1,$2,$3,decode($4,'hex'),$5,$6) as r",[
@@ -173,23 +173,29 @@ export function createTimeAttackHandler({db,workerSecret='',ipSalt='',log=()=>{}
    }
    if(route==='time-attack-rank'&&req.method==='POST'){
     const b=await read(req),n=normalizeName(b.name);if(!n.ok||n.empty)return json(200,{rank:null});
+    const course=b.course??'all';
+    if(course!=='all')throw error(422,'bad_course');
     await throttle(req,'read',1200);
-    const rows=await call('select private.kamereoru_ta_rank_of($1) as r',[n.key]);
+    const rows=await call('select private.kamereoru_ta_rank_of($1,$2) as r',[n.key,course]);
     return json(200,rows[0].r);
    }
    if(route==='time-attack-stats'&&req.method==='GET'){
+    const course=url.searchParams.get('course')??'all';
+    if(course!=='all')throw error(422,'bad_course');
     await throttle(req,'read',1200);
-    const rows=await call('select private.kamereoru_ta_stats() as r');
+    const rows=await call('select private.kamereoru_ta_stats($1) as r',[course]);
     return json(200,rows[0].r);
    }
    if(route==='time-attack-ranking'&&req.method==='GET'){
     await throttle(req,'read',1200);
     const v=url.searchParams.get('version'),a=url.searchParams.get('after'),l=url.searchParams.get('limit')??'100';
+    const course=url.searchParams.get('course')??'all';
+    if(course!=='all')throw error(422,'bad_course');
     if((v===null)!==(a===null)||!/^([0-9]{1,17})$/.test(l)||
       (v!==null&&!/^[0-9]{1,17}$/.test(v))||(a!==null&&!/^[0-9]{1,10}$/.test(a)))throw error(422,'bad_cursor');
     const limit=safeInt(Number(l),1,100);
-    const rows=await call('select private.kamereoru_ta_ranking_page($1::bigint,$2::integer,$3::integer) as r',[
-      v,a,limit]);
+    const rows=await call('select private.kamereoru_ta_ranking_page($1::bigint,$2::integer,$3::integer,$4) as r',[
+      v,a,limit,course]);
     const r=rows[0].r;
     return json(200,{...r,version:Number(r.version)});
    }

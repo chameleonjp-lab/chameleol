@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {generateTimeAttackCourse, familyColors, createTimeAttackState,applyTimeAttackEvent,replayTimeAttack,
   centiseconds,titleForTime,TITLE_NAMES_JA,TITLE_LIMITS_CS,colorMatch,brightnessMatch,HISTORY_FORMAT,
-  MODE_ID,RULES_VERSION,CURRENT_RULES_VERSION,COURSE_VERSION,MOVE_MS,publicView,timeAttackFamilyForSeed,TIME_ATTACK_TITLES,
+  MODE_ID,RULES_VERSION,INSTANT_RULES_VERSION,COURSE_VERSION,MOVE_MS,publicView,timeAttackFamilyForSeed,TIME_ATTACK_TITLES,
   isTimeAttackCentiseconds,formatTime,
   InvalidTimeAttackHistoryError} from '../../src/rules/time-attack/v1/index.js';
 import { ciede2000, deltaEToMatchUnits, hsvToLab } from '../../src/rules/v1/color.js';
@@ -157,7 +157,7 @@ test('both rule versions preserve the same fixed-seed draws', () => {
   ];
   for (const [seed, family, digest] of cases) {
     assert.equal(timeAttackFamilyForSeed(seed), family);
-    for (const version of [RULES_VERSION, CURRENT_RULES_VERSION]) {
+    for (const version of [RULES_VERSION, INSTANT_RULES_VERSION]) {
       const { rulesVersion, ...course } = generateTimeAttackCourse(seed, version);
       assert.equal(rulesVersion, version);
       assert.equal(course.family, family);

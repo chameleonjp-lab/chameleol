@@ -5,36 +5,31 @@ import {freshServer,SKIP} from './helpers.mjs';
 import {uuid,sha256Hex} from '../../src/net/api.js';
 import {randomSecret} from '../../src/storage/store.js';
 import {generateTimeAttackCourse,createTimeAttackState,applyTimeAttackEvent,replayTimeAttack,
-  MODE_ID,RULES_VERSION,COURSE_VERSION,HISTORY_FORMAT,centiseconds} from '../../src/rules/time-attack/v1/index.js';
+  MODE_ID,INSTANT_RULES_VERSION,CURRENT_RULES_VERSION,COURSE_VERSION,HISTORY_FORMAT,centiseconds} from '../../src/rules/time-attack/v1/index.js';
 
-const version='0.1.0-ta.1';
-function trace(seed,playId,launchId,gameVersion=version){
- const course=generateTimeAttackCourse(seed),events=[];
+const version='0.1.0-ta.3';
+function trace(seed,playId,launchId,rulesVersion=CURRENT_RULES_VERSION){
+ const course=generateTimeAttackCourse(seed,rulesVersion),events=[];
  let s=createTimeAttackState(course),t=0;
  function send(kind,data={}){
   const e={kind,seq:events.length,t,...data};
   s=applyTimeAttackEvent(s,e,course);events.push(e);
  }
  send('ready',{building:1});
- for(let i=1;i<=30;i++){
+ for(let i=1;i<=course.targets.length;i++){
   send('input',course.targets[i-1]);
   t+=500;
   s=applyTimeAttackEvent(s,{kind:'tick',t},course);
-  if(i<30){
-   send('travel',{fromBuilding:i});
-   t+=2000;
-   s=applyTimeAttackEvent(s,{kind:'tick',t},course);
-   send('ready',{building:i+1});
-  }
+  if(i<course.targets.length)send('ready',{building:i+1});
  }
  const end={seq:events.length,t,kind:'end',reason:'cleared',elapsedMs:s.elapsedMs,elapsedCs:centiseconds(s.elapsedMs)};
- const payload={modeId:MODE_ID,format:HISTORY_FORMAT,rulesVersion:RULES_VERSION,generatorVersion:COURSE_VERSION,
-  seed,family:course.family,events,end,playId,launchId,gameVersion};
- assert.equal(replayTimeAttack(payload).elapsedCs,1500);
+ const payload={modeId:MODE_ID,format:HISTORY_FORMAT,rulesVersion,generatorVersion:COURSE_VERSION,
+  seed,family:course.family,events,end,playId,launchId,gameVersion:version};
+ assert.equal(replayTimeAttack(payload).elapsedCs,course.targets.length*50);
  return payload;
 }
-async function reserve(srv,name='TA-Tester'){
- const req={requestId:uuid(),launchId:uuid(),secret:randomSecret(),name,gameVersion:version,rulesVersion:RULES_VERSION};
+async function reserve(srv,name='TA-Tester',rulesVersion=CURRENT_RULES_VERSION){
+ const req={requestId:uuid(),launchId:uuid(),secret:randomSecret(),name,gameVersion:version,rulesVersion};
  const started=await srv.call('time-attack-start',req);
  assert.equal(started.status,200,JSON.stringify(started.body));
  assert.equal(started.body.modeId,MODE_ID);
@@ -56,13 +51,13 @@ async function submit(srv,start,payload){
  await srv.settle();
  return {done,resultId};
 }
-test('TA official 30-building replay, idempotent start/launch, stats and ranked entry', {skip:SKIP},async()=>{
+test('TA official 20-building replay, idempotent start/launch, stats and ranked entry', {skip:SKIP},async()=>{
  const srv=await freshServer('ta_official');
  try{
   await srv.sql('update private.kamereoru_ta_config set accepting=true');
   const a=await reserve(srv,'白い怪盗');
   const duplicate=await srv.call('time-attack-start',{requestId:a.requestId,launchId:a.launchId,
-   secret:a.secret,name:a.name,gameVersion:version,rulesVersion:RULES_VERSION});
+   secret:a.secret,name:a.name,gameVersion:version,rulesVersion:CURRENT_RULES_VERSION});
   assert.equal(duplicate.body.playId,a.playId);
   const launchAgain=await srv.call('time-attack-launch',{launchId:a.launchId,modeId:MODE_ID,
     ranked:true,playId:a.playId,secret:a.secret,family:a.family,gameVersion:version});
@@ -72,8 +67,8 @@ test('TA official 30-building replay, idempotent start/launch, stats and ranked 
   const duplicateResult=await srv.call('time-attack-complete',{playId:a.playId,resultId,secret:a.secret});
   assert.equal(duplicateResult.status,200);
   const [res]=await srv.sql('select status,elapsed_ms,elapsed_cs,buildings,reason,title_id from private.kamereoru_ta_results where play_id=$1',[a.playId]);
-  assert.equal(res.status,'official');assert.equal(Number(res.elapsed_ms),15000);
-  assert.equal(Number(res.elapsed_cs),1500);assert.equal(res.buildings,30);
+  assert.equal(res.status,'official');assert.equal(Number(res.elapsed_ms),10000);
+  assert.equal(Number(res.elapsed_cs),1000);assert.equal(res.buildings,20);
   assert.equal(res.title_id,'ta.title.01');
   const stats=await srv.call('time-attack-stats',{}, {method:'GET'});
   assert.equal(stats.body.totalPlays,1);assert.equal(stats.body.participantCount,1);
@@ -92,7 +87,7 @@ test('TA anonymous launch counts once but never enters ranking, and stays indepe
  try{
   await srv.sql('update private.kamereoru_ta_config set accepting=true');
   const launchId=uuid(),payload={launchId,modeId:MODE_ID,ranked:false,
-   playId:null,family:'green',gameVersion:version};
+   playId:null,family:'all',gameVersion:version};
   assert.equal((await srv.call('time-attack-launch',payload)).status,200);
   assert.equal((await srv.call('time-attack-launch',payload)).status,200);
   const altered=await srv.call('time-attack-launch',{...payload,family:'red'});
@@ -103,13 +98,38 @@ test('TA anonymous launch counts once but never enters ranking, and stays indepe
   assert.equal(standard.n,0);
  }finally{await srv.close();}
 });
+
+test('a retired 30-building receipt still verifies, while public ranking reads only 20-wall records', {skip:SKIP},async()=>{
+ const srv=await freshServer('ta_course_retirement');
+ try{
+  await srv.sql('update private.kamereoru_ta_config set accepting=true,rules_version=$1',[INSTANT_RULES_VERSION]);
+  const old=await reserve(srv,'記録を残すテスト',INSTANT_RULES_VERSION);
+  await srv.sql('update private.kamereoru_ta_config set rules_version=$1',[CURRENT_RULES_VERSION]);
+  const duplicate=await srv.call('time-attack-start',old);
+  assert.equal(duplicate.body.playId,old.playId);
+  const retired=await srv.call('time-attack-start',{...old,requestId:uuid(),launchId:uuid()});
+  assert.equal(retired.body.error,'course_retired');
+  await submit(srv,old,trace(old.seed,old.playId,old.launchId,INSTANT_RULES_VERSION));
+  const [saved]=await srv.sql('select status,buildings from private.kamereoru_ta_results where play_id=$1',[old.playId]);
+  assert.deepEqual(saved,{status:'official',buildings:30});
+  const hidden=await srv.call('time-attack-ranking?course=legacy',{}, {method:'GET'});
+  assert.equal(hidden.status,422);
+  const empty=await srv.call('time-attack-ranking',{}, {method:'GET'});
+  assert.equal(empty.body.course,'all');
+  assert.deepEqual(empty.body.rows,[]);
+  const fresh=await reserve(srv,old.name);
+  await submit(srv,fresh,trace(fresh.seed,fresh.playId,fresh.launchId));
+  const listed=await srv.call('time-attack-ranking?course=all',{}, {method:'GET'});
+  assert.deepEqual(listed.body.rows.map(row=>[row.name,row.elapsedCs,row.family]),[[old.name,1000,'all']]);
+ }finally{await srv.close();}
+});
 test('TA rejects forged result and wrong secret, allows owner to request one review', {skip:SKIP},async()=>{
  const srv=await freshServer('ta_reject');
  try{
   await srv.sql('update private.kamereoru_ta_config set accepting=true');
   const a=await reserve(srv,'Tester');
   const payload=trace(a.seed,a.playId,a.launchId);
-  payload.end.elapsedMs=14999;
+  payload.end.elapsedMs=9999;
   const resultId=uuid(),raw=JSON.stringify(payload),hash=await sha256Hex(raw);
   const rejectedChunk=await srv.call('time-attack-chunk',{playId:a.playId,resultId,secret:randomSecret(),
    index:0,total:1,length:raw.length,sha256:hash,data:raw});

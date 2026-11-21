@@ -143,7 +143,7 @@ test('time attack availability and launch flags are separate production settings
   assert.equal(readOnly.timeAttack.enabled, false);
   assert.equal(enabled.timeAttack.available, true);
   assert.equal(enabled.timeAttack.enabled, true);
-  assert.equal(enabled.timeAttack.rulesVersion, 'kamereoru-time-attack-rules-v2');
+  assert.equal(enabled.timeAttack.rulesVersion, 'kamereoru-time-attack-rules-v3');
   assert.notEqual(readOnly.assetVersion, enabled.assetVersion);
   assert.match(readFileSync(join(root, 'dist/index.html'), 'utf8'), /name="kamereoru-time-attack" content="1"/);
 });

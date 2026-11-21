@@ -1,4 +1,4 @@
-import { StaleTimeAttackWriter } from './time-attack-memory-store.js';
+import { StaleTimeAttackWriter, timeAttackBestKey } from './time-attack-memory-store.js';
 
 export const TIME_ATTACK_DB = 'kamereoru-time-attack';
 const STORES = ['starts', 'launches', 'outbox', 'records', 'runs', 'kv'];
@@ -58,7 +58,8 @@ export async function openTimeAttackStore(indexedDB = globalThis.indexedDB) {
     finish(attempt, record, outbox) {
       return transact(db, ['runs', 'records', 'outbox', 'kv'], (stores, done, fail) => {
         const owner = stores.runs.get('time-attack');
-        const best = stores.kv.get('timeAttackLocalBest');
+        const bestKey = timeAttackBestKey(record.result);
+        const best = stores.kv.get(bestKey);
         best.onsuccess = () => {
           const run = owner.result;
           if (run?.attemptId !== attempt.attemptId || run.ownerEpoch !== attempt.ownerEpoch) {
@@ -69,7 +70,7 @@ export async function openTimeAttackStore(indexedDB = globalThis.indexedDB) {
           const bestElapsedCs = newBest ? record.result.elapsedCs : prior;
           stores.records.put({ ...record, bestElapsedCs, newBest });
           if (outbox) stores.outbox.put(outbox);
-          if (newBest) stores.kv.put({ id: 'timeAttackLocalBest', elapsedCs: bestElapsedCs });
+          if (newBest) stores.kv.put({ id: bestKey, elapsedCs: bestElapsedCs });
           stores.runs.delete('time-attack');
           done({ bestElapsedCs, newBest });
         };
